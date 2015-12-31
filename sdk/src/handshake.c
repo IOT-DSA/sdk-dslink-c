@@ -55,7 +55,7 @@ int dslink_handshake_key_pair_fs(mbedtls_ecdh_context *key,
                                                    sizeof(buf))) > 0) {
             f = fopen(fileName, "w");
             if (f) {
-                fwrite(key, 1, (size_t) len, f);
+                fprintf(f, "%s", buf);
                 fclose(f);
             } else {
                 ret = DSLINK_OPEN_FILE_ERR;
@@ -106,7 +106,7 @@ int dslink_handshake_store_key_pair(mbedtls_ecdh_context *key,
     size_t bufSize;
     {
         // Add additional size for the space separator and null terminator
-        bufSize = dEncLen + qEncLen + 2;
+        bufSize = dEncLen + qEncLen + 1;
         if (bufLen < bufSize) {
             return DSLINK_BUF_TOO_SMALL;
         }
@@ -116,7 +116,7 @@ int dslink_handshake_store_key_pair(mbedtls_ecdh_context *key,
         *(buf + bufSize) = '\0';
     }
 
-    return (int) (bufSize - 1);
+    return (int) bufSize;
 }
 
 int dslink_handshake_read_key_pair(mbedtls_ecdh_context *ctx, char *buf) {
