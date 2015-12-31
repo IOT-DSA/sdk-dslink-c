@@ -81,8 +81,11 @@ int dslink_init(int argc, char **argv,
     json_t *handshake = NULL;
     char *dsId = NULL;
     Socket *sock = NULL;
-    int ret = 0;
 
+    DSLink link;
+    memset(&link, 0, sizeof(DSLink));
+
+    int ret = 0;
     config.name = name;
     if ((ret = dslink_parse_opts(argc, argv, &config)) != 0) {
         if (ret == DSLINK_ALLOC_ERR) {
@@ -113,8 +116,6 @@ int dslink_init(int argc, char **argv,
         goto exit;
     }
 
-    DSLink link;
-    memset(&link, 0, sizeof(DSLink));
     if (isResponder) {
         link.responder = calloc(1, sizeof(Responder));
         if (!link.responder) {
