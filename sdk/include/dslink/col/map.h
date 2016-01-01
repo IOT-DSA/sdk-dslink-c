@@ -98,6 +98,9 @@ int dslink_map_setl(Map *map, void *key, size_t len, void **value);
 void *dslink_map_remove(Map *map, void **key);
 void *dslink_map_removel(Map *map, void **key, size_t len);
 
+int dslink_map_contains(Map *map, void *key);
+int dslink_map_containsl(Map *map, void *key, size_t len);
+
 void *dslink_map_get(Map *map, void *key);
 void *dslink_map_getl(Map *map, void *key, size_t len);
 

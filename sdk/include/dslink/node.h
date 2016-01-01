@@ -7,6 +7,7 @@ extern "C" {
 
 #include <jansson.h>
 #include <dslink/col/map.h>
+#include "dslink.h"
 
 struct DSLink;
 
@@ -58,7 +59,7 @@ DSNode *dslink_node_get_path(DSNode *root, const char *path);
 void dslink_node_tree_free(DSNode *root);
 
 int dslink_node_set_meta(DSNode *node, const char *name, const char *value);
-int dslink_node_set_value(DSNode *node, json_t *value);
+int dslink_node_set_value(struct DSLink *link, DSNode *node, json_t *value);
 
 #ifdef __cplusplus
 }

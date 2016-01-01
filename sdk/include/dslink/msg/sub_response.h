@@ -11,6 +11,10 @@ extern "C" {
 int dslink_response_sub(DSLink *link, json_t *paths, json_t *rid);
 int dslink_response_unsub(DSLink *link, json_t *sids, json_t *rid);
 
+void dslink_response_send_val(DSLink *link,
+                              DSNode *node,
+                              uint32_t sid);
+
 #ifdef __cplusplus
 }
 #endif

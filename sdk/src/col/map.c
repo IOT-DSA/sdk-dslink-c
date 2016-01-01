@@ -227,6 +227,21 @@ void *dslink_map_removel(Map *map, void **key, size_t len) {
     return NULL;
 }
 
+int dslink_map_contains(Map *map, void *key) {
+    size_t len = map->key_len_calc(key);
+    return dslink_map_containsl(map, key, len);
+}
+
+int dslink_map_containsl(Map *map, void *key, size_t len) {
+    size_t index = dslink_map_index_of_key(key, len, map->capacity);
+    for (MapNode *node = map->table[index]; node != NULL; node = node->next) {
+        if (map->cmp(node->entry->key, key, len) == 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
 void *dslink_map_get(Map *map, void *key) {
     size_t len = map->key_len_calc(key);
     return dslink_map_getl(map, key, len);

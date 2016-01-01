@@ -1,8 +1,8 @@
 #include <string.h>
 #include <assert.h>
+#include "dslink/msg/sub_response.h"
 #include "dslink/err.h"
 #include "dslink/utils.h"
-#include "dslink/node.h"
 
 DSNode *dslink_node_create(DSNode *parent,
                            const char *name, const char *profile) {
@@ -126,7 +126,7 @@ void dslink_node_tree_free(DSNode *root) {
         free(root->children);
     }
     if (root->meta_data) {
-        DSLINK_MAP_FREE(root->children, {
+        DSLINK_MAP_FREE(root->meta_data, {
             free(entry->key);
             free(entry->value);
         });
@@ -193,7 +193,7 @@ int dslink_node_set_meta(DSNode *node,
     return 0;
 }
 
-int dslink_node_set_value(DSNode *node, json_t *value) {
+int dslink_node_set_value(struct DSLink *link, DSNode *node, json_t *value) {
     char ts[32];
     dslink_create_ts(ts, sizeof(ts));
 
@@ -202,8 +202,22 @@ int dslink_node_set_value(DSNode *node, json_t *value) {
         return DSLINK_ALLOC_ERR;
     }
 
-    // TODO: send it over the network if there's a value sub
+    if (node->value_timestamp) {
+        json_delete(node->value_timestamp);
+    }
+
+    if (node->value) {
+        json_delete(node->value);
+    }
+
     node->value_timestamp = jsonTs;
     node->value = value;
+
+    uint32_t *sid = dslink_map_get(link->responder->value_path_subs,
+                                   (void *) node->path);
+    if (sid) {
+        dslink_response_send_val(link, node, *sid);
+    }
+
     return 0;
 }

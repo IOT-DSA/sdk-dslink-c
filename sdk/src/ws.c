@@ -278,23 +278,15 @@ exit:
 }
 
 static
-uint32_t io_handler(void *data, EventLoop *loop, uint32_t delay) {
+void io_handler(void *data, EventLoop *loop, uint32_t delay) {
     (void) loop;
     DSLink *link = data;
-    Timer timer;
-    dslink_timer_start(&timer);
-    uint32_t used = 0;
-    while (used < delay) {
-        link->_delay = delay - used;
-        int stat = wslay_event_recv(link->_ws);
-        used = dslink_timer_stop(&timer);
-        if (stat == 0 && (link->_ws->error == WSLAY_ERR_NO_MORE_MSG
-                          || link->_ws->error == 0)) {
-            loop->shutdown = 1;
-            break;
-        }
+    link->_delay = delay;
+    int stat = wslay_event_recv(link->_ws);
+    if (stat == 0 && (link->_ws->error == WSLAY_ERR_NO_MORE_MSG
+                      || link->_ws->error == 0)) {
+        loop->shutdown = 1;
     }
-    return delay;
 }
 
 static

@@ -4,6 +4,21 @@
 #include <dslink/log.h>
 
 static
+void gen_number(void *data, EventLoop *loop) {
+    DSLink *link = ((void **) data)[0];
+    DSNode *node = ((void **) data)[1];
+    if (!dslink_map_contains(link->responder->value_path_subs,
+                             (void *) node->path)) {
+        free((void **) data);
+        return;
+    }
+
+    int x = rand();
+    dslink_node_set_value(link, node, json_integer(x));
+    dslink_event_loop_schedd(loop, gen_number, data, 1000);
+}
+
+static
 void list_opened(DSLink *link, DSNode *node) {
     (void) link;
     log_info("List opened for: %s\n", node->path);
@@ -19,6 +34,11 @@ static
 void num_subbed(DSLink *link, DSNode *node) {
     (void) link;
     log_info("Subscribed to %s\n", node->path);
+
+    void **b = malloc(sizeof(void *) * 2);
+    b[0] = link;
+    b[1] = node;
+    dslink_event_loop_schedd(&link->loop, gen_number, b, 1000);
 }
 
 static
@@ -68,7 +88,7 @@ void init(DSLink *link) {
         return;
     }
 
-    if (dslink_node_set_value(num, json_integer(1000)) != 0) {
+    if (dslink_node_set_value(link, num, json_integer(0)) != 0) {
         log_warn("Failed to set the value on the node\n");
         dslink_node_tree_free(num);
         return;

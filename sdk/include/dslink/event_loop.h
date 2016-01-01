@@ -25,7 +25,9 @@ typedef void (*task_func)(void *funcData,
  *
  * \return How long this function blocked for.
  */
-typedef uint32_t (*want_block_func)(void *funcData, EventLoop *loop, uint32_t nextDelay);
+typedef void (*want_block_func)(void *funcData,
+                                EventLoop *loop,
+                                uint32_t nextDelay);
 
 struct EventTask {
 

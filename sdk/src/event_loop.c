@@ -5,6 +5,48 @@
 #include "dslink/err.h"
 #include "dslink/timer.h"
 
+static
+int dslink_event_loop_sched_raw(EventLoop *loop, EventTask *task) {
+    if (!loop->head) {
+        task->prev = NULL;
+        task->next = NULL;
+        loop->head = task;
+        loop->tail = task;
+        return 0;
+    }
+
+    if (task->delay >= loop->tail->delay) {
+        // Insert at the end of the tail
+        loop->tail->next = task;
+        task->prev = loop->tail;
+        task->next = NULL;
+        loop->tail = task;
+    } else {
+        // Sort the event
+        for (EventTask *t = loop->tail; t != NULL; t = t->prev) {
+            if (t->delay <= task->delay) {
+                task->next = t;
+                task->prev = t->prev;
+                if (t->prev == NULL) {
+                    loop->head = task;
+                } else {
+                    t->prev->next = task;
+                }
+                t->prev = task;
+                break;
+            } else if (t == loop->head) {
+                task->next = t;
+                task->prev = NULL;
+                loop->head->prev = task;
+                loop->head = task;
+                break;
+            }
+        }
+    }
+
+    return 0;
+}
+
 void dslink_event_loop_init(EventLoop *loop,
                             want_block_func func,
                             void *blockFuncData) {
@@ -34,44 +76,7 @@ int dslink_event_loop_schedd(EventLoop *loop, task_func func,
     task->delay = delay + loop->processing_delay;
     task->func = func;
     task->func_data = funcData;
-
-    if (!loop->head) {
-        task->prev = NULL;
-        task->next = NULL;
-        loop->head = task;
-        loop->tail = task;
-        return 0;
-    }
-
-    if (delay >= loop->tail->delay) {
-        // Insert at the end of the tail
-        loop->tail->next = task;
-        task->prev = loop->tail;
-        task->next = NULL;
-        loop->tail = task;
-    } else {
-        // Sort the event
-        for (EventTask *t = loop->tail; t != NULL; t = t->prev) {
-            if (t->delay <= delay) {
-                task->next = t;
-                task->prev = t->prev;
-                if (t->prev == NULL) {
-                    loop->head = task;
-                } else {
-                    t->prev->next = task;
-                }
-                t->prev = task;
-                break;
-            } else if (t == loop->head) {
-                task->next = t;
-                task->prev = NULL;
-                loop->head->prev = task;
-                loop->head = task;
-                break;
-            }
-        }
-    }
-
+    dslink_event_loop_sched_raw(loop, task);
     return 0;
 }
 
@@ -83,6 +88,7 @@ void dslink_event_loop_process(EventLoop *loop) {
             break;
         }
     }
+loop_processor:
     while (!loop->shutdown && loop->head) {
 
         // Reconfigure the head
@@ -91,9 +97,26 @@ void dslink_event_loop_process(EventLoop *loop) {
 
         if (task->delay > 0) {
             if (loop->block_func) {
-                uint32_t b = loop->block_func(loop->block_func_data,
-                                              loop, task->delay);
-                task->delay -= b;
+                Timer timer;
+                while (task->delay > 0) {
+                    dslink_timer_start(&timer);
+                    loop->block_func(loop->block_func_data,
+                                     loop, task->delay);
+                    uint32_t diff = dslink_timer_stop(&timer);
+                    if (task->delay > diff) {
+                        task->delay -= diff;
+                    } else {
+                        task->delay = 0;
+                    }
+                    if (loop->shutdown
+                        || (loop->head
+                            && (loop->head->delay < task->delay))) {
+                        dslink_event_loop_sched_raw(loop, task);
+                        goto loop_processor;
+                    }
+                }
+
+                task->delay = 0;
                 if (loop->shutdown) {
                     break;
                 }

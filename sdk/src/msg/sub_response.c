@@ -27,10 +27,9 @@ int dslink_response_send_closed(DSLink *link, json_t *rid) {
     return 0;
 }
 
-static
-void dslink_response_send_init_val(DSLink *link,
-                                   DSNode *node,
-                                   uint32_t sid) {
+void dslink_response_send_val(DSLink *link,
+                              DSNode *node,
+                              uint32_t sid) {
     if (!node->value_timestamp) {
         return;
     }
@@ -117,7 +116,7 @@ int dslink_response_sub(DSLink *link, json_t *paths, json_t *rid) {
             return 1;
         }
 
-        dslink_response_send_init_val(link, node, *sid);
+        dslink_response_send_val(link, node, *sid);
         if (node->on_subscribe) {
             node->on_subscribe(link, node);
         }
