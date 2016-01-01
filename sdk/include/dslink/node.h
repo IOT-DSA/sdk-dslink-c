@@ -5,7 +5,9 @@
 extern "C" {
 #endif
 
+#include <jansson.h>
 #include <dslink/col/map.h>
+
 struct DSLink;
 
 struct DSNode;
@@ -27,11 +29,25 @@ struct DSNode {
     // here, otherwise the usage is undefined.
     Map *children;
 
-    // Used to notify when the node has been listed.
+    // The timestamp of the value. This must be a formatted
+    // string.
+    json_t *value_timestamp;
+
+    // The value of the node. This is used when the node
+    // gets subscribed to.
+    json_t *value;
+
+    // Notification callback when the node is listed.
     node_event_cb on_list_open;
 
-    // Used to notify when the node list stream has been closed.
+    // Notification callback when the node is closed.
     node_event_cb on_list_close;
+
+    // Notification callback when the node is subscribed.
+    node_event_cb on_subscribe;
+
+    // Notification callback when the node is unsubscribed.
+    node_event_cb on_unsubscribe;
 };
 
 DSNode *dslink_node_create(DSNode *parent,
@@ -40,6 +56,9 @@ int dslink_node_add_child(DSNode *parent, DSNode *node);
 
 DSNode *dslink_node_get_path(DSNode *root, const char *path);
 void dslink_node_tree_free(DSNode *root);
+
+int dslink_node_set_meta(DSNode *node, const char *name, const char *value);
+int dslink_node_set_value(DSNode *node, json_t *value);
 
 #ifdef __cplusplus
 }

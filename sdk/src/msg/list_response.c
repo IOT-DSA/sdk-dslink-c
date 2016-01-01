@@ -7,7 +7,7 @@ static
 void dslink_list_child_append_meta(json_t *obj,
                                    Map *meta,
                                    const char *name) {
-    char *str = dslink_map_get(meta, (void *) name, strlen(name));
+    char *str = dslink_map_get(meta, (void *) name);
     if (str) {
         json_object_set_new_nocheck(obj, name,
                                     json_string(str));
@@ -137,7 +137,7 @@ int dslink_response_list(DSLink *link, json_t *req, DSNode *node) {
             *rid = r;
         }
         if (dslink_map_set(link->responder->open_streams,
-                           rid, sizeof(uint32_t), (void **) &stream) != 0) {
+                           rid, (void **) &stream) != 0) {
             free(rid);
             free(stream);
             json_delete(top);
@@ -145,10 +145,10 @@ int dslink_response_list(DSLink *link, json_t *req, DSNode *node) {
         }
 
         void *p = rid;
-        if (dslink_map_set(link->responder->list_subs, (void *) node->path,
-                           strlen(node->path), &p) != 0) {
+        if (dslink_map_set(link->responder->list_subs,
+                           (void *) node->path, &p) != 0) {
             free(dslink_map_remove(link->responder->open_streams,
-                                   (void **) &rid, sizeof(uint32_t)));
+                                   (void **) &rid));
             free(rid);
             free(stream);
             json_delete(top);
@@ -168,8 +168,8 @@ int dslink_response_list(DSLink *link, json_t *req, DSNode *node) {
         if (!data) {
             json_delete(top);
             const char *key = node->path;
-            dslink_map_remove(link->responder->list_subs,
-                              (void **) &key, strlen(node->path));
+            free(dslink_map_remove(link->responder->list_subs,
+                              (void **) &key));
             return 1;
         }
         dslink_ws_send(link->_ws, data);

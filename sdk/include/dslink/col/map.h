@@ -87,15 +87,19 @@ int dslink_map_initbf(Map *map,
  *              be set to the previous value. Otherwise it will be set to NULL
  *              upon completion.
  */
-int dslink_map_set(Map *map, void *key, size_t len, void **value);
+int dslink_map_set(Map *map, void *key, void **value);
+int dslink_map_setl(Map *map, void *key, size_t len, void **value);
 
 /**
  * \param key Key to remove. Upon removal, the key will be set to the original
  *            key. This allows for freeing the original key as well the
  *            associated value.
  */
-void *dslink_map_remove(Map *map, void **key, size_t len);
-void *dslink_map_get(Map *map, void *key, size_t len);
+void *dslink_map_remove(Map *map, void **key);
+void *dslink_map_removel(Map *map, void **key, size_t len);
+
+void *dslink_map_get(Map *map, void *key);
+void *dslink_map_getl(Map *map, void *key, size_t len);
 
 #ifdef __cplusplus
 }

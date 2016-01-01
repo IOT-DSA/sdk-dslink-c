@@ -87,7 +87,7 @@ int dslink_map_get_raw_node(Map *map, MapNode **node,
     } else {
         while (1) {
             if (map->cmp((*node)->entry->key, key, len) == 0) {
-                return 0;
+                return 1;
             }
             MapNode *tmp = (*node)->next;
             if (tmp == NULL) {
@@ -165,7 +165,12 @@ int dslink_map_rehash_table(Map *map) {
     return 0;
 }
 
-int dslink_map_set(Map *map, void *key, size_t len, void **value) {
+int dslink_map_set(Map *map, void *key, void **value) {
+    size_t len = map->key_len_calc(key);
+    return dslink_map_setl(map, key, len, value);
+}
+
+int dslink_map_setl(Map *map, void *key, size_t len, void **value) {
     int ret;
     const float loadFactor = (float) map->items / map->capacity;
     if (loadFactor >= map->max_load_factor) {
@@ -193,7 +198,12 @@ int dslink_map_set(Map *map, void *key, size_t len, void **value) {
     return 0;
 }
 
-void *dslink_map_remove(Map *map, void **key, size_t len) {
+void *dslink_map_remove(Map *map, void **key) {
+    size_t len = map->key_len_calc(*key);
+    return dslink_map_removel(map, key, len);
+}
+
+void *dslink_map_removel(Map *map, void **key, size_t len) {
     size_t index = dslink_map_index_of_key(*key, len, map->capacity);
     for (MapNode *node = map->table[index]; node != NULL; node = node->next) {
         if (map->cmp(node->entry->key, *key, len) != 0) {
@@ -217,7 +227,12 @@ void *dslink_map_remove(Map *map, void **key, size_t len) {
     return NULL;
 }
 
-void *dslink_map_get(Map *map, void *key, size_t len) {
+void *dslink_map_get(Map *map, void *key) {
+    size_t len = map->key_len_calc(key);
+    return dslink_map_getl(map, key, len);
+}
+
+void *dslink_map_getl(Map *map, void *key, size_t len) {
     size_t index = dslink_map_index_of_key(key, len, map->capacity);
     for (MapNode *node = map->table[index]; node != NULL; node = node->next) {
         if (map->cmp(node->entry->key, key, len) == 0) {

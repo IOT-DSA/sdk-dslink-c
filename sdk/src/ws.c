@@ -8,7 +8,6 @@
 #include <mbedtls/ecdh.h>
 #include <wslay/wslay.h>
 #include <wslay_event.h>
-#include <jansson.h>
 
 #include "dslink/msg/request_handler.h"
 #include "dslink/base64_url.h"
@@ -105,6 +104,16 @@ int gen_auth_key(mbedtls_ecdh_context *key, const char *tempKey,
     }
 exit:
     return ret;
+}
+
+int dslink_ws_send_obj(wslay_event_context_ptr ctx, json_t *obj) {
+    char *data = json_dumps(obj, JSON_PRESERVE_ORDER);
+    if (!data) {
+        return DSLINK_ALLOC_ERR;
+    }
+    dslink_ws_send(ctx, data);
+    free(data);
+    return 0;
 }
 
 int dslink_ws_send(wslay_event_context_ptr ctx, const char *data) {

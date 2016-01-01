@@ -12,6 +12,7 @@ extern "C" {
 
 void dslink_strlwr(char *str, size_t len);
 char *dslink_strdup(const char *str);
+size_t dslink_create_ts(char *buf, size_t bufLen);
 
 #ifdef __cplusplus
 }

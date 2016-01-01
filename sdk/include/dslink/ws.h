@@ -7,6 +7,8 @@ extern "C" {
 
 #include <mbedtls/ecdh.h>
 #include <wslay/wslay.h>
+#include <jansson.h>
+
 #include "dslink/dslink.h"
 #include "dslink/socket.h"
 #include "dslink/err.h"
@@ -20,6 +22,8 @@ int dslink_handshake_connect_ws(Url *url,
                                 const char *dsId,
                                 Socket **sock);
 void dslink_handshake_handle_ws(DSLink *link);
+
+int dslink_ws_send_obj(wslay_event_context_ptr ctx, json_t *obj);
 int dslink_ws_send(wslay_event_context_ptr ctx,
                    const char *data);
 

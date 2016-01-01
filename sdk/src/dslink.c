@@ -71,6 +71,63 @@ exit:
     return ret;
 }
 
+static
+int dslink_init_responder(Responder *responder) {
+    responder->super_root = dslink_node_create(NULL, "/", "node");
+    if (!responder->super_root) {
+        goto cleanup;
+    }
+
+    responder->open_streams = calloc(1, sizeof(Map));
+    if (!responder->open_streams) {
+        goto cleanup;
+    }
+    if (dslink_map_init(responder->open_streams,
+                        dslink_map_uint32_cmp,
+                        dslink_map_uint32_key_len_cal) != 0) {
+        free(responder->open_streams);
+        responder->open_streams = NULL;
+        goto cleanup;
+    }
+
+    responder->list_subs = calloc(1, sizeof(Map));
+    if (!responder->list_subs) {
+        goto cleanup;
+    }
+    if (dslink_map_init(responder->list_subs,
+                        dslink_map_str_cmp,
+                        dslink_map_str_key_len_cal) != 0) {
+        free(responder->list_subs);
+        responder->list_subs = NULL;
+        goto cleanup;
+    }
+
+    responder->value_subs = calloc(1, sizeof(Map));
+    if (!responder->value_subs) {
+        goto cleanup;
+    }
+    if (dslink_map_init(responder->value_subs,
+                        dslink_map_str_cmp,
+                        dslink_map_str_key_len_cal) != 0) {
+        free(responder->value_subs);
+        responder->value_subs = NULL;
+        goto cleanup;
+    }
+    return 0;
+cleanup:
+    if (responder->open_streams) {
+        DSLINK_MAP_FREE(responder->open_streams, {});
+    }
+    if (responder->list_subs) {
+        DSLINK_MAP_FREE(responder->list_subs, {});
+    }
+    if (responder->value_subs) {
+        DSLINK_MAP_FREE(responder->value_subs, {});
+    }
+    DSLINK_CHECKED_EXEC(dslink_node_tree_free, responder->super_root);
+    return DSLINK_ALLOC_ERR;
+}
+
 int dslink_init(int argc, char **argv,
                 const char *name, uint8_t isRequester,
                 uint8_t isResponder, DSLinkCallbacks *cbs) {
@@ -123,36 +180,8 @@ int dslink_init(int argc, char **argv,
             goto exit;
         }
 
-        link.responder->super_root = dslink_node_create(NULL, "/", "node");
-        if (!link.responder->super_root) {
-            log_fatal("Failed to create responder super root node\n");
-            goto exit;
-        }
-
-        link.responder->list_subs = calloc(1, sizeof(Map));
-        if (!link.responder->list_subs) {
-            log_fatal("Failed to create list subscriptions map\n");
-            goto exit;
-        }
-        if (dslink_map_init(link.responder->list_subs,
-                            dslink_map_str_cmp,
-                            dslink_map_str_key_len_cal) != 0) {
-            free(link.responder->list_subs);
-            link.responder->list_subs = NULL;
-            goto exit;
-        }
-
-        link.responder->open_streams = calloc(1, sizeof(Map));
-        if (!link.responder->open_streams) {
-            log_fatal("Failed to create streams map\n");
-            goto exit;
-        }
-
-        if (dslink_map_init(link.responder->open_streams,
-                            dslink_map_uint32_cmp,
-                            dslink_map_uint32_key_len_cal) != 0) {
-            free(link.responder->open_streams);
-            link.responder->open_streams = NULL;
+        if (dslink_init_responder(link.responder) != 0) {
+            log_fatal("Failed to initialize responder\n");
             goto exit;
         }
     }
@@ -207,17 +236,26 @@ exit:
     DSLINK_CHECKED_EXEC(dslink_socket_close, sock);
     if (link.responder) {
         DSLINK_CHECKED_EXEC(dslink_node_tree_free, link.responder->super_root);
-        if (link.responder->list_subs) {
-            free(link.responder->list_subs->table);
-            free(link.responder->list_subs);
-        }
-
         if (link.responder->open_streams) {
             DSLINK_MAP_FREE(link.responder->open_streams, {
                 free(entry->key);
                 free(entry->value);
             });
             free(link.responder->open_streams);
+        }
+
+        if (link.responder->value_subs) {
+            DSLINK_MAP_FREE(link.responder->value_subs, {
+                free(entry->value);
+            });
+            free(link.responder->value_subs);
+        }
+
+        if (link.responder->list_subs) {
+            DSLINK_MAP_FREE(link.responder->list_subs, {
+                free(entry->value);
+            });
+            free(link.responder->list_subs);
         }
 
         free(link.responder);

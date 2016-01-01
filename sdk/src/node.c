@@ -17,15 +17,10 @@ DSNode *dslink_node_create(DSNode *parent,
         return NULL;
     }
 
-    DSNode *node = malloc(sizeof(DSNode));
+    DSNode *node = calloc(1, sizeof(DSNode));
     if (!node) {
         goto cleanup;
     }
-
-    node->meta_data = NULL;
-    node->children = NULL;
-    node->on_list_open = NULL;
-    node->on_list_close = NULL;
 
     node->name = name;
     node->profile = profile;
@@ -80,9 +75,12 @@ int dslink_node_add_child(DSNode *parent, DSNode *node) {
 
     DSNode *tmp = node;
     if ((ret = dslink_map_set(parent->children, (void *) node->name,
-                              strlen(node->name), (void **) &tmp)) != 0) {
+                              (void **) &tmp)) != 0) {
         return ret;
     }
+
+    // TODO: send it over the network if there is a path sub
+
     return 0;
 }
 
@@ -101,13 +99,13 @@ DSNode *dslink_node_get_path(DSNode *root, const char *path) {
         if (!node->children) {
             return NULL;
         }
-        node = dslink_map_get(node->children, (void *) path, end - path);
+        node = dslink_map_getl(node->children, (void *) path, end - path);
         return dslink_node_get_path(node, end);
     } else if (*path != '\0') {
         if (!node->children) {
             return NULL;
         }
-        return dslink_map_get(node->children, (void *) path, strlen(path));
+        return dslink_map_get(node->children, (void *) path);
     }
 
     return node;
@@ -117,6 +115,8 @@ void dslink_node_tree_free(DSNode *root) {
     DSLINK_CHECKED_EXEC(free, (void *) root->path);
     DSLINK_CHECKED_EXEC(free, (void *) root->name);
     DSLINK_CHECKED_EXEC(free, (void *) root->profile);
+    DSLINK_CHECKED_EXEC(json_delete, root->value_timestamp);
+    DSLINK_CHECKED_EXEC(json_delete, root->value);
     if (root->children) {
         DSLINK_MAP_FREE(root->children, {
             DSLINK_CHECKED_EXEC(free, entry->key);
@@ -133,5 +133,77 @@ void dslink_node_tree_free(DSNode *root) {
         free(root->meta_data);
     }
 
+    // TODO: remove node from open_streams, list_subs, and value_subs
+
     free(root);
+}
+
+int dslink_node_set_meta(DSNode *node,
+                         const char *name, const char *value) {
+    assert(node);
+    assert(name);
+    if (!node->meta_data) {
+        if (!value) {
+            return 0;
+        }
+        node->meta_data = malloc(sizeof(Map));
+        if (!node->meta_data) {
+            return DSLINK_ALLOC_ERR;
+        }
+        if (dslink_map_init(node->meta_data,
+                            dslink_map_str_cmp,
+                            dslink_map_str_key_len_cal) != 0) {
+            free(node->meta_data);
+            node->meta_data = NULL;
+            return DSLINK_ALLOC_ERR;
+        }
+    }
+
+    // TODO: send updates over the network
+
+    if (!value) {
+        const char *tmp = name;
+        char *v = dslink_map_remove(node->meta_data, (void **) &tmp);
+        if (v) {
+            free((void **) tmp);
+            free(v);
+        }
+        return 0;
+    }
+
+    name = dslink_strdup(name);
+    if (!name) {
+        return DSLINK_ALLOC_ERR;
+    }
+
+    value = dslink_strdup(value);
+    if (!value) {
+        return DSLINK_ALLOC_ERR;
+    }
+
+    const char *tmp = value;
+    if (dslink_map_set(node->meta_data,
+                       (void *) name, (void **) &tmp) != 0) {
+        free((void *) name);
+        free((void *) value);
+    }
+    if (tmp) {
+        free((void *) tmp);
+    }
+    return 0;
+}
+
+int dslink_node_set_value(DSNode *node, json_t *value) {
+    char ts[32];
+    dslink_create_ts(ts, sizeof(ts));
+
+    json_t *jsonTs = json_string(ts);
+    if (!jsonTs) {
+        return DSLINK_ALLOC_ERR;
+    }
+
+    // TODO: send it over the network if there's a value sub
+    node->value_timestamp = jsonTs;
+    node->value = value;
+    return 0;
 }

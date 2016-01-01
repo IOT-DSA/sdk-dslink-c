@@ -42,6 +42,30 @@ void init(DSLink *link) {
         return;
     }
 
+    DSNode *num = dslink_node_create(superRoot, "num", "node");
+    if (!num) {
+        log_warn("Failed to create a number node\n");
+        return;
+    }
+
+    if (dslink_node_set_meta(num, "$type", "number") != 0) {
+        log_warn("Failed to set the type on the node\n");
+        dslink_node_tree_free(num);
+        return;
+    }
+
+    if (dslink_node_set_value(num, json_integer(1000)) != 0) {
+        log_warn("Failed to set the value on the node\n");
+        dslink_node_tree_free(num);
+        return;
+    }
+
+    if (dslink_node_add_child(superRoot, num) != 0) {
+        log_warn("Failed to add the number node to the root\n");
+        dslink_node_tree_free(num);
+        return;
+    }
+
     log_info("Initialized!\n");
 }
 
