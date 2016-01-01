@@ -32,13 +32,12 @@ void list_closed(DSLink *link, DSNode *node) {
 
 static
 void num_subbed(DSLink *link, DSNode *node) {
-    (void) link;
     log_info("Subscribed to %s\n", node->path);
 
-    void **b = malloc(sizeof(void *) * 2);
-    b[0] = link;
-    b[1] = node;
-    dslink_event_loop_schedd(&link->loop, gen_number, b, 1000);
+    void **a = malloc(sizeof(void *) * 2);
+    a[0] = link;
+    a[1] = node;
+    dslink_event_loop_schedd(&link->loop, gen_number, a, 1000);
 }
 
 static
