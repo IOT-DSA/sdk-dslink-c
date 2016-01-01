@@ -133,7 +133,7 @@ void dslink_node_tree_free(DSNode *root) {
         free(root->meta_data);
     }
 
-    // TODO: remove node from open_streams, list_subs, and value_subs
+    // TODO: remove node from open_streams, list_subs, and value_path_subs
 
     free(root);
 }

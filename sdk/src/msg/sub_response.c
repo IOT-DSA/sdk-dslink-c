@@ -98,13 +98,23 @@ int dslink_response_sub(DSLink *link, json_t *paths, json_t *rid) {
         }
         *sid = (uint32_t) json_integer_value(json_object_get(value, "sid"));
         void *tmp = sid;
-        if (dslink_map_set(link->responder->value_subs,
+        if (dslink_map_set(link->responder->value_path_subs,
                            (void *) node->path, &tmp) != 0) {
             free(sid);
             return 1;
         }
         if (tmp) {
+            void *p = tmp;
+            dslink_map_remove(link->responder->value_sid_subs, &p);
             free(tmp);
+        }
+        tmp = (void *) node->path;
+        if (dslink_map_set(link->responder->value_sid_subs,
+                           sid, &tmp) != 0) {
+            tmp = (void *) node->path;
+            dslink_map_remove(link->responder->value_path_subs, &tmp);
+            free(sid);
+            return 1;
         }
 
         dslink_response_send_init_val(link, node, *sid);
@@ -121,10 +131,17 @@ int dslink_response_unsub(DSLink *link, json_t *sids, json_t *rid) {
     json_array_foreach(sids, index, value) {
         uint32_t sid = (uint32_t) json_integer_value(value);
         void *p = &sid;
-        uint32_t *v = dslink_map_remove(link->responder->value_subs, &p);
-        if (v) {
+        char *path = dslink_map_remove(link->responder->value_sid_subs, &p);
+        if (path) {
+            DSNode *node = dslink_node_get_path(link->responder->super_root,
+                                                path);
+            if (node && node->on_unsubscribe) {
+                node->on_unsubscribe(link, node);
+            }
+
+            void *tmp = path;
+            dslink_map_remove(link->responder->value_path_subs, &tmp);
             free(p);
-            free(v);
         }
     }
 

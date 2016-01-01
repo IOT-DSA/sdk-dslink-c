@@ -15,6 +15,18 @@ void list_closed(DSLink *link, DSNode *node) {
     log_info("List closed for: %s\n", node->path);
 }
 
+static
+void num_subbed(DSLink *link, DSNode *node) {
+    (void) link;
+    log_info("Subscribed to %s\n", node->path);
+}
+
+static
+void num_unsubbed(DSLink *link, DSNode *node) {
+    (void) link;
+    log_info("Unsubscribed to %s\n", node->path);
+}
+
 void init(DSLink *link) {
     DSNode *superRoot = link->responder->super_root;
     DSNode *a = dslink_node_create(superRoot, "a", "node");
@@ -48,6 +60,8 @@ void init(DSLink *link) {
         return;
     }
 
+    num->on_subscribe = num_subbed;
+    num->on_unsubscribe = num_unsubbed;
     if (dslink_node_set_meta(num, "$type", "number") != 0) {
         log_warn("Failed to set the type on the node\n");
         dslink_node_tree_free(num);

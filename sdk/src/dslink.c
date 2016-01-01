@@ -7,6 +7,19 @@
 #include "dslink/utils.h"
 #include "dslink/ws.h"
 
+#define DSLINK_RESPONDER_MAP_INIT(var, type) \
+    responder->var = calloc(1, sizeof(Map)); \
+    if (!responder->var) { \
+        goto cleanup; \
+    } \
+    if (dslink_map_init(responder->var, \
+    dslink_map_##type##_cmp, \
+    dslink_map_##type##_key_len_cal) != 0) { \
+        free(responder->var); \
+        responder->var = NULL; \
+        goto cleanup; \
+    }
+
 static inline
 void dslink_print_help() {
     printf("See --help for usage\n");
@@ -78,41 +91,10 @@ int dslink_init_responder(Responder *responder) {
         goto cleanup;
     }
 
-    responder->open_streams = calloc(1, sizeof(Map));
-    if (!responder->open_streams) {
-        goto cleanup;
-    }
-    if (dslink_map_init(responder->open_streams,
-                        dslink_map_uint32_cmp,
-                        dslink_map_uint32_key_len_cal) != 0) {
-        free(responder->open_streams);
-        responder->open_streams = NULL;
-        goto cleanup;
-    }
-
-    responder->list_subs = calloc(1, sizeof(Map));
-    if (!responder->list_subs) {
-        goto cleanup;
-    }
-    if (dslink_map_init(responder->list_subs,
-                        dslink_map_str_cmp,
-                        dslink_map_str_key_len_cal) != 0) {
-        free(responder->list_subs);
-        responder->list_subs = NULL;
-        goto cleanup;
-    }
-
-    responder->value_subs = calloc(1, sizeof(Map));
-    if (!responder->value_subs) {
-        goto cleanup;
-    }
-    if (dslink_map_init(responder->value_subs,
-                        dslink_map_str_cmp,
-                        dslink_map_str_key_len_cal) != 0) {
-        free(responder->value_subs);
-        responder->value_subs = NULL;
-        goto cleanup;
-    }
+    DSLINK_RESPONDER_MAP_INIT(open_streams, uint32)
+    DSLINK_RESPONDER_MAP_INIT(list_subs, str)
+    DSLINK_RESPONDER_MAP_INIT(value_path_subs, str)
+    DSLINK_RESPONDER_MAP_INIT(value_sid_subs, uint32)
     return 0;
 cleanup:
     if (responder->open_streams) {
@@ -121,8 +103,11 @@ cleanup:
     if (responder->list_subs) {
         DSLINK_MAP_FREE(responder->list_subs, {});
     }
-    if (responder->value_subs) {
-        DSLINK_MAP_FREE(responder->value_subs, {});
+    if (responder->value_path_subs) {
+        DSLINK_MAP_FREE(responder->value_path_subs, {});
+    }
+    if (responder->value_sid_subs) {
+        DSLINK_MAP_FREE(responder->value_sid_subs, {});
     }
     DSLINK_CHECKED_EXEC(dslink_node_tree_free, responder->super_root);
     return DSLINK_ALLOC_ERR;
@@ -244,11 +229,16 @@ exit:
             free(link.responder->open_streams);
         }
 
-        if (link.responder->value_subs) {
-            DSLINK_MAP_FREE(link.responder->value_subs, {
+        if (link.responder->value_path_subs) {
+            DSLINK_MAP_FREE(link.responder->value_path_subs, {
                 free(entry->value);
             });
-            free(link.responder->value_subs);
+            free(link.responder->value_path_subs);
+        }
+
+        if (link.responder->value_sid_subs) {
+            DSLINK_MAP_FREE(link.responder->value_sid_subs, {});
+            free(link.responder->value_sid_subs);
         }
 
         if (link.responder->list_subs) {

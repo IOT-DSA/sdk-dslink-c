@@ -43,7 +43,11 @@ struct Responder {
 
     // Key is the path of the subscription, the value must be an integer
     // which is the SID to send update back to.
-    Map *value_subs;
+    Map *value_path_subs;
+
+    // Key is the SID of the subscription, the value must be a string
+    // which is the path of the node.
+    Map *value_sid_subs;
 };
 
 struct DSLinkCallbacks {
