@@ -87,6 +87,22 @@ add_library(sdk_dslink_c SHARED $<TARGET_OBJECTS:sdk_dslink_c-object>)
 target_compile_options(sdk_dslink_c PUBLIC "-fPIC")
 target_link_libraries(sdk_dslink_c jansson)
 
+set(DSLINK_INSTALL_LIB_DIR lib CACHE PATH "Installation directory for libraries")
+set(DSLINK_INSTALL_BIN_DIR bin CACHE PATH "Installation directory for executables")
+set(DSLINK_INSTALL_INCLUDE_DIR include CACHE PATH "Installation directory for header files")
+
+export(TARGETS sdk_dslink_c
+        FILE "${PROJECT_BINARY_DIR}/sdk_dslink_c-targets.cmake")
+export(PACKAGE sdk_dslink_c)
+
+install(TARGETS sdk_dslink_c
+        EXPORT sdk_dslink_c-targets
+        LIBRARY DESTINATION "${DSLINK_INSTALL_LIB_DIR}" COMPONENT lib
+        ARCHIVE DESTINATION "${DSLINK_INSTALL_LIB_DIR}" COMPONENT lib
+        RUNTIME DESTINATION "${DSLINK_INSTALL_BIN_DIR}" COMPONENT lib)
+
+install(DIRECTORY "sdk/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev)
+
 ###### Configure Examples ######
 
 add_executable(responder ${EXAMPLE_RESPONDER_SRC})
