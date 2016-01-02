@@ -11,7 +11,6 @@
 
 #include "dslink/msg/request_handler.h"
 #include "dslink/base64_url.h"
-#include "dslink/timer.h"
 #include "dslink/ws.h"
 
 #define LOG_TAG "ws"

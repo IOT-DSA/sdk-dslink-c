@@ -6,7 +6,6 @@ extern "C" {
 #endif
 
 #include <mbedtls/ecdh.h>
-#include <wslay/wslay.h>
 #include <jansson.h>
 
 #include "dslink/dslink.h"
@@ -23,8 +22,8 @@ int dslink_handshake_connect_ws(Url *url,
                                 Socket **sock);
 void dslink_handshake_handle_ws(DSLink *link);
 
-int dslink_ws_send_obj(wslay_event_context_ptr ctx, json_t *obj);
-int dslink_ws_send(wslay_event_context_ptr ctx,
+int dslink_ws_send_obj(struct wslay_event_context *ctx, json_t *obj);
+int dslink_ws_send(struct wslay_event_context *ctx,
                    const char *data);
 
 #ifdef __cplusplus
