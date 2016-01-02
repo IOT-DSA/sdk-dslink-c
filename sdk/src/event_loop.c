@@ -1,6 +1,5 @@
 #include <string.h>
 #include <stdlib.h>
-#include <mbedtls/net.h>
 #include "dslink/event_loop.h"
 #include "dslink/err.h"
 #include "dslink/timer.h"
@@ -84,7 +83,7 @@ int dslink_event_loop_schedd(EventLoop *loop, task_func func,
     if (!task) {
         return DSLINK_ALLOC_ERR;
     }
-    task->delay = delay + loop->processing_delay;
+    task->delay = delay;
     task->func = func;
     task->func_data = funcData;
     dslink_event_loop_sched_raw(loop, task);
@@ -107,33 +106,24 @@ loop_processor:
         loop->head = task->next;
 
         Timer timer;
-        if (task->delay > 0) {
-            if (loop->block_func) {
-                while (task->delay > 0) {
-                    dslink_timer_start(&timer);
-                    loop->block_func(loop->block_func_data,
-                                     loop, task->delay);
-                    uint32_t diff = dslink_timer_stop(&timer);
-                    if (task->delay > diff) {
-                        task->delay -= diff;
-                    } else {
-                        task->delay = 0;
-                    }
-                    dslink_event_loop_sub_del(loop, diff);
-                    if (loop->shutdown
-                        || (loop->head
-                            && (loop->head->delay < task->delay))) {
-                        dslink_event_loop_sched_raw(loop, task);
-                        goto loop_processor;
-                    }
-                }
-
-                if (loop->shutdown) {
-                    break;
-                }
+        while (task->delay > 0) {
+            dslink_timer_start(&timer);
+            loop->block_func(loop->block_func_data,
+                             loop, task->delay);
+            uint32_t diff = dslink_timer_stop(&timer);
+            if (task->delay > diff) {
+                task->delay -= diff;
+            } else {
+                task->delay = 0;
             }
-            loop->processing_delay = task->delay;
-            mbedtls_net_usleep((unsigned long) task->delay * 1000);
+            dslink_event_loop_sub_del(loop, diff);
+            if (loop->shutdown) {
+                free(task);
+                goto loop_processor;
+            } else if (loop->head && (loop->head->delay < task->delay)) {
+                dslink_event_loop_sched_raw(loop, task);
+                goto loop_processor;
+            }
         }
 
         dslink_timer_start(&timer);
@@ -144,6 +134,5 @@ loop_processor:
         dslink_event_loop_sub_del(loop, task->delay);
 
         free(task);
-        loop->processing_delay = 0;
     }
 }

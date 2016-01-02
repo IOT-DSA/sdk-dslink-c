@@ -43,7 +43,6 @@ struct EventTask {
 
 struct EventLoop {
     uint8_t shutdown;
-    uint32_t processing_delay;
     want_block_func block_func;
     void *block_func_data;
 
