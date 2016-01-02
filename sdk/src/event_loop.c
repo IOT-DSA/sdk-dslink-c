@@ -128,7 +128,6 @@ loop_processor:
                     }
                 }
 
-                task->delay = 0;
                 if (loop->shutdown) {
                     break;
                 }
