@@ -47,6 +47,17 @@ int dslink_event_loop_sched_raw(EventLoop *loop, EventTask *task) {
     return 0;
 }
 
+static
+void dslink_event_loop_sub_del(EventLoop *loop, uint32_t delay) {
+    for (EventTask *t = loop->head; t != NULL; t = t->next) {
+        if (t->delay > delay) {
+            t->delay -= delay;
+        } else {
+            t->delay = 0;
+        }
+    }
+}
+
 void dslink_event_loop_init(EventLoop *loop,
                             want_block_func func,
                             void *blockFuncData) {
@@ -95,9 +106,9 @@ loop_processor:
         EventTask *task = loop->head;
         loop->head = task->next;
 
+        Timer timer;
         if (task->delay > 0) {
             if (loop->block_func) {
-                Timer timer;
                 while (task->delay > 0) {
                     dslink_timer_start(&timer);
                     loop->block_func(loop->block_func_data,
@@ -108,6 +119,7 @@ loop_processor:
                     } else {
                         task->delay = 0;
                     }
+                    dslink_event_loop_sub_del(loop, diff);
                     if (loop->shutdown
                         || (loop->head
                             && (loop->head->delay < task->delay))) {
@@ -125,19 +137,12 @@ loop_processor:
             mbedtls_net_usleep((unsigned long) task->delay * 1000);
         }
 
-        Timer timer;
         dslink_timer_start(&timer);
         task->func(task->func_data, loop);
         task->delay += dslink_timer_stop(&timer);
 
         // Handle the delays of the next tasks
-        for (EventTask *t = loop->head; t != NULL; t = t->next) {
-            if (t->delay > task->delay) {
-                t->delay -= task->delay;
-            } else {
-                t->delay = 0;
-            }
-        }
+        dslink_event_loop_sub_del(loop, task->delay);
 
         free(task);
         loop->processing_delay = 0;
