@@ -5,6 +5,8 @@
 extern "C" {
 #endif
 
+#include <stdint.h>
+
 struct EventLoop;
 struct EventTask;
 typedef struct EventLoop EventLoop;
