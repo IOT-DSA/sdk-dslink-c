@@ -5,28 +5,11 @@
 extern "C" {
 #endif
 
-#include <mbedtls/ctr_drbg.h>
-#include <mbedtls/entropy.h>
-#include <mbedtls/net.h>
+#include <stdlib.h>
 #include <stdint.h>
 
-typedef struct SslSocket {
-
-    uint_fast8_t secure;
-    mbedtls_net_context *socket_fd;
-    mbedtls_entropy_context *entropy;
-    mbedtls_ctr_drbg_context *drbg;
-    mbedtls_ssl_context *ssl;
-    mbedtls_ssl_config *conf;
-
-} SslSocket;
-
-typedef struct Socket {
-
-    uint_fast8_t secure;
-    mbedtls_net_context *socket_fd;
-
-} Socket;
+typedef struct SslSocket SslSocket;
+typedef struct Socket Socket;
 
 /**
  * \brief          Connects to a designated server. All parameters must be

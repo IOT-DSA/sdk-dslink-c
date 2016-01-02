@@ -6,6 +6,8 @@
 #include <mbedtls/base64.h>
 #include <mbedtls/sha256.h>
 #include <mbedtls/ecdh.h>
+#include <mbedtls/net.h>
+
 #include <wslay/wslay.h>
 #include <wslay_event.h>
 

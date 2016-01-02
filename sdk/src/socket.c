@@ -3,9 +3,31 @@
 #include <string.h>
 #include <errno.h>
 
+#include <mbedtls/ctr_drbg.h>
+#include <mbedtls/entropy.h>
+#include <mbedtls/net.h>
+
 #include "dslink/socket.h"
 #include "dslink/utils.h"
 #include "dslink/err.h"
+
+struct SslSocket {
+
+    uint_fast8_t secure;
+    mbedtls_net_context *socket_fd;
+    mbedtls_entropy_context *entropy;
+    mbedtls_ctr_drbg_context *drbg;
+    mbedtls_ssl_context *ssl;
+    mbedtls_ssl_config *conf;
+
+};
+
+struct Socket {
+
+    uint_fast8_t secure;
+    mbedtls_net_context *socket_fd;
+
+};
 
 static
 Socket *dslink_socket_init(uint_fast8_t secure) {

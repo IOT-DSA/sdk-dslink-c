@@ -3,6 +3,7 @@
 #include <string.h>
 #include <mbedtls/ecp.h>
 #include <mbedtls/ecdh.h>
+#include <mbedtls/entropy.h>
 
 #include "dslink/base64_url.h"
 #include "dslink/handshake.h"
