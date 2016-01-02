@@ -4,9 +4,9 @@
 #include "dslink/ws.h"
 
 static
-void dslink_list_child_append_meta(json_t *obj,
-                                   Map *meta,
-                                   const char *name) {
+void dslink_response_list_child_append_meta(json_t *obj,
+                                            Map *meta,
+                                            const char *name) {
     char *str = dslink_map_get(meta, (void *) name);
     if (str) {
         json_object_set_new_nocheck(obj, name,
@@ -15,8 +15,8 @@ void dslink_list_child_append_meta(json_t *obj,
 }
 
 static
-int dslink_list_append_update(json_t *updates,
-                              const char *key, const char *value) {
+int dslink_response_list_append_update(json_t *updates,
+                                       const char *key, const char *value) {
     json_t *str = json_string(key);
     if (!str) {
         return 1;
@@ -37,6 +37,26 @@ int dslink_list_append_update(json_t *updates,
 
     json_array_append_new(update, str);
     json_array_append_new(updates, update);
+    return 0;
+}
+
+static
+int dslink_response_list_append_child(json_t *update, DSNode *child) {
+    json_t *obj = json_object();
+    if (!obj) {
+        return 1;
+    }
+    json_array_append_new(update, json_string(child->name));
+    json_array_append_new(update, obj);
+
+    json_object_set_new_nocheck(obj, "$is", json_string(child->profile));
+    if (child->meta_data) {
+        Map *meta = child->meta_data;
+        dslink_response_list_child_append_meta(obj, meta, "$name");
+        dslink_response_list_child_append_meta(obj, meta, "$permission");
+        dslink_response_list_child_append_meta(obj, meta, "$invokable");
+        dslink_response_list_child_append_meta(obj, meta, "$type");
+    }
     return 0;
 }
 
@@ -72,12 +92,12 @@ int dslink_response_list(DSLink *link, json_t *req, DSNode *node) {
         }
         json_object_set_new_nocheck(resp, "updates", updates);
 
-        dslink_list_append_update(updates, "$is", node->profile);
+        dslink_response_list_append_update(updates, "$is", node->profile);
         if (node->meta_data) {
             dslink_map_foreach(node->meta_data) {
                 const char *key = entry->key;
                 const char *val = entry->value;
-                dslink_list_append_update(updates, key, val);
+                dslink_response_list_append_update(updates, key, val);
             }
         }
 
@@ -91,23 +111,7 @@ int dslink_response_list(DSLink *link, json_t *req, DSNode *node) {
                     return 1;
                 }
                 json_array_append_new(updates, update);
-                json_t *obj = json_object();
-                if (!obj) {
-                    json_delete(top);
-                    return 1;
-                }
-                json_array_append_new(update, json_string(val->name));
-                json_array_append_new(update, obj);
-
-                json_object_set_new_nocheck(obj, "$is",
-                                            json_string(val->profile));
-                if (val->meta_data) {
-                    Map *meta = val->meta_data;
-                    dslink_list_child_append_meta(obj, meta, "$name");
-                    dslink_list_child_append_meta(obj, meta, "$permission");
-                    dslink_list_child_append_meta(obj, meta, "$invokable");
-                    dslink_list_child_append_meta(obj, meta, "$type");
-                }
+                dslink_response_list_append_child(update, val);
             }
         }
     }
