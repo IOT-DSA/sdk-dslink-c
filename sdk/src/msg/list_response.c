@@ -40,11 +40,10 @@ int dslink_response_list_append_update(json_t *updates,
     return 0;
 }
 
-static
 int dslink_response_list_append_child(json_t *update, DSNode *child) {
     json_t *obj = json_object();
     if (!obj) {
-        return 1;
+        return DSLINK_ALLOC_ERR;
     }
     json_array_append_new(update, json_string(child->name));
     json_array_append_new(update, obj);

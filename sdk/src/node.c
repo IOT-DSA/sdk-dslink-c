@@ -1,7 +1,8 @@
 #include <string.h>
 #include <assert.h>
+#include "dslink/ws.h"
+#include "dslink/msg/list_response.h"
 #include "dslink/msg/sub_response.h"
-#include "dslink/err.h"
 #include "dslink/utils.h"
 
 DSNode *dslink_node_create(DSNode *parent,
@@ -54,7 +55,7 @@ cleanup:
     return NULL;
 }
 
-int dslink_node_add_child(DSNode *parent, DSNode *node) {
+int dslink_node_add_child(DSLink *link, DSNode *parent, DSNode *node) {
     assert(parent);
     assert(node);
     int ret = 0;
@@ -79,9 +80,47 @@ int dslink_node_add_child(DSNode *parent, DSNode *node) {
         return ret;
     }
 
-    // TODO: send it over the network if there is a path sub
+    if (!link->_ws) {
+        return ret;
+    }
 
-    return 0;
+    uint32_t *id = dslink_map_get(link->responder->list_subs,
+                                  (void *) parent->path);
+    if (!id) {
+        return ret;
+    }
+    json_t *top = json_object();
+    if (!top) {
+        return ret;
+    }
+    json_t *resps = json_array();
+    if (!resps) {
+        goto cleanup;
+    }
+    json_object_set_new_nocheck(top, "responses", resps);
+    json_t *resp = json_object();
+    if (!resp) {
+        goto cleanup;
+    }
+    json_array_append_new(resps, resp);
+    json_object_set_new_nocheck(resp, "stream",
+                                json_string("open"));
+    json_object_set_new_nocheck(resp, "rid", json_integer(*id));
+    json_t *updates = json_array();
+    if (!updates) {
+        goto cleanup;
+    }
+    json_object_set_new_nocheck(resp, "updates", updates);
+    json_t *update = json_array();
+    if (!update) {
+        goto cleanup;
+    }
+    json_array_append_new(updates, update);
+    dslink_response_list_append_child(update, node);
+    dslink_ws_send_obj(link->_ws, top);
+cleanup:
+    json_delete(top);
+    return ret;
 }
 
 DSNode *dslink_node_get_path(DSNode *root, const char *path) {
