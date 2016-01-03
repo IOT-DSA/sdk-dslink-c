@@ -100,10 +100,13 @@ void dslink_event_loop_process(EventLoop *loop) {
     }
 loop_processor:
     while (!loop->shutdown && loop->head) {
-
-        // Reconfigure the head
         EventTask *task = loop->head;
+
+        // Reconfigure the list
         loop->head = task->next;
+        if (task == loop->tail) {
+            loop->tail = loop->head;
+        }
 
         Timer timer;
         while (task->delay > 0) {
@@ -116,7 +119,6 @@ loop_processor:
             } else {
                 task->delay = 0;
             }
-            dslink_event_loop_sub_del(loop, diff);
             if (loop->shutdown) {
                 free(task);
                 goto loop_processor;
