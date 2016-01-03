@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 2.8)
 project(sdk_dslink_c C)
 
+######## Configure Options #######
+
+option(DSLINK_BUILD_EXAMPLES "Whether to build the examples" OFF)
+
 ##### Configure Dependencies #####
 
 foreach(dep "mbed" "wslay" "argtable3")
@@ -84,7 +88,6 @@ add_library(sdk_dslink_c-static STATIC $<TARGET_OBJECTS:sdk_dslink_c-object>)
 target_link_libraries(sdk_dslink_c-static jansson)
 
 add_library(sdk_dslink_c SHARED $<TARGET_OBJECTS:sdk_dslink_c-object>)
-target_compile_options(sdk_dslink_c PUBLIC "-fPIC")
 target_link_libraries(sdk_dslink_c jansson)
 
 set(DSLINK_INSTALL_LIB_DIR lib CACHE PATH "Installation directory for libraries")
@@ -105,5 +108,10 @@ install(DIRECTORY "sdk/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COM
 
 ###### Configure Examples ######
 
-add_executable(responder ${EXAMPLE_RESPONDER_SRC})
-target_link_libraries(responder sdk_dslink_c)
+if (DSLINK_BUILD_EXAMPLES)
+    foreach(example "responder")
+        include("${CMAKE_CURRENT_SOURCE_DIR}/examples/${example}/CMakeLists.txt")
+        add_executable(${example} ${EXAMPLE_SRC})
+        target_link_libraries(${example} sdk_dslink_c)
+    endforeach()
+endif()
