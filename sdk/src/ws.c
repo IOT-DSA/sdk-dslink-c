@@ -166,23 +166,28 @@ int dslink_handshake_connect_ws(Url *url,
     }
 
     dslink_socket_write(*sock, req, reqLen);
-    while (1) {
-        char buf[1024];
-        int read = dslink_socket_read(*sock, buf, sizeof(buf) - 1);
+
+    char buf[1024];
+    size_t len = 0;
+    while (len < (sizeof(buf) - 1)) {
+        // Read 1 byte at a time to ensure that we don't accidentally
+        // read web socket data
+        int read = dslink_socket_read(*sock, buf + len, 1);
         if (read <= 0) {
-            break;
+            goto exit;
         }
-        *(buf + read) = '\0';
-        if (strstr(buf, "\r\n\r\n")) {
+        if (buf[len++] == '\n' && strnstr(buf, "\r\n\r\n", len)) {
             if (!strstr(buf, "101 Switching Protocols")) {
                 ret = DSLINK_HANDSHAKE_INVALID_RESPONSE;
             } if (strstr(buf, "401 Unauthorized")) {
                 ret = DSLINK_HANDSHAKE_UNAUTHORIZED;
             }
-            break;
+            goto exit;
         }
     }
 
+    // Failed to find the end of the HTTP response
+    ret = DSLINK_HANDSHAKE_INVALID_RESPONSE;
 exit:
     if (ret != 0 && *sock) {
         dslink_socket_close(*sock);
