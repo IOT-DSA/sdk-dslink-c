@@ -64,7 +64,7 @@ void create_node(void *data, EventLoop *loop) {
         free(data);
         return;
     }
-    dslink_node_add_child(link, parent, child);
+    dslink_node_add_child(link, child);
 
     if (++(*num) < 10) {
         dslink_event_loop_schedd(loop, create_node, data, 1000);
@@ -111,7 +111,7 @@ void responder_init_replicator(DSLink *link, DSNode *root) {
     rep->on_list_open = list_opened;
     rep->on_list_close = list_closed;
 
-    if (dslink_node_add_child(link, root, rep) != 0) {
+    if (dslink_node_add_child(link, rep) != 0) {
         log_warn("Failed to add the replicator node to the root\n");
         dslink_node_tree_free(link, rep);
         return;
@@ -127,7 +127,7 @@ void responder_init_replicator(DSLink *link, DSNode *root) {
     dslink_node_set_meta(reset, "$name", json_string("Reset"));
     dslink_node_set_meta(reset, "$invokable", json_string("read"));
 
-    if (dslink_node_add_child(link, rep, reset) != 0) {
+    if (dslink_node_add_child(link, reset) != 0) {
         log_warn("Failed to add reset action to the replicator node\n");
         dslink_node_tree_free(link, reset);
         return;

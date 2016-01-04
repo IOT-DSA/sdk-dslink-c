@@ -55,7 +55,7 @@ void responder_init_rng(DSLink *link, DSNode *root) {
         return;
     }
 
-    if (dslink_node_add_child(link, root, num) != 0) {
+    if (dslink_node_add_child(link, num) != 0) {
         log_warn("Failed to add the rng node to the root\n");
         dslink_node_tree_free(link, num);
     }

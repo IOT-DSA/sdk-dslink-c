@@ -56,27 +56,27 @@ cleanup:
     return NULL;
 }
 
-int dslink_node_add_child(DSLink *link, DSNode *parent, DSNode *node) {
-    assert(parent);
+int dslink_node_add_child(DSLink *link, DSNode *node) {
     assert(node);
+    assert(node->parent);
     int ret = 0;
-    if (!parent->children) {
-        parent->children = malloc(sizeof(Map));
-        if (!parent->children) {
+    if (!node->parent->children) {
+        node->parent->children = malloc(sizeof(Map));
+        if (!node->parent->children) {
             return DSLINK_ALLOC_ERR;
         }
-        if (dslink_map_init(parent->children,
+        if (dslink_map_init(node->parent->children,
                             dslink_map_str_cmp,
                             dslink_map_str_key_len_cal) != 0) {
-            free(parent->children);
-            parent->children = NULL;
+            free(node->parent->children);
+            node->parent->children = NULL;
             return DSLINK_ALLOC_ERR;
         }
 
     }
 
     DSNode *tmp = node;
-    if ((ret = dslink_map_set(parent->children, (void *) node->name,
+    if ((ret = dslink_map_set(node->parent->children, (void *) node->name,
                               (void **) &tmp)) != 0) {
         return ret;
     }
@@ -86,7 +86,7 @@ int dslink_node_add_child(DSLink *link, DSNode *parent, DSNode *node) {
     }
 
     uint32_t *id = dslink_map_get(link->responder->list_subs,
-                                  (void *) parent->path);
+                                  (void *) node->parent->path);
     if (!id) {
         return ret;
     }
