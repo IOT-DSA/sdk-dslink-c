@@ -23,6 +23,7 @@ DSNode *dslink_node_create(DSNode *parent,
         goto cleanup;
     }
 
+    node->parent = parent;
     node->name = name;
     node->profile = profile;
 
@@ -150,7 +151,51 @@ DSNode *dslink_node_get_path(DSNode *root, const char *path) {
     return node;
 }
 
-void dslink_node_tree_free(DSNode *root) {
+void dslink_node_tree_free(DSLink *link, DSNode *root) {
+    if (link && link->_ws && root->parent && root->name) {
+        uint32_t *rid = dslink_map_get(link->responder->list_subs,
+                                       (void *) root->parent->path);
+        if (!rid) {
+            goto cleanup;
+        }
+        json_t *top = json_object();
+        uint8_t send = 0;
+        if (top) {
+            json_t *resps = json_array();
+            if (resps) {
+                json_object_set_new_nocheck(top, "responses", resps);
+                json_t *resp = json_object();
+                if (resp) {
+                    json_array_append_new(resps, resp);
+                    json_object_set_new_nocheck(resp, "rid",
+                                                json_integer(*rid));
+                    json_object_set_new_nocheck(resp, "stream",
+                                                json_string("open"));
+                    json_t *updates = json_array();
+                    if (updates) {
+                        json_object_set_new_nocheck(resp, "updates", updates);
+                        json_t *update = json_object();
+                        if (update) {
+                            json_array_append_new(updates, update);
+                            json_object_set_new_nocheck(update,
+                                                        "name",
+                                                        json_string(root->name));
+                            json_object_set_new_nocheck(update,
+                                                        "change",
+                                                        json_string("remove"));
+                            send = 1;
+                        }
+                    }
+                }
+            }
+            if (send) {
+                dslink_ws_send_obj(link->_ws, top);
+            }
+            json_delete(top);
+        }
+    }
+
+cleanup:
     DSLINK_CHECKED_EXEC(free, (void *) root->path);
     DSLINK_CHECKED_EXEC(free, (void *) root->name);
     DSLINK_CHECKED_EXEC(free, (void *) root->profile);
@@ -159,15 +204,17 @@ void dslink_node_tree_free(DSNode *root) {
     if (root->children) {
         DSLINK_MAP_FREE(root->children, {
             DSLINK_CHECKED_EXEC(free, entry->key);
-            ((DSNode *) entry->value)->name = NULL;
-            DSLINK_CHECKED_EXEC(dslink_node_tree_free, entry->value);
+            if (entry->value) {
+                ((DSNode *) entry->value)->name = NULL;
+                dslink_node_tree_free(link, entry->value);
+            }
         });
         free(root->children);
     }
     if (root->meta_data) {
         DSLINK_MAP_FREE(root->meta_data, {
             free(entry->key);
-            free(entry->value);
+            json_delete(entry->value);
         });
         free(root->meta_data);
     }
@@ -178,7 +225,7 @@ void dslink_node_tree_free(DSNode *root) {
 }
 
 int dslink_node_set_meta(DSNode *node,
-                         const char *name, const char *value) {
+                         const char *name, json_t *value) {
     assert(node);
     assert(name);
     if (!node->meta_data) {
@@ -215,19 +262,13 @@ int dslink_node_set_meta(DSNode *node,
         return DSLINK_ALLOC_ERR;
     }
 
-    value = dslink_strdup(value);
-    if (!value) {
-        return DSLINK_ALLOC_ERR;
-    }
-
-    const char *tmp = value;
+    json_t *tmp = value;
     if (dslink_map_set(node->meta_data,
                        (void *) name, (void **) &tmp) != 0) {
         free((void *) name);
-        free((void *) value);
     }
     if (tmp) {
-        free((void *) tmp);
+        json_delete(tmp);
     }
     return 0;
 }

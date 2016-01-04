@@ -1,7 +1,47 @@
 #define LOG_TAG "replicator"
 
 #include <dslink/log.h>
+#include <dslink/ws.h>
 #include "replicator.h"
+
+static
+void delete_nodes(DSLink *link, DSNode *node,
+                  json_t *rid, json_t *params) {
+    (void) params;
+    json_t *top = json_object();
+    if (!top) {
+        return;
+    }
+    json_t *resps = json_array();
+    if (!resps) {
+        json_delete(top);
+        return;
+    }
+    json_object_set_new_nocheck(top, "responses", resps);
+
+    json_t *resp = json_object();
+    if (!resp) {
+        json_delete(top);
+        return;
+    }
+    json_array_append_new(resps, resp);
+
+    json_object_set_nocheck(resp, "rid", rid);
+    json_object_set_new_nocheck(resp, "stream", json_string("closed"));
+    dslink_ws_send_obj(link->_ws, top);
+    json_delete(top);
+
+    node = node->parent;
+    for (int i = 0; i < 10; ++i) {
+        char buf[10];
+        snprintf(buf, sizeof(buf), "%d", i);
+
+        DSNode *n = dslink_map_get(node->children, buf);
+        if (n) {
+            dslink_node_tree_free(link, n);
+        }
+    }
+}
 
 static
 void create_node(void *data, EventLoop *loop) {
@@ -73,7 +113,23 @@ void responder_init_replicator(DSLink *link, DSNode *root) {
 
     if (dslink_node_add_child(link, root, rep) != 0) {
         log_warn("Failed to add the replicator node to the root\n");
-        dslink_node_tree_free(rep);
+        dslink_node_tree_free(link, rep);
+        return;
+    }
+
+    DSNode *reset = dslink_node_create(rep, "reset", "node");
+    if (!reset) {
+        log_warn("Failed to create reset action node\n");
+        return;
+    }
+
+    reset->on_invocation = delete_nodes;
+    dslink_node_set_meta(reset, "$name", json_string("Reset"));
+    dslink_node_set_meta(reset, "$invokable", json_string("read"));
+
+    if (dslink_node_add_child(link, rep, reset) != 0) {
+        log_warn("Failed to add reset action to the replicator node\n");
+        dslink_node_tree_free(link, reset);
         return;
     }
 }

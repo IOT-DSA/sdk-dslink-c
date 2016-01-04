@@ -109,7 +109,9 @@ cleanup:
     if (responder->value_sid_subs) {
         DSLINK_MAP_FREE(responder->value_sid_subs, {});
     }
-    DSLINK_CHECKED_EXEC(dslink_node_tree_free, responder->super_root);
+    if (responder->super_root) {
+        dslink_node_tree_free(NULL, responder->super_root);
+    }
     return DSLINK_ALLOC_ERR;
 }
 
@@ -220,7 +222,9 @@ exit:
     mbedtls_ecdh_free(&ctx);
     DSLINK_CHECKED_EXEC(dslink_socket_close, sock);
     if (link.responder) {
-        DSLINK_CHECKED_EXEC(dslink_node_tree_free, link.responder->super_root);
+        if (link.responder->super_root) {
+            dslink_node_tree_free(NULL, link.responder->super_root);
+        }
         if (link.responder->open_streams) {
             DSLINK_MAP_FREE(link.responder->open_streams, {
                 free(entry->key);

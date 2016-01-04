@@ -28,6 +28,14 @@ int dslink_request_handle(DSLink *link, json_t *req) {
         json_t *sids = json_object_get(req, "sids");
         json_t *rid = json_object_get(req, "rid");
         return dslink_response_unsub(link, sids, rid);
+    } else if (strcmp(method, "invoke") == 0) {
+        const char *path = json_string_value(json_object_get(req, "path"));
+        DSNode *node = dslink_node_get_path(link->responder->super_root, path);
+        if (node && node->on_invocation) {
+            json_t *rid = json_object_get(req, "rid");
+            json_t *params = json_object_get(req, "params");
+            node->on_invocation(link, node, rid, params);
+        }
     } else if (strcmp(method, "close") == 0) {
         uint32_t rid = (uint32_t) json_integer_value(
                                     json_object_get(req, "rid"));

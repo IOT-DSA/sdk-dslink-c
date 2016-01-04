@@ -9,33 +9,31 @@ void dslink_response_list_child_append_meta(json_t *obj,
                                             const char *name) {
     char *str = dslink_map_get(meta, (void *) name);
     if (str) {
-        json_object_set_new_nocheck(obj, name,
-                                    json_string(str));
+        json_object_set_new(obj, name,
+                            json_string(str));
     }
 }
 
 static
 int dslink_response_list_append_update(json_t *updates,
-                                       const char *key, const char *value) {
+                                       const char *key, json_t *value, uint8_t new) {
     json_t *str = json_string(key);
     if (!str) {
-        return 1;
+        return DSLINK_ALLOC_ERR;
     }
 
     json_t *update = json_array();
     if (!update) {
         json_delete(str);
-        return 1;
+        return DSLINK_ALLOC_ERR;
     }
 
     json_array_append_new(update, str);
-    str = json_string(value);
-    if (!str) {
-        json_delete(update);
-        return 1;
+    if (new) {
+        json_array_append_new(update, value);
+    } else {
+        json_array_append(update, value);
     }
-
-    json_array_append_new(update, str);
     json_array_append_new(updates, update);
     return 0;
 }
@@ -48,7 +46,7 @@ int dslink_response_list_append_child(json_t *update, DSNode *child) {
     json_array_append_new(update, json_string(child->name));
     json_array_append_new(update, obj);
 
-    json_object_set_new_nocheck(obj, "$is", json_string(child->profile));
+    json_object_set_new(obj, "$is", json_string(child->profile));
     if (child->meta_data) {
         Map *meta = child->meta_data;
         dslink_response_list_child_append_meta(obj, meta, "$name");
@@ -91,12 +89,13 @@ int dslink_response_list(DSLink *link, json_t *req, DSNode *node) {
         }
         json_object_set_new_nocheck(resp, "updates", updates);
 
-        dslink_response_list_append_update(updates, "$is", node->profile);
+        json_t *profile = json_string(node->profile);
+        dslink_response_list_append_update(updates, "$is", profile, 1);
         if (node->meta_data) {
             dslink_map_foreach(node->meta_data) {
                 const char *key = entry->key;
-                const char *val = entry->value;
-                dslink_response_list_append_update(updates, key, val);
+                json_t *val = entry->value;
+                dslink_response_list_append_update(updates, key, val, 0);
             }
         }
 

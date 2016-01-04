@@ -7,6 +7,7 @@ extern "C" {
 
 #include <jansson.h>
 #include "dslink/col/map.h"
+#include "dslink.h"
 
 struct DSLink;
 
@@ -14,11 +15,15 @@ struct DSNode;
 typedef struct DSNode DSNode;
 
 typedef void (*node_event_cb)(struct DSLink *link, DSNode *node);
+typedef void (*node_action_cb)(struct DSLink *link, DSNode *node,
+                               json_t *rid, json_t *params);
 
 struct DSNode {
     const char *path;
     const char *name;
     const char *profile;
+
+    DSNode *parent;
 
     // Used to store data such as configs and attributes
     // Only strings must be used as the value, otherwise
@@ -48,6 +53,9 @@ struct DSNode {
 
     // Notification callback when the node is unsubscribed.
     node_event_cb on_unsubscribe;
+
+    // Invocation callback.
+    node_action_cb on_invocation;
 };
 
 DSNode *dslink_node_create(DSNode *parent,
@@ -55,9 +63,9 @@ DSNode *dslink_node_create(DSNode *parent,
 int dslink_node_add_child(struct DSLink *link, DSNode *parent, DSNode *node);
 
 DSNode *dslink_node_get_path(DSNode *root, const char *path);
-void dslink_node_tree_free(DSNode *root);
+void dslink_node_tree_free(struct DSLink *link, DSNode *root);
 
-int dslink_node_set_meta(DSNode *node, const char *name, const char *value);
+int dslink_node_set_meta(DSNode *node, const char *name, json_t *value);
 int dslink_node_set_value(struct DSLink *link, DSNode *node, json_t *value);
 
 #ifdef __cplusplus
