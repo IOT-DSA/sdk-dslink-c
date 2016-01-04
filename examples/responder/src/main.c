@@ -1,7 +1,6 @@
 #define LOG_TAG "main"
 
 #include <dslink/log.h>
-#include <mbedtls/net.h>
 #include "replicator.h"
 #include "rng.h"
 
