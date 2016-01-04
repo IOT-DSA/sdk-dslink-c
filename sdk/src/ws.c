@@ -169,6 +169,7 @@ int dslink_handshake_connect_ws(Url *url,
 
     char buf[1024];
     size_t len = 0;
+    memset(buf, 0, sizeof(buf));
     while (len < (sizeof(buf) - 1)) {
         // Read 1 byte at a time to ensure that we don't accidentally
         // read web socket data
@@ -176,7 +177,7 @@ int dslink_handshake_connect_ws(Url *url,
         if (read <= 0) {
             goto exit;
         }
-        if (buf[len++] == '\n' && strnstr(buf, "\r\n\r\n", len)) {
+        if (buf[len++] == '\n' && strstr(buf, "\r\n\r\n")) {
             if (!strstr(buf, "101 Switching Protocols")) {
                 ret = DSLINK_HANDSHAKE_INVALID_RESPONSE;
             } if (strstr(buf, "401 Unauthorized")) {
