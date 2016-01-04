@@ -4,6 +4,8 @@
 #include <dslink/ws.h>
 #include "replicator.h"
 
+#define NODE_COUNT 5
+
 static
 void delete_nodes(DSLink *link, DSNode *node,
                   json_t *rid, json_t *params) {
@@ -32,7 +34,7 @@ void delete_nodes(DSLink *link, DSNode *node,
     json_delete(top);
 
     node = node->parent;
-    for (int i = 0; i < 10; ++i) {
+    for (int i = 0; i < NODE_COUNT; ++i) {
         char buf[10];
         snprintf(buf, sizeof(buf), "%d", i);
 
@@ -66,7 +68,7 @@ void create_node(void *data, EventLoop *loop) {
     }
     dslink_node_add_child(link, child);
 
-    if (++(*num) < 10) {
+    if (++(*num) < NODE_COUNT) {
         dslink_event_loop_schedd(loop, create_node, data, 1000);
     } else {
         free(num);
