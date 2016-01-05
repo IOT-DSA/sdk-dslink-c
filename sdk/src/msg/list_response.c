@@ -7,10 +7,9 @@ static
 void dslink_response_list_child_append_meta(json_t *obj,
                                             Map *meta,
                                             const char *name) {
-    char *str = dslink_map_get(meta, (void *) name);
-    if (str) {
-        json_object_set_new(obj, name,
-                            json_string(str));
+    json_t *val = dslink_map_get(meta, (void *) name);
+    if (val) {
+        json_object_set(obj, name, val);
     }
 }
 

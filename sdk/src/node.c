@@ -203,9 +203,7 @@ cleanup:
     DSLINK_CHECKED_EXEC(json_delete, root->value);
     if (root->children) {
         DSLINK_MAP_FREE(root->children, {
-            DSLINK_CHECKED_EXEC(free, entry->key);
             if (entry->value) {
-                ((DSNode *) entry->value)->name = NULL;
                 dslink_node_tree_free(link, entry->value);
             }
         });
@@ -249,10 +247,10 @@ int dslink_node_set_meta(DSNode *node,
 
     if (!value) {
         const char *tmp = name;
-        char *v = dslink_map_remove(node->meta_data, (void **) &tmp);
+        json_t *v = dslink_map_remove(node->meta_data, (void **) &tmp);
         if (v) {
             free((void **) tmp);
-            free(v);
+            json_delete(v);
         }
         return 0;
     }
