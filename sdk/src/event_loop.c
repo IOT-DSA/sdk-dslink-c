@@ -107,6 +107,9 @@ loop_processor:
         if (task == loop->tail) {
             loop->tail = loop->head;
         }
+        if (loop->head) {
+            loop->head->prev = NULL;
+        }
 
         Timer timer;
         while (task->delay > 0) {
