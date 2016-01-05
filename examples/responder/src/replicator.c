@@ -38,7 +38,8 @@ void delete_nodes(DSLink *link, DSNode *node,
         char buf[10];
         snprintf(buf, sizeof(buf), "%d", i);
 
-        DSNode *n = dslink_map_get(node->children, buf);
+        void *key = &buf;
+        DSNode *n = dslink_map_remove(node->children, &key);
         if (n) {
             dslink_node_tree_free(link, n);
         }

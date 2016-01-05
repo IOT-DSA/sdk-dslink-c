@@ -82,7 +82,6 @@ int dslink_map_get_raw_node(Map *map, MapNode **node,
 
             (*node)->next = NULL;
             (*node)->prev = NULL;
-            map->items++;
         }
     } else {
         while (1) {
@@ -111,7 +110,6 @@ int dslink_map_get_raw_node(Map *map, MapNode **node,
 
                 (*node)->next = tmp;
                 *node = tmp;
-                map->items++;
                 break;
             }
             *node = tmp;
@@ -122,11 +120,12 @@ exit:
     if (!(*node)) {
         return DSLINK_ALLOC_ERR;
     }
+    map->items++;
     dslink_list_insert_raw(&map->list, (ListNode *) (*node)->entry);
     return ret;
 }
 
-static
+//static
 int dslink_map_rehash_table(Map *map) {
     size_t oldCapacity = map->capacity;
     MapNode **oldTable = map->table;
@@ -172,13 +171,13 @@ int dslink_map_set(Map *map, void *key, void **value) {
 
 int dslink_map_setl(Map *map, void *key, size_t len, void **value) {
     int ret;
-    const float loadFactor = (float) map->items / map->capacity;
+    /*const float loadFactor = (float) map->items / map->capacity;
     if (loadFactor >= map->max_load_factor) {
         if ((ret = dslink_map_rehash_table(map)) != 0) {
             *value = NULL;
             return ret;
         }
-    }
+    }*/
 
     MapNode *node = NULL;
     if ((ret = dslink_map_get_raw_node(map, &node, key, len)) != 0) {
@@ -210,7 +209,11 @@ void *dslink_map_removel(Map *map, void **key, size_t len) {
             continue;
         }
         if (node->prev == NULL) {
-            map->table[index] = node->next;
+            if (node->next) {
+                MapNode *tmp = node->next;
+                tmp->prev = NULL;
+                map->table[index] = tmp;
+            }
         } else {
             node->prev->next = node->next;
             if (node->next) {

@@ -151,8 +151,35 @@ DSNode *dslink_node_get_path(DSNode *root, const char *path) {
     return node;
 }
 
+void dslink_node_tree_free_basic(DSNode *root) {
+    DSLINK_CHECKED_EXEC(free, (void *) root->path);
+    DSLINK_CHECKED_EXEC(free, (void *) root->name);
+    DSLINK_CHECKED_EXEC(free, (void *) root->profile);
+    DSLINK_CHECKED_EXEC(json_delete, root->value_timestamp);
+    DSLINK_CHECKED_EXEC(json_delete, root->value);
+    if (root->children) {
+        DSLINK_MAP_FREE(root->children, {
+            if (entry->value) {
+                dslink_node_tree_free_basic(entry->value);
+            }
+        });
+        free(root->children);
+    }
+    if (root->meta_data) {
+        DSLINK_MAP_FREE(root->meta_data, {
+            free(entry->key);
+            json_delete(entry->value);
+        });
+        free(root->meta_data);
+    }
+
+    // TODO: remove node from open_streams, list_subs, and value_path_subs
+
+    free(root);
+}
+
 void dslink_node_tree_free(DSLink *link, DSNode *root) {
-    if (link && link->_ws && root->parent && root->name) {
+    if (link && link->_ws && root->parent && root->parent->name) {
         uint32_t *rid = dslink_map_get(link->responder->list_subs,
                                        (void *) root->parent->path);
         if (!rid) {
@@ -194,32 +221,8 @@ void dslink_node_tree_free(DSLink *link, DSNode *root) {
             json_delete(top);
         }
     }
-
 cleanup:
-    DSLINK_CHECKED_EXEC(free, (void *) root->path);
-    DSLINK_CHECKED_EXEC(free, (void *) root->name);
-    DSLINK_CHECKED_EXEC(free, (void *) root->profile);
-    DSLINK_CHECKED_EXEC(json_delete, root->value_timestamp);
-    DSLINK_CHECKED_EXEC(json_delete, root->value);
-    if (root->children) {
-        DSLINK_MAP_FREE(root->children, {
-            if (entry->value) {
-                dslink_node_tree_free(link, entry->value);
-            }
-        });
-        free(root->children);
-    }
-    if (root->meta_data) {
-        DSLINK_MAP_FREE(root->meta_data, {
-            free(entry->key);
-            json_delete(entry->value);
-        });
-        free(root->meta_data);
-    }
-
-    // TODO: remove node from open_streams, list_subs, and value_path_subs
-
-    free(root);
+    dslink_node_tree_free_basic(root);
 }
 
 int dslink_node_set_meta(DSNode *node,
