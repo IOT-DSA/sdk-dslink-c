@@ -125,7 +125,7 @@ exit:
     return ret;
 }
 
-//static
+static
 int dslink_map_rehash_table(Map *map) {
     size_t oldCapacity = map->capacity;
     MapNode **oldTable = map->table;
@@ -171,13 +171,13 @@ int dslink_map_set(Map *map, void *key, void **value) {
 
 int dslink_map_setl(Map *map, void *key, size_t len, void **value) {
     int ret;
-    /*const float loadFactor = (float) map->items / map->capacity;
+    const float loadFactor = (float) map->items / map->capacity;
     if (loadFactor >= map->max_load_factor) {
         if ((ret = dslink_map_rehash_table(map)) != 0) {
             *value = NULL;
             return ret;
         }
-    }*/
+    }
 
     MapNode *node = NULL;
     if ((ret = dslink_map_get_raw_node(map, &node, key, len)) != 0) {
