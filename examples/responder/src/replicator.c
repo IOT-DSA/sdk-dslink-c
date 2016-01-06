@@ -35,7 +35,7 @@ void delete_nodes(DSLink *link, DSNode *node,
 
     node = node->parent;
     for (int i = 0; i < NODE_COUNT; ++i) {
-        char buf[10];
+        char buf[4];
         snprintf(buf, sizeof(buf), "%d", i);
 
         void *key = &buf;
@@ -58,16 +58,18 @@ void create_node(void *data, EventLoop *loop) {
         return;
     }
 
-    char buf[10];
+    char buf[4];
     snprintf(buf, sizeof(buf), "%d", *num);
 
-    DSNode *child = dslink_node_create(parent, buf, "node");
-    if (!child) {
-        free(num);
-        free(data);
-        return;
+    if (!(parent->children && dslink_map_contains(parent->children, buf))) {
+        DSNode *child = dslink_node_create(parent, buf, "node");
+        if (!child) {
+            free(num);
+            free(data);
+            return;
+        }
+        dslink_node_add_child(link, child);
     }
-    dslink_node_add_child(link, child);
 
     if (++(*num) < NODE_COUNT) {
         dslink_event_loop_schedd(loop, create_node, data, 1000);

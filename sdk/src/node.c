@@ -75,10 +75,15 @@ int dslink_node_add_child(DSLink *link, DSNode *node) {
 
     }
 
-    DSNode *tmp = node;
-    if ((ret = dslink_map_set(node->parent->children, (void *) node->name,
-                              (void **) &tmp)) != 0) {
-        return ret;
+    assert(!dslink_map_contains(node->parent->children,
+                                (void *) node->name));
+    {
+        DSNode *tmp = node;
+        if ((ret = dslink_map_set(node->parent->children,
+                                  (void *) node->name,
+                                  (void **) &tmp)) != 0) {
+            return ret;
+        }
     }
 
     if (!link->_ws) {
