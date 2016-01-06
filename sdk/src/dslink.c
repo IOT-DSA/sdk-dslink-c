@@ -233,6 +233,14 @@ exit:
             free(link.responder->open_streams);
         }
 
+        if (link.responder->list_subs) {
+            DSLINK_MAP_FREE(link.responder->list_subs, {
+                free(entry->key);
+                free(entry->value);
+            });
+            free(link.responder->list_subs);
+        }
+
         if (link.responder->value_path_subs) {
             DSLINK_MAP_FREE(link.responder->value_path_subs, {
                 free(entry->value);
@@ -243,13 +251,6 @@ exit:
         if (link.responder->value_sid_subs) {
             DSLINK_MAP_FREE(link.responder->value_sid_subs, {});
             free(link.responder->value_sid_subs);
-        }
-
-        if (link.responder->list_subs) {
-            DSLINK_MAP_FREE(link.responder->list_subs, {
-                free(entry->value);
-            });
-            free(link.responder->list_subs);
         }
 
         free(link.responder);

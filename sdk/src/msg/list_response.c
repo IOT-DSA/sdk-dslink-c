@@ -1,4 +1,5 @@
 #include <string.h>
+#include "dslink/utils.h"
 #include "dslink/msg/list_response.h"
 #include "dslink/stream.h"
 #include "dslink/ws.h"
@@ -124,11 +125,17 @@ int dslink_response_list(DSLink *link, json_t *req, DSNode *node) {
             return 1;
         }
         stream->type = LIST_STREAM;
-        stream->path = node->path;
+        stream->path = dslink_strdup(node->path);
         stream->on_close = node->on_list_close;
+        if (!stream->path) {
+            json_delete(top);
+            free(stream);
+            return 1;
+        }
 
         uint32_t *rid = malloc(sizeof(uint32_t));
         if (!rid) {
+            free((void *) stream->path);
             free(stream);
             json_delete(top);
             return 1;
@@ -137,20 +144,26 @@ int dslink_response_list(DSLink *link, json_t *req, DSNode *node) {
             uint32_t r = (uint32_t) json_integer_value(jsonRid);
             *rid = r;
         }
-        if (dslink_map_set(link->responder->open_streams,
-                           rid, (void **) &stream) != 0) {
+
+        void *p = stream;
+        if (dslink_map_set(link->responder->open_streams, rid, &p) != 0) {
             free(rid);
             free(stream);
             json_delete(top);
             return 1;
         }
+        if (p) {
+            free((void *) ((Stream *) p)->path);
+            free(p);
+        }
 
-        void *p = rid;
+        p = rid;
         if (dslink_map_set(link->responder->list_subs,
-                           (void *) node->path, &p) != 0) {
-            free(dslink_map_remove(link->responder->open_streams,
-                                   (void **) &rid));
+                           (void *) stream->path, &p) != 0) {
+            p = rid;
+            dslink_map_remove(link->responder->open_streams, &p);
             free(rid);
+            free((void *) stream->path);
             free(stream);
             json_delete(top);
             return 1;
