@@ -122,6 +122,7 @@ loop_processor:
             } else {
                 task->delay = 0;
             }
+            dslink_event_loop_sub_del(loop, diff);
             if (loop->shutdown) {
                 free(task);
                 goto loop_processor;
