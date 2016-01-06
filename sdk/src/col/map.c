@@ -213,6 +213,8 @@ void *dslink_map_removel(Map *map, void **key, size_t len) {
                 MapNode *tmp = node->next;
                 tmp->prev = NULL;
                 map->table[index] = tmp;
+            } else {
+                map->table[index] = NULL;
             }
         } else {
             node->prev->next = node->next;
