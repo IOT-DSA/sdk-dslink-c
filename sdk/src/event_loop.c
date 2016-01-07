@@ -1,8 +1,8 @@
 #include <string.h>
 #include <stdlib.h>
+#include <mbedtls/timing.h>
 #include "dslink/event_loop.h"
 #include "dslink/err.h"
-#include "dslink/timer.h"
 
 static
 void dslink_event_loop_sched_raw(EventLoop *loop, EventTask *task) {
@@ -111,12 +111,12 @@ loop_processor:
             loop->head->prev = NULL;
         }
 
-        Timer timer;
+        struct mbedtls_timing_hr_time timer;
         while (task->delay > 0) {
-            dslink_timer_start(&timer);
+            mbedtls_timing_get_timer(&timer, 1);
             loop->block_func(loop->block_func_data,
                              loop, task->delay);
-            uint32_t diff = dslink_timer_stop(&timer);
+            uint32_t diff = (uint32_t) mbedtls_timing_get_timer(&timer, 0);
             if (task->delay > diff) {
                 task->delay -= diff;
             } else {
@@ -132,9 +132,9 @@ loop_processor:
             }
         }
 
-        dslink_timer_start(&timer);
+        mbedtls_timing_get_timer(&timer, 1);
         task->func(task->func_data, loop);
-        task->delay += dslink_timer_stop(&timer);
+        task->delay += (uint32_t) mbedtls_timing_get_timer(&timer, 0);
 
         // Handle the delays of the next tasks
         dslink_event_loop_sub_del(loop, task->delay);

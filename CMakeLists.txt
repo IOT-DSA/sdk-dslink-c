@@ -60,7 +60,6 @@ set(DSLINK_SRC
     "${DSLINK_SRC_DIR}/log.c"
     "${DSLINK_SRC_DIR}/node.c"
     "${DSLINK_SRC_DIR}/socket.c"
-    "${DSLINK_SRC_DIR}/timer.c"
     "${DSLINK_SRC_DIR}/url.c"
     "${DSLINK_SRC_DIR}/utils.c"
     "${DSLINK_SRC_DIR}/ws.c"
