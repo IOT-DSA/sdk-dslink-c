@@ -5,13 +5,13 @@
 #include "dslink/timer.h"
 
 static
-int dslink_event_loop_sched_raw(EventLoop *loop, EventTask *task) {
+void dslink_event_loop_sched_raw(EventLoop *loop, EventTask *task) {
     if (!loop->head) {
         task->prev = NULL;
         task->next = NULL;
         loop->head = task;
         loop->tail = task;
-        return 0;
+        return;
     }
 
     if (task->delay >= loop->tail->delay) {
@@ -43,7 +43,7 @@ int dslink_event_loop_sched_raw(EventLoop *loop, EventTask *task) {
         }
     }
 
-    return 0;
+    return;
 }
 
 static
