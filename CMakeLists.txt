@@ -3,6 +3,7 @@ project(sdk_dslink_c C)
 
 ######## Configure Options #######
 
+option(DSLINK_BUILD_BROKER "Whether to build the broker" OFF)
 option(DSLINK_BUILD_EXAMPLES "Whether to build the examples" OFF)
 
 ##### Configure Dependencies #####
@@ -72,6 +73,11 @@ set(LIBRARY_SRC
     "${WSLAY_SRC}"
 )
 
+set(BROKER_SRC_DIR "broker/src")
+set(BROKER_SRC
+    "${BROKER_SRC_DIR}/main.c"
+)
+
 set(EXAMPLE_RESPONDER_SRC_DIR "examples/responder/src")
 set(EXAMPLE_RESPONDER_SRC
     "${EXAMPLE_RESPONDER_SRC_DIR}/main.c"
@@ -104,6 +110,14 @@ install(TARGETS sdk_dslink_c
         RUNTIME DESTINATION "${DSLINK_INSTALL_BIN_DIR}" COMPONENT lib)
 
 install(DIRECTORY "sdk/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev)
+
+####### Configure Broker #######
+
+if (DSLINK_BUILD_BROKER)
+    add_executable(broker "${BROKER_SRC}")
+    target_link_libraries(broker sdk_dslink_c)
+    target_include_directories(broker PRIVATE "broker/include")
+endif()
 
 ###### Configure Examples ######
 
