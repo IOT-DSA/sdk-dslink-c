@@ -12,6 +12,14 @@ typedef struct SslSocket SslSocket;
 typedef struct Socket Socket;
 
 /**
+ * \brief          Allocates the memory needed for a Socket. This is useful
+ *                 to provide Socket API access for the server. Connecting
+ *                 to outbound servers must not use this as it is automatically
+ *                 handled.
+ */
+Socket *dslink_socket_init(uint_fast8_t secure);
+
+/**
  * \brief          Connects to a designated server. All parameters must be
  *                 initialized otherwise the behavior is undefined.
  *
