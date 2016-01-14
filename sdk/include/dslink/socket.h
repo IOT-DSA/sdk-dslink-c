@@ -44,6 +44,8 @@ int dslink_socket_read_timeout(Socket *sock, char *buf,
 int dslink_socket_write(Socket *sock, char *buf, size_t len);
 
 void dslink_socket_close(Socket *sock);
+void dslink_socket_close_nofree(Socket *sock);
+void dslink_socket_free(Socket *sock);
 
 #ifdef __cplusplus
 }

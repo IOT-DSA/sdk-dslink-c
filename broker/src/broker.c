@@ -14,7 +14,7 @@ void on_http_req_callback(HttpRequest *req, Socket *sock) {
 
     char data[] = "HTTP/1.0 501 Not Implemented\r\n\r\n";
     dslink_socket_write(sock, data, sizeof(data));
-    dslink_socket_close(sock);
+    dslink_socket_close_nofree(sock);
 }
 
 int dslink_broker_init() {

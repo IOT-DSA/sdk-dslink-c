@@ -93,10 +93,14 @@ int dslink_broker_start_server(json_t *config, HttpCallback cb) {
             dslink_http_parse_req(&req, buf);
             if (req.method != NULL) {
                 cb(&req, client);
+            } else {
+                // Invalid HTTP request
+                dslink_socket_close_nofree(client);
             }
             if (client->socket_fd.fd == -1) {
                 // The callback closed the connection
                 clients[i] = NULL;
+                dslink_socket_free(client);
             }
         }
 
