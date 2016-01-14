@@ -11,6 +11,8 @@ extern "C" {
 #include "dslink/socket.h"
 
 int dslink_handshake_get_group(mbedtls_ecp_group *grp);
+int dslink_handshake_encode_pub_key(mbedtls_ecdh_context *key,
+                                    char *buf, size_t bufLen, size_t *encLen);
 
 int dslink_handshake_key_pair_fs(mbedtls_ecdh_context *ctx,
                                  const char *fileName);

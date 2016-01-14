@@ -31,6 +31,31 @@ int dslink_handshake_get_group(mbedtls_ecp_group *grp) {
     return 0;
 }
 
+int dslink_handshake_encode_pub_key(mbedtls_ecdh_context *key, char *buf,
+                                    size_t bufLen, size_t *encLen) {
+    int ret = 0;
+    unsigned char pubKeyBin[65];
+    size_t pubKeyBinLen = 0;
+
+    if ((errno = mbedtls_ecp_point_write_binary(&key->grp,
+                                                &key->Q,
+                                                MBEDTLS_ECP_PF_UNCOMPRESSED,
+                                                &pubKeyBinLen, pubKeyBin,
+                                                sizeof(pubKeyBin))) != 0) {
+        ret = DSLINK_CRYPT_KEY_ENCODE_ERR;
+        goto exit;
+    }
+
+    if ((errno = dslink_base64_url_encode((unsigned char *) buf,
+                                          bufLen, encLen, pubKeyBin,
+                                          pubKeyBinLen)) != 0) {
+        ret = DSLINK_CRYPT_BASE64_URL_ENCODE_ERR;
+    }
+
+exit:
+    return ret;
+}
+
 int dslink_handshake_key_pair_fs(mbedtls_ecdh_context *key,
                                  const char *fileName) {
     int ret = 0;
@@ -72,7 +97,7 @@ exit:
 int dslink_handshake_store_key_pair(mbedtls_ecdh_context *key,
                                     char *buf, size_t bufLen) {
     unsigned char dEnc[45];
-    unsigned char qEnc[90];
+    char qEnc[90];
     size_t dEncLen = 0;
     size_t qEncLen = 0;
     {
@@ -89,18 +114,10 @@ int dslink_handshake_store_key_pair(mbedtls_ecdh_context *key,
     }
 
     {
-        unsigned char qBin[65];
-        if ((errno = mbedtls_ecp_point_write_binary(&key->grp,
-                                                    &key->Q,
-                                                    MBEDTLS_ECP_PF_UNCOMPRESSED,
-                                                    &qEncLen, qBin,
-                                                    sizeof(qBin))) != 0) {
-            return DSLINK_CRYPT_KEY_ENCODE_ERR;
-        }
-
-        if (dslink_base64_url_encode(qEnc, sizeof(qEnc),
-                                     &qEncLen, qBin, qEncLen) != 0) {
-            return DSLINK_CRYPT_BASE64_URL_ENCODE_ERR;
+        int ret;
+        if ((ret = dslink_handshake_encode_pub_key(key, qEnc, sizeof(qEnc),
+                                                   &qEncLen)) != 0) {
+            return ret;
         }
     }
 
