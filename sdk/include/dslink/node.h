@@ -7,7 +7,6 @@ extern "C" {
 
 #include <jansson.h>
 #include "dslink/col/map.h"
-#include "dslink.h"
 
 struct DSLink;
 
