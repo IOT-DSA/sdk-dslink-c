@@ -75,7 +75,11 @@ set(LIBRARY_SRC
 
 set(BROKER_SRC_DIR "broker/src")
 set(BROKER_SRC
+    "${BROKER_SRC_DIR}/broker.c"
+    "${BROKER_SRC_DIR}/config.c"
+    "${BROKER_SRC_DIR}/http.c"
     "${BROKER_SRC_DIR}/main.c"
+    "${BROKER_SRC_DIR}/server.c"
 )
 
 set(EXAMPLE_RESPONDER_SRC_DIR "examples/responder/src")

@@ -1,3 +1,5 @@
+#include "broker/broker.h"
+
 int main() {
-    return 0;
+    return dslink_broker_init();
 }
