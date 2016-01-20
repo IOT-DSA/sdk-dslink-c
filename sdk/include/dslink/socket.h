@@ -16,6 +16,9 @@ typedef struct Socket Socket;
  *                 to provide Socket API access for the server. Connecting
  *                 to outbound servers must not use this as it is automatically
  *                 handled.
+ *
+ * \param secure   Whether to allocate a SecureSocket which is necessary for
+ *                 SSL connections.
  */
 Socket *dslink_socket_init(uint_fast8_t secure);
 
