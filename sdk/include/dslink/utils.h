@@ -10,7 +10,7 @@ extern "C" {
 #define DSLINK_CHECKED_EXEC(func, val) \
     if (val) func(val)
 
-void dslink_strlwr(char *str, size_t len);
+const char *dslink_strcasestr(const char *haystack, const char *needle);
 char *dslink_strdup(const char *str);
 size_t dslink_create_ts(char *buf, size_t bufLen);
 

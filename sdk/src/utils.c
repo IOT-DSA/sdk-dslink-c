@@ -3,10 +3,22 @@
 #include <time.h>
 #include "dslink/utils.h"
 
-void dslink_strlwr(char *str, size_t len) {
-    while (len-- > 0) {
-        *(str + len) = (char) tolower(*(str + len));
+const char *dslink_strcasestr(const char *haystack, const char *needle) {
+    if (!needle || *needle == '\0') {
+        return haystack;
     }
+    do {
+        const char *h = haystack;
+        const char *n = needle;
+        while ((tolower(*h) == tolower(*n)) && (*h && *n)) {
+            h++;
+            n++;
+        }
+        if (*n == '\0') {
+            return haystack;
+        }
+    } while (*haystack++);
+    return NULL;
 }
 
 char *dslink_strdup(const char *str) {

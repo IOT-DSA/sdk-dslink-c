@@ -64,14 +64,8 @@ int dslink_parse_opts(int argc,
     config->broker_url = broker->sval[0];
 
     if (log->count > 0) {
-        char lvl[8];
-        const char *src = log->sval[0];
-        size_t len = strlen(src);
-        if (len > sizeof(lvl)) {
-            len = sizeof(lvl);
-        }
-        memcpy(lvl, src, len);
-        if (dslink_log_set_lvl(lvl, len) != 0) {
+        const char *lvl = log->sval[0];
+        if (dslink_log_set_lvl(lvl) != 0) {
             printf("Invalid log level: %s\n", lvl);
             dslink_print_help();
             ret = 1;

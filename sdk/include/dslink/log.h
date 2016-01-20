@@ -38,7 +38,7 @@ extern int dslink_log_lvl;
 #define log_debug(...)
 #endif
 
-int dslink_log_set_lvl(char *level, size_t len);
+int dslink_log_set_lvl(const char *level);
 void dslink_log_print_time();
 
 #define LOG_LVL_CHK(arg) if (dslink_log_lvl >= arg)

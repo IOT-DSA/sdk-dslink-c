@@ -7,21 +7,20 @@
 
 int dslink_log_lvl = LOG_LVL_INFO;
 
-int dslink_log_set_lvl(char *level, size_t len) {
-    dslink_strlwr(level, len);
-    if (strncmp(level, "off", len) == 0
-        || strncmp(level, "none", len) == 0) {
+int dslink_log_set_lvl(const char *level) {
+    if (dslink_strcasestr(level, "off") != NULL
+        || dslink_strcasestr(level, "none") != NULL) {
         dslink_log_lvl = LOG_LVL_OFF;
-    } else if (strncmp(level, "fatal", len) == 0) {
+    } else if (dslink_strcasestr(level, "fatal") != NULL) {
         dslink_log_lvl = LOG_LVL_FATAL;
-    } else if (strncmp(level, "error", len) == 0) {
+    } else if (dslink_strcasestr(level, "error") != NULL) {
         dslink_log_lvl = LOG_LVL_ERR;
-    } else if (strncmp(level, "warn", len) == 0) {
+    } else if (dslink_strcasestr(level, "warn") != NULL) {
         dslink_log_lvl = LOG_LVL_WARN;
-    } else if (strncmp(level, "info", len) == 0) {
+    } else if (dslink_strcasestr(level, "info") != NULL) {
         dslink_log_lvl = LOG_LVL_INFO;
 #ifndef NDEBUG
-    } else if (strncmp(level, "debug", len) == 0) {
+    } else if (dslink_strcasestr(level, "debug") != NULL) {
         dslink_log_lvl = LOG_LVL_DEBUG;
 #endif
     } else {
