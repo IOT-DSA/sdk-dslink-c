@@ -21,6 +21,14 @@ const char *dslink_strcasestr(const char *haystack, const char *needle) {
     return NULL;
 }
 
+int dslink_strcasecmp(char const *a, char const *b) {
+    for (;; a++, b++) {
+        int d = tolower(*a) - tolower(*b);
+        if (d != 0 || !(*a && *b))
+            return d;
+    }
+}
+
 char *dslink_strdup(const char *str) {
     if (!str) {
         return NULL;
