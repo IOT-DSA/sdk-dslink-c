@@ -1,14 +1,31 @@
-#ifndef SDK_DSLINK_C_SERVER_H
-#define SDK_DSLINK_C_SERVER_H
+#ifndef BROKER_BROKER_H
+#define BROKER_BROKER_H
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-int dslink_broker_init();
+#include <wslay/wslay.h>
+#include <dslink/col/map.h>
+#include <dslink/socket.h>
+
+typedef struct Broker {
+
+    Socket *socket;
+    wslay_event_context_ptr ws;
+
+    // Key is string and value is RemoteDSLink
+    Map clientConnecting;
+
+    // Key is a string and value is a RemoteDSLink
+    Map downstream;
+
+} Broker;
+
+int broker_init();
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // SDK_DSLINK_C_SERVER_H
+#endif // BROKER_BROKER_H

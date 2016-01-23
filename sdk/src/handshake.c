@@ -56,6 +56,57 @@ exit:
     return ret;
 }
 
+int dslink_handshake_gen_auth_key(mbedtls_ecdh_context *key,
+                                  const char *tempKey,
+                                  const char *salt,
+                                  unsigned char *buf,
+                                  size_t bufLen) {
+    int ret = 0;
+    size_t olen = 0;
+    if ((errno = dslink_base64_url_decode(buf, bufLen, &olen,
+                                          (unsigned char *) tempKey,
+                                          strlen(tempKey))) != 0) {
+        ret = DSLINK_CRYPT_BASE64_URL_DECODE_ERR;
+        goto exit;
+    }
+
+    if ((errno = mbedtls_ecp_point_read_binary(&key->grp, &key->Qp,
+                                               buf, olen)) != 0) {
+        ret = DSLINK_HANDSHAKE_INVALID_TMP_KEY;
+        goto exit;
+    }
+
+    if ((errno = mbedtls_ecdh_calc_secret(key, &olen, buf,
+                                          bufLen, NULL, NULL)) != 0) {
+        ret = DSLINK_HANDSHAKE_INVALID_TMP_KEY;
+        goto exit;
+    }
+
+    {
+        size_t saltLen = strlen(salt);
+        size_t len = saltLen + olen;
+        char *in = malloc(len + 1);
+        if (!in) {
+            ret = DSLINK_ALLOC_ERR;
+            goto exit;
+        }
+        memcpy(in, salt, saltLen);
+        memcpy(in + saltLen, (char *) buf, olen);
+        *(in + len) = '\0';
+
+        unsigned char auth[32];
+        mbedtls_sha256((unsigned char *) in, len, auth, 0);
+        free(in);
+
+        if ((errno = dslink_base64_url_encode(buf, bufLen, &olen, auth,
+                                              sizeof(auth))) != 0) {
+            ret = DSLINK_CRYPT_BASE64_URL_ENCODE_ERR;
+        }
+    }
+exit:
+    return ret;
+}
+
 int dslink_handshake_key_pair_fs(mbedtls_ecdh_context *key,
                                  const char *fileName) {
     int ret = 0;

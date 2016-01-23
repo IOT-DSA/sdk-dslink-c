@@ -1,5 +1,5 @@
-#ifndef SDK_DSLINK_C_CONFIG_H
-#define SDK_DSLINK_C_CONFIG_H
+#ifndef BROKER_CONFIG_H
+#define BROKER_CONFIG_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -13,4 +13,4 @@ json_t *dslink_broker_config_get();
 }
 #endif
 
-#endif // SDK_DSLINK_C_CONFIG_H
+#endif // BROKER_CONFIG_H

@@ -11,20 +11,25 @@ json_t *dslink_broker_config_gen() {
     if (!server) {
         goto exit;
     }
+
     json_t *http = json_object();
-    if (!http) {
-        goto del_server;
-    }
-
-    if (json_object_set_new_nocheck(server, "http", http) != 0) {
-        goto del_http;
-    }
-
     {
-        json_object_set_new_nocheck(http, "enabled", json_true());
-        json_object_set_new_nocheck(http, "host", json_string("0.0.0.0"));
-        json_object_set_new_nocheck(http, "port", json_integer(8100));
+        if (!http) {
+            goto del_server;
+        }
+
+        if (json_object_set_new_nocheck(server, "http", http) != 0) {
+            goto del_http;
+        }
+
+        {
+            json_object_set_new_nocheck(http, "enabled", json_true());
+            json_object_set_new_nocheck(http, "host", json_string("0.0.0.0"));
+            json_object_set_new_nocheck(http, "port", json_integer(8100));
+        }
     }
+
+    json_object_set_new_nocheck(server, "log_level", json_string("info"));
 
     if (json_dump_file(server, BROKER_CONF_LOC,
                        JSON_PRESERVE_ORDER | JSON_INDENT(2)) != 0) {
