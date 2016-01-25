@@ -14,8 +14,8 @@ typedef struct Client {
     void *sock_data;
 } Client;
 
-int dslink_broker_start_server(json_t *config, void *data,
-                               DataReadyCallback cb) {
+int broker_start_server(json_t *config, void *data,
+                        DataReadyCallback cb) {
     json_incref(config);
 
     const char *host = NULL;

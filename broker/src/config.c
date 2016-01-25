@@ -6,7 +6,8 @@
 #include "broker/config.h"
 #define BROKER_CONF_LOC "broker.json"
 
-json_t *dslink_broker_config_gen() {
+static
+json_t *broker_config_gen() {
     json_t *server = json_object();
     if (!server) {
         goto exit;
@@ -49,7 +50,7 @@ exit:
     return server;
 }
 
-json_t *dslink_broker_config_get() {
+json_t *broker_config_get() {
     json_error_t err;
     json_t *config = json_load_file(BROKER_CONF_LOC, 0, &err);
     if (!config) {
@@ -57,7 +58,7 @@ json_t *dslink_broker_config_get() {
             log_err("Failed to load broker configuration: %s\n", err.text);
             return NULL;
         } else {
-            return dslink_broker_config_gen();
+            return broker_config_gen();
         }
     }
     log_info("Broker configuration loaded\n");

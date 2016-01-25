@@ -7,7 +7,7 @@ extern "C" {
 
 #include <jansson.h>
 
-json_t *dslink_broker_config_get();
+json_t *broker_config_get();
 
 #ifdef __cplusplus
 }

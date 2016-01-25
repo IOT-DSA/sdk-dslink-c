@@ -5,7 +5,7 @@
 #include "broker/net/http.h"
 
 static
-void dslink_http_parse_uri(HttpUri *uri, char *data) {
+void broker_http_parse_uri(HttpUri *uri, char *data) {
     memset(uri->paramKeys, 0, sizeof(uri->paramKeys));
     memset(uri->paramValues, 0, sizeof(uri->paramValues));
     char *loc = strstr(data, "?");
@@ -103,7 +103,7 @@ int broker_http_parse_req(HttpRequest *req, char *data) {
         return 1;
     }
     *loc = '\0';
-    dslink_http_parse_uri(&req->uri, data);
+    broker_http_parse_uri(&req->uri, data);
     data = ++loc;
 
     loc = strstr(data, "\r\n");

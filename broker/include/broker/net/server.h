@@ -14,9 +14,9 @@ typedef void (*DataReadyCallback)(Socket *sock,
                                   void *data,
                                   void **socketData);
 
-int dslink_broker_start_server(json_t *config,
-                               void *data,
-                               DataReadyCallback cb);
+int broker_start_server(json_t *config,
+                        void *data,
+                        DataReadyCallback cb);
 
 #ifdef __cplusplus
 }

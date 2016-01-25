@@ -91,6 +91,7 @@ void on_ws_data(wslay_event_context_ptr ctx,
 
     if (arg->opcode == WSLAY_TEXT_FRAME) {
         log_debug("Received Data: %.*s\n", (int) arg->msg_length, arg->msg);
+
     } else if (arg->opcode == WSLAY_CONNECTION_CLOSE) {
         Broker *broker = user_data;
         dslink_socket_close_nofree(broker->socket);
@@ -222,7 +223,7 @@ exit:
 
 int broker_init() {
     int ret = 0;
-    json_t *config = dslink_broker_config_get();
+    json_t *config = broker_config_get();
     if (!config) {
         ret = 1;
         return ret;
@@ -271,7 +272,7 @@ int broker_init() {
     }
 
     broker.ws = ws;
-    ret = dslink_broker_start_server(config, &broker, on_data_callback);
+    ret = broker_start_server(config, &broker, on_data_callback);
 
 exit:
     DSLINK_CHECKED_EXEC(json_delete, config);
