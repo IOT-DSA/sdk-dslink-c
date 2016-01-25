@@ -135,7 +135,7 @@ int broker_handshake_handle_ws(Broker *broker,
         goto exit;
     }
 
-    log_debug("DSLink `%s` has connected\n", dsId);
+    log_info("DSLink `%s` has connected\n", dsId);
 
 exit:
     {
