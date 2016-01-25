@@ -11,7 +11,7 @@ extern "C" {
     if (val) func(val)
 
 const char *dslink_strcasestr(const char *haystack, const char *needle);
-int dslink_strcasecmp(char const *a, char const *b);
+int dslink_strcasecmp(const char *a, const char *b);
 char *dslink_strdup(const char *str);
 size_t dslink_create_ts(char *buf, size_t bufLen);
 

@@ -21,7 +21,7 @@ const char *dslink_strcasestr(const char *haystack, const char *needle) {
     return NULL;
 }
 
-int dslink_strcasecmp(char const *a, char const *b) {
+int dslink_strcasecmp(const char *a, const char *b) {
     for (;; a++, b++) {
         int d = tolower(*a) - tolower(*b);
         if (d != 0 || !(*a && *b))
