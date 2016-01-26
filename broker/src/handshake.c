@@ -81,7 +81,19 @@ json_t *broker_handshake_handle_conn(Broker *broker,
     json_object_set_new_nocheck(resp, "salt", json_string(link->auth->salt));
     if (json_boolean_value(json_object_get(handshake, "isResponder"))) {
         link->isResponder = 1;
-        json_object_set_new_nocheck(resp, "path", json_string("")); // TODO
+
+        size_t nameLen = strlen(dsId) - 43;
+        {
+            if (dsId[nameLen - 1] == '-') {
+                nameLen--;
+            }
+        }
+
+        char buf[512];
+        memset(buf, 0, sizeof(buf));
+        size_t len = snprintf(buf, sizeof(buf), "/downstream/%.*s",
+                              (int) nameLen, dsId);
+        json_object_set_new_nocheck(resp, "path", json_stringn(buf, len));
     }
 
     if (json_boolean_value(json_object_get(handshake, "isRequester"))) {
