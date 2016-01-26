@@ -166,7 +166,6 @@ int broker_handshake_handle_ws(Broker *broker,
         goto exit;
     }
 
-    link->socket = broker->socket;
     *socketData = link;
     log_info("DSLink `%s` has connected\n", dsId);
 exit:

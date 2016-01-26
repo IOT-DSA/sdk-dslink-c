@@ -20,7 +20,6 @@ typedef struct RemoteAuth {
 typedef struct RemoteDSLink {
 
     RemoteAuth *auth;
-    Socket *socket;
 
     uint8_t isRequester;
     uint8_t isResponder;
