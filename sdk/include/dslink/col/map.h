@@ -17,7 +17,7 @@ extern "C" {
         free(entry); \
         entry = tmp; \
     } \
-    free((map)->table)
+    if ((map)->table) free((map)->table)
 
 #define dslink_map_foreach(map) \
     for (MapEntry *entry = ((MapEntry *) (map)->list.head); \

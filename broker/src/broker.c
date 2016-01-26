@@ -253,14 +253,19 @@ int broker_init() {
     Broker broker;
     memset(&broker, 0, sizeof(Broker));
     {
-        // TODO: error checking
-        dslink_map_init(&broker.client_connecting,
+        if (dslink_map_init(&broker.client_connecting,
                         dslink_map_str_cmp,
-                        dslink_map_str_key_len_cal);
+                        dslink_map_str_key_len_cal) != 0) {
+            ret = 1;
+            goto exit;
+        }
 
-        dslink_map_init(&broker.downstream,
+        if (dslink_map_init(&broker.downstream,
                         dslink_map_str_cmp,
-                        dslink_map_str_key_len_cal);
+                        dslink_map_str_key_len_cal) != 0) {
+            ret = 1;
+            goto exit;
+        }
     }
 
     {
@@ -268,11 +273,11 @@ int broker_init() {
         if (jsonLog) {
             const char *str = json_string_value(jsonLog);
             if ((ret = dslink_log_set_lvl(str)) != 0) {
-                log_fatal("Invalid log level in the configuration\n");
+                log_fatal("Invalid log level in the broker configuration\n");
                 goto exit;
             }
         } else {
-            log_warn("Missing `log_level` from the JSON configuration\n");
+            log_warn("Missing `log_level` from the broker configuration\n");
         }
     }
 
@@ -297,5 +302,7 @@ int broker_init() {
 
 exit:
     DSLINK_CHECKED_EXEC(json_delete, config);
+    DSLINK_MAP_FREE(&broker.client_connecting, {});
+    DSLINK_MAP_FREE(&broker.downstream, {});
     return ret;
 }
