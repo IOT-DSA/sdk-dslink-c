@@ -226,6 +226,7 @@ void *dslink_map_removel(Map *map, void **key, size_t len) {
         void *value = node->entry->value;
         dslink_list_remove(&map->list, (ListNode *) node->entry);
         free(node);
+        map->items--;
         return value;
     }
     *key = NULL;
