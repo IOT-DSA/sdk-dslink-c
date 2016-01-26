@@ -5,31 +5,28 @@
 #include <dslink/ws.h>
 #include "broker/msg_handler.h"
 
-static
-json_t *broker_list_root(json_t *rid) {
-    if (!rid) {
-        return NULL;
-    }
-
-    json_t *top = json_object();
-    if (!top) {
-        return NULL;
-    }
-    json_t *resps = json_array();
-    if (!resps) {
-        json_delete(top);
-        return NULL;
-    }
-    json_t *resp = json_object();
-    if (!resp) {
-        json_delete(top);
-        json_delete(resps);
-        return NULL;
-    }
-
-    json_object_set_new_nocheck(top, "responses", resps);
+#define BROKER_CREATE_RESP \
+    json_t *top = json_object(); \
+    if (!top) { \
+        return NULL; \
+    } \
+    json_t *resps = json_array(); \
+    if (!resps) { \
+        json_delete(top); \
+        return NULL; \
+    } \
+    json_t *resp = json_object(); \
+    if (!resp) { \
+        json_delete(top); \
+        json_delete(resps); \
+        return NULL; \
+    } \
+    json_object_set_new_nocheck(top, "responses", resps); \
     json_array_append_new(resps, resp);
 
+static
+json_t *broker_list_root(json_t *rid) {
+    BROKER_CREATE_RESP
     json_object_set_nocheck(resp, "rid", rid);
     json_object_set_new_nocheck(resp, "stream", json_string("open"));
 
@@ -78,29 +75,7 @@ fail:
 
 static
 json_t *broker_list_downstream(json_t *rid) {
-    if (!rid) {
-        return NULL;
-    }
-
-    json_t *top = json_object();
-    if (!top) {
-        return NULL;
-    }
-    json_t *resps = json_array();
-    if (!resps) {
-        json_delete(top);
-        return NULL;
-    }
-    json_t *resp = json_object();
-    if (!resp) {
-        json_delete(top);
-        json_delete(resps);
-        return NULL;
-    }
-
-    json_object_set_new_nocheck(top, "responses", resps);
-    json_array_append_new(resps, resp);
-
+    BROKER_CREATE_RESP
     json_object_set_nocheck(resp, "rid", rid);
     json_object_set_new_nocheck(resp, "stream", json_string("open"));
 
@@ -131,34 +106,26 @@ fail:
 static
 int broker_handle_list(Broker *broker, json_t *req) {
     const char *path = json_string_value(json_object_get(req, "path"));
-    if (!path) {
+    json_t *rid = json_object_get(req, "rid");
+    if (!(path && rid)) {
         return 1;
     }
 
-    int ret = 0;
+    json_t *resp = NULL;
     if (strcmp(path, "/") == 0) {
-        json_t *rid = json_object_get(req, "rid");
-        json_t *resp = broker_list_root(rid);
-        if (resp) {
-            dslink_ws_send_obj(broker->ws, resp);
-            json_decref(resp);
-        } else {
-            ret = 1;
-        }
+        resp = broker_list_root(rid);
     } else if (strcmp(path, "/downstream") == 0) {
-        json_t *rid = json_object_get(req, "rid");
-        json_t *resp = broker_list_downstream(rid);
-        if (resp) {
-            dslink_ws_send_obj(broker->ws, resp);
-            json_decref(resp);
-        } else {
-            ret = 1;
-        }
+        resp = broker_list_downstream(rid);
     } else {
         log_err("Unhandled path: %s\n", path);
-        ret = 1;
     }
-    return ret;
+
+    if (!resp) {
+        return 1;
+    }
+    dslink_ws_send_obj(broker->ws, resp);
+    json_decref(resp);
+    return 0;
 }
 
 static
