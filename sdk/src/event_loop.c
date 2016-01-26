@@ -5,19 +5,17 @@
 #include "dslink/err.h"
 
 static inline
-int is_loop_empty (EventLoop *loop)
-{
+uint8_t is_loop_empty (EventLoop *loop) {
     return loop->head.next == &loop->head;
 }
 
 static inline
-int is_loop_not_empty (EventLoop *loop)
-{
+uint8_t is_loop_not_empty (EventLoop *loop) {
     return loop->head.next != &loop->head;
 }
 
 static inline
-void insert_after(EventTask *task, EventTask *base) {gi
+void insert_after(EventTask *task, EventTask *base) {
     base->next->prev = task;
     task->next = base->next;
     base->next = task;
