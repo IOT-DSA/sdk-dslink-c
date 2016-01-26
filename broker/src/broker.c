@@ -35,6 +35,10 @@ void close_link(Broker *broker) {
         void *tmp = (void *) broker->link->dsId;
         dslink_map_remove(&broker->downstream, &tmp);
         free((void *) broker->link->dsId);
+        free(broker->link);
+
+        broker->link = NULL;
+        broker->socket = NULL;
     }
 }
 
