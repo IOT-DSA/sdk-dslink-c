@@ -27,7 +27,7 @@ json_t *broker_list_root(json_t *rid) {
         return NULL;
     }
 
-    json_object_set_nocheck(top, "responses", resps);
+    json_object_set_new_nocheck(top, "responses", resps);
     json_array_append_new(resps, resp);
 
     json_object_set_nocheck(resp, "rid", rid);
@@ -98,7 +98,7 @@ json_t *broker_list_downstream(json_t *rid) {
         return NULL;
     }
 
-    json_object_set_nocheck(top, "responses", resps);
+    json_object_set_new_nocheck(top, "responses", resps);
     json_array_append_new(resps, resp);
 
     json_object_set_nocheck(resp, "rid", rid);
@@ -141,7 +141,7 @@ int broker_handle_list(Broker *broker, json_t *req) {
         json_t *resp = broker_list_root(rid);
         if (resp) {
             dslink_ws_send_obj(broker->ws, resp);
-            json_delete(resp);
+            json_decref(resp);
         } else {
             ret = 1;
         }
@@ -150,7 +150,7 @@ int broker_handle_list(Broker *broker, json_t *req) {
         json_t *resp = broker_list_downstream(rid);
         if (resp) {
             dslink_ws_send_obj(broker->ws, resp);
-            json_delete(resp);
+            json_decref(resp);
         } else {
             ret = 1;
         }
