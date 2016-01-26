@@ -82,7 +82,11 @@ json_t *broker_handshake_handle_conn(Broker *broker,
     if (json_boolean_value(json_object_get(handshake, "isResponder"))) {
         link->isResponder = 1;
 
-        size_t nameLen = strlen(dsId) - 43;
+        size_t dsIdLen = strlen(dsId);
+        if (dsIdLen < 44) {
+            goto fail;
+        }
+        size_t nameLen = dsIdLen - 43;
         {
             if (dsId[nameLen - 1] == '-') {
                 nameLen--;
