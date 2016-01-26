@@ -81,6 +81,7 @@ set(BROKER_SRC
     "${BROKER_SRC_DIR}/config.c"
     "${BROKER_SRC_DIR}/handshake.c"
     "${BROKER_SRC_DIR}/main.c"
+    "${BROKER_SRC_DIR}/msg_handler.c"
 )
 
 set(EXAMPLE_RESPONDER_SRC_DIR "examples/responder/src")

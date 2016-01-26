@@ -8,9 +8,11 @@ extern "C" {
 #include <wslay/wslay.h>
 #include <dslink/col/map.h>
 #include <dslink/socket.h>
+#include "broker/remote_dslink.h"
 
 typedef struct Broker {
 
+    RemoteDSLink *link;
     Socket *socket;
     wslay_event_context_ptr ws;
 

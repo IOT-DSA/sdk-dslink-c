@@ -5,6 +5,10 @@
 extern "C" {
 #endif
 
+#include <stdint.h>
+#include <mbedtls/ecdh.h>
+#include <dslink/socket.h>
+
 typedef struct RemoteAuth {
 
     char salt[48];
@@ -16,6 +20,10 @@ typedef struct RemoteAuth {
 typedef struct RemoteDSLink {
 
     RemoteAuth *auth;
+    Socket *socket;
+
+    uint8_t isRequester;
+    uint8_t isResponder;
 
 } RemoteDSLink;
 

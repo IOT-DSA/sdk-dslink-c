@@ -7,6 +7,7 @@
 #include <wslay/wslay.h>
 #include <wslay_event.h>
 
+#include "broker/msg_handler.h"
 #include "broker/net/server.h"
 #include "broker/handshake.h"
 #include "broker/config.h"
@@ -85,15 +86,22 @@ ssize_t want_write_cb(wslay_event_context_ptr ctx,
 
 static
 void on_ws_data(wslay_event_context_ptr ctx,
-             const struct wslay_event_on_msg_recv_arg *arg,
-             void *user_data) {
-    (void) ctx, (void) arg, (void) user_data;
-
+                const struct wslay_event_on_msg_recv_arg *arg,
+                void *user_data) {
+    (void) ctx;
+    Broker *broker = user_data;
     if (arg->opcode == WSLAY_TEXT_FRAME) {
+        json_error_t err;
+        json_t *data = json_loadb((char *) arg->msg,
+                                  arg->msg_length, 0, &err);
+        if (!data) {
+            return;
+        }
         log_debug("Received Data: %.*s\n", (int) arg->msg_length, arg->msg);
 
+        broker_handle_msg(broker, data);
+        json_decref(data);
     } else if (arg->opcode == WSLAY_CONNECTION_CLOSE) {
-        Broker *broker = user_data;
         dslink_socket_close_nofree(broker->socket);
     }
 }
@@ -128,6 +136,7 @@ void handle_conn(Broker *broker, HttpRequest *req, Socket *sock) {
     }
 
     char *data = json_dumps(resp, JSON_INDENT(2));
+    json_decref(resp);
     if (!data) {
         broker_send_internal_error(sock);
         goto exit;
@@ -162,16 +171,15 @@ int handle_ws(Broker *broker, HttpRequest *req,
         goto fail;
     }
 
-    if (broker_handshake_handle_ws(broker, dsId, auth) != 0) {
+    broker->socket = sock;
+    if (broker_handshake_handle_ws(broker, dsId,
+                                   auth, socketData) != 0) {
         goto fail;
     }
 
     char buf[1024];
     len = snprintf(buf, sizeof(buf), WS_RESP, accept);
     dslink_socket_write(sock, buf, len);
-    *socketData = (void *) 1;
-
-    broker->socket = sock;
     dslink_ws_send(broker->ws, "{}");
 
     return 0;
@@ -186,6 +194,7 @@ void on_data_callback(Socket *sock, void *data, void **socketData) {
     Broker *broker = data;
     broker->socket = sock;
     if (*socketData) {
+        broker->link = *socketData;
         broker->ws->read_enabled = 1;
         wslay_event_recv(broker->ws);
         return;
@@ -194,6 +203,7 @@ void on_data_callback(Socket *sock, void *data, void **socketData) {
     HttpRequest req;
     {
         char buf[1024];
+        memset(buf, 0, sizeof(buf));
         dslink_socket_read(sock, buf, sizeof(buf));
         broker_http_parse_req(&req, buf);
     }

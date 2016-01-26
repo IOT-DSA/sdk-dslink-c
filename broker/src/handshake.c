@@ -79,9 +79,13 @@ json_t *broker_handshake_handle_conn(Broker *broker,
     json_object_set_new_nocheck(resp, "wsUri", json_string("/ws"));
     json_object_set_new_nocheck(resp, "tempKey", json_string(tempKey));
     json_object_set_new_nocheck(resp, "salt", json_string(link->auth->salt));
-    // TODO: inject dslink into /downstream
     if (json_boolean_value(json_object_get(handshake, "isResponder"))) {
+        link->isResponder = 1;
         json_object_set_new_nocheck(resp, "path", json_string("")); // TODO
+    }
+
+    if (json_boolean_value(json_object_get(handshake, "isRequester"))) {
+        link->isRequester = 1;
     }
 
     {
@@ -112,14 +116,22 @@ fail:
 
 int broker_handshake_handle_ws(Broker *broker,
                                const char *dsId,
-                               const char *auth) {
-    RemoteDSLink *link = dslink_map_get(&broker->clientConnecting,
-                                        (void *) dsId);
+                               const char *auth,
+                               void **socketData) {
+    void *oldKey = (void *) dsId;
+    RemoteDSLink *link = dslink_map_remove(&broker->clientConnecting,
+                                           &oldKey);
     if (!(link && auth && link->auth->pubKey)) {
         return 1;
     }
 
+
     int ret = 0;
+    if (dslink_map_contains(&broker->downstream, (void *) dsId)) {
+        ret = 1;
+        goto exit;
+    }
+
     char expectedAuth[90];
     if (dslink_handshake_gen_auth_key(&link->auth->tempKey,
                                       link->auth->pubKey,
@@ -135,15 +147,23 @@ int broker_handshake_handle_ws(Broker *broker,
         goto exit;
     }
 
-    log_info("DSLink `%s` has connected\n", dsId);
-
-exit:
-    {
-        mbedtls_ecdh_free(&link->auth->tempKey);
-        free((void *) link->auth->pubKey);
-        free(link->auth);
-        link->auth = NULL;
+    void *tmp = (void *) link;
+    if (dslink_map_set(&broker->downstream, oldKey, &tmp) != 0) {
+        free((void *) dsId);
+        ret = 1;
+        goto exit;
     }
 
+    link->socket = broker->socket;
+    *socketData = link;
+    log_info("DSLink `%s` has connected\n", dsId);
+exit:
+    mbedtls_ecdh_free(&link->auth->tempKey);
+    free((void *) link->auth->pubKey);
+    free(link->auth);
+    link->auth = NULL;
+    if (ret != 0) {
+        free(link);
+    }
     return ret;
 }
