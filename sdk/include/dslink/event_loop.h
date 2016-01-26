@@ -44,12 +44,13 @@ struct EventTask {
 };
 
 struct EventLoop {
+    EventTask head;
+
     uint8_t shutdown;
     want_block_func block_func;
     void *block_func_data;
 
-    EventTask *head;
-    EventTask *tail;
+
 };
 
 void dslink_event_loop_init(EventLoop *loop,
