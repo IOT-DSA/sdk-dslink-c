@@ -5,12 +5,12 @@
 #include "dslink/err.h"
 
 static inline
-uint8_t is_loop_empty (EventLoop *loop) {
+uint8_t is_loop_empty(EventLoop *loop) {
     return loop->head.next == &loop->head;
 }
 
 static inline
-uint8_t is_loop_not_empty (EventLoop *loop) {
+uint8_t is_loop_not_empty(EventLoop *loop) {
     return loop->head.next != &loop->head;
 }
 
@@ -36,8 +36,6 @@ EventTask * remove_task(EventTask *task) {
     task->next->prev = task->prev;
     return task;
 }
-
-
 
 static
 void dslink_event_loop_sched_raw(EventLoop *loop, EventTask *task) {
