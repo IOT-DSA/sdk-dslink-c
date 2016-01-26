@@ -14,7 +14,7 @@
 json_t *broker_handshake_handle_conn(Broker *broker,
                                      const char *dsId,
                                      json_t *handshake) {
-    if (dslink_map_contains(&broker->clientConnecting, (void *) dsId)) {
+    if (dslink_map_contains(&broker->client_connecting, (void *) dsId)) {
         return NULL;
     }
 
@@ -106,7 +106,7 @@ json_t *broker_handshake_handle_conn(Broker *broker,
             goto fail;
         }
         void **value = (void **) &link;
-        if (dslink_map_set(&broker->clientConnecting, tmp, value) != 0) {
+        if (dslink_map_set(&broker->client_connecting, tmp, value) != 0) {
             free(tmp);
             goto fail;
         }
@@ -131,7 +131,7 @@ int broker_handshake_handle_ws(Broker *broker,
                                const char *auth,
                                void **socketData) {
     void *oldKey = (void *) dsId;
-    RemoteDSLink *link = dslink_map_remove(&broker->clientConnecting,
+    RemoteDSLink *link = dslink_map_remove(&broker->client_connecting,
                                            &oldKey);
     if (!(link && auth && link->auth->pubKey)) {
         return 1;

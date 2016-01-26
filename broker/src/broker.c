@@ -243,7 +243,7 @@ int broker_init() {
     memset(&broker, 0, sizeof(Broker));
     {
         // TODO: error checking
-        dslink_map_init(&broker.clientConnecting,
+        dslink_map_init(&broker.client_connecting,
                         dslink_map_str_cmp,
                         dslink_map_str_key_len_cal);
 

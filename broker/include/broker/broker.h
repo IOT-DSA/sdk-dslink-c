@@ -16,10 +16,10 @@ typedef struct Broker {
     Socket *socket;
     wslay_event_context_ptr ws;
 
-    // Key is string and value is RemoteDSLink
-    Map clientConnecting;
+    // Map<char *, RemoteDSLink *>
+    Map client_connecting;
 
-    // Key is a string and value is a RemoteDSLink
+    // Map<char *, RemoteDSLink *>
     Map downstream;
 
 } Broker;
