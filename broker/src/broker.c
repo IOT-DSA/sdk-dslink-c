@@ -28,6 +28,17 @@
                     "Sec-WebSocket-Accept: %s\r\n\r\n"
 
 static
+void close_link(Broker *broker) {
+    dslink_socket_close_nofree(broker->socket);
+    if (broker->link) {
+        log_info("DSLink `%s` has disconnected\n", broker->link->dsId);
+        void *tmp = (void *) broker->link->dsId;
+        dslink_map_remove(&broker->downstream, &tmp);
+        free((void *) broker->link->dsId);
+    }
+}
+
+static
 int generate_accept_key(const char *buf, size_t bufLen,
                         char *out, size_t outLen) {
     char data[256];
@@ -49,7 +60,7 @@ ssize_t want_read_cb(wslay_event_context_ptr ctx,
     Broker *broker = user_data;
     int ret = dslink_socket_read(broker->socket, (char *) buf, len);
     if (ret == 0) {
-        dslink_socket_close_nofree(broker->socket);
+        close_link(broker);
         wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
         return -1;
     } else if (ret == DSLINK_SOCK_READ_ERR) {
@@ -102,7 +113,7 @@ void on_ws_data(wslay_event_context_ptr ctx,
         broker_handle_msg(broker, data);
         json_decref(data);
     } else if (arg->opcode == WSLAY_CONNECTION_CLOSE) {
-        dslink_socket_close_nofree(broker->socket);
+        close_link(broker);
     }
 }
 
@@ -193,8 +204,8 @@ static
 void on_data_callback(Socket *sock, void *data, void **socketData) {
     Broker *broker = data;
     broker->socket = sock;
-    if (*socketData) {
-        broker->link = *socketData;
+    broker->link = *socketData;
+    if (broker->link) {
         broker->ws->read_enabled = 1;
         wslay_event_recv(broker->ws);
         return;

@@ -21,6 +21,7 @@ typedef struct RemoteDSLink {
 
     RemoteAuth *auth;
 
+    const char *dsId;
     uint8_t isRequester;
     uint8_t isResponder;
 

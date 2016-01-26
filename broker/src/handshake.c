@@ -90,7 +90,6 @@ json_t *broker_handshake_handle_conn(Broker *broker,
         }
 
         char buf[512];
-        memset(buf, 0, sizeof(buf));
         size_t len = snprintf(buf, sizeof(buf), "/downstream/%.*s",
                               (int) nameLen, dsId);
         json_object_set_new_nocheck(resp, "path", json_stringn(buf, len));
@@ -166,6 +165,7 @@ int broker_handshake_handle_ws(Broker *broker,
         goto exit;
     }
 
+    link->dsId = oldKey;
     *socketData = link;
     log_info("DSLink `%s` has connected\n", dsId);
 exit:
