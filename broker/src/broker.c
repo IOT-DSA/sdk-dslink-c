@@ -102,6 +102,13 @@ void on_ws_data(wslay_event_context_ptr ctx,
     (void) ctx;
     Broker *broker = user_data;
     if (arg->opcode == WSLAY_TEXT_FRAME) {
+        if (arg->msg_length == 2
+            && arg->msg[0] == '{'
+            && arg->msg[1] == '}') {
+            dslink_ws_send(broker->ws, "{}");
+            return;
+        }
+
         json_error_t err;
         json_t *data = json_loadb((char *) arg->msg,
                                   arg->msg_length, 0, &err);
@@ -191,7 +198,6 @@ int handle_ws(Broker *broker, HttpRequest *req,
     char buf[1024];
     len = snprintf(buf, sizeof(buf), WS_RESP, accept);
     dslink_socket_write(sock, buf, len);
-    dslink_ws_send(broker->ws, "{}");
 
     return 0;
 fail:
