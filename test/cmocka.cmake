@@ -17,6 +17,7 @@ ExternalProject_Add(cmocka_ep
         -DWITH_STATIC_LIB=ON
         -DCMAKE_ARCHIVE_OUTPUT_DIRECTORY_DEBUG:PATH=Debug
         -DCMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELEASE:PATH=Release
+        -DCMAKE_C_ARGS=-Wno-format
 
         # Don't build unused examples and disable install step
         BUILD_COMMAND $(MAKE) cmocka_static
