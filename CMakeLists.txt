@@ -3,7 +3,7 @@ project(sdk_dslink_c C)
 
 option(DSLINK_BUILD_BROKER "Whether to build the broker" OFF)
 option(DSLINK_BUILD_EXAMPLES "Whether to build the examples" OFF)
-option(DSLINK_TEST "Whether to enable tests" OFF)
+option(DSLINK_TEST "Whether to enable tests" ON)
 
 ######## Define Macros #######
 
