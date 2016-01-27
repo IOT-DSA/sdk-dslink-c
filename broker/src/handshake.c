@@ -83,6 +83,13 @@ json_t *broker_handshake_handle_conn(Broker *broker,
     if (json_boolean_value(json_object_get(handshake, "isResponder"))) {
         link->isResponder = 1;
 
+        // TODO: assign a node to dslink even it's a requester ?
+
+        char buf[512];
+        memset(buf, 0, sizeof(buf));
+        snprintf(buf, sizeof(buf), "/downstream/");
+        char *name = buf + sizeof("/downstream/")-1;
+
         size_t dsIdLen = strlen(dsId);
         if (dsIdLen < 44) {
             goto fail;
@@ -93,16 +100,31 @@ json_t *broker_handshake_handle_conn(Broker *broker,
                 nameLen--;
             }
         }
+        // find a valid name from broker->client_names
+        memcpy(name, dsId, nameLen);
+        while (dslink_map_contains(&broker->downstream, buf) || dslink_map_contains(&broker->client_connecting, buf)) {
+            // TODO: what if it's all conflicted with exiting dslink?
+            // is this error handled already
+            name[nameLen] = dsId[nameLen];
+            nameLen++;
+        }
 
-        char buf[512];
-        int len = snprintf(buf, sizeof(buf), "/downstream/%.*s",
-                              (int) nameLen, dsId);
-        buf[len] = '\0';
         link->name = dslink_strdup(buf);
         if (!link->name) {
             goto fail;
         }
         json_object_set_new_nocheck(resp, "path", json_string(buf));
+
+        char *tmp = dslink_strdup(buf);
+        if (!tmp) {
+            goto fail;
+        }
+        void *value = (void *) link;
+        // add to connecting map with the name
+        if (dslink_map_set(&broker->client_connecting, tmp, &value) != 0) {
+            free(tmp);
+            goto fail;
+        }
     }
 
     if (json_boolean_value(json_object_get(handshake, "isRequester"))) {
@@ -115,6 +137,7 @@ json_t *broker_handshake_handle_conn(Broker *broker,
             goto fail;
         }
         void *value = (void *) link;
+        // add to connecting map with dsId
         if (dslink_map_set(&broker->client_connecting, tmp, &value) != 0) {
             free(tmp);
             goto fail;
@@ -139,6 +162,11 @@ int broker_handshake_handle_ws(Broker *broker,
     void *oldDsId = (void *) dsId;
     RemoteDSLink *link = dslink_map_remove(&broker->client_connecting,
                                            &oldDsId);
+    if (link && link->name) {
+        void *oldName = (void *) link->name;
+        dslink_map_remove(&broker->client_connecting,
+                          &oldName);
+    }
     if (!(link && auth && link->auth->pubKey)) {
         return 1;
     }

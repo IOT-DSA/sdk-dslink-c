@@ -16,8 +16,10 @@ typedef struct Broker {
     Socket *socket;
     wslay_event_context_ptr ws;
 
-    // Map<char *, RemoteDSLink *>
+    // Map<char * dsId, RemoteDSLink *>
+    // Map<char * name, RemoteDSLink *>
     Map client_connecting;
+
 
     // Map<char *, DownstreamNode *>
     Map downstream;
