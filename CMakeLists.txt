@@ -5,6 +5,7 @@ project(sdk_dslink_c C)
 
 option(DSLINK_BUILD_BROKER "Whether to build the broker" OFF)
 option(DSLINK_BUILD_EXAMPLES "Whether to build the examples" OFF)
+option(DSLINK_TEST "Whether to enable tests" OFF)
 
 ##### Configure Dependencies #####
 
@@ -103,9 +104,10 @@ set(EXAMPLE_RESPONDER_SRC
 
 ###### Configure Tests #####
 
-add_subdirectory(test)
-
-enable_testing()
+if (DSLINK_TEST)
+    add_subdirectory(test)
+    enable_testing()
+endif()
 
 ###### Configure Libraries #####
 
@@ -114,7 +116,7 @@ link_directories("${JANSSON_DIR}/lib")
 add_library(sdk_dslink_c-object OBJECT ${LIBRARY_SRC})
 
 set(JANSSON_LIB "${JANSSON_DIR}/lib/libjansson.a")
-if(NOT EXISTS "${JANSSON_DIR}/lib/libjansson.a")
+if (NOT EXISTS "${JANSSON_DIR}/lib/libjansson.a")
     set(JANSSON_LIB "jansson")
 endif()
 
