@@ -81,14 +81,17 @@ set(LIBRARY_SRC
 
 set(BROKER_SRC_DIR "broker/src")
 set(BROKER_SRC
+    "${BROKER_SRC_DIR}/msg/msg_handler.c"
+    "${BROKER_SRC_DIR}/msg/msg_list.c"
+
     "${BROKER_SRC_DIR}/net/http.c"
     "${BROKER_SRC_DIR}/net/server.c"
+
     "${BROKER_SRC_DIR}/broker.c"
     "${BROKER_SRC_DIR}/config.c"
     "${BROKER_SRC_DIR}/handshake.c"
     "${BROKER_SRC_DIR}/main.c"
     "${BROKER_SRC_DIR}/remote_dslink.c"
-    "${BROKER_SRC_DIR}/msg_handler.c"
     "${BROKER_SRC_DIR}/stream.c"
 )
 

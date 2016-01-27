@@ -1,11 +1,11 @@
-#define LOG_TAG "msg_handler"
-#include <dslink/log.h>
-
 #include <string.h>
-#include <dslink/ws.h>
-#include "broker/msg_handler.h"
 
-#define BROKER_CREATE_RESP \
+#define LOG_TAG "msg_list"
+#include <dslink/log.h>
+#include <dslink/ws.h>
+#include "broker/msg/msg_list.h"
+
+#define BROKER_CREATE_RESP(rid, stream) \
     json_t *top = json_object(); \
     if (!top) { \
         return NULL; \
@@ -22,14 +22,13 @@
         return NULL; \
     } \
     json_object_set_new_nocheck(top, "responses", resps); \
-    json_array_append_new(resps, resp);
+    json_array_append_new(resps, resp); \
+    json_object_set_nocheck(resp, "rid", rid); \
+    json_object_set_new_nocheck(resp, "stream", json_string(stream))
 
 static
 json_t *broker_list_root(json_t *rid) {
-    BROKER_CREATE_RESP
-    json_object_set_nocheck(resp, "rid", rid);
-    json_object_set_new_nocheck(resp, "stream", json_string("open"));
-
+    BROKER_CREATE_RESP(rid, "open");
     json_t *updates = json_array();
     if (!updates) {
         json_delete(top);
@@ -68,16 +67,14 @@ json_t *broker_list_root(json_t *rid) {
     }
 
     return top;
-fail:
+    fail:
     json_delete(top);
     return NULL;
 }
 
 static
 json_t *broker_list_downstream(Broker *broker, json_t *rid) {
-    BROKER_CREATE_RESP
-    json_object_set_nocheck(resp, "rid", rid);
-    json_object_set_new_nocheck(resp, "stream", json_string("open"));
+    BROKER_CREATE_RESP(rid, "open");
 
     json_t *updates = json_array();
     if (!updates) {
@@ -119,13 +116,12 @@ json_t *broker_list_downstream(Broker *broker, json_t *rid) {
     }
 
     return top;
-fail:
+    fail:
     json_delete(top);
     return NULL;
 }
 
-static
-int broker_handle_list(Broker *broker, json_t *req) {
+int broker_msg_handle_list(Broker *broker, json_t *req) {
     const char *path = json_string_value(json_object_get(req, "path"));
     json_t *rid = json_object_get(req, "rid");
     if (!(path && rid)) {
@@ -147,40 +143,4 @@ int broker_handle_list(Broker *broker, json_t *req) {
     dslink_ws_send_obj(broker->ws, resp);
     json_decref(resp);
     return 0;
-}
-
-static
-void broker_handle_req(Broker *broker, json_t *req) {
-    const char *method = json_string_value(json_object_get(req, "method"));
-    if (!method) {
-        return;
-    }
-    if (strcmp(method, "list") == 0) {
-        broker_handle_list(broker, req);
-    } else {
-        log_err("Method unspecified: %s\n", method);
-    }
-}
-
-void broker_handle_msg(Broker *broker,
-                       json_t *data) {
-    if (!data) {
-        return;
-    }
-    json_incref(data);
-    json_t *reqs = json_object_get(data, "requests");
-    if (broker->link->isRequester && reqs) {
-        json_t *req;
-        size_t index = 0;
-        json_array_foreach(reqs, index, req) {
-            broker_handle_req(broker, req);
-        }
-    }
-
-    json_t *resps = json_object_get(data, "responses");
-    if (broker->link->isResponder && resps) {
-        // TODO
-    }
-
-    json_decref(data);
 }

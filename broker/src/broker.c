@@ -7,7 +7,7 @@
 #include <wslay/wslay.h>
 #include <wslay_event.h>
 
-#include "broker/msg_handler.h"
+#include "broker/msg/msg_handler.h"
 #include "broker/net/server.h"
 #include "broker/handshake.h"
 #include "broker/config.h"
@@ -121,7 +121,7 @@ void on_ws_data(wslay_event_context_ptr ctx,
         }
         log_debug("Received Data: %.*s\n", (int) arg->msg_length, arg->msg);
 
-        broker_handle_msg(broker, data);
+        broker_msg_handle(broker, data);
         json_decref(data);
     } else if (arg->opcode == WSLAY_CONNECTION_CLOSE) {
         close_link(broker);

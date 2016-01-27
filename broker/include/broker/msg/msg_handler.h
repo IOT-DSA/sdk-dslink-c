@@ -8,7 +8,7 @@ extern "C" {
 #include <jansson.h>
 #include "broker/broker.h"
 
-void broker_handle_msg(Broker *broker, json_t *data);
+void broker_msg_handle(Broker *broker, json_t *data);
 
 #ifdef __cplusplus
 }
