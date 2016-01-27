@@ -8,10 +8,8 @@
 include(ExternalProject)
 
 ExternalProject_Add(cmocka_ep
-        GIT_REPOSITORY git://git.cryptomilk.org/projects/cmocka.git
-        GIT_TAG cmocka-1.0.1
-        # Use git submodule to fetch source manually and in-tree, store in SOURCE_DIR
-        SOURCE_DIR ${CMAKE_SOURCE_DIR}/modules/cmocka
+        URL https://git.cryptomilk.org/projects/cmocka.git/snapshot/cmocka-1.0.1.tar.gz
+        URL_MD5 79b19768d7a9a7fcc119e0b393755c39
         CMAKE_ARGS -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
         -DCMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME}
         -DWITH_STATIC_LIB=ON
