@@ -68,7 +68,7 @@ json_t *broker_list_root(json_t *rid) {
     }
 
     return top;
-    fail:
+fail:
     json_delete(top);
     return NULL;
 }
@@ -117,7 +117,7 @@ json_t *broker_list_downstream(Broker *broker, json_t *rid) {
     }
 
     return top;
-    fail:
+fail:
     json_delete(top);
     return NULL;
 }
