@@ -15,7 +15,7 @@ addons:
     - cmake
 script:
 - mkdir build && cd build
-- cmake -DDSLINK_BUILD_BROKER=ON -DDSLINK_BUILD_EXAMPLES=ON -DDSLINK_TEST=ON ..
+- cmake -DDSLINK_TEST=ON ..
 - cmake ..
 - make
 - make test
