@@ -100,6 +100,12 @@ set(EXAMPLE_RESPONDER_SRC
     "${EXAMPLE_RESPONDER_SRC_DIR}/main.c"
 )
 
+###### Configure Tests #####
+
+add_subdirectory(test)
+
+enable_testing()
+
 ###### Configure Libraries #####
 
 set(CMAKE_MACOSX_RPATH 1)
