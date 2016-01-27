@@ -113,11 +113,16 @@ set(CMAKE_MACOSX_RPATH 1)
 link_directories("${JANSSON_DIR}/lib")
 add_library(sdk_dslink_c-object OBJECT ${LIBRARY_SRC})
 
+set(JANSSON_LIB "${JANSSON_DIR}/lib/libjansson.a")
+if(NOT EXISTS "${JANSSON_DIR}/lib/libjansson.a")
+    set(JANSSON_LIB "jansson")
+endif()
+
 add_library(sdk_dslink_c-static STATIC $<TARGET_OBJECTS:sdk_dslink_c-object>)
-target_link_libraries(sdk_dslink_c-static jansson)
+target_link_libraries(sdk_dslink_c-static ${JANSSON_LIB})
 
 add_library(sdk_dslink_c SHARED $<TARGET_OBJECTS:sdk_dslink_c-object>)
-target_link_libraries(sdk_dslink_c jansson)
+target_link_libraries(sdk_dslink_c ${JANSSON_LIB})
 
 set(DSLINK_INSTALL_LIB_DIR lib CACHE PATH "Installation directory for libraries")
 set(DSLINK_INSTALL_BIN_DIR bin CACHE PATH "Installation directory for executables")
