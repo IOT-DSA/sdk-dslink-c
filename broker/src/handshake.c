@@ -24,6 +24,11 @@ json_t *broker_handshake_handle_conn(Broker *broker,
     if (!(link && resp)) {
         goto fail;
     }
+
+    if (broker_remote_dslink_init(link) != 0) {
+        goto fail;
+    }
+
     link->auth = calloc(1, sizeof(RemoteAuth));
     if (!link->auth) {
         goto fail;
@@ -102,27 +107,25 @@ json_t *broker_handshake_handle_conn(Broker *broker,
         }
         // find a valid name from broker->client_names
         memcpy(name, dsId, nameLen);
-        while (dslink_map_contains(&broker->downstream, buf) || dslink_map_contains(&broker->client_connecting, buf)) {
+        while (dslink_map_contains(&broker->downstream, name)
+               || dslink_map_contains(&broker->client_connecting, name)) {
             // TODO: what if it's all conflicted with exiting dslink?
             // is this error handled already
             name[nameLen] = dsId[nameLen];
             nameLen++;
         }
 
-        link->name = dslink_strdup(buf);
+        link->name = dslink_strdup(name);
         if (!link->name) {
             goto fail;
         }
         json_object_set_new_nocheck(resp, "path", json_string(buf));
 
-        char *tmp = dslink_strdup(buf);
-        if (!tmp) {
-            goto fail;
-        }
         void *value = (void *) link;
         // add to connecting map with the name
-        if (dslink_map_set(&broker->client_connecting, tmp, &value) != 0) {
-            free(tmp);
+        if (dslink_map_set(&broker->client_connecting,
+                           (void *) link->name, &value) != 0) {
+            free((void *) link->name);
             goto fail;
         }
     }
@@ -215,6 +218,7 @@ int broker_handshake_handle_ws(Broker *broker,
         }
     }
 
+    link->socket = broker->socket;
     link->dsId = oldDsId;
     link->node = node;
 
@@ -230,6 +234,7 @@ exit:
     free(link->auth);
     link->auth = NULL;
     if (ret != 0) {
+        DSLINK_MAP_FREE(&link->local_streams, {});
         free(link);
     }
     return ret;
