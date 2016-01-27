@@ -199,6 +199,14 @@ int handle_ws(Broker *broker, HttpRequest *req,
         goto fail;
     }
 
+    // TODO: need to refactory this part
+    // either do a better reuse logic or avoid reusing the ws
+    broker->ws->write_enabled = 1;
+    if (broker->ws->close_status & WSLAY_CLOSE_QUEUED) {
+        broker->ws->close_status ^= WSLAY_CLOSE_QUEUED;
+    }
+
+
     {
         char buf[1024];
         int bLen = snprintf(buf, sizeof(buf), WS_RESP, accept);
