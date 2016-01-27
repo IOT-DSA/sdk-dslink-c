@@ -1,5 +1,4 @@
 language: c
-sudo: false
 compiler:
 - clang
 - gcc-4.8
@@ -9,12 +8,14 @@ addons:
   apt:
     sources:
     - ubuntu-toolchain-r-test
+    - kalakris-cmake
     packages:
     - gcc-4.8
     - gcc-4.9
     - gcc-5
+    - cmake
 script:
 - mkdir build && cd build
-- cmake -DDSLINK_BUILD_BROKER=true --DSLINK_BUILD_EXAMPLES=true ..
+- cmake -DDSLINK_BUILD_BROKER=true -DDSLINK_BUILD_EXAMPLES=true ..
 - make
 - make test
