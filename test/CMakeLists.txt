@@ -1,4 +1,9 @@
+include(cmocka.cmake)
+
 enable_testing()
+
+include_directories(include)
+include_directories(${CMOCKA_INCLUDE_DIR} include)
 
 find_program(MEMORYCHECK_COMMAND valgrind)
 set(MEMORYCHECK_COMMAND_OPTIONS "--trace-children=yes --leak-check=full")
@@ -13,6 +18,6 @@ endfunction(add_memcheck_test)
 foreach(tname "col_map")
     add_executable(${tname}_test src/${tname}_test.c)
     target_link_libraries(${tname}_test sdk_dslink_c cmocka)
-    add_dependencies(${tname}_test ${tname}_test sdk_dslink_c)
+    add_dependencies(${tname}_test ${tname}_test cmocka sdk_dslink_c)
     add_memcheck_test(${tname}_test ${tname}_test)
 endforeach()

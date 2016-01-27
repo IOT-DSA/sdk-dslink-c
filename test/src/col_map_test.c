@@ -1,7 +1,4 @@
-#include <stddef.h>
-#include <setjmp.h>
-#include <stdarg.h>
-#include <cmocka.h>
+#include "cmocka_init.h"
 #include <stdlib.h>
 #include <dslink/col/map.h>
 #include <stdio.h>
