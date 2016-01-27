@@ -15,7 +15,6 @@ addons:
     - cmake
 script:
 - mkdir build && cd build
-# - cmake -DDSLINK_TEST=ON ..
-- cmake ..
+- cmake -DDSLINK_TEST=ON ..
 - make
-# - make test
+- make test
