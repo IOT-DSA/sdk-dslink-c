@@ -1,6 +1,5 @@
 language: c
 compiler:
-- clang
 - gcc-4.8
 - gcc-4.9
 - gcc-5
