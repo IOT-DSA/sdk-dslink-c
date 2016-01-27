@@ -42,6 +42,28 @@ char *dslink_strdup(const char *str) {
     return tmp;
 }
 
+char *dslink_strdupl(const char *str, size_t len) {
+    if (!str) {
+        return NULL;
+    }
+    char *tmp = malloc(len + 1);
+    if (!tmp) {
+        return NULL;
+    }
+    memcpy(tmp, str, len);
+    tmp[len] = '\0';
+    return tmp;
+}
+
+int dslink_str_starts_with(const char *a, const char *b) {
+    while (*b) {
+        if (*a++ != *b++) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
 size_t dslink_create_ts(char *buf, size_t bufLen) {
     time_t now = time(NULL);
     return strftime(buf, bufLen,

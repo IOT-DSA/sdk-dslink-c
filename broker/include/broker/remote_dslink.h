@@ -7,6 +7,8 @@ extern "C" {
 
 #include <stdint.h>
 #include <mbedtls/ecdh.h>
+
+#include <dslink/col/map.h>
 #include <dslink/socket.h>
 
 typedef struct RemoteAuth {
@@ -19,16 +21,22 @@ typedef struct RemoteAuth {
 
 typedef struct RemoteDSLink {
 
+    uint8_t isRequester;
+    uint8_t isResponder;
+
     struct DownstreamNode *node;
+    Socket *socket;
     RemoteAuth *auth;
 
     const char *dsId;
     const char *name;
-    uint8_t isRequester;
-    uint8_t isResponder;
+
+    // Map<uint32_t *, Stream *>
+    Map local_streams;
 
 } RemoteDSLink;
 
+int broker_remote_dslink_init(RemoteDSLink *link);
 void broker_remote_dslink_free(RemoteDSLink *link);
 
 #ifdef __cplusplus

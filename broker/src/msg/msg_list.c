@@ -3,7 +3,10 @@
 #define LOG_TAG "msg_list"
 #include <dslink/log.h>
 #include <dslink/ws.h>
-#include <broker/node.h>
+#include <dslink/utils.h>
+
+#include "broker/node.h"
+#include "broker/stream.h"
 #include "broker/msg/msg_list.h"
 
 #define BROKER_CREATE_RESP(rid, stream) \
@@ -122,6 +125,55 @@ fail:
     return NULL;
 }
 
+static
+void broker_list_dslink(Broker *broker,
+                        DownstreamNode *node,
+                        const char *path,
+                        uint32_t reqRid) {
+    // TODO: so much error handling
+    uint32_t rid = 0;
+    {
+        json_t *top = json_object();
+        json_t *reqs = json_array();
+        json_object_set_new_nocheck(top, "requests", reqs);
+
+        json_t *req = json_object();
+        json_array_append_new(reqs, req);
+        json_object_set_new_nocheck(req, "method", json_string("list"));
+        json_object_set_new_nocheck(req, "path", json_string(path));
+
+        rid = broker_node_incr_rid(node);
+        json_object_set_new_nocheck(req, "rid",
+                                    json_integer((json_int_t) rid));
+
+        {
+            Socket *prevSock = broker->socket;
+            RemoteDSLink *prevLink = broker->link;
+
+            broker->socket = node->link->socket;
+            broker->link = node->link;
+
+            dslink_ws_send_obj(broker->ws, top);
+            json_delete(top);
+
+            broker->socket = prevSock;
+            broker->link = prevLink;
+        }
+    }
+    {
+        BrokerListStream *stream = broker_stream_list_init();
+
+        void *client = node->link;
+        uint32_t *r = malloc(sizeof(uint32_t));
+        *r = reqRid;
+        dslink_map_set(&stream->clients, r, &client);
+
+        r = malloc(sizeof(uint32_t));
+        *r = rid;
+        dslink_map_set(&node->link->local_streams, r, (void **) &stream);
+    }
+}
+
 int broker_msg_handle_list(Broker *broker, json_t *req) {
     const char *path = json_string_value(json_object_get(req, "path"));
     json_t *rid = json_object_get(req, "rid");
@@ -134,6 +186,26 @@ int broker_msg_handle_list(Broker *broker, json_t *req) {
         resp = broker_list_root(rid);
     } else if (strcmp(path, "/downstream") == 0) {
         resp = broker_list_downstream(broker, rid);
+    } else if (dslink_str_starts_with(path, "/downstream/")) {
+        const char *name = path + sizeof("/downstream/") - 1;
+        const char *linkPath;
+        size_t nameLen = strlen(name);
+        {
+            const char *loc = strchr(name, '/');
+            if (loc) {
+                nameLen = strlen(loc);
+                linkPath = loc;
+            } else {
+                linkPath = "/";
+            }
+        }
+        DownstreamNode *node = dslink_map_getl(&broker->downstream,
+                                               (void *) name, nameLen);
+        if (node) {
+            uint32_t reqRid = (uint32_t) json_integer_value(rid);
+            broker_list_dslink(broker, node, linkPath, reqRid);
+            goto success;
+        }
     } else {
         log_err("Unhandled path: %s\n", path);
     }
@@ -143,5 +215,6 @@ int broker_msg_handle_list(Broker *broker, json_t *req) {
     }
     dslink_ws_send_obj(broker->ws, resp);
     json_decref(resp);
+success:
     return 0;
 }

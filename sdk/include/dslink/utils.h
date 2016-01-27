@@ -13,6 +13,9 @@ extern "C" {
 const char *dslink_strcasestr(const char *haystack, const char *needle);
 int dslink_strcasecmp(const char *a, const char *b);
 char *dslink_strdup(const char *str);
+char *dslink_strdupl(const char *str, size_t len);
+int dslink_str_starts_with(const char *a, const char *b);
+
 size_t dslink_create_ts(char *buf, size_t bufLen);
 
 #ifdef __cplusplus

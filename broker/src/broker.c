@@ -289,12 +289,6 @@ int broker_init() {
             ret = 1;
             goto exit;
         }
-
-        if (dslink_map_init(&broker.streams, dslink_map_uint32_cmp,
-                            dslink_map_uint32_key_len_cal) != 0) {
-            ret = 1;
-            goto exit;
-        }
     }
 
     {

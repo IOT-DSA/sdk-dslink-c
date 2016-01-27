@@ -20,12 +20,9 @@ typedef struct Broker {
     // Map<char * name, RemoteDSLink *>
     Map client_connecting;
 
-
-    // Map<char *, DownstreamNode *>
+    // Map<char * name, DownstreamNode *>
     Map downstream;
 
-    // Map<char *, Stream *>
-    Map streams;
 } Broker;
 
 int broker_init();

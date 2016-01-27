@@ -18,7 +18,7 @@ typedef struct DownstreamNode {
 
 } DownstreamNode;
 
-void broker_dsnode_incr_rid(DownstreamNode *node);
+uint32_t broker_node_incr_rid(DownstreamNode *node);
 
 #ifdef __cplusplus
 }

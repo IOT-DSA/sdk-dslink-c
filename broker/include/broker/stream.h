@@ -6,27 +6,24 @@ extern "C" {
 #endif
 
 #include <dslink/col/map.h>
+#include <dslink/stream.h>
 
-typedef enum StreamType {
-
-    LIST
-
-} StreamType;
-
-typedef struct Stream {
+typedef struct BrokerStream {
 
     StreamType type;
 
-} Stream;
+} BrokerStream;
 
-typedef struct ListStream {
+typedef struct BrokerListStream {
 
     StreamType type;
 
     // Map<uint32_t *, RemoteDSLink *>
     Map clients;
 
-} ListStream;
+} BrokerListStream;
+
+BrokerListStream *broker_stream_list_init();
 
 #ifdef __cplusplus
 }
