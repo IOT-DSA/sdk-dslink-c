@@ -7,5 +7,4 @@ void broker_remote_dslink_free(RemoteDSLink *link) {
         DSLINK_CHECKED_EXEC(free, (void *) link->auth->pubKey);
         free(link->auth);
     }
-    DSLINK_CHECKED_EXEC(free, (void *) link->name);
 }

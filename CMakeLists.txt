@@ -40,7 +40,7 @@ ADD_C_FLAGS("-Wno-overlength-strings")
 ADD_C_FLAGS("-pedantic -fPIC")
 
 string(TOUPPER "${CMAKE_BUILD_TYPE}" DSLINK_BUILD_TYPE)
-if (DSLINK_BUILD_TYPE STREQUAL DEBUG)
+if (DSLINK_BUILD_TYPE STREQUAL DEBUG AND NOT USE_VALGRIND)
     ADD_C_FLAGS("-fsanitize=address")
     ADD_C_FLAGS("-fstack-protector-all")
 endif()
@@ -91,6 +91,7 @@ set(BROKER_SRC
     "${BROKER_SRC_DIR}/config.c"
     "${BROKER_SRC_DIR}/handshake.c"
     "${BROKER_SRC_DIR}/main.c"
+    "${BROKER_SRC_DIR}/node.c"
     "${BROKER_SRC_DIR}/remote_dslink.c"
     "${BROKER_SRC_DIR}/stream.c"
 )

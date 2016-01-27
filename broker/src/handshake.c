@@ -10,6 +10,7 @@
 
 #include "broker/remote_dslink.h"
 #include "broker/handshake.h"
+#include "broker/node.h"
 
 json_t *broker_handshake_handle_conn(Broker *broker,
                                      const char *dsId,
@@ -124,6 +125,7 @@ json_t *broker_handshake_handle_conn(Broker *broker,
 fail:
     if (link) {
         broker_remote_dslink_free(link);
+        free((void *) link->name);
         free(link);
     }
     DSLINK_CHECKED_EXEC(json_decref, resp);
@@ -163,14 +165,27 @@ int broker_handshake_handle_ws(Broker *broker,
         goto exit;
     }
 
-    void *tmp = (void *) link;
+    DownstreamNode *node = calloc(1, sizeof(DownstreamNode));
+    if (!node) {
+        ret = 1;
+        goto exit;
+    }
+
+    void *tmp = (void *) node;
     if (dslink_map_set(&broker->downstream, oldKey, &tmp) != 0) {
-        free((void *) dsId);
+        free(node);
+        free(oldKey);
         ret = 1;
         goto exit;
     }
 
     link->dsId = oldKey;
+    link->node = node;
+
+    node->link = link;
+    node->dsId = oldKey;
+    node->name = link->name;
+
     *socketData = link;
     log_info("DSLink `%s` has connected\n", dsId);
 exit:

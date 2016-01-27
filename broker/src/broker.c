@@ -16,6 +16,7 @@
 #include <dslink/log.h>
 #include <dslink/utils.h>
 #include <dslink/ws.h>
+#include "broker/node.h"
 
 #define CONN_RESP "HTTP/1.1 200 OK\r\n" \
                     "Connection: close\r\n" \
@@ -33,7 +34,10 @@ void close_link(Broker *broker) {
     if (broker->link) {
         log_info("DSLink `%s` has disconnected\n", broker->link->dsId);
         void *tmp = (void *) broker->link->dsId;
-        dslink_map_remove(&broker->downstream, &tmp);
+        DownstreamNode *node = dslink_map_get(&broker->downstream, &tmp);
+        if (node) {
+            node->link = NULL;
+        }
         broker_remote_dslink_free(broker->link);
         free(broker->link);
 
@@ -199,13 +203,12 @@ int handle_ws(Broker *broker, HttpRequest *req,
         goto fail;
     }
 
-    // TODO: need to refactory this part
+    // TODO: need to refactor this part
     // either do a better reuse logic or avoid reusing the ws
     broker->ws->write_enabled = 1;
     if (broker->ws->close_status & WSLAY_CLOSE_QUEUED) {
         broker->ws->close_status ^= WSLAY_CLOSE_QUEUED;
     }
-
 
     {
         char buf[1024];

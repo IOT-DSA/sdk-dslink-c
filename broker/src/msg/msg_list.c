@@ -3,6 +3,7 @@
 #define LOG_TAG "msg_list"
 #include <dslink/log.h>
 #include <dslink/ws.h>
+#include <broker/node.h>
 #include "broker/msg/msg_list.h"
 
 #define BROKER_CREATE_RESP(rid, stream) \
@@ -95,7 +96,7 @@ json_t *broker_list_downstream(Broker *broker, json_t *rid) {
     }
 
     dslink_map_foreach(&broker->downstream) {
-        const char *name = ((RemoteDSLink *) entry->value)->name;
+        const char *name = ((DownstreamNode *) entry->value)->name;
 
         json_t *up = json_array();
         if (!up) {
