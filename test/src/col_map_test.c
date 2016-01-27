@@ -43,12 +43,11 @@ void col_map_set_large_string_entry_test(void **state) {
     assert_true(!dslink_map_init(&map, dslink_map_str_cmp,
                                  dslink_map_str_key_len_cal));
     for (int n = 0; n < 9000; n++) {
-        int *i = calloc(1, sizeof(int));
-        *i = n;
-        char* key = calloc(1, sizeof(char) * 6 + 1);
-        char* val = calloc(1, sizeof(char) * 12 + 1);
-        assert_true(sprintf(key, "%i", n));
-        assert_true(sprintf(val, "%i %i", n, n));
+        size_t len = sizeof(char) * 12;
+        char *key = malloc(len);
+        char *val = malloc(len);
+        assert_true(snprintf(key, len, "%i", n));
+        assert_true(snprintf(val, len, "%i %i", n, n));
 
         void *tmp = val;
 
@@ -98,7 +97,10 @@ void col_map_set_simple_uint32_test(void **state) {
         i++;
     }
 
-    DSLINK_MAP_FREE(&map, {});
+    DSLINK_MAP_FREE(&map, {
+        free(entry->key);
+        free(entry->value);
+    });
 }
 
 static
