@@ -33,7 +33,7 @@ void close_link(Broker *broker) {
     dslink_socket_close_nofree(broker->socket);
     if (broker->link) {
         log_info("DSLink `%s` has disconnected\n", broker->link->dsId);
-        void *tmp = (void *) broker->link->dsId;
+        void *tmp = (void *) broker->link->name;
         DownstreamNode *node = dslink_map_get(&broker->downstream, &tmp);
         if (node) {
             node->link = NULL;

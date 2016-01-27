@@ -114,8 +114,8 @@ json_t *broker_handshake_handle_conn(Broker *broker,
         if (!tmp) {
             goto fail;
         }
-        void **value = (void **) &link;
-        if (dslink_map_set(&broker->client_connecting, tmp, value) != 0) {
+        void *value = (void *) link;
+        if (dslink_map_set(&broker->client_connecting, tmp, &value) != 0) {
             free(tmp);
             goto fail;
         }
@@ -136,54 +136,62 @@ int broker_handshake_handle_ws(Broker *broker,
                                const char *dsId,
                                const char *auth,
                                void **socketData) {
-    void *oldKey = (void *) dsId;
+    void *oldDsId = (void *) dsId;
     RemoteDSLink *link = dslink_map_remove(&broker->client_connecting,
-                                           &oldKey);
+                                           &oldDsId);
     if (!(link && auth && link->auth->pubKey)) {
         return 1;
     }
 
-
     int ret = 0;
-    if (dslink_map_contains(&broker->downstream, (void *) dsId)) {
-        ret = 1;
-        goto exit;
+    { // Perform auth check
+        char expectedAuth[90];
+        if (dslink_handshake_gen_auth_key(&link->auth->tempKey,
+                                          link->auth->pubKey,
+                                          link->auth->salt,
+                                          (unsigned char *) expectedAuth,
+                                          sizeof(expectedAuth)) != 0) {
+            ret = 1;
+            goto exit;
+        }
+
+        if (strcmp(expectedAuth, auth) != 0) {
+            ret = 1;
+            goto exit;
+        }
     }
 
-    char expectedAuth[90];
-    if (dslink_handshake_gen_auth_key(&link->auth->tempKey,
-                                      link->auth->pubKey,
-                                      link->auth->salt,
-                                      (unsigned char *) expectedAuth,
-                                      sizeof(expectedAuth)) != 0) {
-        ret = 1;
-        goto exit;
+    DownstreamNode *node = NULL;
+    { // Handle retrieval of the downstream node
+        node = dslink_map_get(&broker->downstream, (void *) link->name);
+        if (!node) {
+            node = calloc(1, sizeof(DownstreamNode));
+            if (!node) {
+                ret = 1;
+                goto exit;
+            }
+            void *tmp = (void *) node;
+            if (dslink_map_set(&broker->downstream,
+                               (void *) link->name, &tmp) != 0) {
+                free(node);
+                free(oldDsId);
+                ret = 1;
+                goto exit;
+            }
+        } else {
+            // Data is already stored in the downstream node
+            // free up this data and move on
+            free((void *) link->name);
+            free(oldDsId);
+            oldDsId = (void *) node->dsId;
+        }
     }
 
-    if (strcmp(expectedAuth, auth) != 0) {
-        ret = 1;
-        goto exit;
-    }
-
-    DownstreamNode *node = calloc(1, sizeof(DownstreamNode));
-    if (!node) {
-        ret = 1;
-        goto exit;
-    }
-
-    void *tmp = (void *) node;
-    if (dslink_map_set(&broker->downstream, oldKey, &tmp) != 0) {
-        free(node);
-        free(oldKey);
-        ret = 1;
-        goto exit;
-    }
-
-    link->dsId = oldKey;
+    link->dsId = oldDsId;
     link->node = node;
 
     node->link = link;
-    node->dsId = oldKey;
+    node->dsId = oldDsId;
     node->name = link->name;
 
     *socketData = link;
