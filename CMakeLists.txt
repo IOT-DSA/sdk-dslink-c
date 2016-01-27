@@ -1,11 +1,15 @@
 cmake_minimum_required(VERSION 2.8)
 project(sdk_dslink_c C)
 
-######## Configure Options #######
-
 option(DSLINK_BUILD_BROKER "Whether to build the broker" OFF)
 option(DSLINK_BUILD_EXAMPLES "Whether to build the examples" OFF)
 option(DSLINK_TEST "Whether to enable tests" OFF)
+
+######## Define Macros #######
+
+macro(ADD_C_FLAGS flags)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${flags}")
+endmacro()
 
 ##### Configure Dependencies #####
 
@@ -14,6 +18,8 @@ foreach(dep "mbed" "wslay" "argtable3")
 endforeach()
 
 include(ExternalProject)
+
+ADD_C_FLAGS("-fPIC")
 
 ExternalProject_Add(JANSSON
     PREFIX jansson
@@ -31,14 +37,10 @@ set(JANSSON_DIR "${CMAKE_CURRENT_BINARY_DIR}/jansson")
 
 ##### Configure Flags #####
 
-macro(ADD_C_FLAGS flags)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${flags}")
-endmacro()
-
 ADD_C_FLAGS("-std=gnu99")
 ADD_C_FLAGS("-Wall -Wextra -Werror")
 ADD_C_FLAGS("-Wno-overlength-strings")
-ADD_C_FLAGS("-pedantic -fPIC")
+ADD_C_FLAGS("-pedantic")
 
 string(TOUPPER "${CMAKE_BUILD_TYPE}" DSLINK_BUILD_TYPE)
 if (DSLINK_BUILD_TYPE STREQUAL DEBUG AND NOT USE_VALGRIND)
