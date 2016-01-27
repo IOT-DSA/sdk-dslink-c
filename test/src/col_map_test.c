@@ -18,7 +18,7 @@ void col_map_set_simple_string_test(void **state) {
     assert_true(!dslink_map_init(&map, dslink_map_str_cmp,
                                  dslink_map_str_key_len_cal));
     int i = 0;
-    while (inputs[i] && inputs[i][0] && inputs[i][1]) {
+    while (inputs[i][0]) {
         char *key = inputs[i][0];
         char *val = inputs[i][1];
 
@@ -42,7 +42,8 @@ void col_map_set_large_string_entry_test(void **state) {
     Map map;
     assert_true(!dslink_map_init(&map, dslink_map_str_cmp,
                                  dslink_map_str_key_len_cal));
-    for (int n = 0; n < 9000; n++) {
+    const int items = 100;
+    for (int n = 0; n < items; n++) {
         size_t len = sizeof(char) * 12;
         char *key = malloc(len);
         char *val = malloc(len);
@@ -58,6 +59,7 @@ void col_map_set_large_string_entry_test(void **state) {
         assert_non_null(stored);
         assert_string_equal(stored, val);
     }
+    assert_int_equal(map.items, items);
 
     DSLINK_MAP_FREE(&map, {
         free(entry->key);
@@ -80,7 +82,7 @@ void col_map_set_simple_uint32_test(void **state) {
     assert_true(!dslink_map_init(&map, dslink_map_uint32_cmp,
                                  dslink_map_uint32_key_len_cal));
     int i = 0;
-    while (inputs[i] && inputs[i][0] && inputs[i][1]) {
+    while (inputs[i][0]) {
         uint32_t *key = calloc(1, sizeof(uint32_t));
         *key = inputs[i][0];
         uint32_t *val = calloc(1, sizeof(uint32_t));
@@ -109,12 +111,13 @@ void col_map_set_large_uint32_entry_test(void **state) {
     Map map;
     assert_true(!dslink_map_init(&map, dslink_map_uint32_cmp,
                                  dslink_map_uint32_key_len_cal));
-    for (int n = 0; n < 9000; n++) {
+    const uint32_t items = 100;
+    for (uint32_t n = 0; n < items; n++) {
         uint32_t *i = calloc(1, sizeof(uint32_t));
-        *i = (uint32_t) n;
+        *i = n;
 
         uint32_t *val = calloc(1, sizeof(uint32_t));
-        *val = (uint32_t) (n * 2);
+        *val = n * 2;
 
         void *tmp = val;
         assert_true(!dslink_map_set(&map, i, &tmp));
@@ -124,6 +127,7 @@ void col_map_set_large_uint32_entry_test(void **state) {
         assert_non_null(stored);
         assert_int_equal(stored, val);
     }
+    assert_int_equal(map.items, items);
 
     DSLINK_MAP_FREE(&map, {
         free(entry->key);
@@ -137,12 +141,13 @@ void col_map_remove_large_uint32_entry_test(void **state) {
     Map map;
     assert_true(!dslink_map_init(&map, dslink_map_uint32_cmp,
                                  dslink_map_uint32_key_len_cal));
-    for (int n = 0; n < 9000; n++) {
+    const uint32_t items = 100;
+    for (uint32_t n = 0; n < items; n++) {
         uint32_t *i = calloc(1, sizeof(uint32_t));
-        *i = (uint32_t) n;
+        *i = n;
 
         uint32_t *val = calloc(1, sizeof(uint32_t));
-        *val = (uint32_t) (n * 2);
+        *val = n * 2;
 
         void *tmp = val;
         assert_true(!dslink_map_set(&map, i, &tmp));
@@ -152,11 +157,12 @@ void col_map_remove_large_uint32_entry_test(void **state) {
         assert_non_null(stored);
         assert_int_equal(stored, val);
     }
+    assert_int_equal(map.items, items);
 
-    for (int n = 0; n < 9000; n++) {
+    for (uint32_t n = 0; n < items; n++) {
         uint32_t *i = calloc(1, sizeof(uint32_t));
-        *i = (uint32_t) n;
-        void* tmp = i;
+        *i = n;
+        void *tmp = i;
         uint32_t *removed = dslink_map_remove(&map, &tmp);
         assert_int_equal(*removed, n * 2);
         assert_false(dslink_map_contains(&map, i));
@@ -173,11 +179,11 @@ void col_map_remove_large_uint32_entry_test(void **state) {
 
 int main(void) {
     const struct CMUnitTest tests[] = {
-            cmocka_unit_test(col_map_set_simple_string_test),
-            cmocka_unit_test(col_map_set_large_string_entry_test),
-            cmocka_unit_test(col_map_set_simple_uint32_test),
-            cmocka_unit_test(col_map_set_large_uint32_entry_test),
-            cmocka_unit_test(col_map_remove_large_uint32_entry_test)
+        cmocka_unit_test(col_map_set_simple_string_test),
+        cmocka_unit_test(col_map_set_large_string_entry_test),
+        cmocka_unit_test(col_map_set_simple_uint32_test),
+        cmocka_unit_test(col_map_set_large_uint32_entry_test),
+        cmocka_unit_test(col_map_remove_large_uint32_entry_test)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
