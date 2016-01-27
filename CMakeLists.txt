@@ -39,6 +39,12 @@ ADD_C_FLAGS("-Wall -Wextra -Werror")
 ADD_C_FLAGS("-Wno-overlength-strings")
 ADD_C_FLAGS("-pedantic -fPIC")
 
+string(TOUPPER "${CMAKE_BUILD_TYPE}" DSLINK_BUILD_TYPE)
+if (DSLINK_BUILD_TYPE STREQUAL DEBUG)
+    ADD_C_FLAGS("-fsanitize=address")
+    ADD_C_FLAGS("-fstack-protector-all")
+endif()
+
 ##### Configure Sources #####
 
 include_directories("${CMAKE_CURRENT_BINARY_DIR}/include")
@@ -81,7 +87,9 @@ set(BROKER_SRC
     "${BROKER_SRC_DIR}/config.c"
     "${BROKER_SRC_DIR}/handshake.c"
     "${BROKER_SRC_DIR}/main.c"
+    "${BROKER_SRC_DIR}/remote_dslink.c"
     "${BROKER_SRC_DIR}/msg_handler.c"
+    "${BROKER_SRC_DIR}/stream.c"
 )
 
 set(EXAMPLE_RESPONDER_SRC_DIR "examples/responder/src")

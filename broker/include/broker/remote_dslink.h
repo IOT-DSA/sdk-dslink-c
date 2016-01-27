@@ -22,10 +22,13 @@ typedef struct RemoteDSLink {
     RemoteAuth *auth;
 
     const char *dsId;
+    const char *name;
     uint8_t isRequester;
     uint8_t isResponder;
 
 } RemoteDSLink;
+
+void broker_remote_dslink_free(RemoteDSLink *link);
 
 #ifdef __cplusplus
 }

@@ -1,5 +1,5 @@
-#ifndef SDK_DSLINK_C_MSG_HANDLER_H
-#define SDK_DSLINK_C_MSG_HANDLER_H
+#ifndef BROKER_MSG_HANDLER_H
+#define BROKER_MSG_HANDLER_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -14,4 +14,4 @@ void broker_handle_msg(Broker *broker, json_t *data);
 }
 #endif
 
-#endif // SDK_DSLINK_C_MSG_HANDLER_H
+#endif // BROKER_MSG_HANDLER_H

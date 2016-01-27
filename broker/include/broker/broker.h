@@ -22,6 +22,8 @@ typedef struct Broker {
     // Map<char *, RemoteDSLink *>
     Map downstream;
 
+    // Map<char *, Stream *>
+    Map streams;
 } Broker;
 
 int broker_init();

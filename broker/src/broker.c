@@ -34,7 +34,7 @@ void close_link(Broker *broker) {
         log_info("DSLink `%s` has disconnected\n", broker->link->dsId);
         void *tmp = (void *) broker->link->dsId;
         dslink_map_remove(&broker->downstream, &tmp);
-        free((void *) broker->link->dsId);
+        broker_remote_dslink_free(broker->link);
         free(broker->link);
 
         broker->link = NULL;
@@ -47,10 +47,10 @@ int generate_accept_key(const char *buf, size_t bufLen,
                         char *out, size_t outLen) {
     char data[256];
     memset(data, 0, sizeof(data));
-    size_t len = snprintf(data, sizeof(data), "%.*s%s", (int) bufLen, buf,
+    int len = snprintf(data, sizeof(data), "%.*s%s", (int) bufLen, buf,
                           "258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
     unsigned char sha1[20];
-    mbedtls_sha1((unsigned char *) data, len, sha1);
+    mbedtls_sha1((unsigned char *) data, (size_t) len, sha1);
     return mbedtls_base64_encode((unsigned char *) out, outLen,
                                  &outLen, sha1, sizeof(sha1));
 }
@@ -165,9 +165,9 @@ void handle_conn(Broker *broker, HttpRequest *req, Socket *sock) {
     }
 
     char buf[1024];
-    size_t len = snprintf(buf, sizeof(buf), CONN_RESP, (int) strlen(data), data);
+    int len = snprintf(buf, sizeof(buf), CONN_RESP, (int) strlen(data), data);
     free(data);
-    dslink_socket_write(sock, buf, len);
+    dslink_socket_write(sock, buf, (size_t) len);
 
 exit:
     return;
@@ -199,9 +199,11 @@ int handle_ws(Broker *broker, HttpRequest *req,
         goto fail;
     }
 
-    char buf[1024];
-    len = snprintf(buf, sizeof(buf), WS_RESP, accept);
-    dslink_socket_write(sock, buf, len);
+    {
+        char buf[1024];
+        int bLen = snprintf(buf, sizeof(buf), WS_RESP, accept);
+        dslink_socket_write(sock, buf, (size_t) bLen);
+    }
 
     return 0;
 fail:
@@ -273,6 +275,12 @@ int broker_init() {
         if (dslink_map_init(&broker.downstream,
                         dslink_map_str_cmp,
                         dslink_map_str_key_len_cal) != 0) {
+            ret = 1;
+            goto exit;
+        }
+
+        if (dslink_map_init(&broker.streams, dslink_map_uint32_cmp,
+                            dslink_map_uint32_key_len_cal) != 0) {
             ret = 1;
             goto exit;
         }

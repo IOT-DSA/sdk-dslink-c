@@ -94,9 +94,14 @@ json_t *broker_handshake_handle_conn(Broker *broker,
         }
 
         char buf[512];
-        size_t len = snprintf(buf, sizeof(buf), "/downstream/%.*s",
+        int len = snprintf(buf, sizeof(buf), "/downstream/%.*s",
                               (int) nameLen, dsId);
-        json_object_set_new_nocheck(resp, "path", json_stringn(buf, len));
+        buf[len] = '\0';
+        link->name = dslink_strdup(buf);
+        if (!link->name) {
+            goto fail;
+        }
+        json_object_set_new_nocheck(resp, "path", json_string(buf));
     }
 
     if (json_boolean_value(json_object_get(handshake, "isRequester"))) {
@@ -118,11 +123,7 @@ json_t *broker_handshake_handle_conn(Broker *broker,
     return resp;
 fail:
     if (link) {
-        if (link->auth) {
-            mbedtls_ecdh_free(&link->auth->tempKey);
-            DSLINK_CHECKED_EXEC(free, (void *) link->auth->pubKey);
-            free(link->auth);
-        }
+        broker_remote_dslink_free(link);
         free(link);
     }
     DSLINK_CHECKED_EXEC(json_decref, resp);

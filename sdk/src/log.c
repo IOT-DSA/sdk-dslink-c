@@ -1,7 +1,6 @@
 #define LOG_TAG "log"
 
 #include <time.h>
-#include <string.h>
 #include "dslink/log.h"
 #include "dslink/utils.h"
 

@@ -74,7 +74,7 @@ fail:
 }
 
 static
-json_t *broker_list_downstream(json_t *rid) {
+json_t *broker_list_downstream(Broker *broker, json_t *rid) {
     BROKER_CREATE_RESP
     json_object_set_nocheck(resp, "rid", rid);
     json_object_set_new_nocheck(resp, "stream", json_string("open"));
@@ -97,6 +97,27 @@ json_t *broker_list_downstream(json_t *rid) {
         json_array_append_new(updates, up);
     }
 
+    dslink_map_foreach(&broker->downstream) {
+        const char *name = ((RemoteDSLink *) entry->value)->name;
+
+        json_t *up = json_array();
+        if (!up) {
+            goto fail;
+        }
+
+        json_t *node = json_object();
+        if (!node) {
+            json_delete(up);
+            goto fail;
+        }
+
+        json_array_append_new(up, json_string(name));
+        json_array_append_new(up, node);
+
+        json_object_set_new(node, "$is", json_string("node"));
+        json_array_append_new(updates, up);
+    }
+
     return top;
 fail:
     json_delete(top);
@@ -115,7 +136,7 @@ int broker_handle_list(Broker *broker, json_t *req) {
     if (strcmp(path, "/") == 0) {
         resp = broker_list_root(rid);
     } else if (strcmp(path, "/downstream") == 0) {
-        resp = broker_list_downstream(rid);
+        resp = broker_list_downstream(broker, rid);
     } else {
         log_err("Unhandled path: %s\n", path);
     }
