@@ -87,9 +87,13 @@ json_t *broker_handshake_handle_conn(Broker *broker,
     json_object_set_new_nocheck(resp, "salt", json_string(link->auth->salt));
     if (json_boolean_value(json_object_get(handshake, "isResponder"))) {
         link->isResponder = 1;
+    }
 
-        // TODO: assign a node to dslink even it's a requester ?
+    if (json_boolean_value(json_object_get(handshake, "isRequester"))) {
+        link->isRequester = 1;
+    }
 
+    {
         char buf[512] = {0};
         snprintf(buf, sizeof(buf), "/downstream/");
         char *name = buf + sizeof("/downstream/")-1;
@@ -123,12 +127,12 @@ json_t *broker_handshake_handle_conn(Broker *broker,
             nameLen++;
         }
 
+        json_object_set_new_nocheck(resp, "path", json_string(buf));
+
         link->name = dslink_strdup(name);
         if (!link->name) {
             goto fail;
         }
-        json_object_set_new_nocheck(resp, "path", json_string(buf));
-
         void *value = (void *) link;
         // add to connecting map with the name
         if (dslink_map_set(&broker->client_connecting,
@@ -136,10 +140,6 @@ json_t *broker_handshake_handle_conn(Broker *broker,
             free((void *) link->name);
             goto fail;
         }
-    }
-
-    if (json_boolean_value(json_object_get(handshake, "isRequester"))) {
-        link->isRequester = 1;
     }
 
     {

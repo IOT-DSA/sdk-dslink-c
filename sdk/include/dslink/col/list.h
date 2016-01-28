@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-#define DSLINK_LIST_ITER(list) \
+#define dslink_list_foreach(list) \
     for (ListNode *node = (list)->head; node != NULL; node = node->next)
 
 typedef struct ListNode {

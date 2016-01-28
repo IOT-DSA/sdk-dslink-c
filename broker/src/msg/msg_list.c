@@ -131,6 +131,32 @@ void broker_list_dslink(Broker *broker,
                         const char *path,
                         uint32_t reqRid) {
     // TODO: so much error handling
+    {
+        BrokerListStream *stream = dslink_map_get(&node->link->list_streams,
+                                                  (void *) path);
+        if (stream) {
+            uint32_t *r = malloc(sizeof(uint32_t));
+            *r = reqRid;
+            void *tmp = broker->link;
+            dslink_map_set(&stream->clients, r, &tmp);
+            if (stream->updates_cache) {
+                json_t *top = json_object();
+                json_t *resps = json_array();
+                json_object_set_new_nocheck(top, "responses", resps);
+                json_t *resp = json_object();
+                json_array_append_new(resps, resp);
+
+                json_object_set_new_nocheck(resp, "rid", json_integer(reqRid));
+                json_object_set_new_nocheck(resp, "stream", json_string("open"));
+                json_object_set_nocheck(resp, "updates", stream->updates_cache);
+
+                dslink_ws_send_obj(broker->ws, top);
+                json_decref(top);
+            }
+            return;
+        }
+    }
+
     uint32_t rid = 0;
     {
         json_t *top = json_object();
@@ -163,14 +189,19 @@ void broker_list_dslink(Broker *broker,
     {
         BrokerListStream *stream = broker_stream_list_init();
 
-        void *client = node->link;
+        void *tmp = node->link;
         uint32_t *r = malloc(sizeof(uint32_t));
         *r = reqRid;
-        dslink_map_set(&stream->clients, r, &client);
+        dslink_map_set(&stream->clients, r, &tmp);
 
         r = malloc(sizeof(uint32_t));
         *r = rid;
-        dslink_map_set(&node->link->local_streams, r, (void **) &stream);
+        tmp = stream;
+        dslink_map_set(&node->link->local_streams, r, &tmp);
+
+        char *p = dslink_strdup(path);
+        tmp = stream;
+        dslink_map_set(&node->link->list_streams, p, &tmp);
     }
 }
 

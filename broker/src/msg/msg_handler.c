@@ -39,6 +39,10 @@ void broker_handle_resp(Broker *broker, json_t *resp) {
 
     if (stream->type == LIST_STREAM) {
         BrokerListStream *ls = (BrokerListStream *) stream;
+        // TODO: handle the updates cache for base and updates/removals
+        ls->updates_cache = json_object_get(resp, "updates");
+        json_incref(ls->updates_cache);
+
         json_t *top = json_object();
         json_t *resps = json_array();
         json_object_set_new_nocheck(top, "responses", resps);
