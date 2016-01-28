@@ -248,7 +248,7 @@ int broker_msg_handle_list(RemoteDSLink *link, json_t *req) {
     json_t *resp = NULL;
     if (strcmp(path, "/") == 0) {
         resp = broker_list_root(rid);
-    } else if (strncmp(path, "/defs/", 5) == 0) {
+    } else if (dslink_str_starts_with(path, "/defs/")) {
         resp = broker_list_defs(rid);
     } else if (strcmp(path, "/downstream") == 0) {
         resp = broker_list_downstream(link, rid);
