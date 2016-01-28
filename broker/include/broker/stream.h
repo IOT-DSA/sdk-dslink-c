@@ -29,6 +29,7 @@ typedef struct BrokerListStream {
 
 BrokerListStream *broker_stream_list_init();
 void broker_stream_free(BrokerStream *stream);
+json_t *broker_stream_list_get_cache(BrokerListStream *stream);
 
 #ifdef __cplusplus
 }

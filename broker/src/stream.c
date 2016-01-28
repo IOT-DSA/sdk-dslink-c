@@ -15,6 +15,12 @@ BrokerListStream *broker_stream_list_init() {
         return NULL;
     }
 
+    stream->updates_cache = json_object();
+    if (!stream->updates_cache) {
+        free(stream);
+        return NULL;
+    }
+
     return stream;
 }
 
@@ -28,4 +34,29 @@ void broker_stream_free(BrokerStream *stream) {
         DSLINK_CHECKED_EXEC(json_decref, s->updates_cache);
     }
     free(stream);
+}
+
+json_t *broker_stream_list_get_cache(BrokerListStream *stream) {
+    // TODO: check allocation
+
+    size_t cacheSize = json_object_size(stream->updates_cache);
+    if (cacheSize == 0) {
+        return NULL;
+    }
+
+    json_t *updates = json_array();
+    const char *key;
+    json_t *value;
+
+    json_object_foreach(stream->updates_cache, key, value) {
+        json_t *update = json_array();
+
+        // name
+        json_array_append_new(update, json_string(key));
+        //value
+        json_array_append(update, value);
+
+        json_array_append_new(updates, update);
+    }
+    return updates;
 }

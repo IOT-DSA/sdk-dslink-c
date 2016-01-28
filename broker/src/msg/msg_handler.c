@@ -39,9 +39,33 @@ void broker_handle_resp(Broker *broker, json_t *resp) {
 
     if (stream->type == LIST_STREAM) {
         BrokerListStream *ls = (BrokerListStream *) stream;
-        // TODO: handle the updates cache for base and updates/removals
-        ls->updates_cache = json_object_get(resp, "updates");
-        json_incref(ls->updates_cache);
+        json_t *updates = json_object_get(resp, "updates");
+        if (updates && updates->type == JSON_ARRAY) {
+            size_t i;
+            json_t *child;
+            // TODO: handle cache reset (when there is a $is change)
+            json_array_foreach(updates, i, child) {
+                // update cache
+                if(child->type == JSON_ARRAY) {
+                    json_t *childName = json_array_get(child, 0);
+                    json_t *childValue = json_array_get(child, 1);
+                    if (childName->type == JSON_STRING) {
+                        json_object_set_nocheck(ls->updates_cache,
+                            json_string_value(childName),childValue);
+                    }
+                } else if (child->type == JSON_OBJECT) {
+                    json_t *childName = json_object_get(child, "name");
+                    json_t *change = json_object_get(child, "change");
+                    if (change && change->type == JSON_STRING && childName && childName->type == JSON_STRING
+                        && strcmp(json_string_value(change),"remove") == 0) {
+                        json_object_del(ls->updates_cache, json_string_value(childName));
+                    } else {
+                        // a list value update? almost never used
+                    }
+                }
+            }
+        }
+
 
         json_t *top = json_object();
         json_t *resps = json_array();

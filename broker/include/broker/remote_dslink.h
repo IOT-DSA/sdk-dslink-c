@@ -6,6 +6,7 @@ extern "C" {
 #endif
 
 #include <stdint.h>
+#include <jansson.h>
 #include <mbedtls/ecdh.h>
 
 #include <dslink/col/map.h>
@@ -31,6 +32,7 @@ typedef struct RemoteDSLink {
     const char *dsId;
     const char *name;
 
+    json_t *linkData;
     // Map<uint32_t *, Stream *>
     Map local_streams;
 

@@ -77,6 +77,33 @@ fail:
 }
 
 static
+json_t *broker_list_defs(json_t *rid) {
+    BROKER_CREATE_RESP(rid, "open");
+    json_t *updates = json_array();
+    if (!updates) {
+        json_delete(top);
+        return NULL;
+    }
+    json_object_set_new_nocheck(resp, "updates", updates);
+
+    {
+        json_t *up = json_array();
+        if (!up) {
+            goto fail;
+        }
+
+        json_array_append_new(up, json_string("$is"));
+        json_array_append_new(up, json_string("static"));
+        json_array_append_new(updates, up);
+    }
+
+    return top;
+    fail:
+    json_delete(top);
+    return NULL;
+}
+
+static
 json_t *broker_list_downstream(Broker *broker, json_t *rid) {
     BROKER_CREATE_RESP(rid, "open");
 
@@ -139,7 +166,11 @@ void broker_list_dslink(Broker *broker,
             *r = reqRid;
             void *tmp = broker->link;
             dslink_map_set(&stream->clients, r, &tmp);
-            if (stream->updates_cache) {
+
+            json_t *cached_updates = broker_stream_list_get_cache(stream);
+            // TODO: send cached result only when list stream to the responder is running
+            // otherwise it should wait for new list to finish to avoid sending outdated data
+            if (cached_updates) {
                 json_t *top = json_object();
                 json_t *resps = json_array();
                 json_object_set_new_nocheck(top, "responses", resps);
@@ -148,11 +179,14 @@ void broker_list_dslink(Broker *broker,
 
                 json_object_set_new_nocheck(resp, "rid", json_integer(reqRid));
                 json_object_set_new_nocheck(resp, "stream", json_string("open"));
-                json_object_set_nocheck(resp, "updates", stream->updates_cache);
+                json_object_set_new_nocheck(resp, "updates", cached_updates);
+                json_decref(cached_updates);
 
                 dslink_ws_send_obj(broker->ws, top);
                 json_decref(top);
+
             }
+
             return;
         }
     }
@@ -188,6 +222,12 @@ void broker_list_dslink(Broker *broker,
     }
     {
         BrokerListStream *stream = broker_stream_list_init();
+        if (strcmp(path, "/") == 0
+            && node->link->linkData) {
+            // add linkData into the updates_cache
+            json_object_set_nocheck(stream->updates_cache, "$linkData", node->link->linkData);
+        }
+
 
         void *tmp = node->link;
         uint32_t *r = malloc(sizeof(uint32_t));
@@ -215,6 +255,8 @@ int broker_msg_handle_list(Broker *broker, json_t *req) {
     json_t *resp = NULL;
     if (strcmp(path, "/") == 0) {
         resp = broker_list_root(rid);
+    } else if (strncmp(path, "/defs/", 5) == 0) {
+        resp = broker_list_defs(rid);
     } else if (strcmp(path, "/downstream") == 0) {
         resp = broker_list_downstream(broker, rid);
     } else if (dslink_str_starts_with(path, "/downstream/")) {

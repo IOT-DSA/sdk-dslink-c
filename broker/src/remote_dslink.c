@@ -35,4 +35,5 @@ void broker_remote_dslink_free(RemoteDSLink *link) {
         });
         free(link->auth);
     }
+    json_decref(link->linkData);
 }

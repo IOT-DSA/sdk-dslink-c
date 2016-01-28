@@ -93,6 +93,12 @@ json_t *broker_handshake_handle_conn(Broker *broker,
         link->isRequester = 1;
     }
 
+    json_t *linkData = json_object_get(handshake, "linkData");
+    if (linkData && linkData->type == JSON_OBJECT) {
+        json_incref(linkData);
+        link->linkData = linkData;
+    }
+
     {
         char buf[512] = {0};
         snprintf(buf, sizeof(buf), "/downstream/");
