@@ -42,7 +42,7 @@ void broker_handle_resp(Broker *broker, json_t *resp) {
         json_t *top = json_object();
         json_t *resps = json_array();
         json_object_set_new_nocheck(top, "responses", resps);
-        json_array_append_new(resps, resp);
+        json_array_append(resps, resp);
         dslink_map_foreach(&ls->clients) {
             json_object_del(resp, "rid");
             json_t *newRid = json_integer(*((uint32_t *) entry->key));
