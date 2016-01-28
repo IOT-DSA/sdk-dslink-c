@@ -89,6 +89,7 @@ set(BROKER_SRC
 
     "${BROKER_SRC_DIR}/net/http.c"
     "${BROKER_SRC_DIR}/net/server.c"
+    "${BROKER_SRC_DIR}/net/ws.c"
 
     "${BROKER_SRC_DIR}/broker.c"
     "${BROKER_SRC_DIR}/config.c"

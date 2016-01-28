@@ -2,9 +2,10 @@
 
 #define LOG_TAG "msg_list"
 #include <dslink/log.h>
-#include <dslink/ws.h>
 #include <dslink/utils.h>
 
+#include "broker/net/ws.h"
+#include "broker/broker.h"
 #include "broker/node.h"
 #include "broker/stream.h"
 #include "broker/msg/msg_list.h"
@@ -104,7 +105,7 @@ json_t *broker_list_defs(json_t *rid) {
 }
 
 static
-json_t *broker_list_downstream(Broker *broker, json_t *rid) {
+json_t *broker_list_downstream(RemoteDSLink *link, json_t *rid) {
     BROKER_CREATE_RESP(rid, "open");
 
     json_t *updates = json_array();
@@ -125,7 +126,7 @@ json_t *broker_list_downstream(Broker *broker, json_t *rid) {
         json_array_append_new(updates, up);
     }
 
-    dslink_map_foreach(&broker->downstream) {
+    dslink_map_foreach(&link->broker->downstream) {
         const char *name = ((DownstreamNode *) entry->value)->name;
 
         json_t *up = json_array();
@@ -153,7 +154,7 @@ fail:
 }
 
 static
-void broker_list_dslink(Broker *broker,
+void broker_list_dslink(RemoteDSLink *link,
                         DownstreamNode *node,
                         const char *path,
                         uint32_t reqRid) {
@@ -164,7 +165,7 @@ void broker_list_dslink(Broker *broker,
         if (stream) {
             uint32_t *r = malloc(sizeof(uint32_t));
             *r = reqRid;
-            void *tmp = broker->link;
+            void *tmp = link;
             dslink_map_set(&stream->clients, r, &tmp);
 
             json_t *cached_updates = broker_stream_list_get_cache(stream);
@@ -182,7 +183,7 @@ void broker_list_dslink(Broker *broker,
                 json_object_set_new_nocheck(resp, "updates", cached_updates);
                 json_decref(cached_updates);
 
-                dslink_ws_send_obj(broker->link->ws, top);
+                broker_ws_send_obj(link, top);
                 json_decref(top);
 
             }
@@ -207,17 +208,8 @@ void broker_list_dslink(Broker *broker,
                                     json_integer((json_int_t) rid));
 
         {
-            Socket *prevSock = broker->socket;
-            RemoteDSLink *prevLink = broker->link;
-
-            broker->socket = node->link->socket;
-            broker->link = node->link;
-
-            dslink_ws_send_obj(broker->link->ws, top);
-            json_delete(top);
-
-            broker->socket = prevSock;
-            broker->link = prevLink;
+            broker_ws_send_obj(node->link, top);
+            json_decref(top);
         }
     }
     {
@@ -225,11 +217,12 @@ void broker_list_dslink(Broker *broker,
         if (strcmp(path, "/") == 0
             && node->link->linkData) {
             // add linkData into the updates_cache
-            json_object_set_nocheck(stream->updates_cache, "$linkData", node->link->linkData);
+            json_object_set_nocheck(stream->updates_cache,
+                                    "$linkData", node->link->linkData);
         }
 
 
-        void *tmp = node->link;
+        void *tmp = link;
         uint32_t *r = malloc(sizeof(uint32_t));
         *r = reqRid;
         dslink_map_set(&stream->clients, r, &tmp);
@@ -245,7 +238,7 @@ void broker_list_dslink(Broker *broker,
     }
 }
 
-int broker_msg_handle_list(Broker *broker, json_t *req) {
+int broker_msg_handle_list(RemoteDSLink *link, json_t *req) {
     const char *path = json_string_value(json_object_get(req, "path"));
     json_t *rid = json_object_get(req, "rid");
     if (!(path && rid)) {
@@ -258,7 +251,7 @@ int broker_msg_handle_list(Broker *broker, json_t *req) {
     } else if (strncmp(path, "/defs/", 5) == 0) {
         resp = broker_list_defs(rid);
     } else if (strcmp(path, "/downstream") == 0) {
-        resp = broker_list_downstream(broker, rid);
+        resp = broker_list_downstream(link, rid);
     } else if (dslink_str_starts_with(path, "/downstream/")) {
         const char *name = path + sizeof("/downstream/") - 1;
         const char *linkPath;
@@ -272,11 +265,11 @@ int broker_msg_handle_list(Broker *broker, json_t *req) {
                 linkPath = "/";
             }
         }
-        DownstreamNode *node = dslink_map_getl(&broker->downstream,
+        DownstreamNode *node = dslink_map_getl(&link->broker->downstream,
                                                (void *) name, nameLen);
         if (node) {
             uint32_t reqRid = (uint32_t) json_integer_value(rid);
-            broker_list_dslink(broker, node, linkPath, reqRid);
+            broker_list_dslink(link, node, linkPath, reqRid);
             goto success;
         }
     } else {
@@ -286,7 +279,7 @@ int broker_msg_handle_list(Broker *broker, json_t *req) {
     if (!resp) {
         return 1;
     }
-    dslink_ws_send_obj(broker->link->ws, resp);
+    broker_ws_send_obj(link, resp);
     json_decref(resp);
 success:
     return 0;

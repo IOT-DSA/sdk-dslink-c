@@ -15,7 +15,9 @@
 #define LOG_TAG "broker"
 #include <dslink/log.h>
 #include <dslink/utils.h>
-#include <dslink/ws.h>
+#include <dslink/socket_private.h>
+#include <dslink/err.h>
+#include "broker/net/ws.h"
 #include "broker/node.h"
 
 #define CONN_RESP "HTTP/1.1 200 OK\r\n" \
@@ -29,21 +31,16 @@
                     "Sec-WebSocket-Accept: %s\r\n\r\n"
 
 static
-void close_link(Broker *broker) {
-    dslink_socket_close_nofree(broker->socket);
-    if (broker->link) {
-        log_info("DSLink `%s` has disconnected\n", broker->link->dsId);
-        void *tmp = (void *) broker->link->name;
-        DownstreamNode *node = dslink_map_get(&broker->downstream, &tmp);
-        if (node) {
-            node->link = NULL;
-        }
-        broker_remote_dslink_free(broker->link);
-        free(broker->link);
-
-        broker->link = NULL;
-        broker->socket = NULL;
+void close_link(RemoteDSLink *link) {
+    dslink_socket_close_nofree(link->socket);
+    log_info("DSLink `%s` has disconnected\n", link->dsId);
+    void *tmp = (void *) link->name;
+    DownstreamNode *node = dslink_map_get(&link->broker->downstream, &tmp);
+    if (node) {
+        node->link = NULL;
     }
+    broker_remote_dslink_free(link);
+    free(link);
 }
 
 static
@@ -68,7 +65,7 @@ ssize_t want_read_cb(wslay_event_context_ptr ctx,
     RemoteDSLink *link = user_data;
     int ret = dslink_socket_read(link->socket, (char *) buf, len);
     if (ret == 0) {
-        close_link(link->broker);
+        close_link(link);
         wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
         return -1;
     } else if (ret == DSLINK_SOCK_READ_ERR) {
@@ -113,7 +110,7 @@ void on_ws_data(wslay_event_context_ptr ctx,
         if (arg->msg_length == 2
             && arg->msg[0] == '{'
             && arg->msg[1] == '}') {
-            dslink_ws_send(link->ws, "{}");
+            broker_ws_send(link, "{}");
             return;
         }
 
@@ -123,12 +120,13 @@ void on_ws_data(wslay_event_context_ptr ctx,
         if (!data) {
             return;
         }
-        log_debug("Received Data: %.*s\n", (int) arg->msg_length, arg->msg);
+        log_debug("Received data from %s: %.*s\n", link->dsId,
+                  (int) arg->msg_length, arg->msg);
 
-        broker_msg_handle(link->broker, data);
+        broker_msg_handle(link, data);
         json_decref(data);
     } else if (arg->opcode == WSLAY_CONNECTION_CLOSE) {
-        close_link(link->broker);
+        close_link(link);
     }
 }
 
@@ -169,7 +167,9 @@ void handle_conn(Broker *broker, HttpRequest *req, Socket *sock) {
     }
 
     char buf[1024];
-    int len = snprintf(buf, sizeof(buf), CONN_RESP, (int) strlen(data), data);
+    int len = snprintf(buf, sizeof(buf) - 1,
+                       CONN_RESP, (int) strlen(data), data);
+    buf[len] = '\0';
     free(data);
     dslink_socket_write(sock, buf, (size_t) len);
 
@@ -197,13 +197,12 @@ int handle_ws(Broker *broker, HttpRequest *req,
         goto fail;
     }
 
-    broker->socket = sock;
-    if (broker_handshake_handle_ws(broker, dsId,
+    if (broker_handshake_handle_ws(broker, sock, dsId,
                                    auth, socketData) != 0) {
         goto fail;
     }
 
-    struct wslay_event_callbacks cb = {
+    static const struct wslay_event_callbacks cb = {
         want_read_cb,  // wslay_event_recv_callback
         want_write_cb, // wslay_event_send_callback
         NULL,          // wslay_event_genmask_callback
@@ -213,11 +212,11 @@ int handle_ws(Broker *broker, HttpRequest *req,
         on_ws_data     // wslay_event_on_msg_recv_callback
     };
 
+    RemoteDSLink *link = *socketData;
     wslay_event_context_ptr ws;
-    if (wslay_event_context_server_init(&ws, &cb, *socketData) != 0) {
+    if (wslay_event_context_server_init(&ws, &cb, link) != 0) {
         goto fail;
     }
-    RemoteDSLink *link = *socketData;
     link->ws = ws;
 
     {
@@ -236,11 +235,10 @@ fail:
 static
 void on_data_callback(Socket *sock, void *data, void **socketData) {
     Broker *broker = data;
-    broker->socket = sock;
-    broker->link = *socketData;
-    if (broker->link) {
-        broker->link->ws->read_enabled = 1;
-        wslay_event_recv(broker->link->ws);
+    RemoteDSLink *link = *socketData;
+    if (link) {
+        link->ws->read_enabled = 1;
+        wslay_event_recv(link->ws);
         return;
     }
 
@@ -248,7 +246,8 @@ void on_data_callback(Socket *sock, void *data, void **socketData) {
     {
         char buf[1024];
         memset(buf, 0, sizeof(buf));
-        dslink_socket_read(sock, buf, sizeof(buf));
+        int read = dslink_socket_read(sock, buf, sizeof(buf) - 1);
+        buf[read] = '\0';
         broker_http_parse_req(&req, buf);
     }
 

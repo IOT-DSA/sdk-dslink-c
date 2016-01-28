@@ -2,19 +2,19 @@
 #include <dslink/log.h>
 
 #include <string.h>
-#include <dslink/ws.h>
 #include "broker/msg/msg_handler.h"
-#include <broker/msg/msg_list.h>
-#include <broker/stream.h>
+#include "broker/msg/msg_list.h"
+#include "broker/stream.h"
+#include "broker/net/ws.h"
 
 static
-void broker_handle_req(Broker *broker, json_t *req) {
+void broker_handle_req(RemoteDSLink *link, json_t *req) {
     const char *method = json_string_value(json_object_get(req, "method"));
     if (!method) {
         return;
     }
     if (strcmp(method, "list") == 0) {
-        if (broker_msg_handle_list(broker, req) != 0) {
+        if (broker_msg_handle_list(link, req) != 0) {
             log_err("Failed to handle list request\n");
         }
     } else {
@@ -23,7 +23,7 @@ void broker_handle_req(Broker *broker, json_t *req) {
 }
 
 static
-void broker_handle_resp(Broker *broker, json_t *resp) {
+void broker_handle_resp(RemoteDSLink *link, json_t *resp) {
     // TODO: error handling
     json_t *jRid = json_object_get(resp, "rid");
     if (!jRid) {
@@ -31,7 +31,7 @@ void broker_handle_resp(Broker *broker, json_t *resp) {
     }
 
     uint32_t rid = (uint32_t) json_integer_value(jRid);
-    Stream *stream = dslink_map_get(&broker->link->local_streams,
+    Stream *stream = dslink_map_get(&link->local_streams,
                                     &rid);
     if (!stream) {
         return;
@@ -40,25 +40,26 @@ void broker_handle_resp(Broker *broker, json_t *resp) {
     if (stream->type == LIST_STREAM) {
         BrokerListStream *ls = (BrokerListStream *) stream;
         json_t *updates = json_object_get(resp, "updates");
-        if (updates && updates->type == JSON_ARRAY) {
+        if (json_is_array(updates)) {
             size_t i;
             json_t *child;
             // TODO: handle cache reset (when there is a $is change)
             json_array_foreach(updates, i, child) {
                 // update cache
-                if(child->type == JSON_ARRAY) {
+                if(json_is_array(child)) {
                     json_t *childName = json_array_get(child, 0);
                     json_t *childValue = json_array_get(child, 1);
                     if (childName->type == JSON_STRING) {
                         json_object_set_nocheck(ls->updates_cache,
                             json_string_value(childName),childValue);
                     }
-                } else if (child->type == JSON_OBJECT) {
+                } else if (json_is_object(child)) {
                     json_t *childName = json_object_get(child, "name");
                     json_t *change = json_object_get(child, "change");
-                    if (change && change->type == JSON_STRING && childName && childName->type == JSON_STRING
+                    if (json_is_string(childName) && json_is_string(change)
                         && strcmp(json_string_value(change),"remove") == 0) {
-                        json_object_del(ls->updates_cache, json_string_value(childName));
+                        json_object_del(ls->updates_cache,
+                                        json_string_value(childName));
                     } else {
                         // a list value update? almost never used
                     }
@@ -77,13 +78,13 @@ void broker_handle_resp(Broker *broker, json_t *resp) {
             json_object_set_new_nocheck(resp, "rid", newRid);
 
             RemoteDSLink *client = entry->value;
-            dslink_ws_send_obj(client->ws, top);
+            broker_ws_send_obj(client, top);
         }
         json_decref(top);
     }
 }
 
-void broker_msg_handle(Broker *broker,
+void broker_msg_handle(RemoteDSLink *link,
                        json_t *data) {
     if (!data) {
         return;
@@ -92,22 +93,22 @@ void broker_msg_handle(Broker *broker,
 
     {
         json_t *reqs = json_object_get(data, "requests");
-        if (broker->link->isRequester && reqs) {
+        if (link->isRequester && reqs) {
             json_t *req;
             size_t index = 0;
             json_array_foreach(reqs, index, req) {
-                broker_handle_req(broker, req);
+                broker_handle_req(link, req);
             }
         }
     }
 
     {
         json_t *resps = json_object_get(data, "responses");
-        if (broker->link->isResponder && resps) {
+        if (link->isResponder && resps) {
             json_t *resp;
             size_t index = 0;
             json_array_foreach(resps, index, resp) {
-                broker_handle_resp(broker, resp);
+                broker_handle_resp(link, resp);
             }
         }
     }

@@ -6,9 +6,9 @@ extern "C" {
 #endif
 
 #include <jansson.h>
-#include "broker/broker.h"
+#include "broker/remote_dslink.h"
 
-int broker_msg_handle_list(Broker *broker, json_t *req);
+int broker_msg_handle_list(RemoteDSLink *link, json_t *req);
 
 #ifdef __cplusplus
 }

@@ -12,10 +12,6 @@ extern "C" {
 
 typedef struct Broker {
 
-    RemoteDSLink *link;
-    Socket *socket;
-
-    // Map<char * dsId, RemoteDSLink *>
     // Map<char * name, RemoteDSLink *>
     Map client_connecting;
 

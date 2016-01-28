@@ -11,6 +11,7 @@ json_t *broker_handshake_handle_conn(Broker *broker,
                                      const char *dsId,
                                      json_t *handshake);
 int broker_handshake_handle_ws(Broker *broker,
+                               Socket *socket,
                                const char *dsId,
                                const char *auth,
                                void **socketData);

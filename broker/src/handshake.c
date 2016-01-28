@@ -29,6 +29,7 @@ json_t *broker_handshake_handle_conn(Broker *broker,
         goto fail;
     }
 
+    link->broker = broker;
     link->auth = calloc(1, sizeof(RemoteAuth));
     if (!link->auth) {
         goto fail;
@@ -173,6 +174,7 @@ fail:
 }
 
 int broker_handshake_handle_ws(Broker *broker,
+                               Socket *socket,
                                const char *dsId,
                                const char *auth,
                                void **socketData) {
@@ -233,10 +235,9 @@ int broker_handshake_handle_ws(Broker *broker,
         }
     }
 
-    link->socket = broker->socket;
+    link->socket = socket;
     link->dsId = oldDsId;
     link->node = node;
-    link->broker = broker;
     node->link = link;
     node->dsId = oldDsId;
 
