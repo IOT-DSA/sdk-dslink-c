@@ -76,16 +76,8 @@ void broker_handle_resp(Broker *broker, json_t *resp) {
             json_t *newRid = json_integer(*((uint32_t *) entry->key));
             json_object_set_new_nocheck(resp, "rid", newRid);
 
-            Socket *prevSock = broker->socket;
-            RemoteDSLink *prevLink = broker->link;
-
             RemoteDSLink *client = entry->value;
-            broker->socket = client->socket;
-            broker->link = client;
-            dslink_ws_send_obj(broker->ws, top);
-
-            broker->socket = prevSock;
-            broker->link = prevLink;
+            dslink_ws_send_obj(client->ws, top);
         }
         json_decref(top);
     }

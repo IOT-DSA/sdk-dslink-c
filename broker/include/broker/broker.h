@@ -14,7 +14,6 @@ typedef struct Broker {
 
     RemoteDSLink *link;
     Socket *socket;
-    wslay_event_context_ptr ws;
 
     // Map<char * dsId, RemoteDSLink *>
     // Map<char * name, RemoteDSLink *>

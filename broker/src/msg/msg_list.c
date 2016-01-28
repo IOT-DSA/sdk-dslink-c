@@ -182,7 +182,7 @@ void broker_list_dslink(Broker *broker,
                 json_object_set_new_nocheck(resp, "updates", cached_updates);
                 json_decref(cached_updates);
 
-                dslink_ws_send_obj(broker->ws, top);
+                dslink_ws_send_obj(broker->link->ws, top);
                 json_decref(top);
 
             }
@@ -213,7 +213,7 @@ void broker_list_dslink(Broker *broker,
             broker->socket = node->link->socket;
             broker->link = node->link;
 
-            dslink_ws_send_obj(broker->ws, top);
+            dslink_ws_send_obj(broker->link->ws, top);
             json_delete(top);
 
             broker->socket = prevSock;
@@ -286,7 +286,7 @@ int broker_msg_handle_list(Broker *broker, json_t *req) {
     if (!resp) {
         return 1;
     }
-    dslink_ws_send_obj(broker->ws, resp);
+    dslink_ws_send_obj(broker->link->ws, resp);
     json_decref(resp);
 success:
     return 0;

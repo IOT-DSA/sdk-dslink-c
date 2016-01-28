@@ -8,6 +8,7 @@ extern "C" {
 #include <stdint.h>
 #include <jansson.h>
 #include <mbedtls/ecdh.h>
+#include <wslay/wslay.h>
 
 #include <dslink/col/map.h>
 #include <dslink/socket.h>
@@ -25,8 +26,11 @@ typedef struct RemoteDSLink {
     uint8_t isRequester;
     uint8_t isResponder;
 
-    struct DownstreamNode *node;
+    wslay_event_context_ptr ws;
     Socket *socket;
+
+    struct Broker *broker;
+    struct DownstreamNode *node;
     RemoteAuth *auth;
 
     const char *dsId;

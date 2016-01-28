@@ -65,10 +65,10 @@ ssize_t want_read_cb(wslay_event_context_ptr ctx,
                      int flags, void *user_data) {
     (void) flags;
 
-    Broker *broker = user_data;
-    int ret = dslink_socket_read(broker->socket, (char *) buf, len);
+    RemoteDSLink *link = user_data;
+    int ret = dslink_socket_read(link->socket, (char *) buf, len);
     if (ret == 0) {
-        close_link(broker);
+        close_link(link->broker);
         wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
         return -1;
     } else if (ret == DSLINK_SOCK_READ_ERR) {
@@ -89,8 +89,8 @@ ssize_t want_write_cb(wslay_event_context_ptr ctx,
                       int flags, void *user_data) {
     (void) flags;
 
-    Broker *broker = user_data;
-    int written = dslink_socket_write(broker->socket, (char *) data, len);
+    RemoteDSLink *link = user_data;
+    int written = dslink_socket_write(link->socket, (char *) data, len);
     if (written < 0) {
         if (errno == MBEDTLS_ERR_SSL_WANT_WRITE) {
             wslay_event_set_error(ctx, WSLAY_ERR_WANT_WRITE);
@@ -108,12 +108,12 @@ void on_ws_data(wslay_event_context_ptr ctx,
                 const struct wslay_event_on_msg_recv_arg *arg,
                 void *user_data) {
     (void) ctx;
-    Broker *broker = user_data;
+    RemoteDSLink *link = user_data;
     if (arg->opcode == WSLAY_TEXT_FRAME) {
         if (arg->msg_length == 2
             && arg->msg[0] == '{'
             && arg->msg[1] == '}') {
-            dslink_ws_send(broker->ws, "{}");
+            dslink_ws_send(link->ws, "{}");
             return;
         }
 
@@ -125,10 +125,10 @@ void on_ws_data(wslay_event_context_ptr ctx,
         }
         log_debug("Received Data: %.*s\n", (int) arg->msg_length, arg->msg);
 
-        broker_msg_handle(broker, data);
+        broker_msg_handle(link->broker, data);
         json_decref(data);
     } else if (arg->opcode == WSLAY_CONNECTION_CLOSE) {
-        close_link(broker);
+        close_link(link->broker);
     }
 }
 
@@ -203,12 +203,22 @@ int handle_ws(Broker *broker, HttpRequest *req,
         goto fail;
     }
 
-    // TODO: need to refactor this part
-    // either do a better reuse logic or avoid reusing the ws
-    broker->ws->write_enabled = 1;
-    if (broker->ws->close_status & WSLAY_CLOSE_QUEUED) {
-        broker->ws->close_status ^= WSLAY_CLOSE_QUEUED;
+    struct wslay_event_callbacks cb = {
+        want_read_cb,  // wslay_event_recv_callback
+        want_write_cb, // wslay_event_send_callback
+        NULL,          // wslay_event_genmask_callback
+        NULL,          // wslay_event_on_frame_recv_start_callback
+        NULL,          // wslay_event_on_frame_recv_chunk_callback
+        NULL,          // wslay_event_on_frame_recv_end_callback
+        on_ws_data     // wslay_event_on_msg_recv_callback
+    };
+
+    wslay_event_context_ptr ws;
+    if (wslay_event_context_server_init(&ws, &cb, *socketData) != 0) {
+        goto fail;
     }
+    RemoteDSLink *link = *socketData;
+    link->ws = ws;
 
     {
         char buf[1024];
@@ -229,8 +239,8 @@ void on_data_callback(Socket *sock, void *data, void **socketData) {
     broker->socket = sock;
     broker->link = *socketData;
     if (broker->link) {
-        broker->ws->read_enabled = 1;
-        wslay_event_recv(broker->ws);
+        broker->link->ws->read_enabled = 1;
+        wslay_event_recv(broker->link->ws);
         return;
     }
 
@@ -304,25 +314,7 @@ int broker_init() {
         }
     }
 
-    struct wslay_event_callbacks cb = {
-        want_read_cb,  // wslay_event_recv_callback
-        want_write_cb, // wslay_event_send_callback
-        NULL,          // wslay_event_genmask_callback
-        NULL,          // wslay_event_on_frame_recv_start_callback
-        NULL,          // wslay_event_on_frame_recv_chunk_callback
-        NULL,          // wslay_event_on_frame_recv_end_callback
-        on_ws_data     // wslay_event_on_msg_recv_callback
-    };
-
-    wslay_event_context_ptr ws;
-    if (wslay_event_context_server_init(&ws, &cb, &broker) != 0) {
-        ret = 1;
-        goto exit;
-    }
-
-    broker.ws = ws;
     ret = broker_start_server(config, &broker, on_data_callback);
-
 exit:
     DSLINK_CHECKED_EXEC(json_delete, config);
     DSLINK_MAP_FREE(&broker.client_connecting, {});

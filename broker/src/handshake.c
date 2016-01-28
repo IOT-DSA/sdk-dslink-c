@@ -236,9 +236,9 @@ int broker_handshake_handle_ws(Broker *broker,
     link->socket = broker->socket;
     link->dsId = oldDsId;
     link->node = node;
+    link->broker = broker;
     node->link = link;
     node->dsId = oldDsId;
-
 
     *socketData = link;
     log_info("DSLink `%s` has connected\n", dsId);
