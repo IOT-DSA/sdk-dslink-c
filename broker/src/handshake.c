@@ -90,8 +90,7 @@ json_t *broker_handshake_handle_conn(Broker *broker,
 
         // TODO: assign a node to dslink even it's a requester ?
 
-        char buf[512];
-        memset(buf, 0, sizeof(buf));
+        char buf[512] = {0};
         snprintf(buf, sizeof(buf), "/downstream/");
         char *name = buf + sizeof("/downstream/")-1;
 
@@ -107,10 +106,19 @@ json_t *broker_handshake_handle_conn(Broker *broker,
         }
         // find a valid name from broker->client_names
         memcpy(name, dsId, nameLen);
-        while (dslink_map_contains(&broker->downstream, name)
-               || dslink_map_contains(&broker->client_connecting, name)) {
+        while (1) {
             // TODO: what if it's all conflicted with exiting dslink?
             // is this error handled already
+
+            if (dslink_map_contains(&broker->client_connecting, name)) {
+                name[nameLen] = dsId[nameLen];
+                nameLen++;
+                continue;
+            }
+            DownstreamNode *node = dslink_map_get(&broker->downstream, (void *) name);
+            if (node == NULL || strcmp(dsId, node->dsId) == 0) {
+                break;
+            }
             name[nameLen] = dsId[nameLen];
             nameLen++;
         }
@@ -209,6 +217,7 @@ int broker_handshake_handle_ws(Broker *broker,
                 ret = 1;
                 goto exit;
             }
+            node->name = link->name;
         } else {
             // Data is already stored in the downstream node
             // free up this data and move on
@@ -221,10 +230,9 @@ int broker_handshake_handle_ws(Broker *broker,
     link->socket = broker->socket;
     link->dsId = oldDsId;
     link->node = node;
-
     node->link = link;
     node->dsId = oldDsId;
-    node->name = link->name;
+
 
     *socketData = link;
     log_info("DSLink `%s` has connected\n", dsId);
