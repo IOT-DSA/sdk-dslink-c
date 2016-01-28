@@ -181,7 +181,6 @@ void broker_list_dslink(RemoteDSLink *link,
                 json_object_set_new_nocheck(resp, "rid", json_integer(reqRid));
                 json_object_set_new_nocheck(resp, "stream", json_string("open"));
                 json_object_set_new_nocheck(resp, "updates", cached_updates);
-                json_decref(cached_updates);
 
                 broker_ws_send_obj(link, top);
                 json_decref(top);

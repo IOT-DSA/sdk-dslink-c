@@ -48,6 +48,7 @@ json_t *broker_stream_list_get_cache(BrokerListStream *stream) {
     const char *key;
     json_t *value;
 
+    // todo: $is and $base should be sent first
     json_object_foreach(stream->updates_cache, key, value) {
         json_t *update = json_array();
 
