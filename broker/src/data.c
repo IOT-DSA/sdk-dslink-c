@@ -30,8 +30,9 @@ int data_node_populate(BrokerNode *data_node) {
 
       char *invokable = dslink_strdup("$invokable");
       char *write = dslink_strdup("$write");
+      json_t *write_json = json_string(write);
 
-      dslink_map_set(node->meta, invokable, (void **) &write);
+      dslink_map_set(node->meta, invokable, (void **) &write_json);
 
       char *params = dslink_strdup("$params");
       json_t *param_list = json_array();
@@ -74,8 +75,9 @@ int data_node_populate(BrokerNode *data_node) {
 
       char *invokable = dslink_strdup("$invokable");
       char *write = dslink_strdup("$write");
+      json_t *write_json = json_string(write);
 
-      dslink_map_set(node->meta, invokable, (void **) &write);
+      dslink_map_set(node->meta, invokable, (void **) &write_json);
 
       char *params = dslink_strdup("$params");
       json_t *param_list = json_array();
@@ -149,8 +151,9 @@ int data_node_populate(BrokerNode *data_node) {
 
       char *invokable = dslink_strdup("$invokable");
       char *write = dslink_strdup("$write");
+      json_t *write_json = json_string(write);
 
-      dslink_map_set(node->meta, invokable, (void **) &write);
+      dslink_map_set(node->meta, invokable, (void **) &write_json);
 
       char *params = dslink_strdup("$params");
       json_t *param_list = json_array();
@@ -212,7 +215,13 @@ exit:
     return ret;
 }
 
-int data_node_add() {
+int data_node_add(BrokerNode *data_node, char *name) {
   int ret = 0;
-  return ret;
+
+  {
+
+  }
+
+exit:
+    return ret;
 }

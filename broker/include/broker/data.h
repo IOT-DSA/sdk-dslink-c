@@ -16,4 +16,4 @@ int data_node_add(BrokerNode *data_node, char *name);
 }
 #endif
 
-#endif // BROKER_BROKER_H
+#endif // BROKER_DATA_H
