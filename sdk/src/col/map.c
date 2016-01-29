@@ -56,7 +56,7 @@ int dslink_map_initbf(Map *map,
     if (!map->table) {
         return DSLINK_ALLOC_ERR;
     }
-    dslink_list_init(&map->list);
+    list_init(&map->list);
     map->max_load_factor = loadFactor;
     map->capacity = buckets;
     map->cmp = cmp;
@@ -124,7 +124,7 @@ exit:
         return DSLINK_ALLOC_ERR;
     }
     map->items++;
-    dslink_list_insert_raw(&map->list, (ListNode *) (*node)->entry);
+    insert_list_node(&map->list, (*node)->entry);
     return ret;
 }
 
@@ -141,8 +141,8 @@ int dslink_map_rehash_table(Map *map) {
 
     map->capacity = newCapacity;
     map->table = newTable;
-    for (MapEntry *entry = (MapEntry *) map->list.head;
-                                        entry != NULL; entry = entry->next) {
+    for (MapEntry *entry = (MapEntry *) map->list.head.next;
+         (void *)entry != &map->list.head; entry = entry->next) {
         size_t len = map->key_len_calc(entry->key);
         size_t index = dslink_map_index_of_key(entry->key, len, newCapacity);
         MapNode *node = newTable[index];
@@ -227,7 +227,7 @@ void *dslink_map_removel(Map *map, void **key, size_t len) {
         }
         *key = node->entry->key;
         void *value = node->entry->value;
-        dslink_list_remove(&map->list, (ListNode *) node->entry);
+        free_list_node(node->entry);
         free(node);
         map->items--;
         return value;

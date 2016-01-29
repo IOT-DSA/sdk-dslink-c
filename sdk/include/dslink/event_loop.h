@@ -6,6 +6,7 @@ extern "C" {
 #endif
 
 #include <stdint.h>
+#include "col/list.h"
 
 struct EventLoop;
 struct EventTask;
@@ -32,11 +33,10 @@ typedef void (*want_block_func)(void *funcData,
                                 uint32_t nextDelay);
 
 struct EventTask {
-
-    uint32_t delay;
-
     struct EventTask *prev;
     struct EventTask *next;
+
+    uint32_t delay;
 
     task_func func;
     void *func_data;
@@ -44,7 +44,7 @@ struct EventTask {
 };
 
 struct EventLoop {
-    EventTask head;
+    List list;
 
     uint8_t shutdown;
     want_block_func block_func;

@@ -10,7 +10,7 @@ extern "C" {
 #include "list.h"
 
 #define DSLINK_MAP_FREE(map, freeFunc) \
-    for (MapEntry *entry = (MapEntry *) (map)->list.head; entry != NULL;) { \
+    for (MapEntry *entry = (MapEntry *) (map)->list.head.next; (void*)entry != &(map)->list.head;) { \
         { freeFunc; } \
         MapEntry *tmp = entry->next; \
         free(entry->node); \
@@ -20,15 +20,16 @@ extern "C" {
     if ((map)->table) free((map)->table)
 
 #define dslink_map_foreach(map) \
-    for (MapEntry *entry = (map) ? ((MapEntry *) (map)->list.head) : NULL; \
-        entry != NULL; entry = entry->next)
+    for (MapEntry *entry = (map) ? ((MapEntry *) (map)->list.head.next) : NULL; \
+        entry && (void *)entry != &(map)->list.head; entry = entry->next)
 
 typedef int (*dslink_map_key_comparator)(void *key, void *other, size_t len);
 typedef size_t (*dslink_map_key_len_calc)(void *key);
 
 typedef struct MapEntry {
-    struct MapEntry *next;
     struct MapEntry *prev;
+    struct MapEntry *next;
+    List *list;
 
     void *key;
     void *value;
@@ -36,9 +37,9 @@ typedef struct MapEntry {
 } MapEntry;
 
 typedef struct MapNode {
-
-    struct MapNode *next;
     struct MapNode *prev;
+    struct MapNode *next;
+
     MapEntry *entry;
 
 } MapNode;

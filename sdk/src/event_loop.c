@@ -1,57 +1,25 @@
 #include <string.h>
 #include <stdlib.h>
 #include <mbedtls/timing.h>
+#include "dslink/col/list.h"
 #include "dslink/event_loop.h"
 #include "dslink/err.h"
 
-static inline
-uint8_t is_loop_empty(EventLoop *loop) {
-    return loop->head.next == &loop->head;
-}
-
-static inline
-uint8_t is_loop_not_empty(EventLoop *loop) {
-    return loop->head.next != &loop->head;
-}
-
-static inline
-void insert_after(EventTask *task, EventTask *base) {
-    base->next->prev = task;
-    task->next = base->next;
-    base->next = task;
-    task->prev = base;
-}
-
-static inline
-void insert_before(EventTask * task, EventTask *base) {
-    base->prev->next = task;
-    task->prev = base->prev;
-    base->prev = task;
-    task->next = base;
-}
-
-static inline
-EventTask * remove_task(EventTask *task) {
-    task->prev->next = task->next;
-    task->next->prev = task->prev;
-    return task;
-}
-
 static
 void dslink_event_loop_sched_raw(EventLoop *loop, EventTask *task) {
-    if (is_loop_empty(loop)) {
-        insert_after(task, &loop->head);
+    if (is_list_empty(&loop->list)) {
+        insert_list_node(&loop->list, task);
         return;
     }
 
-    if (task->delay >= loop->head.prev->delay) {
+    if (task->delay >= ((EventTask *) loop->list.head.prev)->delay) {
         // Insert at the end of the tail
-        insert_before(task, &loop->head);
+        insert_list_node_before(task, &loop->list.head);
     } else {
         // Sort the event
-        for (EventTask *t = loop->head.prev; t != &loop->head; t = t->prev) {
+        for (EventTask *t = (EventTask *)loop->list.head.prev; (void*)t != &loop->list.head; t = t->prev) {
             if (t->delay <= task->delay) {
-                insert_after(task, t);
+                insert_list_node_after(task, t);
                 break;
             }
         }
@@ -62,7 +30,7 @@ void dslink_event_loop_sched_raw(EventLoop *loop, EventTask *task) {
 
 static
 void dslink_event_loop_sub_del(EventLoop *loop, uint32_t delay) {
-    for (EventTask *t = loop->head.next; t != &loop->head; t = t->next) {
+    for (EventTask *t = (EventTask *)loop->list.head.next; (void *)t != &loop->list.head; t = t->next) {
         if (t->delay > delay) {
             t->delay -= delay;
         } else {
@@ -75,14 +43,14 @@ void dslink_event_loop_init(EventLoop *loop,
                             want_block_func func,
                             void *blockFuncData) {
     memset(loop, 0, sizeof(EventLoop));
-    loop->head.next = &loop->head;
-    loop->head.prev = &loop->head;
+    loop->list.head.next = &loop->list.head;
+    loop->list.head.prev = &loop->list.head;
     loop->block_func = func;
     loop->block_func_data = blockFuncData;
 }
 
 void dslink_event_loop_free(EventLoop *loop) {
-    for (EventTask *t = loop->head.next; t != &loop->head;   ) {
+    for (EventTask *t = (EventTask *)loop->list.head.next; (void *)t != &loop->list.head;) {
         EventTask *tmp = t->next;
         free(t);
         t = tmp;
@@ -108,15 +76,15 @@ int dslink_event_loop_schedd(EventLoop *loop, task_func func,
 
 void dslink_event_loop_process(EventLoop *loop) {
     loop->shutdown = 0;
-    while (is_loop_empty(loop) && loop->block_func) {
+    while (is_list_empty(&loop->list) && loop->block_func) {
         loop->block_func(loop->block_func_data, loop, UINT32_MAX);
         if (loop->shutdown) {
             break;
         }
     }
-loop_processor:
-    while (!loop->shutdown && is_loop_not_empty(loop)) {
-        EventTask *task = remove_task(loop->head.next);
+    loop_processor:
+    while (!loop->shutdown && is_list_not_empty(&loop->list)) {
+        EventTask *task = remove_list_node(loop->list.head.next);
 
 
         struct mbedtls_timing_hr_time timer;
@@ -134,7 +102,7 @@ loop_processor:
             if (loop->shutdown) {
                 free(task);
                 goto loop_processor;
-            } else if (is_loop_not_empty(loop) && (loop->head.next->delay < task->delay)) {
+            } else if (is_list_not_empty(&loop->list) && ((EventTask *)loop->list.head.next)->delay < task->delay) {
                 dslink_event_loop_sched_raw(loop, task);
                 goto loop_processor;
             }
