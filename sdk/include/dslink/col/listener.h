@@ -11,15 +11,18 @@ typedef struct Listener {
     struct Listener *next;
 
 
-    // callback(data, parameter)
+    // callback(data, message)
     int (*callback)(void*, void*);
     void *data;
 } Listener;
 
 typedef struct Dispatcher {
-    Listener head;
-} List;
+    // list of Listener
+    List list;
+} Dispatcher;
 
+
+void dispatch_message(Dispatcher *dispatcher, void *message);
 
 
 #ifdef __cplusplus
