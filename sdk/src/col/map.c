@@ -48,6 +48,9 @@ int dslink_map_initbf(Map *map,
                       dslink_map_key_comparator cmp,
                       dslink_map_key_len_calc calc,
                       size_t buckets, float loadFactor) {
+    if (!map) {
+        return 1;
+    }
     memset(map, 0, sizeof(Map));
     map->table = calloc(buckets, sizeof(MapNode*));
     if (!map->table) {

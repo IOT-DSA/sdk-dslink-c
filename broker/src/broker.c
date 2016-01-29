@@ -18,7 +18,6 @@
 #include <dslink/socket_private.h>
 #include <dslink/err.h>
 #include "broker/net/ws.h"
-#include "broker/node.h"
 
 #define CONN_RESP "HTTP/1.1 200 OK\r\n" \
                     "Connection: close\r\n" \
@@ -35,7 +34,7 @@ void close_link(RemoteDSLink *link) {
     dslink_socket_close_nofree(link->socket);
     log_info("DSLink `%s` has disconnected\n", link->dsId);
     void *tmp = (void *) link->name;
-    DownstreamNode *node = dslink_map_get(&link->broker->downstream, &tmp);
+    DownstreamNode *node = dslink_map_get(link->broker->downstream, &tmp);
     if (node) {
         node->link = NULL;
     }
@@ -274,7 +273,7 @@ exit:
     dslink_socket_close_nofree(sock);
 }
 
-int broker_init() {
+int broker_start() {
     int ret = 0;
     json_t *config = broker_config_get();
     if (!config) {
@@ -285,6 +284,42 @@ int broker_init() {
     Broker broker;
     memset(&broker, 0, sizeof(Broker));
     {
+        broker.root = broker_node_create("", "node");
+        if (!broker.root) {
+            ret = 1;
+            goto exit;
+        }
+
+        {
+            BrokerNode *node = broker_node_create("defs", "static");
+            if (!node) {
+                ret = 1;
+                goto exit;
+            }
+
+            if (broker_node_add(broker.root, node) != 0) {
+                broker_node_free(node);
+                ret = 1;
+                goto exit;
+            }
+        }
+
+        {
+            BrokerNode *node = broker_node_create("downstream", "node");
+            if (!node) {
+                ret = 1;
+                goto exit;
+            }
+
+            if (broker_node_add(broker.root, node) != 0) {
+                broker_node_free(node);
+                ret = 1;
+                goto exit;
+            }
+
+            broker.downstream = node->children;
+        }
+
         if (dslink_map_init(&broker.client_connecting,
                         dslink_map_str_cmp,
                         dslink_map_str_key_len_cal) != 0) {
@@ -292,7 +327,7 @@ int broker_init() {
             goto exit;
         }
 
-        if (dslink_map_init(&broker.downstream,
+        if (dslink_map_init(broker.downstream,
                         dslink_map_str_cmp,
                         dslink_map_str_key_len_cal) != 0) {
             ret = 1;
@@ -317,6 +352,6 @@ int broker_init() {
 exit:
     DSLINK_CHECKED_EXEC(json_delete, config);
     DSLINK_MAP_FREE(&broker.client_connecting, {});
-    DSLINK_MAP_FREE(&broker.downstream, {});
+    broker_node_free(broker.root);
     return ret;
 }

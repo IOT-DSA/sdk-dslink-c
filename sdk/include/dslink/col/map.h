@@ -20,9 +20,8 @@ extern "C" {
     if ((map)->table) free((map)->table)
 
 #define dslink_map_foreach(map) \
-    if ((map)) \
-        for (MapEntry *entry = ((MapEntry *) (map)->list.head); \
-            entry != NULL; entry = entry->next)
+    for (MapEntry *entry = (map) ? ((MapEntry *) (map)->list.head) : NULL; \
+        entry != NULL; entry = entry->next)
 
 typedef int (*dslink_map_key_comparator)(void *key, void *other, size_t len);
 typedef size_t (*dslink_map_key_len_calc)(void *key);

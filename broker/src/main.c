@@ -1,5 +1,5 @@
 #include "broker/broker.h"
 
 int main() {
-    return broker_init();
+    return broker_start();
 }

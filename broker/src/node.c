@@ -1,4 +1,120 @@
+#include <stdlib.h>
+#include <dslink/col/map.h>
+#include <dslink/utils.h>
+#include <string.h>
 #include "broker/node.h"
+
+BrokerNode *broker_node_get(BrokerNode *root,
+                            const char *path, char **out) {
+    if (!root) {
+        return NULL;
+    } else if (strcmp(path, "/") == 0) {
+        return root;
+    } else if (*path == '/') {
+        path++;
+    }
+
+    BrokerNode *node = root;
+    const char *end = strchr(path, '/');
+    if (end) {
+        if (!node->children) {
+            return NULL;
+        }
+        node = dslink_map_getl(node->children, (void *) path, end - path);
+        if (node && node->type == DOWNSTREAM_NODE) {
+            *out = (char *) end;
+            return node;
+        }
+        return broker_node_get(node, end, out);
+    } else if (*path != '\0') {
+        if (!node->children) {
+            return NULL;
+        }
+        return dslink_map_get(node->children, (void *) path);
+    }
+
+    return node;
+}
+
+BrokerNode *broker_node_create(const char *name, const char *profile) {
+    profile = dslink_strdup(profile);
+    if (!profile) {
+        return NULL;
+    }
+
+    BrokerNode *node = malloc(sizeof(BrokerNode));
+    if (!node) {
+        return NULL;
+    }
+
+    node->parent = NULL;
+    node->type = REGULAR_NODE;
+
+    node->name = dslink_strdup(name);
+    if (!node->name) {
+        free((void *) profile);
+        free(node);
+        return NULL;
+    }
+
+    node->children = malloc(sizeof(Map));
+    if (dslink_map_init(node->children, dslink_map_str_cmp,
+                        dslink_map_str_key_len_cal) != 0) {
+        DSLINK_CHECKED_EXEC(free, node->children);
+        free((void *) node->name);
+        free((void *) profile);
+        free(node);
+        return NULL;
+    }
+
+    node->meta = malloc(sizeof(Map));
+    if (dslink_map_init(node->meta, dslink_map_str_cmp,
+                        dslink_map_str_key_len_cal) != 0) {
+        DSLINK_MAP_FREE(node->children, {});
+        free((void *) node->name);
+        free((void *) profile);
+        free(node);
+        return NULL;
+    }
+
+    char *prof = dslink_strdup("$is");
+    dslink_map_set(node->meta, prof, (void **) &profile);
+    return node;
+}
+
+int broker_node_add(BrokerNode *parent, BrokerNode *child) {
+    if (!(child && parent && parent->children)) {
+        return 1;
+    }
+
+    if (dslink_map_contains(parent->children, (void *) child->name)) {
+        return 1;
+    }
+
+    void *tmp = child;
+    return dslink_map_set(parent->children, (void *) child->name, &tmp);
+}
+
+void broker_node_free(BrokerNode *node) {
+    if (!node) {
+        return;
+    }
+
+    if (node->parent) {
+        void *tmp = (void *) node->name;
+        dslink_map_remove(node->parent->children, &tmp);
+    }
+
+    if (node->children) {
+        DSLINK_MAP_FREE(node->children, {
+            broker_node_free(entry->value);
+        });
+        free(node->children);
+    }
+
+    free((void *) node->name);
+    free(node);
+}
 
 uint32_t broker_node_incr_rid(DownstreamNode *node) {
     if (node->rid > (UINT32_MAX - 1)) {

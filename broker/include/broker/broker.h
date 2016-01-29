@@ -8,19 +8,23 @@ extern "C" {
 #include <wslay/wslay.h>
 #include <dslink/col/map.h>
 #include <dslink/socket.h>
+
 #include "broker/remote_dslink.h"
+#include "broker/node.h"
 
 typedef struct Broker {
 
-    // Map<char * name, RemoteDSLink *>
-    Map client_connecting;
+    BrokerNode *root;
 
-    // Map<char * name, DownstreamNode *>
-    Map downstream;
+    // Map<char *name, RemoteDSLink *>
+    Map *downstream;
+
+    // Map<char *name, RemoteDSLink *>
+    Map client_connecting;
 
 } Broker;
 
-int broker_init();
+int broker_start();
 
 #ifdef __cplusplus
 }

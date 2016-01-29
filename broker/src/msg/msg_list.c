@@ -6,7 +6,6 @@
 
 #include "broker/net/ws.h"
 #include "broker/broker.h"
-#include "broker/node.h"
 #include "broker/stream.h"
 #include "broker/msg/msg_list.h"
 
@@ -32,7 +31,7 @@
     json_object_set_new_nocheck(resp, "stream", json_string(stream))
 
 static
-json_t *broker_list_root(json_t *rid) {
+json_t *broker_list_self(BrokerNode *node, json_t *rid) {
     BROKER_CREATE_RESP(rid, "open");
     json_t *updates = json_array();
     if (!updates) {
@@ -48,102 +47,31 @@ json_t *broker_list_root(json_t *rid) {
         }
 
         json_array_append_new(up, json_string("$is"));
-        json_array_append_new(up, json_string("node"));
+
+        char *profile = dslink_map_get(node->meta, "$is");
+        json_array_append_new(up, json_string(profile));
         json_array_append_new(updates, up);
     }
 
-    {
-        json_t *up = json_array();
-        if (!up) {
-            goto fail;
-        }
 
-        json_t *node = json_object();
-        if (!node) {
-            json_delete(up);
-            goto fail;
-        }
-
-        json_array_append_new(up, json_string("downstream"));
-        json_array_append_new(up, node);
-
-        json_object_set_new(node, "$is", json_string("node"));
-        json_array_append_new(updates, up);
-    }
-
-    return top;
-fail:
-    json_delete(top);
-    return NULL;
-}
-
-static
-json_t *broker_list_defs(json_t *rid) {
-    BROKER_CREATE_RESP(rid, "open");
-    json_t *updates = json_array();
-    if (!updates) {
-        json_delete(top);
-        return NULL;
-    }
-    json_object_set_new_nocheck(resp, "updates", updates);
-
-    {
-        json_t *up = json_array();
-        if (!up) {
-            goto fail;
-        }
-
-        json_array_append_new(up, json_string("$is"));
-        json_array_append_new(up, json_string("static"));
-        json_array_append_new(updates, up);
-    }
-
-    return top;
-    fail:
-    json_delete(top);
-    return NULL;
-}
-
-static
-json_t *broker_list_downstream(RemoteDSLink *link, json_t *rid) {
-    BROKER_CREATE_RESP(rid, "open");
-
-    json_t *updates = json_array();
-    if (!updates) {
-        json_delete(top);
-        return NULL;
-    }
-    json_object_set_new_nocheck(resp, "updates", updates);
-
-    {
-        json_t *up = json_array();
-        if (!up) {
-            goto fail;
-        }
-
-        json_array_append_new(up, json_string("$is"));
-        json_array_append_new(up, json_string("node"));
-        json_array_append_new(updates, up);
-    }
-
-    dslink_map_foreach(&link->broker->downstream) {
-        const char *name = ((DownstreamNode *) entry->value)->name;
+    dslink_map_foreach(node->children) {
+        const char *name = ((BrokerNode *) entry->value)->name;
 
         json_t *up = json_array();
         if (!up) {
             goto fail;
         }
 
-        json_t *node = json_object();
-        if (!node) {
+        json_t *obj = json_object();
+        if (!obj) {
             json_delete(up);
             goto fail;
         }
 
         json_array_append_new(up, json_string(name));
-        json_array_append_new(up, node);
+        json_array_append_new(up, obj);
 
-        json_object_set_new(node, "$is", json_string("node"));
+        json_object_set_new(obj, "$is", json_string("node"));
         json_array_append_new(updates, up);
     }
 
@@ -246,34 +174,19 @@ int broker_msg_handle_list(RemoteDSLink *link, json_t *req) {
     }
 
     json_t *resp = NULL;
-    if (strcmp(path, "/") == 0) {
-        resp = broker_list_root(rid);
-    } else if (dslink_str_starts_with(path, "/defs/")) {
-        resp = broker_list_defs(rid);
-    } else if (strcmp(path, "/downstream") == 0) {
-        resp = broker_list_downstream(link, rid);
-    } else if (dslink_str_starts_with(path, "/downstream/")) {
-        const char *name = path + sizeof("/downstream/") - 1;
-        const char *linkPath;
-        size_t nameLen = strlen(name);
-        {
-            const char *loc = strchr(name, '/');
-            if (loc) {
-                nameLen = strlen(loc);
-                linkPath = loc;
-            } else {
-                linkPath = "/";
-            }
-        }
-        DownstreamNode *node = dslink_map_getl(&link->broker->downstream,
-                                               (void *) name, nameLen);
-        if (node) {
+    char *out = NULL;
+    BrokerNode *node = broker_node_get(link->broker->root, path, &out);
+    if (node) {
+        if (node->type == REGULAR_NODE) {
+            resp = broker_list_self(node, rid);
+        } else if (node->type == DOWNSTREAM_NODE) {
             uint32_t reqRid = (uint32_t) json_integer_value(rid);
-            broker_list_dslink(link, node, linkPath, reqRid);
+            if (out == NULL) {
+                out = "/";
+            }
+            broker_list_dslink(link, (DownstreamNode *) node, out, reqRid);
             goto success;
         }
-    } else {
-        log_err("Unhandled path: %s\n", path);
     }
 
     if (!resp) {
