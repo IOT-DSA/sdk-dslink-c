@@ -7,9 +7,7 @@
 #include <dslink/log.h>
 #include <dslink/handshake.h>
 #include <dslink/utils.h>
-#include <broker/msg/msg_list.h>
-
-#include "broker/remote_dslink.h"
+#include "broker/msg/msg_list.h"
 #include "broker/handshake.h"
 
 json_t *broker_handshake_handle_conn(Broker *broker,
