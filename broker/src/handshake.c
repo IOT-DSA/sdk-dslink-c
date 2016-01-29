@@ -233,8 +233,8 @@ int broker_handshake_handle_ws(Broker *broker,
             node->meta = json_object();
             json_object_set_new(node->meta, "$is", json_string("node"));
 
-            if (broker->downstream->listStream) {
-                update_list_child(broker->downstream, broker->downstream->listStream, link->name);
+            if (broker->downstream->list_stream) {
+                update_list_child(broker->downstream, broker->downstream->list_stream, link->name);
             }
         } else {
             // Data is already stored in the downstream node
