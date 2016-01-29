@@ -41,7 +41,15 @@ void build_list_cache(BrokerNode *node, BrokerListStream *stream) {
     if (profile) {
         json_object_set_nocheck(stream->updates_cache, "$is", profile);
     } else {
-        json_object_set_new_nocheck(stream->updates_cache, "$is", json_string_nocheck("node"));
+        json_object_set_new_nocheck(stream->updates_cache, "$is",
+                                    json_string_nocheck("node"));
+    }
+    {
+        const char *key;
+        json_t *value;
+        json_object_foreach(node->meta, key, value) {
+            json_object_set_nocheck(stream->updates_cache, key, value);
+        }
     }
 
     dslink_map_foreach(node->children) {
