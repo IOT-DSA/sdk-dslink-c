@@ -6,6 +6,7 @@
 #include <dslink/log.h>
 #include <dslink/socket_private.h>
 #include <dslink/socket.h>
+#include <sys/errno.h>
 
 #include "broker/net/server.h"
 
@@ -75,6 +76,7 @@ int broker_start_server(json_t *config, void *data,
 
         int ready = select(maxFd + 1, &readFds, NULL, NULL, NULL);
         if (ready < 0) {
+            log_fatal("Error in select(): %s\n", strerror(errno));
             break;
         }
 
