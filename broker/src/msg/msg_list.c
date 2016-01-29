@@ -48,15 +48,14 @@ json_t *broker_list_self(BrokerNode *node, json_t *rid) {
 
         json_array_append_new(up, json_string("$is"));
 
-        char *profile = dslink_map_get(node->meta, "$is");
-        json_array_append_new(up, json_string(profile));
+        json_t *profile = dslink_map_get(node->meta, "$is");
+        json_array_append_new(up, profile);
         json_array_append_new(updates, up);
     }
 
 
     dslink_map_foreach(node->children) {
-        const char *name = ((BrokerNode *) entry->value)->name;
-
+        BrokerNode *child = (BrokerNode *) entry->value;
         json_t *up = json_array();
         if (!up) {
             goto fail;
@@ -68,7 +67,7 @@ json_t *broker_list_self(BrokerNode *node, json_t *rid) {
             goto fail;
         }
 
-        json_array_append_new(up, json_string(name));
+        json_array_append_new(up, json_string(child->name));
         json_array_append_new(up, obj);
 
         json_object_set_new(obj, "$is", json_string("node"));

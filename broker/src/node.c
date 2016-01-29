@@ -2,6 +2,7 @@
 #include <dslink/col/map.h>
 #include <dslink/utils.h>
 #include <string.h>
+#include <jansson.h>
 #include "broker/node.h"
 
 BrokerNode *broker_node_get(BrokerNode *root,
@@ -78,7 +79,8 @@ BrokerNode *broker_node_create(const char *name, const char *profile) {
     }
 
     char *prof = dslink_strdup("$is");
-    dslink_map_set(node->meta, prof, (void **) &profile);
+    json_t *json = json_string(profile);
+    dslink_map_set(node->meta, prof, (void **) &json);
     return node;
 }
 
