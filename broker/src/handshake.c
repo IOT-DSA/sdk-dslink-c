@@ -210,6 +210,7 @@ int broker_handshake_handle_ws(Broker *broker,
     }
 
     DownstreamNode *node = NULL;
+    int nodeCreated = 0;
     { // Handle retrieval of the downstream node
         node = dslink_map_get(broker->downstream->children, (void *) link->name);
         if (!node) {
@@ -232,10 +233,7 @@ int broker_handshake_handle_ws(Broker *broker,
             node->name = link->name;
             node->meta = json_object();
             json_object_set_new(node->meta, "$is", json_string("node"));
-
-            if (broker->downstream->list_stream) {
-                update_list_child(broker->downstream, broker->downstream->list_stream, link->name);
-            }
+            nodeCreated = 1;
         } else {
             // Data is already stored in the downstream node
             // free up this data and move on
@@ -252,6 +250,10 @@ int broker_handshake_handle_ws(Broker *broker,
     node->dsId = oldDsId;
 
     *socketData = link;
+
+    if (nodeCreated && broker->downstream->listStream) {
+        update_list_child(broker->downstream, broker->downstream->listStream, link->name);
+    }
     log_info("DSLink `%s` has connected\n", dsId);
 exit:
     mbedtls_ecdh_free(&link->auth->tempKey);

@@ -83,7 +83,7 @@ void update_list_child(BrokerNode *node, BrokerListStream *stream, const char* n
         if (child->type == DOWNSTREAM_NODE) {
             DownstreamNode *downstreamNode = (DownstreamNode *)child;
             if (downstreamNode->link && downstreamNode->link->linkData) {
-                json_object_set_nocheck(stream->updates_cache, "$linkData", downstreamNode->link->linkData);
+                json_object_set_new(obj, "$linkData", downstreamNode->link->linkData);
             }
         }
 
