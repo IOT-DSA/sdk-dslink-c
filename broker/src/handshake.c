@@ -251,8 +251,8 @@ int broker_handshake_handle_ws(Broker *broker,
 
     *socketData = link;
 
-    if (nodeCreated && broker->downstream->listStream) {
-        update_list_child(broker->downstream, broker->downstream->listStream, link->name);
+    if (nodeCreated && broker->downstream->list_stream) {
+        update_list_child(broker->downstream, broker->downstream->list_stream, link->name);
     }
     log_info("DSLink `%s` has connected\n", dsId);
 exit:
