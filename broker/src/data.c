@@ -215,13 +215,7 @@ exit:
     return ret;
 }
 
-int data_node_add(BrokerNode *data_node, char *name) {
+int data_node_add() {
   int ret = 0;
-
-  {
-
-  }
-
-exit:
     return ret;
 }
