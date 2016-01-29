@@ -2,6 +2,7 @@
 #include <dslink/log.h>
 
 #include <string.h>
+#include "broker/msg/msg_invoke.h"
 #include "broker/msg/msg_handler.h"
 #include "broker/msg/msg_list.h"
 #include "broker/stream.h"
@@ -17,8 +18,12 @@ void broker_handle_req(RemoteDSLink *link, json_t *req) {
         if (broker_msg_handle_list(link, req) != 0) {
             log_err("Failed to handle list request\n");
         }
+    } else if (strcmp(method, "invoke") == 0) {
+        if (broker_msg_handle_invoke(link, req) != 0) {
+            log_err("Failed handle invocation request\n");
+        }
     } else {
-        log_err("Method unspecified: %s\n", method);
+        log_err("Method unhandled: %s\n", method);
     }
 }
 
@@ -80,6 +85,18 @@ void broker_handle_resp(RemoteDSLink *link, json_t *resp) {
             RemoteDSLink *client = entry->value;
             broker_ws_send_obj(client, top);
         }
+        json_decref(top);
+    } else if (stream->type == INVOCATION_STREAM) {
+        // TODO: check if the stream is closed
+        BrokerInvokeStream *is = (BrokerInvokeStream *) stream;
+        json_t *top = json_object();
+        json_t *resps = json_array();
+        json_object_set_new_nocheck(top, "responses", resps);
+        json_array_append(resps, resp);
+
+        json_t *newRid = json_integer(is->requester_rid);
+        json_object_set_new_nocheck(resp, "rid", newRid);
+        broker_ws_send_obj(is->requester, top);
         json_decref(top);
     }
 }

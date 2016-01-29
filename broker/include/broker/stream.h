@@ -9,15 +9,20 @@ extern "C" {
 #include <dslink/col/map.h>
 #include <dslink/stream.h>
 
+#include "broker/remote_dslink.h"
+
+#define BROKER_STREAM_FIELDS \
+    StreamType type
+
 typedef struct BrokerStream {
 
-    StreamType type;
+    BROKER_STREAM_FIELDS;
 
 } BrokerStream;
 
 typedef struct BrokerListStream {
 
-    StreamType type;
+    BROKER_STREAM_FIELDS;
 
     // JSON array of all the updates
     json_t *updates_cache;
@@ -27,7 +32,18 @@ typedef struct BrokerListStream {
 
 } BrokerListStream;
 
+typedef struct BrokerInvokeStream {
+
+    BROKER_STREAM_FIELDS;
+
+    uint32_t requester_rid;
+    RemoteDSLink *requester;
+
+} BrokerInvokeStream;
+
 BrokerListStream *broker_stream_list_init();
+BrokerInvokeStream *broker_stream_invoke_init();
+
 void broker_stream_free(BrokerStream *stream);
 json_t *broker_stream_list_get_cache(BrokerListStream *stream);
 

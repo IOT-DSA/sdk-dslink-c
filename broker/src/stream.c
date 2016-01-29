@@ -24,6 +24,16 @@ BrokerListStream *broker_stream_list_init() {
     return stream;
 }
 
+BrokerInvokeStream *broker_stream_invoke_init() {
+    BrokerInvokeStream *stream = calloc(1, sizeof(BrokerInvokeStream));
+    if (!stream) {
+        return NULL;
+    }
+
+    stream->type = INVOCATION_STREAM;
+    return stream;
+}
+
 void broker_stream_free(BrokerStream *stream) {
     if (!stream) {
         return;
@@ -31,13 +41,13 @@ void broker_stream_free(BrokerStream *stream) {
 
     if (stream->type == LIST_STREAM) {
         BrokerListStream *s = (BrokerListStream *) stream;
-        DSLINK_CHECKED_EXEC(json_decref, s->updates_cache);
+        json_decref(s->updates_cache);
     }
     free(stream);
 }
 
 static inline
-void addToUpdate(json_t *updates, const char *key, json_t *value) {
+void add_to_update(json_t *updates, const char *key, json_t *value) {
     json_t *update = json_array();
 
     // name
@@ -63,18 +73,18 @@ json_t *broker_stream_list_get_cache(BrokerListStream *stream) {
 
     json_t *valueBase = json_object_get(stream->updates_cache, "$base");
     if (valueBase != NULL) {
-        addToUpdate(updates, "$base", valueBase);
+        add_to_update(updates, "$base", valueBase);
     }
 
     json_t *valueIs = json_object_get(stream->updates_cache, "$is");
     if (valueIs != NULL) {
-        addToUpdate(updates, "$is", valueIs);
+        add_to_update(updates, "$is", valueIs);
     }
 
     json_object_foreach(stream->updates_cache, key, value) {
         if (value != valueIs && value != valueBase) {
             // $base and $is should be added before everything
-            addToUpdate(updates, key, value);
+            add_to_update(updates, key, value);
         }
     }
     return updates;
