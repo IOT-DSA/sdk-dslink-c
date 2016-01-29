@@ -126,7 +126,7 @@ void on_ws_data(wslay_event_context_ptr ctx,
         broker_msg_handle(link, data);
         json_decref(data);
     } else if (arg->opcode == WSLAY_CONNECTION_CLOSE) {
-        close_link(link);
+        link->pendingClose = 1;
     }
 }
 
