@@ -25,6 +25,7 @@ typedef struct RemoteDSLink {
 
     uint8_t isRequester;
     uint8_t isResponder;
+    uint8_t pendingClose;
 
     wslay_event_context_ptr ws;
     Socket *socket;

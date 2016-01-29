@@ -64,7 +64,7 @@ ssize_t want_read_cb(wslay_event_context_ptr ctx,
     RemoteDSLink *link = user_data;
     int ret = dslink_socket_read(link->socket, (char *) buf, len);
     if (ret == 0) {
-        close_link(link);
+        link->pendingClose = 1;
         wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
         return -1;
     } else if (ret == DSLINK_SOCK_READ_ERR) {
@@ -238,6 +238,9 @@ void on_data_callback(Socket *sock, void *data, void **socketData) {
     if (link) {
         link->ws->read_enabled = 1;
         wslay_event_recv(link->ws);
+        if (link->pendingClose) {
+            close_link(link);
+        }
         return;
     }
 

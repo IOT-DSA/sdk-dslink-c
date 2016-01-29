@@ -36,6 +36,18 @@ void broker_stream_free(BrokerStream *stream) {
     free(stream);
 }
 
+static inline
+void addToUpdate(json_t *updates, const char *key, json_t *value) {
+    json_t *update = json_array();
+
+    // name
+    json_array_append_new(update, json_string(key));
+    //value
+    json_array_append(update, value);
+
+    json_array_append_new(updates, update);
+}
+
 json_t *broker_stream_list_get_cache(BrokerListStream *stream) {
     // TODO: check allocation
 
@@ -48,15 +60,22 @@ json_t *broker_stream_list_get_cache(BrokerListStream *stream) {
     const char *key;
     json_t *value;
 
+
+    json_t *valueBase = json_object_get(stream->updates_cache, "$base");
+    if (valueBase != NULL) {
+        addToUpdate(updates, "$base", valueBase);
+    }
+
+    json_t *valueIs = json_object_get(stream->updates_cache, "$is");
+    if (valueIs != NULL) {
+        addToUpdate(updates, "$is", valueIs);
+    }
+
     json_object_foreach(stream->updates_cache, key, value) {
-        json_t *update = json_array();
-
-        // name
-        json_array_append_new(update, json_string(key));
-        //value
-        json_array_append(update, value);
-
-        json_array_append_new(updates, update);
+        if (value != valueIs && value != valueBase) {
+            // $base and $is should be added before everything
+            addToUpdate(updates, key, value);
+        }
     }
     return updates;
 }
