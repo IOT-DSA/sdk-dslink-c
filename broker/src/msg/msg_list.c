@@ -92,11 +92,15 @@ void update_list_child(BrokerNode *node, BrokerListStream *stream, const char* n
         json_array_append_new(updateRow, json_string(name));
         json_array_append_new(updateRow, obj);
         json_array_append_new(updates, updateRow);
+
+        json_object_set_nocheck(stream->updates_cache, name, obj);
+
     } else {
         json_t *removeMap = json_object();
         json_object_set_new(removeMap, "name", json_string(name));
         json_object_set_new(removeMap, "change", json_string("remove"));
         json_array_append_new(updates, removeMap);
+        json_object_del(stream->updates_cache, name);
     }
 
 
