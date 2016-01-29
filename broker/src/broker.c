@@ -321,7 +321,7 @@ int broker_start() {
                 goto exit;
             }
 
-            if (data_node_populate(node) != 0) {
+            if (broker_data_node_populate(node) != 0) {
                 broker_node_free(node);
                 ret = 1;
                 goto exit;

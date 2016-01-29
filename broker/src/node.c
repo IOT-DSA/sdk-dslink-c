@@ -114,6 +114,14 @@ void broker_node_free(BrokerNode *node) {
         free(node->children);
     }
 
+    if (node->meta) {
+        DSLINK_MAP_FREE(node->meta, {
+            free(entry->key);
+            json_decref(entry->value);
+        });
+        free(node->meta);
+    }
+
     free((void *) node->name);
     free(node);
 }
