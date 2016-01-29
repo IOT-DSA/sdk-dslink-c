@@ -94,7 +94,7 @@ json_t *broker_handshake_handle_conn(Broker *broker,
     }
 
     json_t *linkData = json_object_get(handshake, "linkData");
-    if (linkData && linkData->type == JSON_OBJECT) {
+    if (json_is_object(linkData)) {
         json_incref(linkData);
         link->linkData = linkData;
     }
@@ -136,10 +136,12 @@ json_t *broker_handshake_handle_conn(Broker *broker,
 
         json_object_set_new_nocheck(resp, "path", json_string(buf));
 
-        link->name = dslink_strdup(name);
-        if (!link->name) {
+        link->path = dslink_strdup(buf);
+        if (!link->path) {
             goto fail;
         }
+        link->name = link->path + sizeof("/downstream/") - 1;
+
         void *value = (void *) link;
         // add to connecting map with the name
         if (dslink_map_set(&broker->client_connecting,
@@ -166,7 +168,7 @@ json_t *broker_handshake_handle_conn(Broker *broker,
 fail:
     if (link) {
         broker_remote_dslink_free(link);
-        free((void *) link->name);
+        free((void *) link->path);
         free(link);
     }
     DSLINK_CHECKED_EXEC(json_decref, resp);
@@ -238,7 +240,7 @@ int broker_handshake_handle_ws(Broker *broker,
         } else {
             // Data is already stored in the downstream node
             // free up this data and move on
-            free((void *) link->name);
+            free((void *) link->path);
             free(oldDsId);
             oldDsId = (void *) node->dsId;
         }

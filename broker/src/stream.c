@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <dslink/utils.h>
+#include <string.h>
 #include "broker/stream.h"
 
 BrokerListStream *broker_stream_list_init() {
@@ -40,7 +41,9 @@ void broker_stream_free(BrokerStream *stream) {
     }
 
     if (stream->type == LIST_STREAM) {
+
         BrokerListStream *s = (BrokerListStream *) stream;
+        free(s->remotePath);
         json_decref(s->updates_cache);
     }
     free(stream);
@@ -88,4 +91,17 @@ json_t *broker_stream_list_get_cache(BrokerListStream *stream) {
         }
     }
     return updates;
+}
+
+void broker_stream_list_reset_cache(BrokerListStream *stream, RemoteDSLink *link) {
+    json_object_clear(stream->updates_cache);
+
+    json_object_set_new_nocheck(stream->updates_cache,
+                                "$base", json_string_nocheck(link->path));
+    if (strcmp(stream->remotePath, "/") == 0
+        && link->linkData) {
+        // add linkData into the updates_cache
+        json_object_set_nocheck(stream->updates_cache,
+                                "$linkData", link->linkData);
+    }
 }

@@ -140,13 +140,7 @@ void broker_list_dslink(RemoteDSLink *link,
     }
     {
         BrokerListStream *stream = broker_stream_list_init();
-        if (strcmp(path, "/") == 0
-            && node->link->linkData) {
-            // add linkData into the updates_cache
-            json_object_set_nocheck(stream->updates_cache,
-                                    "$linkData", node->link->linkData);
-        }
-
+        stream->remotePath = dslink_strdup(path);
 
         void *tmp = link;
         uint32_t *r = malloc(sizeof(uint32_t));

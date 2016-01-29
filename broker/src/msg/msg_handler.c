@@ -48,15 +48,41 @@ void broker_handle_resp(RemoteDSLink *link, json_t *resp) {
         if (json_is_array(updates)) {
             size_t i;
             json_t *child;
-            // TODO: handle cache reset (when there is a $is change)
+            uint8_t cache_need_reset = 1;
             json_array_foreach(updates, i, child) {
                 // update cache
                 if(json_is_array(child)) {
                     json_t *childName = json_array_get(child, 0);
                     json_t *childValue = json_array_get(child, 1);
                     if (childName->type == JSON_STRING) {
+                        const char *name = json_string_value(childName);
+                        if (strcmp(name, "$base") == 0) {
+                            // clear cache when $base or $is changed
+                            if (cache_need_reset) {
+                                broker_stream_list_reset_cache(ls, link);
+                                cache_need_reset = 0;
+                            }
+                            const char *originalBase = json_string_value(childValue);
+                            if (originalBase) {
+                                char buff[512];
+                                strcpy(buff, stream->path);
+                                strcat(buff, "/");
+                                strcat(buff, originalBase);
+                                json_object_set_new_nocheck(
+                                        ls->updates_cache, "$base",
+                                        json_string_nocheck(buff));
+                            }
+                            continue; // already added to cache
+                        }
+                        if (strcmp(name, "$is") == 0) {
+                            // clear cache when $base or $is changed
+                            if (cache_need_reset) {
+                                broker_stream_list_reset_cache(ls, link);
+                                cache_need_reset = 0;
+                            }
+                        }
                         json_object_set_nocheck(ls->updates_cache,
-                            json_string_value(childName),childValue);
+                                                name, childValue);
                     }
                 } else if (json_is_object(child)) {
                     json_t *childName = json_object_get(child, "name");
@@ -71,7 +97,6 @@ void broker_handle_resp(RemoteDSLink *link, json_t *resp) {
                 }
             }
         }
-
 
         json_t *top = json_object();
         json_t *resps = json_array();

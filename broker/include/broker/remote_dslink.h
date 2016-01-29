@@ -35,6 +35,7 @@ typedef struct RemoteDSLink {
     RemoteAuth *auth;
 
     const char *dsId;
+    const char *path;
     const char *name;
 
     json_t *linkData;
