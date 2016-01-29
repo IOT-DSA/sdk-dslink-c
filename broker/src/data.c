@@ -3,7 +3,7 @@
 #include "broker/config.h"
 #include "broker/broker.h"
 
-#define LOG_TAG "broker"
+#define LOG_TAG "data"
 #include <dslink/log.h>
 #include <dslink/utils.h>
 
