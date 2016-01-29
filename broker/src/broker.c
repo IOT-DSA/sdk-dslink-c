@@ -11,6 +11,7 @@
 #include "broker/net/server.h"
 #include "broker/handshake.h"
 #include "broker/config.h"
+#include "broker/data.h"
 
 #define LOG_TAG "broker"
 #include <dslink/log.h>
@@ -301,6 +302,26 @@ int broker_start() {
             }
 
             if (broker_node_add(broker.root, node) != 0) {
+                broker_node_free(node);
+                ret = 1;
+                goto exit;
+            }
+        }
+
+        {
+            BrokerNode *node = broker_node_create("data", "node");
+            if (!node) {
+                ret = 1;
+                goto exit;
+            }
+
+            if (broker_node_add(broker.root, node) != 0) {
+                broker_node_free(node);
+                ret = 1;
+                goto exit;
+            }
+
+            if (data_node_populate(node) != 0) {
                 broker_node_free(node);
                 ret = 1;
                 goto exit;
