@@ -43,7 +43,7 @@ BrokerNode *broker_node_create(const char *name, const char *profile) {
         return NULL;
     }
 
-    BrokerNode *node = malloc(sizeof(BrokerNode));
+    BrokerNode *node = calloc(1, sizeof(BrokerNode));
     if (!node) {
         return NULL;
     }

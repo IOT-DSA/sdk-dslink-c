@@ -59,7 +59,7 @@ void broker_handle_resp(RemoteDSLink *link, json_t *resp) {
                         if (strcmp(name, "$base") == 0) {
                             // clear cache when $base or $is changed
                             if (cache_need_reset) {
-                                broker_stream_list_reset_cache(ls, link);
+                                broker_stream_list_reset_remote_cache(ls, link);
                                 cache_need_reset = 0;
                             }
                             const char *originalBase = json_string_value(childValue);
@@ -77,7 +77,7 @@ void broker_handle_resp(RemoteDSLink *link, json_t *resp) {
                         if (strcmp(name, "$is") == 0) {
                             // clear cache when $base or $is changed
                             if (cache_need_reset) {
-                                broker_stream_list_reset_cache(ls, link);
+                                broker_stream_list_reset_remote_cache(ls, link);
                                 cache_need_reset = 0;
                             }
                         }

@@ -35,7 +35,7 @@ void close_link(RemoteDSLink *link) {
     dslink_socket_close_nofree(link->socket);
     log_info("DSLink `%s` has disconnected\n", link->dsId);
     void *tmp = (void *) link->name;
-    DownstreamNode *node = dslink_map_get(link->broker->downstream, &tmp);
+    DownstreamNode *node = dslink_map_get(link->broker->downstream->children, &tmp);
     if (node) {
         node->link = NULL;
     }
@@ -341,7 +341,7 @@ int broker_start() {
                 goto exit;
             }
 
-            broker.downstream = node->children;
+            broker.downstream = node;
         }
 
         if (dslink_map_init(&broker.client_connecting,
@@ -351,7 +351,7 @@ int broker_start() {
             goto exit;
         }
 
-        if (dslink_map_init(broker.downstream,
+        if (dslink_map_init(broker.downstream->children,
                         dslink_map_str_cmp,
                         dslink_map_str_key_len_cal) != 0) {
             ret = 1;

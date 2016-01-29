@@ -7,6 +7,7 @@
 #include <dslink/log.h>
 #include <dslink/handshake.h>
 #include <dslink/utils.h>
+#include <broker/msg/msg_list.h>
 
 #include "broker/remote_dslink.h"
 #include "broker/handshake.h"
@@ -125,7 +126,7 @@ json_t *broker_handshake_handle_conn(Broker *broker,
                 nameLen++;
                 continue;
             }
-            DownstreamNode *node = dslink_map_get(broker->downstream,
+            DownstreamNode *node = dslink_map_get(broker->downstream->children,
                                                   (void *) name);
             if (node == NULL || strcmp(dsId, node->dsId) == 0) {
                 break;
@@ -212,7 +213,7 @@ int broker_handshake_handle_ws(Broker *broker,
 
     DownstreamNode *node = NULL;
     { // Handle retrieval of the downstream node
-        node = dslink_map_get(broker->downstream, (void *) link->name);
+        node = dslink_map_get(broker->downstream->children, (void *) link->name);
         if (!node) {
             node = calloc(1, sizeof(DownstreamNode));
             if (!node) {
@@ -221,7 +222,7 @@ int broker_handshake_handle_ws(Broker *broker,
             }
             node->type = DOWNSTREAM_NODE;
             void *tmp = (void *) node;
-            if (dslink_map_set(broker->downstream,
+            if (dslink_map_set(broker->downstream->children,
                                (void *) link->name, &tmp) != 0) {
                 free(node);
                 free(oldDsId);
@@ -233,6 +234,10 @@ int broker_handshake_handle_ws(Broker *broker,
             node->name = link->name;
             node->meta = json_object();
             json_object_set_new(node->meta, "$is", json_string("node"));
+
+            if (broker->downstream->listStream) {
+                update_list_child(broker->downstream, broker->downstream->listStream, link->name);
+            }
         } else {
             // Data is already stored in the downstream node
             // free up this data and move on

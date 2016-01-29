@@ -47,7 +47,8 @@ BrokerInvokeStream *broker_stream_invoke_init();
 
 void broker_stream_free(BrokerStream *stream);
 json_t *broker_stream_list_get_cache(BrokerListStream *stream);
-void broker_stream_list_reset_cache(BrokerListStream *stream, RemoteDSLink *link);
+void broker_stream_list_reset_remote_cache(BrokerListStream *stream, RemoteDSLink *link);
+
 #ifdef __cplusplus
 }
 #endif

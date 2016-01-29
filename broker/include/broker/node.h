@@ -25,6 +25,8 @@ typedef struct BrokerNode {
 
     BROKER_NODE_FIELDS;
 
+    struct BrokerListStream *listStream;
+
 } BrokerNode;
 
 typedef struct DownstreamNode {

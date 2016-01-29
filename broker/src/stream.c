@@ -93,7 +93,7 @@ json_t *broker_stream_list_get_cache(BrokerListStream *stream) {
     return updates;
 }
 
-void broker_stream_list_reset_cache(BrokerListStream *stream, RemoteDSLink *link) {
+void broker_stream_list_reset_remote_cache(BrokerListStream *stream, RemoteDSLink *link) {
     json_object_clear(stream->updates_cache);
     if (link) {
         json_object_set_new_nocheck(stream->updates_cache,
