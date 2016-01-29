@@ -124,18 +124,18 @@ void update_list_child(BrokerNode *node, BrokerListStream *stream, const char* n
 static
 void broker_list_self(RemoteDSLink *reqLink,
                          BrokerNode *node, json_t *rid) {
-    if (!node->listStream) {
-        node->listStream = broker_stream_list_init();
-        build_list_cache(node, node->listStream);
+    if (!node->list_stream) {
+        node->list_stream = broker_stream_list_init();
+        build_list_cache(node, node->list_stream);
     }
 
     uint32_t reqRid = (uint32_t) json_integer_value(rid);
     uint32_t *r = malloc(sizeof(uint32_t));
     *r = reqRid;
     void *tmp = reqLink;
-    dslink_map_set(&node->listStream->clients, r, &tmp);
+    dslink_map_set(&node->list_stream->clients, r, &tmp);
 
-    send_list_updates(reqLink, node->listStream, reqRid);
+    send_list_updates(reqLink, node->list_stream, reqRid);
 
     return;
 }
