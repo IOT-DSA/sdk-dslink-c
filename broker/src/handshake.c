@@ -230,13 +230,9 @@ int broker_handshake_handle_ws(Broker *broker,
             }
 
             // TODO: error handling
-            node->meta = malloc(sizeof(Map));
-            dslink_map_init(node->meta, dslink_map_str_cmp,
-                            dslink_map_str_key_len_cal);
-            char *conf = dslink_strdup("$is");
-            char *profile = dslink_strdup("node");
-            dslink_map_set(node->meta, conf, (void **) &profile);
             node->name = link->name;
+            node->meta = json_object();
+            json_object_set_new(node->meta, "$is", json_string("node"));
         } else {
             // Data is already stored in the downstream node
             // free up this data and move on

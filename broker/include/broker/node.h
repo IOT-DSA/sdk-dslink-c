@@ -19,7 +19,7 @@ typedef enum BrokerNodeType {
     const char *name; \
     struct BrokerNode *parent; \
     Map *children; \
-    Map *meta
+    json_t *meta
 
 typedef struct BrokerNode {
 

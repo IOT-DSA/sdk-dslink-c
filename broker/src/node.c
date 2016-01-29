@@ -68,9 +68,8 @@ BrokerNode *broker_node_create(const char *name, const char *profile) {
         return NULL;
     }
 
-    node->meta = malloc(sizeof(Map));
-    if (dslink_map_init(node->meta, dslink_map_str_cmp,
-                        dslink_map_str_key_len_cal) != 0) {
+    node->meta = json_object();
+    if (!node->meta) {
         DSLINK_MAP_FREE(node->children, {});
         free((void *) node->name);
         free((void *) profile);
@@ -78,9 +77,8 @@ BrokerNode *broker_node_create(const char *name, const char *profile) {
         return NULL;
     }
 
-    char *prof = dslink_strdup("$is");
     json_t *json = json_string(profile);
-    dslink_map_set(node->meta, prof, (void **) &json);
+    json_object_set(node->meta, "$is", json);
     return node;
 }
 
@@ -114,14 +112,7 @@ void broker_node_free(BrokerNode *node) {
         free(node->children);
     }
 
-    if (node->meta) {
-        DSLINK_MAP_FREE(node->meta, {
-            free(entry->key);
-            json_decref(entry->value);
-        });
-        free(node->meta);
-    }
-
+    json_decref(node->meta);
     free((void *) node->name);
     free(node);
 }

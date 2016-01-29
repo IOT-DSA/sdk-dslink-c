@@ -1,7 +1,4 @@
 #include <string.h>
-
-#define LOG_TAG "msg_list"
-#include <dslink/log.h>
 #include <dslink/utils.h>
 
 #include "broker/net/ws.h"
@@ -48,11 +45,10 @@ json_t *broker_list_self(BrokerNode *node, json_t *rid) {
 
         json_array_append_new(up, json_string("$is"));
 
-        json_t *profile = dslink_map_get(node->meta, "$is");
-        json_array_append_new(up, profile);
+        json_t *profile = json_object_get(node->meta, "$is");
+        json_array_append(up, profile);
         json_array_append_new(updates, up);
     }
-
 
     dslink_map_foreach(node->children) {
         BrokerNode *child = (BrokerNode *) entry->value;
