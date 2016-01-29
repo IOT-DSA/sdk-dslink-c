@@ -36,7 +36,7 @@ void broker_handle_resp(RemoteDSLink *link, json_t *resp) {
     }
 
     uint32_t rid = (uint32_t) json_integer_value(jRid);
-    Stream *stream = dslink_map_get(&link->local_streams,
+    BrokerStream *stream = dslink_map_get(&link->local_streams,
                                     &rid);
     if (!stream) {
         return;
@@ -65,7 +65,7 @@ void broker_handle_resp(RemoteDSLink *link, json_t *resp) {
                             const char *originalBase = json_string_value(childValue);
                             if (originalBase) {
                                 char buff[512];
-                                strcpy(buff, stream->path);
+                                strcpy(buff, ((BrokerListStream *) stream)->remotePath);
                                 strcat(buff, "/");
                                 strcat(buff, originalBase);
                                 json_object_set_new_nocheck(
@@ -112,7 +112,6 @@ void broker_handle_resp(RemoteDSLink *link, json_t *resp) {
         }
         json_decref(top);
     } else if (stream->type == INVOCATION_STREAM) {
-        // TODO: check if the stream is closed
         BrokerInvokeStream *is = (BrokerInvokeStream *) stream;
         json_t *top = json_object();
         json_t *resps = json_array();
@@ -123,6 +122,14 @@ void broker_handle_resp(RemoteDSLink *link, json_t *resp) {
         json_object_set_new_nocheck(resp, "rid", newRid);
         broker_ws_send_obj(is->requester, top);
         json_decref(top);
+
+        json_t *jStreamStat = json_object_get(resp, "stream");
+        if (json_is_string(jStreamStat)) {
+            const char *streamStat = json_string_value(jStreamStat);
+            if (strcmp(streamStat, "closed") == 0) {
+                broker_stream_free(stream);
+            }
+        }
     }
 }
 

@@ -36,7 +36,8 @@ int broker_start_server(json_t *config, void *data,
                 uint32_t p = (uint32_t) json_integer_value(jsonPort);
 
                 char buf[8];
-                snprintf(buf, sizeof(buf), "%" PRIu32, p);
+                int len = snprintf(buf, sizeof(buf) - 1, "%" PRIu32, p);
+                buf[len] = '\0';
                 port = buf;
             }
         }
