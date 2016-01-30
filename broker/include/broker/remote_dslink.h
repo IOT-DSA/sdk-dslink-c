@@ -46,7 +46,7 @@ typedef struct RemoteDSLink {
     // Map<char *, Stream *>
     Map list_streams;
 
-    Dispatcher onClose;
+    Dispatcher on_close;
 
 } RemoteDSLink;
 

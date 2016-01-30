@@ -9,7 +9,6 @@ extern "C" {
 #include "broker/node.h"
 
 int broker_data_node_populate(BrokerNode *dataNode);
-int data_node_add(BrokerNode *data_node, char *name);
 
 #ifdef __cplusplus
 }
