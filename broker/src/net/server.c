@@ -6,7 +6,6 @@
 #include <dslink/log.h>
 #include <dslink/socket_private.h>
 #include <dslink/socket.h>
-#include <errno.h>
 
 #include "broker/net/server.h"
 
@@ -16,7 +15,8 @@ typedef struct Client {
 } Client;
 
 int broker_start_server(json_t *config, void *data,
-                        DataReadyCallback cb) {
+                        DataReadyCallback cb,
+                        ClientErrorCallback cec) {
     json_incref(config);
 
     const char *host = NULL;
@@ -60,11 +60,8 @@ int broker_start_server(json_t *config, void *data,
 
     Client **clients = calloc(1, sizeof(Client *));
     int clientsLen = 1;
-
     while (1) {
-#ifndef NDEBUG
         fd_set errorFds;
-#endif
         fd_set readFds;
         FD_SET(srv.fd, &readFds);
         int maxFd = srv.fd;
@@ -72,31 +69,25 @@ int broker_start_server(json_t *config, void *data,
             Client *client = clients[i];
             if (client) {
                 FD_SET(client->sock->socket_fd.fd, &readFds);
-#ifndef NDEBUG
                 FD_SET(client->sock->socket_fd.fd, &errorFds);
-#endif
                 if (client->sock->socket_fd.fd > maxFd) {
                     maxFd = client->sock->socket_fd.fd;
                 }
             }
         }
 
-#ifndef NDEBUG
         int ready = select(maxFd + 1, &readFds, NULL, &errorFds, NULL);
-#else
-        int ready = select(maxFd + 1, &readFds, NULL, NULL, NULL);
-#endif
         if (ready < 0) {
-            log_fatal("Error in select(): %s\n", strerror(errno));
-#ifndef NDEBUG
             for (int i = 0; i < clientsLen; ++i) {
                 Client *client = clients[i];
                 if (client && FD_ISSET(client->sock->socket_fd.fd, &errorFds)) {
-                    log_err("Bad file descriptor: %d\n", client->sock->socket_fd.fd);
+                    cec(client->sock_data);
+                    clients[i] = NULL;
+                    dslink_socket_close(client->sock);
+                    free(client);
                 }
             }
-#endif
-            break;
+            continue;
         }
 
         for (int i = 0; i < clientsLen; ++i) {
@@ -172,16 +163,6 @@ int broker_start_server(json_t *config, void *data,
             mbedtls_net_free(&tmp);
         }
     }
-
-    for (int i = 0; i < clientsLen; ++i) {
-        Client *client = clients[i];
-        if (client) {
-            dslink_socket_close(client->sock);
-            free(client);
-        }
-    }
-    free(clients);
-    mbedtls_net_free(&srv);
-    json_decref(config);
+    // The return will never be reached
     return 0;
 }

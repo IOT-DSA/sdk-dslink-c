@@ -277,6 +277,15 @@ exit:
     dslink_socket_close_nofree(sock);
 }
 
+static
+void on_client_err(void *socketData) {
+    if (!socketData) {
+        return;
+    }
+
+    close_link(socketData);
+}
+
 int broker_start() {
     int ret = 0;
     json_t *config = broker_config_get();
@@ -374,7 +383,8 @@ int broker_start() {
         }
     }
 
-    ret = broker_start_server(config, &broker, on_data_callback);
+    ret = broker_start_server(config, &broker,
+                              on_data_callback, on_client_err);
 exit:
     DSLINK_CHECKED_EXEC(json_delete, config);
     DSLINK_MAP_FREE(&broker.client_connecting, {});
