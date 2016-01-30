@@ -293,6 +293,8 @@ int broker_start() {
             ret = 1;
             goto exit;
         }
+        json_object_set_new(broker.root->meta, "$downstream",
+                            json_string_nocheck("/downstream"));
 
         {
             BrokerNode *node = broker_node_create("defs", "static");
