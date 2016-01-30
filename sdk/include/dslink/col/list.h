@@ -13,6 +13,7 @@ extern "C" {
 typedef struct ListNodeBase {
     struct ListNodeBase *prev;
     struct ListNodeBase *next;
+    // prev and next are ignored when list==NULL
     struct List *list;
 } ListNodeBase;
 
@@ -70,6 +71,15 @@ void *remove_list_node(void *node) {
         ((ListNodeBase*)node)->list = NULL;
     }
     return node;
+}
+
+static inline
+void *remove_all_list_nodes(List *list) {
+    dslink_list_foreach(list) {
+        node->list = NULL;
+    }
+    list->head.next = &list->head;
+    list->head.prev = &list->head;
 }
 
 static inline

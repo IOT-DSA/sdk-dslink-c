@@ -19,6 +19,8 @@ int broker_remote_dslink_init(RemoteDSLink *link) {
         return DSLINK_ALLOC_ERR;
     }
 
+    list_init(&link->onClose);
+
     return 0;
 }
 

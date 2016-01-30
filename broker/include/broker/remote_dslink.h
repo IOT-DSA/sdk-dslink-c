@@ -45,6 +45,8 @@ typedef struct RemoteDSLink {
     // Map<char *, Stream *>
     Map list_streams;
 
+    Dispatcher onClose;
+
 } RemoteDSLink;
 
 int broker_remote_dslink_init(RemoteDSLink *link);
