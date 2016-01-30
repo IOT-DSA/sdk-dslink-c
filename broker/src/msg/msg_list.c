@@ -65,7 +65,7 @@ void build_list_cache(BrokerNode *node, BrokerListStream *stream) {
         if (child->type == DOWNSTREAM_NODE) {
             DownstreamNode *downstreamNode = (DownstreamNode *)child;
             if (downstreamNode->link && downstreamNode->link->linkData) {
-                json_object_set_nocheck(stream->updates_cache, "$linkData",
+                json_object_set_nocheck(obj, "$linkData",
                                         downstreamNode->link->linkData);
             }
         }

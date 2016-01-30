@@ -74,7 +74,7 @@ void *remove_list_node(void *node) {
 }
 
 static inline
-void *remove_all_list_nodes(List *list) {
+void remove_all_list_nodes(List *list) {
     dslink_list_foreach(list) {
         node->list = NULL;
     }

@@ -11,6 +11,7 @@ extern "C" {
 #include <wslay/wslay.h>
 
 #include <dslink/col/map.h>
+#include <dslink/col/listener.h>
 #include <dslink/socket.h>
 
 typedef struct RemoteAuth {
