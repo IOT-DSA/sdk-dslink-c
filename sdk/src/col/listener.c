@@ -16,3 +16,14 @@ void dispatch_message(Dispatcher *dispatcher, void *message) {
         listener->callback(listener->data, message);
     }
 }
+
+void dispatch_and_remove_all(Dispatcher *dispatcher, void *message) {
+    dslink_list_foreach(&dispatcher->list) {
+        Listener *listener = (Listener *)node;
+        listener->callback(listener->data, message);
+        // clear it from the list
+        listener->list = NULL;
+    }
+    dispatcher->list.head.next = &dispatcher->list.head;
+    dispatcher->list.head.prev = &dispatcher->list.head;
+}

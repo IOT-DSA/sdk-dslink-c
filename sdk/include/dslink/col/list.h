@@ -22,35 +22,39 @@ typedef struct List {
 
 static inline
 uint8_t is_list_empty(List *list) {
-    return ((List*)list)->head.next == &((List*)list)->head;
+    return !list || ((List*)list)->head.next == &((List*)list)->head;
 }
 
 static inline
 uint8_t is_list_not_empty(List *list) {
-    return list->head.next != &list->head;
+    return list && list->head.next != &list->head;
 }
 static inline
 uint8_t is_node_in_list(void *node) {
-    return  ((ListNodeBase*)node)->list != NULL;
+    return  node && ((ListNodeBase*)node)->list;
 }
 
 
 static inline
 void insert_list_node_after(void *node, void *base) {
-    ((ListNodeBase*)node)->list = ((ListNodeBase*)base)->list;
-    ((ListNodeBase*)base)->next->prev = node;
-    ((ListNodeBase*)node)->next = ((ListNodeBase*)base)->next;
-    ((ListNodeBase*)base)->next = node;
-    ((ListNodeBase*)node)->prev = base;
+    if (node && base && ((ListNodeBase*)base)->list) {
+        ((ListNodeBase *) node)->list = ((ListNodeBase *) base)->list;
+        ((ListNodeBase *) base)->next->prev = node;
+        ((ListNodeBase *) node)->next = ((ListNodeBase *) base)->next;
+        ((ListNodeBase *) base)->next = node;
+        ((ListNodeBase *) node)->prev = base;
+    }
 }
 
 static inline
 void insert_list_node_before(void *node, void *base) {
-    ((ListNodeBase*)node)->list = ((ListNodeBase*)base)->list;
-    ((ListNodeBase*)base)->prev->next = node;
-    ((ListNodeBase*)node)->prev = ((ListNodeBase*)base)->prev;
-    ((ListNodeBase*)base)->prev = node;
-    ((ListNodeBase*)node)->next = base;
+    if (node && base && ((ListNodeBase*)base)->list) {
+        ((ListNodeBase *) node)->list = ((ListNodeBase *) base)->list;
+        ((ListNodeBase *) base)->prev->next = node;
+        ((ListNodeBase *) node)->prev = ((ListNodeBase *) base)->prev;
+        ((ListNodeBase *) base)->prev = node;
+        ((ListNodeBase *) node)->next = base;
+    }
 }
 
 static inline
