@@ -15,7 +15,7 @@ ListNode *dslink_list_insert(List *list, void *data) {
         return NULL;
     }
 
-    insert_list_node(list, node);
+    list_insert_node(list, node);
     node->value = data;
     return node;
 }

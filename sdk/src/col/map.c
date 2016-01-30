@@ -124,7 +124,7 @@ exit:
         return DSLINK_ALLOC_ERR;
     }
     map->items++;
-    insert_list_node(&map->list, (*node)->entry);
+    list_insert_node(&map->list, (*node)->entry);
     return ret;
 }
 
@@ -227,7 +227,7 @@ void *dslink_map_removel(Map *map, void **key, size_t len) {
         }
         *key = node->entry->key;
         void *value = node->entry->value;
-        free_list_node(node->entry);
+        list_free_node(node->entry);
         free(node);
         map->items--;
         return value;

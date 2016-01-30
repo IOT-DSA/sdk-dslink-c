@@ -7,7 +7,7 @@ void add_listener(Dispatcher *dispatcher, int (*callback)(void*, void*), void *d
     Listener *listener = malloc(sizeof(Listener));
     listener->callback = callback;
     listener->data = data;
-    insert_list_node(&dispatcher->list, listener);
+    list_insert_node(&dispatcher->list, listener);
 }
 
 void dispatch_message(Dispatcher *dispatcher, void *message) {

@@ -22,22 +22,22 @@ typedef struct List {
 } List;
 
 static inline
-uint8_t is_list_empty(List *list) {
+uint8_t list_is_empty(List *list) {
     return !list || ((List*)list)->head.next == &((List*)list)->head;
 }
 
 static inline
-uint8_t is_list_not_empty(List *list) {
+uint8_t list_is_not_empty(List *list) {
     return list && list->head.next != &list->head;
 }
 static inline
-uint8_t is_node_in_list(void *node) {
+uint8_t list_node_in_list(void *node) {
     return  node && ((ListNodeBase*)node)->list;
 }
 
 
 static inline
-void insert_list_node_after(void *node, void *base) {
+void list_insert_node_after(void *node, void *base) {
     if (node && base && ((ListNodeBase*)base)->list) {
         ((ListNodeBase *) node)->list = ((ListNodeBase *) base)->list;
         ((ListNodeBase *) base)->next->prev = node;
@@ -48,7 +48,7 @@ void insert_list_node_after(void *node, void *base) {
 }
 
 static inline
-void insert_list_node_before(void *node, void *base) {
+void list_insert_node_before(void *node, void *base) {
     if (node && base && ((ListNodeBase*)base)->list) {
         ((ListNodeBase *) node)->list = ((ListNodeBase *) base)->list;
         ((ListNodeBase *) base)->prev->next = node;
@@ -59,12 +59,12 @@ void insert_list_node_before(void *node, void *base) {
 }
 
 static inline
-void insert_list_node(List *list, void *node) {
-    insert_list_node_before(node, &list->head);
+void list_insert_node(List *list, void *node) {
+    list_insert_node_before(node, &list->head);
 }
 
 static inline
-void *remove_list_node(void *node) {
+void *list_remove_node(void *node) {
     if (node && ((ListNodeBase*)node)->list) {
         ((ListNodeBase*)node)->prev->next = ((ListNodeBase*)node)->next;
         ((ListNodeBase*)node)->next->prev = ((ListNodeBase*)node)->prev;
@@ -74,7 +74,7 @@ void *remove_list_node(void *node) {
 }
 
 static inline
-void remove_all_list_nodes(List *list) {
+void list_remove_all_nodes(List *list) {
     dslink_list_foreach(list) {
         node->list = NULL;
     }
@@ -83,7 +83,7 @@ void remove_all_list_nodes(List *list) {
 }
 
 static inline
-void free_list_node(void *node) {
+void list_free_node(void *node) {
     if (node) {
         if (((ListNodeBase*)node)->list) {
             ((ListNodeBase*)node)->prev->next = ((ListNodeBase*)node)->next;
