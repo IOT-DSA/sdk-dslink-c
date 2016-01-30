@@ -22,13 +22,23 @@ typedef struct Dispatcher {
     List list;
 } Dispatcher;
 
+// listener instance created by add_listener need to be freed in user code
+Listener *listener_add(Dispatcher *dispatcher, int (*callback)(void *, void *), void *data);
 
-void add_listener(Dispatcher *dispatcher, int (*callback)(void*, void*), void *data);
-
-void dispatch_message(Dispatcher *dispatcher, void *message);
+void listener_dispatch_message(Dispatcher *dispatcher, void *message);
 
 // dispatch message and remove all listeners
-void dispatch_and_remove_all(Dispatcher *dispatcher, void *message);
+void listener_dispatch_remove_all(Dispatcher *dispatcher, void *message);
+
+static inline
+Listener *listener_remove(Listener *listener){
+    return (Listener *)list_remove_node(listener);
+}
+
+static inline
+void listener_remove_all(Dispatcher *dispatcher) {
+    list_remove_all_nodes(&dispatcher->list);
+}
 
 #ifdef __cplusplus
 }
