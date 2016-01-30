@@ -8,7 +8,7 @@ extern "C" {
 #endif
 
 #define dslink_list_foreach(list) \
-    for (ListNode *node = (list)->head.next; node != &list->head; node = node->next)
+    for (ListNodeBase *node = (list)->head.next; node != &(list)->head; node = node->next)
 
 typedef struct ListNodeBase {
     struct ListNodeBase *prev;
@@ -22,35 +22,39 @@ typedef struct List {
 
 static inline
 uint8_t is_list_empty(List *list) {
-    return ((List*)list)->head.next == &((List*)list)->head;
+    return !list || ((List*)list)->head.next == &((List*)list)->head;
 }
 
 static inline
 uint8_t is_list_not_empty(List *list) {
-    return list->head.next != &list->head;
+    return list && list->head.next != &list->head;
 }
 static inline
 uint8_t is_node_in_list(void *node) {
-    return  ((ListNodeBase*)node)->list != NULL;
+    return  node && ((ListNodeBase*)node)->list;
 }
 
 
 static inline
 void insert_list_node_after(void *node, void *base) {
-    ((ListNodeBase*)node)->list = ((ListNodeBase*)base)->list;
-    ((ListNodeBase*)base)->next->prev = node;
-    ((ListNodeBase*)node)->next = ((ListNodeBase*)base)->next;
-    ((ListNodeBase*)base)->next = node;
-    ((ListNodeBase*)node)->prev = base;
+    if (node && base && ((ListNodeBase*)base)->list) {
+        ((ListNodeBase *) node)->list = ((ListNodeBase *) base)->list;
+        ((ListNodeBase *) base)->next->prev = node;
+        ((ListNodeBase *) node)->next = ((ListNodeBase *) base)->next;
+        ((ListNodeBase *) base)->next = node;
+        ((ListNodeBase *) node)->prev = base;
+    }
 }
 
 static inline
 void insert_list_node_before(void *node, void *base) {
-    ((ListNodeBase*)node)->list = ((ListNodeBase*)base)->list;
-    ((ListNodeBase*)base)->prev->next = node;
-    ((ListNodeBase*)node)->prev = ((ListNodeBase*)base)->prev;
-    ((ListNodeBase*)base)->prev = node;
-    ((ListNodeBase*)node)->next = base;
+    if (node && base && ((ListNodeBase*)base)->list) {
+        ((ListNodeBase *) node)->list = ((ListNodeBase *) base)->list;
+        ((ListNodeBase *) base)->prev->next = node;
+        ((ListNodeBase *) node)->prev = ((ListNodeBase *) base)->prev;
+        ((ListNodeBase *) base)->prev = node;
+        ((ListNodeBase *) node)->next = base;
+    }
 }
 
 static inline
@@ -60,17 +64,23 @@ void insert_list_node(List *list, void *node) {
 
 static inline
 void *remove_list_node(void *node) {
-    ((ListNodeBase*)node)->prev->next = ((ListNodeBase*)node)->next;
-    ((ListNodeBase*)node)->next->prev = ((ListNodeBase*)node)->prev;
-    ((ListNodeBase*)node)->list = NULL;
+    if (node && ((ListNodeBase*)node)->list) {
+        ((ListNodeBase*)node)->prev->next = ((ListNodeBase*)node)->next;
+        ((ListNodeBase*)node)->next->prev = ((ListNodeBase*)node)->prev;
+        ((ListNodeBase*)node)->list = NULL;
+    }
     return node;
 }
 
 static inline
 void free_list_node(void *node) {
-    ((ListNodeBase*)node)->prev->next = ((ListNodeBase*)node)->next;
-    ((ListNodeBase*)node)->next->prev = ((ListNodeBase*)node)->prev;
-    free(node);
+    if (node) {
+        if (((ListNodeBase*)node)->list) {
+            ((ListNodeBase*)node)->prev->next = ((ListNodeBase*)node)->next;
+            ((ListNodeBase*)node)->next->prev = ((ListNodeBase*)node)->prev;
+        }
+        free(node);
+    }
 }
 
 

@@ -57,6 +57,7 @@ include_directories("sdk/include")
 set(DSLINK_SRC_DIR "sdk/src")
 set(DSLINK_SRC
     "${DSLINK_SRC_DIR}/col/list.c"
+    "${DSLINK_SRC_DIR}/col/listener.c"
     "${DSLINK_SRC_DIR}/col/map.c"
 
     "${DSLINK_SRC_DIR}/msg/list_response.c"
