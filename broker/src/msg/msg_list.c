@@ -9,7 +9,7 @@
 #include "broker/stream.h"
 #include "broker/msg/msg_list.h"
 
-static
+
 void send_list_updates(RemoteDSLink *reqLink,
                        BrokerListStream *stream,
                        uint32_t reqRid) {
@@ -156,64 +156,6 @@ void broker_list_self(RemoteDSLink *reqLink,
     return;
 }
 
-static
-void broker_list_dslink(RemoteDSLink *reqLink,
-                        DownstreamNode *node,
-                        const char *path,
-                        uint32_t reqRid) {
-    // TODO: so much error handling
-    {
-        BrokerListStream *stream = dslink_map_get(&node->link->list_streams,
-                                                  (void *) path);
-        if (stream) {
-            uint32_t *r = malloc(sizeof(uint32_t));
-            *r = reqRid;
-            void *tmp = reqLink;
-            dslink_map_set(&stream->clients, r, &tmp);
-            send_list_updates(reqLink, stream, reqRid);
-            return;
-        }
-    }
-
-    uint32_t rid = 0;
-    {
-        json_t *top = json_object();
-        json_t *reqs = json_array();
-        json_object_set_new_nocheck(top, "requests", reqs);
-
-        json_t *req = json_object();
-        json_array_append_new(reqs, req);
-        json_object_set_new_nocheck(req, "method", json_string("list"));
-        json_object_set_new_nocheck(req, "path", json_string(path));
-
-        rid = broker_node_incr_rid(node);
-        json_object_set_new_nocheck(req, "rid",
-                                    json_integer((json_int_t) rid));
-
-        {
-            broker_ws_send_obj(node->link, top);
-            json_decref(top);
-        }
-    }
-    {
-        BrokerListStream *stream = broker_stream_list_init();
-        stream->remotePath = dslink_strdup(path);
-
-        void *tmp = reqLink;
-        uint32_t *r = malloc(sizeof(uint32_t));
-        *r = reqRid;
-        dslink_map_set(&stream->clients, r, &tmp);
-
-        r = malloc(sizeof(uint32_t));
-        *r = rid;
-        tmp = stream;
-        dslink_map_set(&node->link->local_streams, r, &tmp);
-
-        char *p = dslink_strdup(path);
-        tmp = stream;
-        dslink_map_set(&node->link->list_streams, p, &tmp);
-    }
-}
 
 int broker_msg_handle_list(RemoteDSLink *link, json_t *req) {
     const char *path = json_string_value(json_object_get(req, "path"));

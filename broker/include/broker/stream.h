@@ -31,6 +31,7 @@ typedef struct BrokerListStream {
     // Map<uint32_t *, RemoteDSLink *>
     Map clients;
 
+    uint8_t cache_sent;
 } BrokerListStream;
 
 typedef struct BrokerInvokeStream {
