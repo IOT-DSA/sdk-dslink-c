@@ -5,7 +5,6 @@
 #include "broker/msg/msg_invoke.h"
 #include "broker/msg/msg_handler.h"
 #include "broker/msg/msg_list.h"
-#include "broker/stream.h"
 #include "broker/net/ws.h"
 
 static
@@ -140,8 +139,21 @@ void broker_msg_handle(RemoteDSLink *link,
     }
     json_incref(data);
 
+    json_t *reqs = json_object_get(data, "requests");
+    json_t *resps = json_object_get(data, "responses");
+
+    if (reqs || resps) {
+        json_t *msg = json_object_get(data, "msg");
+        if (json_is_string(msg)) {
+            json_t *obj = json_object();
+            if (obj) {
+                json_object_set_nocheck(obj, "ack", msg);
+                broker_ws_send_obj(link, obj);
+            }
+        }
+    }
+
     {
-        json_t *reqs = json_object_get(data, "requests");
         if (link->isRequester && reqs) {
             json_t *req;
             size_t index = 0;
@@ -152,7 +164,6 @@ void broker_msg_handle(RemoteDSLink *link,
     }
 
     {
-        json_t *resps = json_object_get(data, "responses");
         if (link->isResponder && resps) {
             json_t *resp;
             size_t index = 0;
