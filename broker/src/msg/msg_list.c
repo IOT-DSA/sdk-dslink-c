@@ -77,19 +77,23 @@ fail:
     return;
 }
 
-void update_list_child(BrokerNode *node, BrokerListStream *stream, const char* name) {
+void update_list_child(BrokerNode *node, BrokerListStream *stream, const char *name) {
     json_t *updates = json_array();
 
 
-    char *tempName = dslink_strdup(name);
-    if (dslink_map_contains(node->children, tempName)) {
+    if (dslink_map_contains(node->children, (void *) name)) {
         json_t *obj = json_object();
 
-        json_object_set_new(obj, "$is", json_string("node"));
-        tempName = dslink_strdup(name);
-        BrokerNode *child = dslink_map_get(node->children, tempName);
+        {
+            json_object_set_new(obj, "$is", json_string("node"));
+            json_t *invokable = json_object_get(node->meta, "$invokable");
+            if (invokable) {
+                json_object_set_nocheck(obj, "$invokable", invokable);
+            }
+        }
+        BrokerNode *child = dslink_map_get(node->children, (void *) name);
         if (child->type == DOWNSTREAM_NODE) {
-            DownstreamNode *downstreamNode = (DownstreamNode *)child;
+            DownstreamNode *downstreamNode = (DownstreamNode *) child;
             if (downstreamNode->link && downstreamNode->link->linkData) {
                 json_object_set_new(obj, "$linkData", downstreamNode->link->linkData);
             }
