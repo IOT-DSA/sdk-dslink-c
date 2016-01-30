@@ -3,7 +3,6 @@
 #include "dslink/col/list.h"
 
 void list_init(List *list) {
-    memset(list, 0, sizeof(List));
     list->head.list = list;
     list->head.next = &list->head;
     list->head.prev = &list->head;
