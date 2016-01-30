@@ -8,7 +8,7 @@ extern "C" {
 #endif
 
 #define dslink_list_foreach(list) \
-    for (ListNode *node = (list)->head.next; node != &list->head; node = node->next)
+    for (ListNodeBase *node = (list)->head.next; node != &(list)->head; node = node->next)
 
 typedef struct ListNodeBase {
     struct ListNodeBase *prev;
@@ -60,17 +60,23 @@ void insert_list_node(List *list, void *node) {
 
 static inline
 void *remove_list_node(void *node) {
-    ((ListNodeBase*)node)->prev->next = ((ListNodeBase*)node)->next;
-    ((ListNodeBase*)node)->next->prev = ((ListNodeBase*)node)->prev;
-    ((ListNodeBase*)node)->list = NULL;
+    if (node && ((ListNodeBase*)node)->list) {
+        ((ListNodeBase*)node)->prev->next = ((ListNodeBase*)node)->next;
+        ((ListNodeBase*)node)->next->prev = ((ListNodeBase*)node)->prev;
+        ((ListNodeBase*)node)->list = NULL;
+    }
     return node;
 }
 
 static inline
 void free_list_node(void *node) {
-    ((ListNodeBase*)node)->prev->next = ((ListNodeBase*)node)->next;
-    ((ListNodeBase*)node)->next->prev = ((ListNodeBase*)node)->prev;
-    free(node);
+    if (node) {
+        if (((ListNodeBase*)node)->list) {
+            ((ListNodeBase*)node)->prev->next = ((ListNodeBase*)node)->next;
+            ((ListNodeBase*)node)->next->prev = ((ListNodeBase*)node)->prev;
+        }
+        free(node);
+    }
 }
 
 

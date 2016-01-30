@@ -5,6 +5,7 @@
 extern "C" {
 #endif
 
+#include "list.h"
 
 typedef struct Listener {
     struct Listener *prev;
@@ -21,6 +22,8 @@ typedef struct Dispatcher {
     List list;
 } Dispatcher;
 
+
+void add_listener(Dispatcher *dispatcher, int (*callback)(void*, void*), void *data);
 
 void dispatch_message(Dispatcher *dispatcher, void *message);
 
