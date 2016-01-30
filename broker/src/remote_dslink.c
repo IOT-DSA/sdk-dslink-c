@@ -4,7 +4,6 @@
 #include <dslink/err.h>
 
 #include "broker/stream.h"
-#include "broker/remote_dslink.h"
 
 int broker_remote_dslink_init(RemoteDSLink *link) {
     memset(link, 0, sizeof(RemoteDSLink));

@@ -6,8 +6,7 @@
 #include <dslink/log.h>
 #include <dslink/socket_private.h>
 #include <dslink/socket.h>
-#include <sys/errno.h>
-#include <mbedtls/net.h>
+#include <errno.h>
 
 #include "broker/net/server.h"
 

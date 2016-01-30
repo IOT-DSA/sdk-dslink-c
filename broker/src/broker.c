@@ -11,7 +11,7 @@
 #include "broker/net/server.h"
 #include "broker/handshake.h"
 #include "broker/config.h"
-#include "broker/data.h"
+#include "broker/data/data.h"
 
 #define LOG_TAG "broker"
 #include <dslink/log.h>

@@ -85,6 +85,8 @@ set(LIBRARY_SRC
 
 set(BROKER_SRC_DIR "broker/src")
 set(BROKER_SRC
+    "${BROKER_SRC_DIR}/data/data.c"
+
     "${BROKER_SRC_DIR}/msg/msg_handler.c"
     "${BROKER_SRC_DIR}/msg/msg_invoke.c"
     "${BROKER_SRC_DIR}/msg/msg_list.c"
@@ -96,7 +98,6 @@ set(BROKER_SRC
 
     "${BROKER_SRC_DIR}/broker.c"
     "${BROKER_SRC_DIR}/config.c"
-    "${BROKER_SRC_DIR}/data.c"
     "${BROKER_SRC_DIR}/handshake.c"
     "${BROKER_SRC_DIR}/main.c"
     "${BROKER_SRC_DIR}/node.c"
