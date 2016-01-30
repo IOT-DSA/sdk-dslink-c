@@ -3,7 +3,9 @@
 #include <dslink/utils.h>
 #include <string.h>
 #include <jansson.h>
+#include "broker/stream.h"
 #include "broker/node.h"
+#include "broker/msg/msg_list.h"
 
 BrokerNode *broker_node_get(BrokerNode *root,
                             const char *path, char **out) {
@@ -103,6 +105,8 @@ void broker_node_free(BrokerNode *node) {
         DSLINK_MAP_FREE(&((DownstreamNode *)node)->list_streams, {
             free(entry->key);
         });
+        listener_remove_all(&((DownstreamNode *)node)->on_link_connect);
+        listener_remove_all(&((DownstreamNode *)node)->on_link_disconnect);
     }
 
     if (node->parent) {
@@ -130,4 +134,16 @@ uint32_t broker_node_incr_rid(DownstreamNode *node) {
         node->rid++;
     }
     return node->rid;
+}
+
+
+void broker_dslink_disconnect(DownstreamNode *node) {
+    dslink_map_foreach(&node->list_streams) {
+        BrokerListStream *stream = (BrokerListStream *)entry->value;
+        broker_stream_list_disconnect(stream);
+    }
+    // notify all listeners of the close event
+    listener_dispatch_message(&node->on_link_disconnect, NULL);
+
+    node->link = NULL;
 }

@@ -6,6 +6,7 @@ extern "C" {
 #endif
 
 #include <stdint.h>
+#include <dslink/col/listener.h>
 
 typedef enum BrokerNodeType {
 
@@ -38,6 +39,9 @@ typedef struct DownstreamNode {
     // Map<char *, Stream *>
     Map list_streams;
 
+    Dispatcher on_link_connect;
+    Dispatcher on_link_disconnect;
+
     const char *dsId;
     uint32_t rid;
 
@@ -51,6 +55,8 @@ int broker_node_add(BrokerNode *parent, BrokerNode *child);
 void broker_node_free(BrokerNode *node);
 
 uint32_t broker_node_incr_rid(DownstreamNode *node);
+
+void broker_dslink_disconnect(DownstreamNode *node);
 
 #ifdef __cplusplus
 }

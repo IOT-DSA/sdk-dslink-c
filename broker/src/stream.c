@@ -109,5 +109,6 @@ void broker_stream_list_reset_remote_cache(BrokerListStream *stream, RemoteDSLin
         dslink_create_ts(ts, 32);
         json_object_set_new_nocheck(stream->updates_cache,
                                     "$disconnectedTs", json_string_nocheck(ts));
+        stream->cache_sent = 0;
     }
 }

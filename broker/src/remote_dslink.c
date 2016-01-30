@@ -12,7 +12,7 @@ int broker_remote_dslink_init(RemoteDSLink *link) {
         return DSLINK_ALLOC_ERR;
     }
 
-    listener_init(&link->on_close);
+
 
     return 0;
 }
@@ -28,6 +28,5 @@ void broker_remote_dslink_free(RemoteDSLink *link) {
         free(link->auth);
     }
     json_decref(link->linkData);
-    listener_remove_all(&link->on_close);
     free(link->ws);
 }

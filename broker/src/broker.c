@@ -34,10 +34,9 @@ static
 void close_link(RemoteDSLink *link) {
     dslink_socket_close_nofree(link->socket);
     log_info("DSLink `%s` has disconnected\n", link->dsId);
-    void *tmp = (void *) link->name;
-    DownstreamNode *node = dslink_map_get(link->broker->downstream->children, &tmp);
+    DownstreamNode *node = dslink_map_get(link->broker->downstream->children, (void *) link->name);
     if (node) {
-        node->link = NULL;
+        broker_dslink_disconnect(node);
     }
     broker_remote_dslink_free(link);
     free(link);
