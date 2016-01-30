@@ -228,9 +228,7 @@ int broker_handshake_handle_ws(Broker *broker,
                 ret = 1;
                 goto exit;
             }
-
-            // TODO: error handling
-            node->name = link->name;
+            node->name = dslink_strdup(link->name);
             node->meta = json_object();
             json_object_set_new(node->meta, "$is", json_string("node"));
             nodeCreated = 1;

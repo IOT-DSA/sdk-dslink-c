@@ -36,6 +36,11 @@ Listener *listener_remove(Listener *listener){
 }
 
 static inline
+void listener_init(Dispatcher *dispatcher) {
+    list_init(&dispatcher->list);
+}
+
+static inline
 void listener_remove_all(Dispatcher *dispatcher) {
     list_remove_all_nodes(&dispatcher->list);
 }
