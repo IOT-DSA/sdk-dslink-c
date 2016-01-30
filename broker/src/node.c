@@ -99,6 +99,11 @@ void broker_node_free(BrokerNode *node) {
     if (!node) {
         return;
     }
+    if (node->type == DOWNSTREAM_NODE) {
+        DSLINK_MAP_FREE(&((DownstreamNode *)node)->list_streams, {
+            free(entry->key);
+        });
+    }
 
     if (node->parent) {
         void *tmp = (void *) node->name;

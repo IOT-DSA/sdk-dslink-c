@@ -34,8 +34,13 @@ typedef struct DownstreamNode {
     BROKER_NODE_FIELDS;
 
     struct RemoteDSLink *link;
+
+    // Map<char *, Stream *>
+    Map list_streams;
+
     const char *dsId;
     uint32_t rid;
+
 
 } DownstreamNode;
 

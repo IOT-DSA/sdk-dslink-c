@@ -16,7 +16,7 @@ void broker_list_dslink(RemoteDSLink *reqLink,
                         uint32_t reqRid) {
     // TODO: so much error handling
     {
-        BrokerListStream *stream = dslink_map_get(&node->link->list_streams,
+        BrokerListStream *stream = dslink_map_get(&node->list_streams,
                                                   (void *) path);
         if (stream) {
             uint32_t *r = malloc(sizeof(uint32_t));
@@ -64,7 +64,7 @@ void broker_list_dslink(RemoteDSLink *reqLink,
 
         char *p = dslink_strdup(path);
         tmp = stream;
-        dslink_map_set(&node->link->list_streams, p, &tmp);
+        dslink_map_set(&node->list_streams, p, &tmp);
     }
 }
 

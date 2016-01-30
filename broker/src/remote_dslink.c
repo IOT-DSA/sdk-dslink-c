@@ -13,12 +13,6 @@ int broker_remote_dslink_init(RemoteDSLink *link) {
         return DSLINK_ALLOC_ERR;
     }
 
-    if (dslink_map_init(&link->list_streams, dslink_map_str_cmp,
-                        dslink_map_str_key_len_cal) != 0) {
-        DSLINK_MAP_FREE(&link->local_streams, {});
-        return DSLINK_ALLOC_ERR;
-    }
-
     listener_init(&link->on_close);
 
     return 0;
@@ -31,9 +25,6 @@ void broker_remote_dslink_free(RemoteDSLink *link) {
         DSLINK_MAP_FREE(&link->local_streams, {
             free(entry->key);
             broker_stream_free(entry->value);
-        });
-        DSLINK_MAP_FREE(&link->list_streams, {
-            free(entry->key);
         });
         free(link->auth);
     }

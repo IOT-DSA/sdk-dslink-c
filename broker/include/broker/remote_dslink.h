@@ -43,9 +43,6 @@ typedef struct RemoteDSLink {
     // Map<uint32_t *, Stream *>
     Map local_streams;
 
-    // Map<char *, Stream *>
-    Map list_streams;
-
     Dispatcher on_close;
 
 } RemoteDSLink;

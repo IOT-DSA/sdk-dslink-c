@@ -219,6 +219,13 @@ int broker_handshake_handle_ws(Broker *broker,
                 ret = 1;
                 goto exit;
             }
+            if (dslink_map_init(&node->list_streams, dslink_map_str_cmp,
+                                dslink_map_str_key_len_cal) != 0) {
+                free(node);
+                ret = 1;
+                goto exit;
+            }
+
             node->type = DOWNSTREAM_NODE;
             void *tmp = (void *) node;
             if (dslink_map_set(broker->downstream->children,
