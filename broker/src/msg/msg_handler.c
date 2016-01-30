@@ -144,7 +144,7 @@ void broker_msg_handle(RemoteDSLink *link,
 
     if (reqs || resps) {
         json_t *msg = json_object_get(data, "msg");
-        if (json_is_string(msg)) {
+        if (json_is_integer(msg)) {
             json_t *obj = json_object();
             if (obj) {
                 json_object_set_nocheck(obj, "ack", msg);
