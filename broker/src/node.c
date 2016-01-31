@@ -147,3 +147,15 @@ void broker_dslink_disconnect(DownstreamNode *node) {
 
     node->link = NULL;
 }
+
+void broker_dslink_connect(DownstreamNode *node, RemoteDSLink *link) {
+    node->link = link;
+    dslink_map_foreach(&node->list_streams) {
+        BrokerListStream *stream = (BrokerListStream *)entry->value;
+        broker_stream_list_connect(stream, node);
+    }
+    // notify all listeners of the close event
+    listener_dispatch_message(&node->on_link_connect, link);
+
+
+}

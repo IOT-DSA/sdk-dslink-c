@@ -178,7 +178,9 @@ int broker_handshake_handle_ws(Broker *broker,
                                Socket *socket,
                                const char *dsId,
                                const char *auth,
-                               void **socketData) {
+                               void **socketData,
+                               const struct wslay_event_callbacks *cb,
+                               const char *wsAccept) {
     void *oldDsId = (void *) dsId;
     RemoteDSLink *link = dslink_map_remove(&broker->client_connecting,
                                            &oldDsId);
@@ -230,9 +232,10 @@ int broker_handshake_handle_ws(Broker *broker,
             listener_init(&node->on_link_connect);
             listener_init(&node->on_link_disconnect);
 
+            char *tmpkey = dslink_strdup(link->name);
             void *tmp = (void *) node;
             if (dslink_map_set(broker->downstream->children,
-                               (void *) link->name, &tmp) != 0) {
+                               (void *) tmpkey, &tmp) != 0) {
                 free(node);
                 free(oldDsId);
                 ret = 1;
@@ -244,9 +247,6 @@ int broker_handshake_handle_ws(Broker *broker,
             json_object_set_new(node->meta, "$is", json_string("node"));
             nodeCreated = 1;
         } else {
-            // Data is already stored in the downstream node
-            // free up this data and move on
-            free((void *) link->path);
             free(oldDsId);
             oldDsId = (void *) node->dsId;
         }
@@ -255,14 +255,25 @@ int broker_handshake_handle_ws(Broker *broker,
     link->socket = socket;
     link->dsId = oldDsId;
     link->node = node;
-    node->link = link;
     node->dsId = oldDsId;
-
     *socketData = link;
 
+    wslay_event_context_ptr ws;
+    if (wslay_event_context_server_init(&ws, cb, link) != 0) {
+        ret = 1;
+        goto exit;
+    }
+    link->ws = ws;
+    broker_send_ws_init(socket, wsAccept);
+
+    // set the ->link and update all existing stream
+    broker_dslink_connect(node, link);
+
     if (nodeCreated && broker->downstream->list_stream) {
+        // update the downstream node of this child update
         update_list_child(broker->downstream, broker->downstream->list_stream, link->name);
     }
+
     log_info("DSLink `%s` has connected\n", dsId);
 exit:
     mbedtls_ecdh_free(&link->auth->tempKey);
@@ -271,6 +282,7 @@ exit:
     link->auth = NULL;
     if (ret != 0) {
         DSLINK_MAP_FREE(&link->local_streams, {});
+        free((char *)link->path);
         free(link);
     }
     return ret;

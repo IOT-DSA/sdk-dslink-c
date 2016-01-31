@@ -26,6 +26,8 @@ typedef struct BrokerListStream {
 
     char *remote_path;
 
+    uint32_t responder_rid;
+
     // JSON object of all the updates
     json_t *updates_cache;
 

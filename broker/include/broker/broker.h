@@ -26,6 +26,8 @@ typedef struct Broker {
 
 int broker_start();
 
+void broker_send_ws_init(Socket *sock, const char *accept);
+
 #ifdef __cplusplus
 }
 #endif

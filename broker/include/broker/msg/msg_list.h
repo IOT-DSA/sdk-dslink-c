@@ -28,6 +28,7 @@ void broker_list_dslink_response(RemoteDSLink *link,
                                  BrokerListStream *stream);
 
 void broker_stream_list_disconnect(BrokerListStream *stream);
+void broker_stream_list_connect(BrokerListStream *stream, DownstreamNode *node);
 
 #ifdef __cplusplus
 }

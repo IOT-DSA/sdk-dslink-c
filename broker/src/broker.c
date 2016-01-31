@@ -176,6 +176,12 @@ exit:
     return;
 }
 
+void broker_send_ws_init(Socket *sock, const char *accept) {
+    char buf[1024];
+    int bLen = snprintf(buf, sizeof(buf), WS_RESP, accept);
+    dslink_socket_write(sock, buf, (size_t) bLen);
+}
+
 static
 int handle_ws(Broker *broker, HttpRequest *req,
                Socket *sock, void **socketData) {
@@ -196,33 +202,21 @@ int handle_ws(Broker *broker, HttpRequest *req,
         goto fail;
     }
 
-    if (broker_handshake_handle_ws(broker, sock, dsId,
-                                   auth, socketData) != 0) {
-        goto fail;
-    }
-
     static const struct wslay_event_callbacks cb = {
-        want_read_cb,  // wslay_event_recv_callback
-        want_write_cb, // wslay_event_send_callback
-        NULL,          // wslay_event_genmask_callback
-        NULL,          // wslay_event_on_frame_recv_start_callback
-        NULL,          // wslay_event_on_frame_recv_chunk_callback
-        NULL,          // wslay_event_on_frame_recv_end_callback
-        on_ws_data     // wslay_event_on_msg_recv_callback
+            want_read_cb,  // wslay_event_recv_callback
+            want_write_cb, // wslay_event_send_callback
+            NULL,          // wslay_event_genmask_callback
+            NULL,          // wslay_event_on_frame_recv_start_callback
+            NULL,          // wslay_event_on_frame_recv_chunk_callback
+            NULL,          // wslay_event_on_frame_recv_end_callback
+            on_ws_data     // wslay_event_on_msg_recv_callback
     };
 
-    RemoteDSLink *link = *socketData;
-    wslay_event_context_ptr ws;
-    if (wslay_event_context_server_init(&ws, &cb, link) != 0) {
+    if (broker_handshake_handle_ws(broker, sock, dsId,
+                                   auth, socketData, &cb, accept) != 0) {
         goto fail;
     }
-    link->ws = ws;
 
-    {
-        char buf[1024];
-        int bLen = snprintf(buf, sizeof(buf), WS_RESP, accept);
-        dslink_socket_write(sock, buf, (size_t) bLen);
-    }
 
     return 0;
 fail:
