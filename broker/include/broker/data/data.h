@@ -5,7 +5,6 @@
 extern "C" {
 #endif
 
-#include "broker/remote_dslink.h"
 #include "broker/node.h"
 
 int broker_data_node_populate(BrokerNode *dataNode);

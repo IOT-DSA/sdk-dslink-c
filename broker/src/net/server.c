@@ -1,13 +1,11 @@
 #include <sys/select.h>
 #include <inttypes.h>
 #include <string.h>
-#include <fcntl.h>
-#include <sys/errno.h>
+#include <errno.h>
 
 #define LOG_TAG "server"
 #include <dslink/log.h>
 #include <dslink/socket_private.h>
-#include <dslink/socket.h>
 
 #include "broker/net/server.h"
 

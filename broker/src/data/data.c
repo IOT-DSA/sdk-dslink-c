@@ -1,25 +1,67 @@
-#include <broker/stream.h>
-#include "broker/net/ws.h"
 #include "broker/broker.h"
+#include "broker/data/data_actions.h"
+#include "broker/stream.h"
+#include "broker/net/ws.h"
+
+static
+int create_actions(BrokerNode *node);
+
+static
+void send_closed_resp(RemoteDSLink *link, json_t *req) {
+    json_t *top = json_object();
+    json_t *resps = json_array();
+    json_object_set_new_nocheck(top, "responses", resps);
+    json_t *resp = json_object();
+    json_array_append_new(resps, resp);
+
+    json_t *rid = json_object_get(req, "rid");
+    json_object_set(resp, "rid", rid);
+    json_object_set_new_nocheck(resp, "stream",
+                                json_string_nocheck("closed"));
+
+    broker_ws_send_obj(link, top);
+    json_decref(top);
+}
+
+static
+void on_delete_node_invoked(RemoteDSLink *link,
+                            BrokerNode *node, json_t *req) {
+    send_closed_resp(link, req);
+    node = node->parent;
+    if (node->list_stream->updates_cache) {
+        json_object_del(node->list_stream->updates_cache, node->name);
+    }
+    if (node->list_stream->clients.items <= 0) {
+        return;
+    }
+
+    json_t *top = json_object();
+    json_t *resps = json_array();
+    json_object_set_new_nocheck(top, "responses", resps);
+    json_t *resp = json_object();
+    json_array_append_new(resps, resp);
+    json_object_set_new_nocheck(resp, "stream", json_string_nocheck("open"));
+    json_t *updates = json_array();
+    json_t *update = json_object();
+    json_object_set_new_nocheck(update, "name", json_string(node->name));
+    json_object_set_new_nocheck(update, "change",
+                                json_string_nocheck("remove"));
+    json_array_append_new(updates, update);
+    json_object_set_new_nocheck(resp, "updates", updates);
+    dslink_map_foreach(&node->parent->list_stream->clients) {
+        uint32_t *rid = entry->key;
+        json_object_set_new_nocheck(resp, "rid", json_integer(*rid));
+        broker_ws_send_obj(entry->value, top);
+    }
+
+    json_decref(top);
+    broker_node_free(node);
+}
 
 static
 void on_add_node_invoked(RemoteDSLink *link,
                          BrokerNode *node, json_t *req) {
-    {
-        json_t *top = json_object();
-        json_t *resps = json_array();
-        json_object_set_new_nocheck(top, "responses", resps);
-        json_t *resp = json_object();
-        json_array_append_new(resps, resp);
-
-        json_t *rid = json_object_get(req, "rid");
-        json_object_set(resp, "rid", rid);
-        json_object_set_new_nocheck(resp, "stream",
-                                    json_string_nocheck("closed"));
-
-        broker_ws_send_obj(link, top);
-        json_decref(top);
-    }
+    send_closed_resp(link, req);
 
     json_t *params = json_object_get(req, "params");
     if (!json_is_object(params)) {
@@ -66,127 +108,134 @@ void on_add_node_invoked(RemoteDSLink *link,
         json_array_append_new(updates, update);
     }
     json_object_set_new_nocheck(resp, "updates", updates);
-    {
-        dslink_map_foreach(&node->list_stream->clients) {
-            uint32_t *rid = entry->key;
-            json_object_set_new_nocheck(resp, "rid", json_integer(*rid));
-            broker_ws_send_obj(entry->value, top);
-        }
+    dslink_map_foreach(&node->list_stream->clients) {
+        uint32_t *rid = entry->key;
+        json_object_set_new_nocheck(resp, "rid", json_integer(*rid));
+        broker_ws_send_obj(entry->value, top);
     }
 
     json_decref(top);
 }
 
 static
-int broker_data_safe_json_set(json_t *obj, const char *name, json_t *data) {
-    if (json_object_set_new(obj, name, data) != 0) {
-        json_decref(data);
-        return 1;
+void on_add_value_invoked(RemoteDSLink *link,
+                         BrokerNode *node, json_t *req) {
+    send_closed_resp(link, req);
+
+    json_t *params = json_object_get(req, "params");
+    if (!json_is_object(params)) {
+        return;
     }
-    return 0;
+
+    node = node->parent;
+    const char *name = json_string_value(json_object_get(params, "Name"));
+    if (!name || dslink_map_contains(node->children, (void *) name)) {
+        return;
+    }
+
+    // TODO: error handling
+    BrokerNode *child = broker_node_create(name, "node");
+    if (broker_node_add(node, child) != 0) {
+        broker_node_free(child);
+        return;
+    }
+
+    if (create_actions(child) != 0) {
+        broker_node_free(child);
+        return;
+    }
+
+    json_object_set_new_nocheck(child->meta, "$type",
+                                json_string_nocheck("dynamic"));
+
+    if (node->list_stream->clients.items <= 0) {
+        return;
+    }
+
+    json_t *update = json_array();
+    json_t *obj = json_object();
+    json_array_append_new(update, json_string(name));
+    json_array_append_new(update, obj);
+    json_object_set_new_nocheck(obj, "$is", json_string("node"));
+    json_object_set_new_nocheck(obj, "$type",
+                                json_string_nocheck("dynamic"));
+    if (node->list_stream->updates_cache) {
+        json_object_set_new_nocheck(node->list_stream->updates_cache,
+                                    name, update);
+    }
+
+    json_t *top = json_object();
+    json_t *resps = json_array();
+    json_object_set_new_nocheck(top, "responses", resps);
+    json_t *resp = json_object();
+    json_array_append_new(resps, resp);
+    json_object_set_new_nocheck(resp, "stream", json_string_nocheck("open"));
+    json_t *updates = json_array();
+    if (node->list_stream->updates_cache) {
+        json_array_append(updates, update);
+    } else {
+        json_array_append_new(updates, update);
+    }
+    json_object_set_new_nocheck(resp, "updates", updates);
+    dslink_map_foreach(&node->list_stream->clients) {
+        uint32_t *rid = entry->key;
+        json_object_set_new_nocheck(resp, "rid", json_integer(*rid));
+        broker_ws_send_obj(entry->value, top);
+    }
+
+    json_decref(top);
 }
 
 static
-int broker_data_create_param(json_t *params,
-                             const char *name, const char *type) {
-    json_t *param = json_object();
-    if (broker_data_safe_json_set(param, "name", json_string(name)) != 0
-        || broker_data_safe_json_set(param, "type", json_string(type)) != 0
-        || json_array_append_new(params, param) != 0) {
-        json_decref(param);
-        return 1;
+void on_publish_invoked(RemoteDSLink *link,
+                          BrokerNode *node, json_t *req) {
+    json_t *params = json_object_get(req, "params");
+    if (!json_is_object(params)) {
+        return;
     }
-    return 0;
+
+    const char *path = json_string_value(json_object_get(params, "Path"));
+    if (!path) {
+        return;
+    }
+
+    json_t *value = json_object_get(params, "Value");
+    if (!value) {
+        return;
+    }
+
+    char *tmp = (char *) path;
+    node = broker_node_get(link->broker->root, path, (void *) &tmp);
+    if (!(node && node->type == REGULAR_NODE)) {
+        return;
+    }
+
+    json_incref(value);
+    if (node->value) {
+        json_decref(node->value);
+    }
+    node->value = value;
+
+    // TODO: store the RID
+    // TODO: notify query handlers
 }
 
 static
-int broker_data_create_add_node_action(BrokerNode *parent) {
-    BrokerNode *node = broker_node_create("addNode", "node");
-    if (!node || broker_node_add(parent, node) != 0) {
-        broker_node_free(node);
+int create_actions(BrokerNode *node) {
+    BrokerNode *addNode = broker_data_create_add_node_action(node);
+    BrokerNode *addValue = broker_data_create_add_value_action(node);
+    BrokerNode *deleteNode = broker_data_create_delete_action(node);
+    if (!(addNode && addValue && deleteNode)) {
+        broker_node_free(addNode);
+        broker_node_free(addValue);
+        broker_node_free(deleteNode);
         return 1;
     }
 
-    if (json_object_set_new(node->meta, "$invokable",
-                            json_string("write")) != 0) {
-        broker_node_free(node);
-        return 1;
-    }
-
-    json_t *paramList = json_array();
-    if (broker_data_create_param(paramList, "Name", "string") != 0
-        || json_object_set_new(node->meta, "$params", paramList) != 0) {
-        goto fail;
-    }
-
-    node->on_invoke = on_add_node_invoked;
+    addNode->on_invoke = on_add_node_invoked;
+    addValue->on_invoke = on_add_value_invoked;
+    deleteNode->on_invoke = on_delete_node_invoked;
     return 0;
-fail:
-    broker_node_free(node);
-    json_decref(paramList);
-    return 1;
-}
-
-static
-int broker_data_create_add_value_action(BrokerNode *parent) {
-    BrokerNode *node = broker_node_create("addValue", "node");
-    if (!node || broker_node_add(parent, node) != 0) {
-        broker_node_free(node);
-        return 1;
-    }
-
-    if (json_object_set_new(node->meta, "$invokable",
-                             json_string("write")) != 0) {
-        broker_node_free(node);
-        return 1;
-    }
-
-    json_t *paramList = json_array();
-    char type[] = "enum[string,number,bool,array,map,dynamic]";
-    char editor[] = "enum[none,textarea,password,daterange,date]";
-    if (broker_data_create_param(paramList, "Name", "string") != 0
-        || broker_data_create_param(paramList, "Type", type) != 0
-        || broker_data_create_param(paramList, "Editor", editor) != 0
-        || json_object_set_new(node->meta, "$params", paramList) != 0) {
-        goto fail;
-    }
-
-    return 0;
-fail:
-    broker_node_free(node);
-    json_decref(paramList);
-    return 1;
-}
-
-static
-int broker_data_create_publish_action(BrokerNode *parent) {
-    BrokerNode *node = broker_node_create("publish", "node");
-    if (!node || broker_node_add(parent, node) != 0) {
-        broker_node_free(node);
-        return 1;
-    }
-
-    if (json_object_set_new(node->meta, "$invokable",
-                             json_string("write")) != 0) {
-        broker_node_free(node);
-        return 1;
-    }
-
-    json_t *paramList = json_array();
-    if (broker_data_create_param(paramList, "Path", "string") != 0
-        || broker_data_create_param(paramList, "Value", "dynamic") != 0
-        || broker_data_create_param(paramList, "Timestamp", "string") != 0) {
-        goto fail;
-    }
-
-    if (json_object_set_new(node->meta, "$params", paramList) != 0) {
-        goto fail;
-    }
-    return 0;
-fail:
-    broker_node_free(node);
-    json_decref(paramList);
-    return 1;
 }
 
 int broker_data_node_populate(BrokerNode *dataNode) {
@@ -194,11 +243,17 @@ int broker_data_node_populate(BrokerNode *dataNode) {
         return 1;
     }
 
-    if (broker_data_create_add_node_action(dataNode) != 0
-        || broker_data_create_add_value_action(dataNode) != 0
-        || broker_data_create_publish_action(dataNode) != 0) {
+    BrokerNode *addNode = broker_data_create_add_node_action(dataNode);
+    BrokerNode *addValue = broker_data_create_add_value_action(dataNode);
+    BrokerNode *publish = broker_data_create_publish_action(dataNode);
+    if (!(addNode && addValue && publish)) {
         broker_node_free(dataNode);
         return 1;
     }
+
+    addNode->on_invoke = on_add_node_invoked;
+    addValue->on_invoke = on_add_value_invoked;
+    publish->on_invoke = on_publish_invoked;
+
     return 0;
 }

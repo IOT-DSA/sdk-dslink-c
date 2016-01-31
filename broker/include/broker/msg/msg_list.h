@@ -6,7 +6,6 @@ extern "C" {
 #endif
 
 #include <jansson.h>
-#include "broker/remote_dslink.h"
 #include "broker/stream.h"
 #include "broker/node.h"
 

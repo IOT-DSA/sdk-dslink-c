@@ -5,9 +5,7 @@
 extern "C" {
 #endif
 
-#include <stdint.h>
-#include <jansson.h>
-#include <dslink/col/listener.h>
+#include "broker/remote_dslink.h"
 
 struct BrokerNode;
 
@@ -35,6 +33,7 @@ typedef struct BrokerNode {
 
     struct BrokerListStream *list_stream;
     on_invocation_cb on_invoke;
+    json_t *value;
 
 } BrokerNode;
 

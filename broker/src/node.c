@@ -1,5 +1,4 @@
 #include <stdlib.h>
-#include <dslink/col/map.h>
 #include <dslink/utils.h>
 #include <string.h>
 #include <jansson.h>
@@ -116,7 +115,9 @@ void broker_node_free(BrokerNode *node) {
 
     if (node->children) {
         DSLINK_MAP_FREE(node->children, {
-            broker_node_free(entry->value);
+            BrokerNode *child = entry->value;
+            child->parent = NULL;
+            broker_node_free(child);
         });
         free(node->children);
     }

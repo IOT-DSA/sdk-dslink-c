@@ -6,10 +6,7 @@ extern "C" {
 #endif
 
 #include <wslay/wslay.h>
-#include <dslink/col/map.h>
 #include <dslink/socket.h>
-
-#include "broker/remote_dslink.h"
 #include "broker/node.h"
 
 typedef struct Broker {
