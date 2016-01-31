@@ -1,6 +1,7 @@
 #include <sys/select.h>
 #include <inttypes.h>
 #include <string.h>
+#include <fcntl.h>
 
 #define LOG_TAG "server"
 #include <dslink/log.h>
@@ -61,7 +62,6 @@ int broker_start_server(json_t *config, void *data,
     Client **clients = calloc(1, sizeof(Client *));
     int clientsLen = 1;
     while (1) {
-        fd_set errorFds;
         fd_set readFds;
         FD_SET(srv.fd, &readFds);
         int maxFd = srv.fd;
@@ -69,22 +69,24 @@ int broker_start_server(json_t *config, void *data,
             Client *client = clients[i];
             if (client) {
                 FD_SET(client->sock->socket_fd.fd, &readFds);
-                FD_SET(client->sock->socket_fd.fd, &errorFds);
                 if (client->sock->socket_fd.fd > maxFd) {
                     maxFd = client->sock->socket_fd.fd;
                 }
             }
         }
 
-        int ready = select(maxFd + 1, &readFds, NULL, &errorFds, NULL);
+        int ready = select(maxFd + 1, &readFds, NULL, NULL, NULL);
         if (ready < 0) {
             for (int i = 0; i < clientsLen; ++i) {
                 Client *client = clients[i];
-                if (client && FD_ISSET(client->sock->socket_fd.fd, &errorFds)) {
-                    cec(client->sock_data);
-                    clients[i] = NULL;
-                    dslink_socket_close(client->sock);
-                    free(client);
+                if (client) {
+                    int fd = client->sock->socket_fd.fd;
+                    if (fcntl(fd, F_GETFD) == -1) {
+                        cec(client->sock_data);
+                        clients[i] = NULL;
+                        dslink_socket_close(client->sock);
+                        free(client);
+                    }
                 }
             }
             continue;
