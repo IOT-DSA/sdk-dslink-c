@@ -2,6 +2,7 @@
 #include <inttypes.h>
 #include <string.h>
 #include <fcntl.h>
+#include <sys/errno.h>
 
 #define LOG_TAG "server"
 #include <dslink/log.h>
@@ -77,16 +78,14 @@ int broker_start_server(json_t *config, void *data,
 
         int ready = select(maxFd + 1, &readFds, NULL, NULL, NULL);
         if (ready < 0) {
+            log_debug("Error in select(): %s\nclose all clients\n", strerror(errno));
             for (int i = 0; i < clientsLen; ++i) {
                 Client *client = clients[i];
                 if (client) {
-                    int fd = client->sock->socket_fd.fd;
-                    if (fcntl(fd, F_GETFD) == -1) {
-                        cec(client->sock_data);
-                        clients[i] = NULL;
-                        dslink_socket_close(client->sock);
-                        free(client);
-                    }
+                    cec(client->sock_data);
+                    clients[i] = NULL;
+                    dslink_socket_close(client->sock);
+                    free(client);
                 }
             }
             continue;
