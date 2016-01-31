@@ -187,25 +187,20 @@ void on_add_value_invoked(RemoteDSLink *link,
 }
 
 static
-void on_publish_invoked(RemoteDSLink *link,
-                          BrokerNode *node, json_t *req) {
-    json_t *params = json_object_get(req, "params");
+void on_publish_continuous_invoked(RemoteDSLink *link, json_t *params) {
     if (!json_is_object(params)) {
         return;
     }
 
     const char *path = json_string_value(json_object_get(params, "Path"));
-    if (!path) {
-        return;
-    }
-
     json_t *value = json_object_get(params, "Value");
-    if (!value) {
+    if (!(path && value)) {
         return;
     }
 
     char *tmp = (char *) path;
-    node = broker_node_get(link->broker->root, path, (void *) &tmp);
+    BrokerNode *node = broker_node_get(link->broker->root, path,
+                                       (void *) &tmp);
     if (!(node && node->type == REGULAR_NODE)) {
         return;
     }
@@ -216,8 +211,25 @@ void on_publish_invoked(RemoteDSLink *link,
     }
     node->value = value;
 
-    // TODO: store the RID
     // TODO: notify query handlers
+}
+
+static
+void on_publish_invoked(RemoteDSLink *link,
+                        BrokerNode *node, json_t *req) {
+    (void) node;
+    json_t *params = json_object_get(req, "params");
+    if (!json_is_object(params)) {
+        return;
+    }
+    on_publish_continuous_invoked(link, req);
+    uint32_t rid = (uint32_t) json_integer_value(json_object_get(req, "rid"));
+    BrokerInvokeStream *s = broker_stream_invoke_init();
+    s->continuous_invoke = on_publish_continuous_invoked;
+
+    uint32_t *r = malloc(sizeof(uint32_t));
+    *r = rid;
+    dslink_map_set(&link->local_streams, r, (void **) &s);
 }
 
 static

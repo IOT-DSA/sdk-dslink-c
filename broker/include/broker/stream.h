@@ -14,6 +14,8 @@ extern "C" {
 #define BROKER_STREAM_FIELDS \
     StreamType type
 
+typedef void (*continuous_invoke_cb)(RemoteDSLink *link, json_t *params);
+
 typedef struct BrokerStream {
 
     BROKER_STREAM_FIELDS;
@@ -42,8 +44,9 @@ typedef struct BrokerInvokeStream {
 
     BROKER_STREAM_FIELDS;
 
-    uint32_t requester_rid;
     RemoteDSLink *requester;
+    continuous_invoke_cb continuous_invoke;
+    uint32_t requester_rid;
 
 } BrokerInvokeStream;
 
