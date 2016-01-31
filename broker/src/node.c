@@ -92,6 +92,7 @@ int broker_node_add(BrokerNode *parent, BrokerNode *child) {
     if (dslink_map_set(parent->children, (void *) child->name, &tmp) != 0) {
         return 1;
     }
+    child->parent = parent;
 
     return 0;
 }

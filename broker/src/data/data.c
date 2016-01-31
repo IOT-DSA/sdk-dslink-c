@@ -26,6 +26,7 @@ void on_add_node_invoked(RemoteDSLink *link,
         return;
     }
 
+    node = node->parent;
     const char *name = json_string_value(json_object_get(params, "Name"));
     if (!name || dslink_map_contains(node->children, (void *) name)) {
         return;
