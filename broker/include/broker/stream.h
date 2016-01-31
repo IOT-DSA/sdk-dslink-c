@@ -24,14 +24,16 @@ typedef struct BrokerListStream {
 
     BROKER_STREAM_FIELDS;
 
-    char *remotePath;
-    // JSON array of all the updates
+    char *remote_path;
+
+    // JSON object of all the updates
     json_t *updates_cache;
 
     // Map<uint32_t *, RemoteDSLink *>
     Map clients;
 
     uint8_t cache_sent;
+
 } BrokerListStream;
 
 typedef struct BrokerInvokeStream {

@@ -1,6 +1,7 @@
 #ifndef SDK_DSLINK_C_LIST_H
 #define SDK_DSLINK_C_LIST_H
 
+#include <stdlib.h>
 #include <stdint.h>
 
 #ifdef __cplusplus

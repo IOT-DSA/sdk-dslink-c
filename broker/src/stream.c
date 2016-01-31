@@ -41,9 +41,8 @@ void broker_stream_free(BrokerStream *stream) {
     }
 
     if (stream->type == LIST_STREAM) {
-
         BrokerListStream *s = (BrokerListStream *) stream;
-        free(s->remotePath);
+        free(s->remote_path);
         json_decref(s->updates_cache);
     }
     free(stream);
@@ -98,7 +97,7 @@ void broker_stream_list_reset_remote_cache(BrokerListStream *stream, RemoteDSLin
     if (link) {
         json_object_set_new_nocheck(stream->updates_cache,
                                     "$base", json_string_nocheck(link->path));
-        if (strcmp(stream->remotePath, "/") == 0
+        if (strcmp(stream->remote_path, "/") == 0
             && link->linkData) {
             // add linkData into the updates_cache
             json_object_set_nocheck(stream->updates_cache,

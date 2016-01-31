@@ -50,9 +50,7 @@ BrokerNode *broker_node_create(const char *name, const char *profile) {
         return NULL;
     }
 
-    node->parent = NULL;
     node->type = REGULAR_NODE;
-
     node->name = dslink_strdup(name);
     if (!node->name) {
         free((void *) profile);
@@ -85,16 +83,17 @@ BrokerNode *broker_node_create(const char *name, const char *profile) {
 }
 
 int broker_node_add(BrokerNode *parent, BrokerNode *child) {
-    if (!(child && parent && parent->children)) {
-        return 1;
-    }
-
-    if (dslink_map_contains(parent->children, (void *) child->name)) {
+    if (!(child && parent && parent->children)
+        || dslink_map_contains(parent->children, (void *) child->name)) {
         return 1;
     }
 
     void *tmp = child;
-    return dslink_map_set(parent->children, (void *) child->name, &tmp);
+    if (dslink_map_set(parent->children, (void *) child->name, &tmp) != 0) {
+        return 1;
+    }
+
+    return 0;
 }
 
 void broker_node_free(BrokerNode *node) {

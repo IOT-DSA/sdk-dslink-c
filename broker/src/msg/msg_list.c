@@ -1,7 +1,4 @@
 #include <string.h>
-
-#define LOG_TAG "msg_list"
-#include <dslink/log.h>
 #include <dslink/utils.h>
 
 #include "broker/net/ws.h"

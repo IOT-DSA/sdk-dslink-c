@@ -1,14 +1,10 @@
 #include <string.h>
-
-#define LOG_TAG "msg_list_remote"
-#include <dslink/log.h>
 #include <dslink/utils.h>
 
 #include "broker/net/ws.h"
 #include "broker/broker.h"
 #include "broker/stream.h"
 #include "broker/msg/msg_list.h"
-
 
 void broker_list_dslink(RemoteDSLink *reqLink,
                         DownstreamNode *node,
@@ -50,7 +46,7 @@ void broker_list_dslink(RemoteDSLink *reqLink,
     }
     {
         BrokerListStream *stream = broker_stream_list_init();
-        stream->remotePath = dslink_strdup(path);
+        stream->remote_path = dslink_strdup(path);
 
         void *tmp = reqLink;
         uint32_t *r = malloc(sizeof(uint32_t));
@@ -115,7 +111,7 @@ void broker_list_dslink_response(RemoteDSLink *link, json_t *resp, BrokerListStr
                         const char *originalBase = json_string_value(childValue);
                         if (originalBase) {
                             char buff[512];
-                            strcpy(buff, ((BrokerListStream *) stream)->remotePath);
+                            strcpy(buff, stream->remote_path);
                             strcat(buff, "/");
                             strcat(buff, originalBase);
                             json_object_set_new_nocheck(

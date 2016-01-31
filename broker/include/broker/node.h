@@ -6,7 +6,14 @@ extern "C" {
 #endif
 
 #include <stdint.h>
+#include <jansson.h>
 #include <dslink/col/listener.h>
+
+struct BrokerNode;
+
+typedef void (*on_invocation_cb)(struct RemoteDSLink *link,
+                                 struct BrokerNode *node,
+                                 json_t *request);
 
 typedef enum BrokerNodeType {
 
@@ -27,6 +34,7 @@ typedef struct BrokerNode {
     BROKER_NODE_FIELDS;
 
     struct BrokerListStream *list_stream;
+    on_invocation_cb on_invoke;
 
 } BrokerNode;
 

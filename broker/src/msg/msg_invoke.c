@@ -17,8 +17,13 @@ int broker_msg_handle_invoke(RemoteDSLink *link, json_t *req) {
         return 1;
     }
 
-    if (node->type != DOWNSTREAM_NODE) {
-        // We don't handle invocations on broker nodes yet
+    if (node->type == REGULAR_NODE) {
+        if (node->on_invoke) {
+            node->on_invoke(link, node, req);
+        }
+        return 0;
+    } else if (node->type != DOWNSTREAM_NODE) {
+        // Unknown node type
         return 1;
     }
 
