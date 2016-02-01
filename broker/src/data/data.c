@@ -148,7 +148,7 @@ void on_add_value_invoked(RemoteDSLink *link,
     json_object_set_new_nocheck(child->meta, "$type",
                                 json_string_nocheck("dynamic"));
 
-    if (node->list_stream->clients.items <= 0) {
+    if (!node->list_stream || node->list_stream->clients.items <= 0) {
         return;
     }
 
@@ -204,10 +204,7 @@ void on_publish_continuous_invoked(RemoteDSLink *link, json_t *params) {
     if (!(node && node->type == REGULAR_NODE)) {
         return;
     }
-
     broker_node_update_value(node, value, 0);
-
-    // TODO: notify query handlers
 }
 
 static
