@@ -1,3 +1,4 @@
+#include <jansson.h>
 #include "broker/broker.h"
 #include "broker/net/ws.h"
 #include "broker/msg/msg_invoke.h"
@@ -51,5 +52,26 @@ int broker_msg_handle_invoke(RemoteDSLink *link, json_t *req) {
 
     broker_ws_send_obj(ds->link, top);
     json_decref(top);
+    return 0;
+}
+
+static
+int broker_invoke_safe_json_set(json_t *obj, const char *name, json_t *data) {
+    if (json_object_set_new(obj, name, data) != 0) {
+        json_decref(data);
+        return 1;
+    }
+    return 0;
+}
+
+int broker_invoke_create_param(json_t *params,
+                               const char *name, const char *type) {
+    json_t *param = json_object();
+    if (broker_invoke_safe_json_set(param, "name", json_string(name)) != 0
+        || broker_invoke_safe_json_set(param, "type", json_string(type)) != 0
+        || json_array_append_new(params, param) != 0) {
+        json_decref(param);
+        return 1;
+    }
     return 0;
 }

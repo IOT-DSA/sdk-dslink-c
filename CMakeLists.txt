@@ -88,6 +88,9 @@ set(BROKER_SRC
     "${BROKER_SRC_DIR}/data/data.c"
     "${BROKER_SRC_DIR}/data/data_actions.c"
 
+    "${BROKER_SRC_DIR}/sys/sys.c"
+    "${BROKER_SRC_DIR}/query/query.c"
+
     "${BROKER_SRC_DIR}/msg/msg_handler.c"
     "${BROKER_SRC_DIR}/msg/msg_invoke.c"
     "${BROKER_SRC_DIR}/msg/msg_list.c"

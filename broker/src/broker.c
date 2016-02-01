@@ -12,6 +12,7 @@
 #include "broker/handshake.h"
 #include "broker/config.h"
 #include "broker/data/data.h"
+#include "broker/sys/sys.h"
 
 #define LOG_TAG "broker"
 #include <dslink/log.h>
@@ -310,6 +311,28 @@ int broker_start() {
                 ret = 1;
                 goto exit;
             }
+        }
+
+        {
+            BrokerNode *node = broker_node_create("sys", "static");
+            if (!node) {
+                ret = 1;
+                goto exit;
+            }
+
+            if (broker_node_add(broker.root, node) != 0) {
+                broker_node_free(node);
+                ret = 1;
+                goto exit;
+            }
+
+            if (broker_sys_node_populate(node) != 0) {
+                broker_node_free(node);
+                ret = 1;
+                goto exit;
+            }
+
+            broker.sys = node;
         }
 
         {

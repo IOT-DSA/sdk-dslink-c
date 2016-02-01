@@ -9,6 +9,9 @@ extern "C" {
 
 int broker_msg_handle_invoke(RemoteDSLink *link, json_t *req);
 
+int broker_invoke_create_param(json_t *params,
+                               const char *name, const char *type);
+
 #ifdef __cplusplus
 }
 #endif
