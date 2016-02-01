@@ -10,7 +10,8 @@ extern "C" {
 typedef enum StreamType {
     INVALID_STREAM = 0,
     LIST_STREAM,
-    INVOCATION_STREAM
+    INVOCATION_STREAM,
+    SUBSCRIPTION_STREAM
 } StreamType;
 
 typedef struct Stream {

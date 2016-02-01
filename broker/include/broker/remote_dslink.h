@@ -50,6 +50,12 @@ typedef struct RemoteDSLink {
     // broker send requests and receive responses
     Map responder_streams;
 
+    // Map<uint32_t *, BrokerSubStream *>
+    Map sub_sids;
+
+    // Map<char *, BrokerSubStream *>
+    Map sub_paths;
+
 } RemoteDSLink;
 
 int broker_remote_dslink_init(RemoteDSLink *link);

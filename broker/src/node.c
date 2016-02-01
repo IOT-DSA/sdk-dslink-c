@@ -170,11 +170,17 @@ void broker_node_free(BrokerNode *node) {
 uint32_t broker_node_incr_rid(DownstreamNode *node) {
     if (node->rid > (UINT32_MAX - 1)) {
         // Loop it around
-        node->rid = 1;
-    } else {
-        node->rid++;
+        node->rid = 0;
     }
-    return node->rid;
+    return ++node->rid;
+}
+
+uint32_t broker_node_incr_sid(DownstreamNode *node) {
+    if (node->sid > (UINT32_MAX - 1)) {
+        // Loop it around
+        node->sid = 0;
+    }
+    return node->sid++;
 }
 
 void  broker_node_update_value(BrokerNode *node, json_t *value, uint8_t isNewValue) {

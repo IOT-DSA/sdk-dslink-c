@@ -1,14 +1,12 @@
 #include "broker/msg/msg_list.h"
 #include "broker/broker.h"
 #include "broker/data/data_actions.h"
-#include "broker/stream.h"
 #include "broker/net/ws.h"
 
 static
 int create_actions(BrokerNode *node);
 
-static
-void send_closed_resp(RemoteDSLink *link, json_t *req) {
+void broker_data_send_closed_resp(RemoteDSLink *link, json_t *req) {
     json_t *top = json_object();
     json_t *resps = json_array();
     json_object_set_new_nocheck(top, "responses", resps);
@@ -27,7 +25,7 @@ void send_closed_resp(RemoteDSLink *link, json_t *req) {
 static
 void on_delete_node_invoked(RemoteDSLink *link,
                             BrokerNode *node, json_t *req) {
-    send_closed_resp(link, req);
+    broker_data_send_closed_resp(link, req);
     node = node->parent;
     if (node->list_stream->updates_cache) {
         json_object_del(node->list_stream->updates_cache, node->name);
@@ -62,7 +60,7 @@ void on_delete_node_invoked(RemoteDSLink *link,
 static
 void on_add_node_invoked(RemoteDSLink *link,
                          BrokerNode *node, json_t *req) {
-    send_closed_resp(link, req);
+    broker_data_send_closed_resp(link, req);
 
     json_t *params = json_object_get(req, "params");
     if (!json_is_object(params)) {
@@ -91,7 +89,7 @@ void on_add_node_invoked(RemoteDSLink *link,
 static
 void on_add_value_invoked(RemoteDSLink *link,
                          BrokerNode *node, json_t *req) {
-    send_closed_resp(link, req);
+    broker_data_send_closed_resp(link, req);
 
     json_t *params = json_object_get(req, "params");
     if (!json_is_object(params)) {

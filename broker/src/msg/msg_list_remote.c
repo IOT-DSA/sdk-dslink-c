@@ -7,7 +7,12 @@
 #include "broker/msg/msg_list.h"
 
 
-static void send_list_request(BrokerListStream *stream, DownstreamNode *node, RemoteDSLink *reqLink, const char *path, uint32_t reqRid){
+static
+void send_list_request(BrokerListStream *stream,
+                       DownstreamNode *node,
+                       RemoteDSLink *reqLink,
+                       const char *path,
+                       uint32_t reqRid) {
 
     json_t *top = json_object();
     json_t *reqs = json_array();

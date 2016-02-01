@@ -25,6 +25,22 @@ BrokerListStream *broker_stream_list_init() {
     return stream;
 }
 
+BrokerSubStream *broker_stream_sub_init() {
+    BrokerSubStream *stream = calloc(1, sizeof(BrokerSubStream));
+    if (!stream) {
+        return NULL;
+    }
+
+    stream->type = SUBSCRIPTION_STREAM;
+    if (dslink_map_init(&stream->clients, dslink_map_uint32_cmp,
+                        dslink_map_uint32_key_len_cal) != 0) {
+        free(stream);
+        return NULL;
+    }
+
+    return stream;
+}
+
 BrokerInvokeStream *broker_stream_invoke_init() {
     BrokerInvokeStream *stream = calloc(1, sizeof(BrokerInvokeStream));
     if (!stream) {

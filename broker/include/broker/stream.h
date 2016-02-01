@@ -54,8 +54,20 @@ typedef struct BrokerInvokeStream {
     invoke_close_cb close_cb;
 } BrokerInvokeStream;
 
+typedef struct BrokerSubStream {
+
+    BROKER_STREAM_FIELDS;
+
+    json_t *last_value;
+
+    // Map<uint32_t *, RemoteDSLink *>
+    Map clients;
+
+} BrokerSubStream;
+
 BrokerListStream *broker_stream_list_init();
 BrokerInvokeStream *broker_stream_invoke_init();
+BrokerSubStream *broker_stream_sub_init();
 
 void broker_stream_free(BrokerStream *stream);
 json_t *broker_stream_list_get_cache(BrokerListStream *stream);

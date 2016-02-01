@@ -56,7 +56,7 @@ typedef struct DownstreamNode {
 
     const char *dsId;
     uint32_t rid;
-
+    uint32_t sid;
 
 } DownstreamNode;
 
@@ -75,6 +75,7 @@ void broker_node_update_child(BrokerNode *parent, const char* name);
 void broker_node_free(BrokerNode *node);
 
 uint32_t broker_node_incr_rid(DownstreamNode *node);
+uint32_t broker_node_incr_sid(DownstreamNode *node);
 
 void broker_dslink_disconnect(DownstreamNode *node);
 void broker_dslink_connect(DownstreamNode *node, RemoteDSLink *link);
