@@ -18,9 +18,10 @@ MatchResult match_query(const char *path, const char *pattern) {
             path++;
             pattern++;
         }
+
         if (*pattern == '?') {
             ++pattern;
-            while (*path != '/') {
+            while (*path != '/' && *path != '\0') {
                 ++path;
             }
         } else if (*pattern == '*') {
@@ -30,7 +31,6 @@ MatchResult match_query(const char *path, const char *pattern) {
             }
             MatchResult bestMatch = NOT_MATCH;
             while (*path != '\0') {
-
                 if (*path == *pattern) {
                     MatchResult newMatch = match_query(path, pattern);
                     if (newMatch == MATCH) {
@@ -43,8 +43,11 @@ MatchResult match_query(const char *path, const char *pattern) {
                 ++path;
             }
             return bestMatch;
+        } else {
+            break;
         }
     }
+
     if (*path == '\0') {
         if (*pattern == '\0') {
             return MATCH;
