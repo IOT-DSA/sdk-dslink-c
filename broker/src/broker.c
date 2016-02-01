@@ -40,7 +40,7 @@ void close_link(RemoteDSLink *link) {
         broker_dslink_disconnect(node);
     }
     broker_remote_dslink_free(link);
-    free(link);
+    dslink_free(link);
 }
 
 static
@@ -170,7 +170,7 @@ void handle_conn(Broker *broker, HttpRequest *req, Socket *sock) {
     int len = snprintf(buf, sizeof(buf) - 1,
                        CONN_RESP, (int) strlen(data), data);
     buf[len] = '\0';
-    free(data);
+    dslink_free(data);
     dslink_socket_write(sock, buf, (size_t) len);
 
 exit:

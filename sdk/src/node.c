@@ -1,5 +1,6 @@
 #include <string.h>
 #include <assert.h>
+#include "dslink/mem/mem.h"
 #include "dslink/ws.h"
 #include "dslink/msg/list_response.h"
 #include "dslink/msg/sub_response.h"
@@ -14,11 +15,11 @@ DSNode *dslink_node_create(DSNode *parent,
 
     profile = dslink_strdup(profile);
     if (!profile) {
-        free((void *) name);
+        dslink_free((void *) name);
         return NULL;
     }
 
-    DSNode *node = calloc(1, sizeof(DSNode));
+    DSNode *node = dslink_calloc(1, sizeof(DSNode));
     if (!node) {
         goto cleanup;
     }
@@ -30,7 +31,7 @@ DSNode *dslink_node_create(DSNode *parent,
     if (parent) {
         size_t pathLen = strlen(parent->path);
         size_t nameLen = strlen(name);
-        char *path = malloc(pathLen + nameLen + 2);
+        char *path = dslink_malloc(pathLen + nameLen + 2);
         node->path = path;
         if (!path) {
             goto cleanup;
@@ -39,7 +40,7 @@ DSNode *dslink_node_create(DSNode *parent,
         *(path + pathLen) = '/';
         memcpy(path + pathLen + 1, name, nameLen + 1);
     } else {
-        node->path = calloc(1, sizeof(char));
+        node->path = dslink_calloc(1, sizeof(char));
         if (!node->path) {
             goto cleanup;
         }
@@ -51,7 +52,7 @@ cleanup:
     DSLINK_CHECKED_EXEC(free, (void *) profile);
     if (node) {
         DSLINK_CHECKED_EXEC(free, (void *) node->path);
-        free(node);
+        dslink_free(node);
     }
     return NULL;
 }
@@ -61,14 +62,14 @@ int dslink_node_add_child(DSLink *link, DSNode *node) {
     assert(node->parent);
     int ret = 0;
     if (!node->parent->children) {
-        node->parent->children = malloc(sizeof(Map));
+        node->parent->children = dslink_malloc(sizeof(Map));
         if (!node->parent->children) {
             return DSLINK_ALLOC_ERR;
         }
         if (dslink_map_init(node->parent->children,
                             dslink_map_str_cmp,
                             dslink_map_str_key_len_cal) != 0) {
-            free(node->parent->children);
+            dslink_free(node->parent->children);
             node->parent->children = NULL;
             return DSLINK_ALLOC_ERR;
         }
@@ -168,19 +169,19 @@ void dslink_node_tree_free_basic(DSNode *root) {
                 dslink_node_tree_free_basic(entry->value);
             }
         });
-        free(root->children);
+        dslink_free(root->children);
     }
     if (root->meta_data) {
         DSLINK_MAP_FREE(root->meta_data, {
-            free(entry->key);
+            dslink_free(entry->key);
             json_delete(entry->value);
         });
-        free(root->meta_data);
+        dslink_free(root->meta_data);
     }
 
     // TODO: remove node from open_streams, list_subs, and value_path_subs
 
-    free(root);
+    dslink_free(root);
 }
 
 void dslink_node_tree_free(DSLink *link, DSNode *root) {
@@ -238,14 +239,14 @@ int dslink_node_set_meta(DSNode *node,
         if (!value) {
             return 0;
         }
-        node->meta_data = malloc(sizeof(Map));
+        node->meta_data = dslink_malloc(sizeof(Map));
         if (!node->meta_data) {
             return DSLINK_ALLOC_ERR;
         }
         if (dslink_map_init(node->meta_data,
                             dslink_map_str_cmp,
                             dslink_map_str_key_len_cal) != 0) {
-            free(node->meta_data);
+            dslink_free(node->meta_data);
             node->meta_data = NULL;
             return DSLINK_ALLOC_ERR;
         }
@@ -257,7 +258,7 @@ int dslink_node_set_meta(DSNode *node,
         const char *tmp = name;
         json_t *v = dslink_map_remove(node->meta_data, (void **) &tmp);
         if (v) {
-            free((void **) tmp);
+            dslink_free((void **) tmp);
             json_delete(v);
         }
         return 0;
@@ -271,7 +272,7 @@ int dslink_node_set_meta(DSNode *node,
     json_t *tmp = value;
     if (dslink_map_set(node->meta_data,
                        (void *) name, (void **) &tmp) != 0) {
-        free((void *) name);
+        dslink_free((void *) name);
     }
     if (tmp) {
         json_delete(tmp);

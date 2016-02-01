@@ -42,7 +42,7 @@ int dslink_request_handle(DSLink *link, json_t *req) {
         void *p = &rid;
         Stream *s = dslink_map_remove(link->responder->open_streams, &p);
         if (s) {
-            free(p);
+            dslink_free(p);
             switch (s->type) {
                 case LIST_STREAM:
                     p = (void *) s->path;
@@ -58,7 +58,7 @@ int dslink_request_handle(DSLink *link, json_t *req) {
                     s->on_close(link, node);
                 }
             }
-            free(s);
+            dslink_free(s);
         }
     } else {
         log_warn("Unrecognized method: %s\n", method);

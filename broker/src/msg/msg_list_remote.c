@@ -1,11 +1,11 @@
 #include <string.h>
 #include <dslink/utils.h>
+#include <dslink/mem/mem.h>
 
 #include "broker/net/ws.h"
 #include "broker/broker.h"
 #include "broker/stream.h"
 #include "broker/msg/msg_list.h"
-
 
 static
 void send_list_request(BrokerListStream *stream,
@@ -42,7 +42,7 @@ void send_list_request(BrokerListStream *stream,
         stream->responder_rid = rid;
 
         void *tmp = reqLink;
-        uint32_t *r = malloc(sizeof(uint32_t));
+        uint32_t *r = dslink_malloc(sizeof(uint32_t));
         *r = reqRid;
         dslink_map_set(&stream->clients, r, &tmp);
 
@@ -51,7 +51,7 @@ void send_list_request(BrokerListStream *stream,
         dslink_map_set(&node->list_streams, p, &tmp);
     }
 
-    uint32_t *r = malloc(sizeof(uint32_t));
+    uint32_t *r = dslink_malloc(sizeof(uint32_t));
     *r = rid;
 
     void *tmp = stream;
@@ -68,7 +68,7 @@ void broker_list_dslink(RemoteDSLink *reqLink,
         BrokerListStream *stream = dslink_map_get(&node->list_streams,
                                                   (void *) path);
         if (stream) {
-            uint32_t *r = malloc(sizeof(uint32_t));
+            uint32_t *r = dslink_malloc(sizeof(uint32_t));
             *r = reqRid;
             void *tmp = reqLink;
             dslink_map_set(&stream->clients, r, &tmp);

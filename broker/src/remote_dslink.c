@@ -33,24 +33,24 @@ void broker_remote_dslink_free(RemoteDSLink *link) {
     if (link->auth) {
         mbedtls_ecdh_free(&link->auth->tempKey);
         DSLINK_CHECKED_EXEC(free, (void *) link->auth->pubKey);
-        free(link->auth);
+        dslink_free(link->auth);
     }
     DSLINK_MAP_FREE(&link->responder_streams, {
-        free(entry->key);
+        dslink_free(entry->key);
         // TODO: handle value free in a safer way
         //broker_stream_free(entry->value);
     });
     DSLINK_MAP_FREE(&link->requester_streams, {
-        free(entry->key);
+        dslink_free(entry->key);
         // TODO: handle value free in a safer way
         //broker_stream_free(entry->value);
     });
     DSLINK_MAP_FREE(&link->sub_sids, {
-        free(entry->key);
+        dslink_free(entry->key);
         // TODO: free value
     });
     DSLINK_MAP_FREE(&link->sub_paths, {
-        free(entry->key);
+        dslink_free(entry->key);
         // TODO: free value
     });
     json_decref(link->linkData);

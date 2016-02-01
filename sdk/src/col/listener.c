@@ -1,10 +1,10 @@
 #include <stdlib.h>
-#include <string.h>
+#include "dslink/mem/mem.h"
 #include "dslink/col/listener.h"
 
 
 Listener *listener_add(Dispatcher *dispatcher, int (*callback)(void *, void *), void *data) {
-    Listener *listener = malloc(sizeof(Listener));
+    Listener *listener = dslink_malloc(sizeof(Listener));
     listener->callback = callback;
     listener->data = data;
     list_insert_node(&dispatcher->list, listener);

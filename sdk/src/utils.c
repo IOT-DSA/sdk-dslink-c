@@ -1,6 +1,7 @@
 #include <ctype.h>
 #include <string.h>
 #include <time.h>
+#include "dslink/mem/mem.h"
 #include "dslink/utils.h"
 
 const char *dslink_strcasestr(const char *haystack, const char *needle) {
@@ -34,7 +35,7 @@ char *dslink_strdup(const char *str) {
         return NULL;
     }
     size_t strSize = strlen(str) + 1;
-    char *tmp = malloc(strSize);
+    char *tmp = dslink_malloc(strSize);
     if (!tmp) {
         return NULL;
     }
@@ -46,7 +47,7 @@ char *dslink_strdupl(const char *str, size_t len) {
     if (!str) {
         return NULL;
     }
-    char *tmp = malloc(len + 1);
+    char *tmp = dslink_malloc(len + 1);
     if (!tmp) {
         return NULL;
     }

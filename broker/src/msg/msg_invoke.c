@@ -1,4 +1,5 @@
 #include <jansson.h>
+#include <dslink/mem/mem.h>
 #include "broker/broker.h"
 #include "broker/net/ws.h"
 #include "broker/msg/msg_invoke.h"
@@ -41,7 +42,7 @@ int broker_msg_handle_invoke(RemoteDSLink *link, json_t *req) {
         s->requester_rid = (uint32_t) json_integer_value(jRid);
         s->requester = link;
 
-        uint32_t *r = malloc(sizeof(uint32_t));
+        uint32_t *r = dslink_malloc(sizeof(uint32_t));
         *r = rid;
         dslink_map_set(&ds->link->responder_streams, r, (void **) &s);
     }

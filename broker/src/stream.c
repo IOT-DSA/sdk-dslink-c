@@ -1,10 +1,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <dslink/utils.h>
+#include <dslink/mem/mem.h>
 #include "broker/stream.h"
 
 BrokerListStream *broker_stream_list_init() {
-    BrokerListStream *stream = calloc(1, sizeof(BrokerListStream));
+    BrokerListStream *stream = dslink_calloc(1, sizeof(BrokerListStream));
     if (!stream) {
         return NULL;
     }
@@ -12,13 +13,13 @@ BrokerListStream *broker_stream_list_init() {
     stream->type = LIST_STREAM;
     if (dslink_map_init(&stream->clients, dslink_map_uint32_cmp,
                         dslink_map_uint32_key_len_cal) != 0) {
-        free(stream);
+        dslink_free(stream);
         return NULL;
     }
 
     stream->updates_cache = json_object();
     if (!stream->updates_cache) {
-        free(stream);
+        dslink_free(stream);
         return NULL;
     }
 
@@ -26,7 +27,7 @@ BrokerListStream *broker_stream_list_init() {
 }
 
 BrokerSubStream *broker_stream_sub_init() {
-    BrokerSubStream *stream = calloc(1, sizeof(BrokerSubStream));
+    BrokerSubStream *stream = dslink_calloc(1, sizeof(BrokerSubStream));
     if (!stream) {
         return NULL;
     }
@@ -34,7 +35,7 @@ BrokerSubStream *broker_stream_sub_init() {
     stream->type = SUBSCRIPTION_STREAM;
     if (dslink_map_init(&stream->clients, dslink_map_uint32_cmp,
                         dslink_map_uint32_key_len_cal) != 0) {
-        free(stream);
+        dslink_free(stream);
         return NULL;
     }
 
@@ -42,7 +43,7 @@ BrokerSubStream *broker_stream_sub_init() {
 }
 
 BrokerInvokeStream *broker_stream_invoke_init() {
-    BrokerInvokeStream *stream = calloc(1, sizeof(BrokerInvokeStream));
+    BrokerInvokeStream *stream = dslink_calloc(1, sizeof(BrokerInvokeStream));
     if (!stream) {
         return NULL;
     }
@@ -58,10 +59,10 @@ void broker_stream_free(BrokerStream *stream) {
 
     if (stream->type == LIST_STREAM) {
         BrokerListStream *s = (BrokerListStream *) stream;
-        free(s->remote_path);
+        dslink_free(s->remote_path);
         json_decref(s->updates_cache);
     }
-    free(stream);
+    dslink_free(stream);
 }
 
 static inline

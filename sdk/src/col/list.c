@@ -1,5 +1,5 @@
 #include <stdlib.h>
-#include <string.h>
+#include "dslink/mem/mem.h"
 #include "dslink/col/list.h"
 
 void list_init(List *list) {
@@ -10,7 +10,7 @@ void list_init(List *list) {
 
 
 ListNode *dslink_list_insert(List *list, void *data) {
-    ListNode *node = malloc(sizeof(ListNode));
+    ListNode *node = dslink_malloc(sizeof(ListNode));
     if (!node) {
         return NULL;
     }

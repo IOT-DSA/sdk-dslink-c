@@ -1,3 +1,5 @@
+#include <stdlib.h>
+#include "dslink/mem/mem.h"
 #include "dslink/ws.h"
 #include "dslink/msg/sub_response.h"
 
@@ -91,7 +93,7 @@ int dslink_response_sub(DSLink *link, json_t *paths, json_t *rid) {
         if (!node) {
             continue;
         }
-        uint32_t *sid = malloc(sizeof(uint32_t));
+        uint32_t *sid = dslink_malloc(sizeof(uint32_t));
         if (!sid) {
             return DSLINK_ALLOC_ERR;
         }
@@ -99,20 +101,20 @@ int dslink_response_sub(DSLink *link, json_t *paths, json_t *rid) {
         void *tmp = sid;
         if (dslink_map_set(link->responder->value_path_subs,
                            (void *) node->path, &tmp) != 0) {
-            free(sid);
+            dslink_free(sid);
             return 1;
         }
         if (tmp) {
             void *p = tmp;
             dslink_map_remove(link->responder->value_sid_subs, &p);
-            free(tmp);
+            dslink_free(tmp);
         }
         tmp = (void *) node->path;
         if (dslink_map_set(link->responder->value_sid_subs,
                            sid, &tmp) != 0) {
             tmp = (void *) node->path;
             dslink_map_remove(link->responder->value_path_subs, &tmp);
-            free(sid);
+            dslink_free(sid);
             return 1;
         }
 
@@ -140,7 +142,7 @@ int dslink_response_unsub(DSLink *link, json_t *sids, json_t *rid) {
 
             void *tmp = path;
             dslink_map_remove(link->responder->value_path_subs, &tmp);
-            free(p);
+            dslink_free(p);
         }
     }
 

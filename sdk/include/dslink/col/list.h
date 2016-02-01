@@ -3,6 +3,7 @@
 
 #include <stdlib.h>
 #include <stdint.h>
+#include "dslink/mem/mem.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -90,7 +91,7 @@ void list_free_node(void *node) {
             ((ListNodeBase*)node)->prev->next = ((ListNodeBase*)node)->next;
             ((ListNodeBase*)node)->next->prev = ((ListNodeBase*)node)->prev;
         }
-        free(node);
+        dslink_free(node);
     }
 }
 

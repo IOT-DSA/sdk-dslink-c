@@ -12,7 +12,7 @@ int broker_ws_send_obj(RemoteDSLink *link, json_t *obj) {
         return DSLINK_ALLOC_ERR;
     }
     broker_ws_send(link, data);
-    free(data);
+    dslink_free(data);
     return 0;
 }
 

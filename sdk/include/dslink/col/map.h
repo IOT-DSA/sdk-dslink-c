@@ -13,11 +13,11 @@ extern "C" {
     for (MapEntry *entry = (MapEntry *) (map)->list.head.next; (void*)entry != &(map)->list.head;) { \
         { freeFunc; } \
         MapEntry *tmp = entry->next; \
-        free(entry->node); \
-        free(entry); \
+        dslink_free(entry->node); \
+        dslink_free(entry); \
         entry = tmp; \
     } \
-    if ((map)->table) free((map)->table)
+    if ((map)->table) dslink_free((map)->table)
 
 #define dslink_map_foreach(map) \
     for (MapEntry *entry = (map) ? ((MapEntry *) (map)->list.head.next) : NULL; \

@@ -6,6 +6,7 @@
 #define LOG_TAG "server"
 #include <dslink/log.h>
 #include <dslink/socket_private.h>
+#include <dslink/mem/mem.h>
 
 #include "broker/net/server.h"
 
@@ -58,7 +59,7 @@ int broker_start_server(json_t *config, void *data,
         log_info("HTTP server bound to %s:%s\n", host, port);
     }
 
-    Client **clients = calloc(1, sizeof(Client *));
+    Client **clients = dslink_calloc(1, sizeof(Client *));
     int clientsLen = 1;
     while (1) {
         fd_set readFds;
@@ -83,7 +84,7 @@ int broker_start_server(json_t *config, void *data,
                     cec(client->sock_data);
                     clients[i] = NULL;
                     dslink_socket_close(client->sock);
-                    free(client);
+                    dslink_free(client);
                 }
             }
             continue;
@@ -100,7 +101,7 @@ int broker_start_server(json_t *config, void *data,
                 // The callback closed the connection
                 clients[i] = NULL;
                 dslink_socket_free(client->sock);
-                free(client);
+                dslink_free(client);
             }
         }
 
@@ -114,11 +115,11 @@ int broker_start_server(json_t *config, void *data,
             // Look for an available opening in the clients array
             Client *tmp = clients[i];
             if (tmp == NULL) {
-                client = clients[i] = calloc(1, sizeof(Client));
+                client = clients[i] = dslink_calloc(1, sizeof(Client));
                 if (client) {
                     client->sock = dslink_socket_init(0);
                     if (!client->sock) {
-                        free(client);
+                        dslink_free(client);
                         client = clients[i] = NULL;
                     }
                 }
@@ -130,11 +131,11 @@ int broker_start_server(json_t *config, void *data,
             Client **new = realloc(clients, sizeof(clients) * clientsLen);
             if (new) {
                 clients = new;
-                client = clients[i] = calloc(1, sizeof(Client));
+                client = clients[i] = dslink_calloc(1, sizeof(Client));
                 if (client) {
                     client->sock = dslink_socket_init(0);
                     if (!client->sock) {
-                        free(client);
+                        dslink_free(client);
                         client = clients[i] = NULL;
                     }
                 }
@@ -148,7 +149,7 @@ int broker_start_server(json_t *config, void *data,
                                    NULL, 0, NULL) != 0) {
                 log_warn("Failed to accept a client connection\n");
                 dslink_socket_free(client->sock);
-                free(client);
+                dslink_free(client);
                 clients[i] = NULL;
                 continue;
             }

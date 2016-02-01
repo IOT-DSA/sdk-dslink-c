@@ -4,10 +4,11 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include "dslink/mem/mem.h"
 #include "dslink/url.h"
 
 #define URL_ADDRESS_SUBSTRING_COPY(var, len) \
-    var = malloc(len + 1); \
+    var = dslink_malloc(len + 1); \
     if (!var) goto exit; \
     for (uint_fast8_t i = 0; i < len; ++i) { \
         *(var + i) = *(address + i); \
@@ -15,13 +16,13 @@
     *(var + len) = '\0';
 
 #define URL_ADDRESS_ASSIGN_URI_END(var) \
-    var = malloc(2); \
+    var = dslink_malloc(2); \
     if (!var) goto exit; \
     *var = '/'; \
     *(var + 1) = '\0';
 
 Url *dslink_url_parse(const char *address) {
-    Url *url = calloc(1, sizeof(Url));
+    Url *url = dslink_calloc(1, sizeof(Url));
     uint_fast8_t state = 0;
     uint_fast8_t len = 0;
     for (char c = *address; c != '\0'; ++len) {
@@ -114,13 +115,13 @@ void dslink_url_free(Url *url) {
         return;
     }
     if (url->scheme) {
-        free(url->scheme);
+        dslink_free(url->scheme);
     }
     if (url->host) {
-        free(url->host);
+        dslink_free(url->host);
     }
     if (url->uri) {
-        free(url->uri);
+        dslink_free(url->uri);
     }
-    free(url);
+    dslink_free(url);
 }

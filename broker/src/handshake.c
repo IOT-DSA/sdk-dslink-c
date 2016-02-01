@@ -7,6 +7,7 @@
 #include <dslink/log.h>
 #include <dslink/handshake.h>
 #include <dslink/utils.h>
+#include <dslink/mem/mem.h>
 #include "broker/msg/msg_list.h"
 #include "broker/handshake.h"
 
@@ -17,7 +18,7 @@ json_t *broker_handshake_handle_conn(Broker *broker,
         return NULL;
     }
 
-    RemoteDSLink *link = calloc(1, sizeof(RemoteDSLink));
+    RemoteDSLink *link = dslink_calloc(1, sizeof(RemoteDSLink));
     json_t *resp = json_object();
     if (!(link && resp)) {
         goto fail;
@@ -28,7 +29,7 @@ json_t *broker_handshake_handle_conn(Broker *broker,
     }
 
     link->broker = broker;
-    link->auth = calloc(1, sizeof(RemoteAuth));
+    link->auth = dslink_calloc(1, sizeof(RemoteAuth));
     if (!link->auth) {
         goto fail;
     }
@@ -145,7 +146,7 @@ json_t *broker_handshake_handle_conn(Broker *broker,
         // add to connecting map with the name
         if (dslink_map_set(&broker->client_connecting,
                            (void *) link->name, &value) != 0) {
-            free((void *) link->name);
+            dslink_free((void *) link->name);
             goto fail;
         }
     }
@@ -158,7 +159,7 @@ json_t *broker_handshake_handle_conn(Broker *broker,
         void *value = (void *) link;
         // add to connecting map with dsId
         if (dslink_map_set(&broker->client_connecting, tmp, &value) != 0) {
-            free(tmp);
+            dslink_free(tmp);
             goto fail;
         }
     }
@@ -167,8 +168,8 @@ json_t *broker_handshake_handle_conn(Broker *broker,
 fail:
     if (link) {
         broker_remote_dslink_free(link);
-        free((void *) link->path);
-        free(link);
+        dslink_free((void *) link->path);
+        dslink_free(link);
     }
     DSLINK_CHECKED_EXEC(json_decref, resp);
     return NULL;
@@ -216,7 +217,7 @@ int broker_handshake_handle_ws(Broker *broker,
     { // Handle retrieval of the downstream node
         node = dslink_map_get(broker->downstream->children, (void *) link->name);
         if (!node) {
-            node = calloc(1, sizeof(DownstreamNode));
+            node = dslink_calloc(1, sizeof(DownstreamNode));
             if (!node) {
                 ret = 1;
                 goto exit;
@@ -225,7 +226,7 @@ int broker_handshake_handle_ws(Broker *broker,
 
             if (dslink_map_init(&node->list_streams, dslink_map_str_cmp,
                                 dslink_map_str_key_len_cal) != 0) {
-                free(node);
+                dslink_free(node);
                 ret = 1;
                 goto exit;
             }
@@ -236,8 +237,8 @@ int broker_handshake_handle_ws(Broker *broker,
             void *tmp = (void *) node;
             if (dslink_map_set(broker->downstream->children,
                                (void *) tmpkey, &tmp) != 0) {
-                free(node);
-                free(oldDsId);
+                dslink_free(node);
+                dslink_free(oldDsId);
                 ret = 1;
                 goto exit;
             }
@@ -247,7 +248,7 @@ int broker_handshake_handle_ws(Broker *broker,
             json_object_set_new(node->meta, "$is", json_string("node"));
             nodeCreated = 1;
         } else {
-            free(oldDsId);
+            dslink_free(oldDsId);
             oldDsId = (void *) node->dsId;
         }
     }
@@ -277,14 +278,14 @@ int broker_handshake_handle_ws(Broker *broker,
     log_info("DSLink `%s` has connected\n", dsId);
 exit:
     mbedtls_ecdh_free(&link->auth->tempKey);
-    free((void *) link->auth->pubKey);
-    free(link->auth);
+    dslink_free((void *) link->auth->pubKey);
+    dslink_free(link->auth);
     link->auth = NULL;
     if (ret != 0) {
         DSLINK_MAP_FREE(&link->requester_streams, {});
         DSLINK_MAP_FREE(&link->responder_streams, {});
-        free((char *)link->path);
-        free(link);
+        dslink_free((char *)link->path);
+        dslink_free(link);
     }
     return ret;
 }

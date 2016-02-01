@@ -5,6 +5,7 @@
 #include <mbedtls/ecdh.h>
 #include <mbedtls/entropy.h>
 
+#include "dslink/mem/mem.h"
 #include "dslink/base64_url.h"
 #include "dslink/handshake.h"
 #include "dslink/err.h"
@@ -85,7 +86,7 @@ int dslink_handshake_gen_auth_key(mbedtls_ecdh_context *key,
     {
         size_t saltLen = strlen(salt);
         size_t len = saltLen + olen;
-        char *in = malloc(len + 1);
+        char *in = dslink_malloc(len + 1);
         if (!in) {
             ret = DSLINK_ALLOC_ERR;
             goto exit;
@@ -96,7 +97,7 @@ int dslink_handshake_gen_auth_key(mbedtls_ecdh_context *key,
 
         unsigned char auth[32];
         mbedtls_sha256((unsigned char *) in, len, auth, 0);
-        free(in);
+        dslink_free(in);
 
         if ((errno = dslink_base64_url_encode(buf, bufLen, &olen, auth,
                                               sizeof(auth))) != 0) {
@@ -300,7 +301,7 @@ int dslink_handshake_generate(Url *url,
         }
 
         size_t nameLen = strlen(name);
-        *dsId = malloc(nameLen + tmpLen + 2);
+        *dsId = dslink_malloc(nameLen + tmpLen + 2);
         if (!(*dsId)) {
             ret = DSLINK_ALLOC_ERR;
             goto exit;
@@ -354,23 +355,23 @@ int dslink_handshake_generate(Url *url,
             break;
         }
         if (resp == NULL) {
-            resp = malloc((size_t) read + 1);
+            resp = dslink_malloc((size_t) read + 1);
             if (!resp) {
                 ret = DSLINK_ALLOC_ERR;
                 goto exit;
             }
             respLen = read;
-            memcpy(resp, buf, read);
+            memcpy(resp, buf, (size_t) read);
             *(resp + respLen) = '\0';
         } else {
             char *tmp = realloc(resp, (size_t) respLen + read + 1);
             if (!tmp) {
-                free(resp);
+                dslink_free(resp);
                 ret = DSLINK_ALLOC_ERR;
                 goto exit;
             }
             resp = tmp;
-            memcpy(resp + respLen, buf, read);
+            memcpy(resp + respLen, buf, (size_t) read);
             respLen += read;
             *(resp + respLen) = '\0';
         }
@@ -409,9 +410,9 @@ int dslink_handshake_generate(Url *url,
     }
     const char *id = json_string_value(json_object_get(*handshake, "id"));
     if (id) {
-        free(*dsId);
+        dslink_free(*dsId);
         size_t size = strlen(id) + 1;
-        *dsId = malloc(size);
+        *dsId = dslink_malloc(size);
         if (!(*dsId)) {
             ret = DSLINK_ALLOC_ERR;
             json_delete(*handshake);

@@ -2,13 +2,14 @@
 #include <stdlib.h>
 #include <errno.h>
 
+#include "dslink/mem/mem.h"
 #include "dslink/socket_private.h"
 #include "dslink/socket.h"
 #include "dslink/err.h"
 
 Socket *dslink_socket_init(uint_fast8_t secure) {
     if (secure) {
-        SslSocket *s = malloc(sizeof(SslSocket));
+        SslSocket *s = dslink_malloc(sizeof(SslSocket));
         if (!s) {
             return NULL;
         }
@@ -20,7 +21,7 @@ Socket *dslink_socket_init(uint_fast8_t secure) {
         mbedtls_ssl_config_init(&s->conf);
         return (Socket *) s;
     } else {
-        Socket *s = malloc(sizeof(Socket));
+        Socket *s = dslink_malloc(sizeof(Socket));
         if (!s) {
             return NULL;
         }
@@ -174,5 +175,5 @@ void dslink_socket_close(Socket *sock) {
 }
 
 void dslink_socket_free(Socket *sock) {
-    free(sock);
+    dslink_free(sock);
 }

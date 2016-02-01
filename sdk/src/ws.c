@@ -61,7 +61,7 @@ int dslink_ws_send_obj(wslay_event_context_ptr ctx, json_t *obj) {
         return DSLINK_ALLOC_ERR;
     }
     dslink_ws_send(ctx, data);
-    free(data);
+    dslink_free(data);
     return 0;
 }
 

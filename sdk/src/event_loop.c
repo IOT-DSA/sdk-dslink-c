@@ -1,6 +1,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <mbedtls/timing.h>
+#include "dslink/mem/mem.h"
 #include "dslink/col/list.h"
 #include "dslink/event_loop.h"
 #include "dslink/err.h"
@@ -52,7 +53,7 @@ void dslink_event_loop_init(EventLoop *loop,
 void dslink_event_loop_free(EventLoop *loop) {
     for (EventTask *t = (EventTask *)loop->list.head.next; (void *)t != &loop->list.head;) {
         EventTask *tmp = t->next;
-        free(t);
+        dslink_free(t);
         t = tmp;
     }
 }
@@ -63,7 +64,7 @@ int dslink_event_loop_sched(EventLoop *loop, task_func func, void *funcData) {
 
 int dslink_event_loop_schedd(EventLoop *loop, task_func func,
                              void *funcData, uint32_t delay) {
-    EventTask *task = malloc(sizeof(EventTask));
+    EventTask *task = dslink_malloc(sizeof(EventTask));
     if (!task) {
         return DSLINK_ALLOC_ERR;
     }
@@ -100,7 +101,7 @@ void dslink_event_loop_process(EventLoop *loop) {
             }
             dslink_event_loop_sub_del(loop, diff);
             if (loop->shutdown) {
-                free(task);
+                dslink_free(task);
                 goto loop_processor;
             } else if (list_is_not_empty(&loop->list) && ((EventTask *)loop->list.head.next)->delay < task->delay) {
                 dslink_event_loop_sched_raw(loop, task);
@@ -115,6 +116,6 @@ void dslink_event_loop_process(EventLoop *loop) {
         // Handle the delays of the next tasks
         dslink_event_loop_sub_del(loop, task->delay);
 
-        free(task);
+        dslink_free(task);
     }
 }

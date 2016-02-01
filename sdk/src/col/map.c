@@ -1,5 +1,6 @@
 #include <string.h>
 #include <stdlib.h>
+#include "dslink/mem/mem.h"
 #include "dslink/col/map.h"
 #include "dslink/err.h"
 
@@ -52,7 +53,7 @@ int dslink_map_initbf(Map *map,
         return 1;
     }
     memset(map, 0, sizeof(Map));
-    map->table = calloc(buckets, sizeof(MapNode*));
+    map->table = dslink_calloc(buckets, sizeof(MapNode*));
     if (!map->table) {
         return DSLINK_ALLOC_ERR;
     }
@@ -71,12 +72,12 @@ int dslink_map_get_raw_node(Map *map, MapNode **node,
     size_t index = dslink_map_index_of_key(key, len, map->capacity);
     *node = map->table[index];
     if (!(*node)) {
-        *node = map->table[index] = malloc(sizeof(MapNode));
+        *node = map->table[index] = dslink_malloc(sizeof(MapNode));
         if (*node) {
-            (*node)->entry = malloc(sizeof(MapEntry));
+            (*node)->entry = dslink_malloc(sizeof(MapEntry));
             if (!(*node)->entry) {
                 map->table[index] = NULL;
-                free(*node);
+                dslink_free(*node);
                 *node = NULL;
                 goto exit;
             }
@@ -93,14 +94,14 @@ int dslink_map_get_raw_node(Map *map, MapNode **node,
             }
             MapNode *tmp = (*node)->next;
             if (tmp == NULL) {
-                tmp = malloc(sizeof(MapNode));
+                tmp = dslink_malloc(sizeof(MapNode));
                 if (!tmp) {
                     *node = NULL;
                     break;
                 }
-                tmp->entry = malloc(sizeof(MapEntry));
+                tmp->entry = dslink_malloc(sizeof(MapEntry));
                 if (!tmp->entry) {
-                    free(*node);
+                    dslink_free(*node);
                     *node = NULL;
                     break;
                 }
@@ -134,7 +135,7 @@ int dslink_map_rehash_table(Map *map) {
     MapNode **oldTable = map->table;
 
     size_t newCapacity = oldCapacity * 2;
-    MapNode **newTable = calloc(newCapacity, sizeof(MapNode*));
+    MapNode **newTable = dslink_calloc(newCapacity, sizeof(MapNode*));
     if (!newTable) {
         return DSLINK_ALLOC_ERR;
     }
@@ -163,7 +164,7 @@ int dslink_map_rehash_table(Map *map) {
             newTable[index] = entry->node;
         }
     }
-    free(oldTable);
+    dslink_free(oldTable);
     return 0;
 }
 
@@ -228,7 +229,7 @@ void *dslink_map_removel(Map *map, void **key, size_t len) {
         *key = node->entry->key;
         void *value = node->entry->value;
         list_free_node(node->entry);
-        free(node);
+        dslink_free(node);
         map->items--;
         return value;
     }

@@ -1,7 +1,9 @@
-#include "broker/net/ws.h"
 #include <string.h>
 #include <dslink/utils.h>
-#include <broker/broker.h>
+#include <dslink/mem/mem.h>
+
+#include "broker/net/ws.h"
+#include "broker/broker.h"
 #include "broker/stream.h"
 #include "broker/msg/msg_invoke.h"
 #include "broker/query/query.h"
@@ -143,10 +145,10 @@ ParsedQuery *parse_query(const char * query) {
     }
     pathLen = pos - pathstart;
 
-    char *path = malloc(pathLen + 1);
+    char *path = dslink_malloc(pathLen + 1);
     memcpy(path, pathstart, pathLen);
     path[pathLen] = 0;
-    ParsedQuery *pQuery = malloc(sizeof(ParsedQuery));
+    ParsedQuery *pQuery = dslink_malloc(sizeof(ParsedQuery));
     pQuery->pattern = path;
 
     dslink_map_init(&pQuery->child_add_listeners,
@@ -185,7 +187,7 @@ void query_invoke(struct RemoteDSLink *link,
 
 
 
-        uint32_t *r = malloc(sizeof(uint32_t));
+        uint32_t *r = dslink_malloc(sizeof(uint32_t));
         *r = stream->requester_rid;
         BrokerInvokeStream *tempStream;
         dslink_map_set(&link->requester_streams, r, (void **) &tempStream);

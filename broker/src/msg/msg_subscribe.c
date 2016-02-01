@@ -1,4 +1,5 @@
 #include <dslink/utils.h>
+#include <dslink/mem/mem.h>
 #include "broker/stream.h"
 #include "broker/net/ws.h"
 #include "broker/broker.h"
@@ -16,7 +17,7 @@ void handle_subscribe(RemoteDSLink *link, json_t *sub) {
     {
         BrokerSubStream *bss = dslink_map_get(&link->sub_paths, (void *) path);
         if (bss) {
-            uint32_t *s = malloc(sizeof(uint32_t));
+            uint32_t *s = dslink_malloc(sizeof(uint32_t));
             *s = sid;
             void *tmp = link;
             dslink_map_set(&bss->clients, s, &tmp);
@@ -74,13 +75,13 @@ void handle_subscribe(RemoteDSLink *link, json_t *sub) {
     }
     BrokerSubStream *bss = broker_stream_sub_init();
     {
-        uint32_t *s = malloc(sizeof(uint32_t));
+        uint32_t *s = dslink_malloc(sizeof(uint32_t));
         *s = sid;
         void *tmp = link;
         dslink_map_set(&bss->clients, s, &tmp);
     }
     {
-        uint32_t *s = malloc(sizeof(uint32_t));
+        uint32_t *s = dslink_malloc(sizeof(uint32_t));
         *s = respSid;
         void *tmp = bss;
         dslink_map_set(&dn->link->sub_sids, s, &tmp);

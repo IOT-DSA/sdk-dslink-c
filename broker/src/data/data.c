@@ -1,3 +1,5 @@
+#include <stdlib.h>
+#include <dslink/mem/mem.h>
 #include "broker/msg/msg_list.h"
 #include "broker/broker.h"
 #include "broker/data/data_actions.h"
@@ -155,7 +157,7 @@ void on_publish_invoked(RemoteDSLink *link,
     BrokerInvokeStream *s = broker_stream_invoke_init();
     s->continuous_invoke = on_publish_continuous_invoked;
 
-    uint32_t *r = malloc(sizeof(uint32_t));
+    uint32_t *r = dslink_malloc(sizeof(uint32_t));
     *r = rid;
     dslink_map_set(&link->requester_streams, r, (void **) &s);
 }

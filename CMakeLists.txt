@@ -60,6 +60,8 @@ set(DSLINK_SRC
     "${DSLINK_SRC_DIR}/col/listener.c"
     "${DSLINK_SRC_DIR}/col/map.c"
 
+    "${DSLINK_SRC_DIR}/mem/mem.c"
+
     "${DSLINK_SRC_DIR}/msg/list_response.c"
     "${DSLINK_SRC_DIR}/msg/request_handler.c"
     "${DSLINK_SRC_DIR}/msg/sub_response.c"

@@ -2,20 +2,21 @@
 
 #include <argtable3.h>
 #include <string.h>
+#include "dslink/mem/mem.h"
 #include "dslink/handshake.h"
 #include "dslink/log.h"
 #include "dslink/utils.h"
 #include "dslink/ws.h"
 
 #define DSLINK_RESPONDER_MAP_INIT(var, type) \
-    responder->var = calloc(1, sizeof(Map)); \
+    responder->var = dslink_calloc(1, sizeof(Map)); \
     if (!responder->var) { \
         goto cleanup; \
     } \
     if (dslink_map_init(responder->var, \
     dslink_map_##type##_cmp, \
     dslink_map_##type##_key_len_cal) != 0) { \
-        free(responder->var); \
+        dslink_free(responder->var); \
         responder->var = NULL; \
         goto cleanup; \
     }
@@ -155,7 +156,7 @@ int dslink_init(int argc, char **argv,
     }
 
     if (isResponder) {
-        link.responder = calloc(1, sizeof(Responder));
+        link.responder = dslink_calloc(1, sizeof(Responder));
         if (!link.responder) {
             log_fatal("Failed to create responder\n");
             goto exit;
@@ -221,33 +222,33 @@ exit:
         }
         if (link.responder->open_streams) {
             DSLINK_MAP_FREE(link.responder->open_streams, {
-                free(entry->key);
-                free(entry->value);
+                dslink_free(entry->key);
+                dslink_free(entry->value);
             });
-            free(link.responder->open_streams);
+            dslink_free(link.responder->open_streams);
         }
 
         if (link.responder->list_subs) {
             DSLINK_MAP_FREE(link.responder->list_subs, {
-                free(entry->key);
-                free(entry->value);
+                dslink_free(entry->key);
+                dslink_free(entry->value);
             });
-            free(link.responder->list_subs);
+            dslink_free(link.responder->list_subs);
         }
 
         if (link.responder->value_path_subs) {
             DSLINK_MAP_FREE(link.responder->value_path_subs, {
-                free(entry->value);
+                dslink_free(entry->value);
             });
-            free(link.responder->value_path_subs);
+            dslink_free(link.responder->value_path_subs);
         }
 
         if (link.responder->value_sid_subs) {
             DSLINK_MAP_FREE(link.responder->value_sid_subs, {});
-            free(link.responder->value_sid_subs);
+            dslink_free(link.responder->value_sid_subs);
         }
 
-        free(link.responder);
+        dslink_free(link.responder);
     }
     DSLINK_CHECKED_EXEC(free, dsId);
     DSLINK_CHECKED_EXEC(dslink_url_free, url);

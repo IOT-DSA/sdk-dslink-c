@@ -1,11 +1,11 @@
 #include <string.h>
 #include <dslink/utils.h>
+#include <dslink/mem/mem.h>
 
 #include "broker/net/ws.h"
 #include "broker/broker.h"
 #include "broker/stream.h"
 #include "broker/msg/msg_list.h"
-
 
 void send_list_updates(RemoteDSLink *reqLink,
                        BrokerListStream *stream,
@@ -160,7 +160,7 @@ void broker_list_self(RemoteDSLink *reqLink,
     }
 
     uint32_t reqRid = (uint32_t) json_integer_value(rid);
-    uint32_t *r = malloc(sizeof(uint32_t));
+    uint32_t *r = dslink_malloc(sizeof(uint32_t));
     *r = reqRid;
     void *tmp = reqLink;
     dslink_map_set(&node->list_stream->clients, r, &tmp);
