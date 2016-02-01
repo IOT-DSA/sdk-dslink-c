@@ -1,11 +1,15 @@
 #include "broker/net/ws.h"
 #include <string.h>
+#include <dslink/utils.h>
+#include <broker/broker.h>
 #include "broker/stream.h"
 #include "broker/msg/msg_invoke.h"
 #include "broker/query/query.h"
 
 typedef struct ParsedQuery {
     char *pattern;
+    Map child_add_listeners;
+    Map value_update_listeners;
 } ParsedQuery;
 
 
@@ -58,34 +62,67 @@ MatchResult match_query(const char *path, const char *pattern) {
     return NOT_MATCH;
 }
 
-
-int query_child_added(BrokerInvokeStream *stream, BrokerNode *node) {
-    ParsedQuery *pQuery = stream->data;
+int query_value_update(void *stream, void *node) {
+    ParsedQuery *pQuery = ((BrokerInvokeStream*)stream)->data;
     if (pQuery && node) {
-        MatchResult rslt = match_query(node->path, pQuery->pattern);
-        if (rslt == MATCH || rslt == PARTIAL_MATCH) {
+        json_t *top = json_object();
+        json_t *resps = json_array();
+        json_object_set_new_nocheck(top, "responses", resps);
+        json_t *resp = json_object();
+        json_array_append_new(resps, resp);
 
+        json_object_set_new_nocheck(resp, "rid",
+            json_integer(((BrokerInvokeStream*)stream)->requester_rid));
+
+        json_t *updates = json_array();
+
+        json_array_append_new(updates, json_string_nocheck(((BrokerNode*)node)->path));
+        json_array_append_new(updates, json_string_nocheck(""));
+        json_array_append(updates, ((BrokerNode*)node)->value);
+        char ts[32];
+        dslink_create_ts(ts, 32);
+        json_array_append_new(updates, json_string_nocheck(ts));
+
+        json_object_set_new_nocheck(resp, "updates", updates);
+
+        broker_ws_send_obj(((BrokerInvokeStream*)stream)->requester, top);
+        json_decref(top);
+    }
+    return 0;
+}
+
+int query_child_removed(void *stream, void *node) {
+    ParsedQuery *pQuery = ((BrokerInvokeStream*)stream)->data;
+    if (pQuery && node) {
+
+    }
+    return 0;
+}
+
+int query_child_added(void *stream, void *node) {
+    ParsedQuery *pQuery = ((BrokerInvokeStream*)stream)->data;
+    if (pQuery && node) {
+        MatchResult rslt = match_query(((BrokerNode*)node)->path, pQuery->pattern);
+        if (rslt == MATCH || rslt == PARTIAL_MATCH) {
+            printf("watch child %s\n", ((BrokerNode*)node)->path);
+            Listener * listener = listener_add(&((BrokerNode*)node)->on_child_added, query_child_added, stream);
+            const char* key = dslink_strdup(((BrokerNode*)node)->path);
+            dslink_map_set(&pQuery->child_add_listeners, (void*)key, (void*)&listener);
+            dslink_map_foreach(((BrokerNode*)node)->children) {
+                BrokerNode* child = entry->value;
+                query_child_added(stream, child);
+            }
         }
         if (rslt == MATCH) {
-
+            printf("subscribe %s\n", ((BrokerNode*)node)->path);
+            Listener * listener = listener_add(&((BrokerNode*)node)->on_value_update, query_value_update, stream);
+            const char* key = dslink_strdup(((BrokerNode*)node)->path);
+            dslink_map_set(&pQuery->value_update_listeners, (void*)key, (void*)&listener);
         }
     }
     return 0;
 }
-int query_child_removed(BrokerInvokeStream *stream, BrokerNode *node) {
-    ParsedQuery *pQuery = stream->data;
-    if (pQuery && node) {
 
-    }
-    return 0;
-}
-int query_value_update(BrokerInvokeStream *stream, BrokerNode *node) {
-    ParsedQuery *pQuery = stream->data;
-    if (pQuery && node) {
-
-    }
-    return 0;
-}
 
 ParsedQuery *parse_query(const char * query) {
     const char *pos = strchr(query, ' ');
@@ -107,16 +144,17 @@ ParsedQuery *parse_query(const char * query) {
     path[pathLen] = 0;
     ParsedQuery *pQuery = malloc(sizeof(ParsedQuery));
     pQuery->pattern = path;
+
+    dslink_map_init(&pQuery->child_add_listeners,
+                    dslink_map_str_cmp,
+                    dslink_map_str_key_len_cal);
+    dslink_map_init(&pQuery->value_update_listeners,
+                    dslink_map_str_cmp,
+                    dslink_map_str_key_len_cal);
+
     return pQuery;
 }
 
-
-
-static void start_query_stream(BrokerInvokeStream *stream, ParsedQuery *pQuery) {
-    if (stream && pQuery) {
-
-    }
-}
 
 static
 void query_invoke(struct RemoteDSLink *link,
@@ -141,30 +179,49 @@ void query_invoke(struct RemoteDSLink *link,
         stream->requester = link;
         stream->requester_rid = (uint32_t) json_integer_value(json_object_get(request, "rid"));
 
-        start_query_stream(stream, pQuery);
+
 
         uint32_t *r = malloc(sizeof(uint32_t));
         *r = stream->requester_rid;
-        dslink_map_set(&link->requester_streams, r, (void **) &stream);
+        BrokerInvokeStream *tempStream;
+        dslink_map_set(&link->requester_streams, r, (void **) &tempStream);
+
+        {
+            json_t *top = json_object();
+            json_t *resps = json_array();
+            json_object_set_new_nocheck(top, "responses", resps);
+            json_t *resp = json_object();
+            json_array_append_new(resps, resp);
+
+            json_t *rid = json_object_get(request, "rid");
+            json_object_set(resp, "rid", rid);
+            json_object_set_new_nocheck(resp, "stream",
+                                        json_string_nocheck("open"));
+
+            broker_ws_send_obj(link, top);
+            json_decref(top);
+        }
+
+        query_child_added(stream, link->broker->data);
 
     }
     return;
 
     exit_with_error:
     {
-    json_t *top = json_object();
-    json_t *resps = json_array();
-    json_object_set_new_nocheck(top, "responses", resps);
-    json_t *resp = json_object();
-    json_array_append_new(resps, resp);
+        json_t *top = json_object();
+        json_t *resps = json_array();
+        json_object_set_new_nocheck(top, "responses", resps);
+        json_t *resp = json_object();
+        json_array_append_new(resps, resp);
 
-    json_t *rid = json_object_get(request, "rid");
-    json_object_set(resp, "rid", rid);
-    json_object_set_new_nocheck(resp, "stream",
-                                json_string_nocheck("closed"));
+        json_t *rid = json_object_get(request, "rid");
+        json_object_set(resp, "rid", rid);
+        json_object_set_new_nocheck(resp, "stream",
+                                    json_string_nocheck("closed"));
 
-    broker_ws_send_obj(link, top);
-    json_decref(top);
+        broker_ws_send_obj(link, top);
+        json_decref(top);
     }
 }
 
