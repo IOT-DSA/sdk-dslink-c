@@ -1,3 +1,4 @@
+#include "broker/msg/msg_list.h"
 #include "broker/broker.h"
 #include "broker/data/data_actions.h"
 #include "broker/stream.h"
@@ -81,40 +82,12 @@ void on_add_node_invoked(RemoteDSLink *link,
         return;
     }
 
-    if (node->list_stream->clients.items <= 0) {
-        return;
-    }
+    json_object_set_new_nocheck(child->meta, "$type",
+                                json_string_nocheck("dynamic"));
 
-    json_t *update = json_array();
-    json_t *obj = json_object();
-    json_array_append_new(update, json_string(name));
-    json_array_append_new(update, obj);
-    json_object_set_new_nocheck(obj, "$is", json_string("node"));
-    if (node->list_stream->updates_cache) {
-        json_object_set_new_nocheck(node->list_stream->updates_cache,
-                                    name, update);
+    if (node->list_stream) {
+        update_list_child(node, node->list_stream, name);
     }
-
-    json_t *top = json_object();
-    json_t *resps = json_array();
-    json_object_set_new_nocheck(top, "responses", resps);
-    json_t *resp = json_object();
-    json_array_append_new(resps, resp);
-    json_object_set_new_nocheck(resp, "stream", json_string_nocheck("open"));
-    json_t *updates = json_array();
-    if (node->list_stream->updates_cache) {
-        json_array_append(updates, update);
-    } else {
-        json_array_append_new(updates, update);
-    }
-    json_object_set_new_nocheck(resp, "updates", updates);
-    dslink_map_foreach(&node->list_stream->clients) {
-        uint32_t *rid = entry->key;
-        json_object_set_new_nocheck(resp, "rid", json_integer(*rid));
-        broker_ws_send_obj(entry->value, top);
-    }
-
-    json_decref(top);
 }
 
 static
@@ -148,42 +121,9 @@ void on_add_value_invoked(RemoteDSLink *link,
     json_object_set_new_nocheck(child->meta, "$type",
                                 json_string_nocheck("dynamic"));
 
-    if (!node->list_stream || node->list_stream->clients.items <= 0) {
-        return;
+    if (node->list_stream) {
+        update_list_child(node, node->list_stream, name);
     }
-
-    json_t *update = json_array();
-    json_t *obj = json_object();
-    json_array_append_new(update, json_string(name));
-    json_array_append_new(update, obj);
-    json_object_set_new_nocheck(obj, "$is", json_string("node"));
-    json_object_set_new_nocheck(obj, "$type",
-                                json_string_nocheck("dynamic"));
-    if (node->list_stream->updates_cache) {
-        json_object_set_new_nocheck(node->list_stream->updates_cache,
-                                    name, update);
-    }
-
-    json_t *top = json_object();
-    json_t *resps = json_array();
-    json_object_set_new_nocheck(top, "responses", resps);
-    json_t *resp = json_object();
-    json_array_append_new(resps, resp);
-    json_object_set_new_nocheck(resp, "stream", json_string_nocheck("open"));
-    json_t *updates = json_array();
-    if (node->list_stream->updates_cache) {
-        json_array_append(updates, update);
-    } else {
-        json_array_append_new(updates, update);
-    }
-    json_object_set_new_nocheck(resp, "updates", updates);
-    dslink_map_foreach(&node->list_stream->clients) {
-        uint32_t *rid = entry->key;
-        json_object_set_new_nocheck(resp, "rid", json_integer(*rid));
-        broker_ws_send_obj(entry->value, top);
-    }
-
-    json_decref(top);
 }
 
 static

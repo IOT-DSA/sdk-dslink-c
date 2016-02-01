@@ -57,7 +57,17 @@ void build_list_cache(BrokerNode *node, BrokerListStream *stream) {
             goto fail;
         }
 
-        json_object_set_new(obj, "$is", json_string("node"));
+        {
+            json_object_set_new(obj, "$is", json_string("node"));
+            json_t *handle = json_object_get(node->meta, "$invokable");
+            if (handle) {
+                json_object_set_nocheck(obj, "$invokable", handle);
+            }
+            handle = json_object_get(node->meta, "$type");
+            if (handle) {
+                json_object_set_nocheck(obj, "$type", handle);
+            }
+        }
 
         if (child->type == DOWNSTREAM_NODE) {
             DownstreamNode *downstreamNode = (DownstreamNode *)child;
@@ -75,6 +85,10 @@ fail:
 }
 
 void update_list_child(BrokerNode *node, BrokerListStream *stream, const char *name) {
+    if (!(node && stream && name)) {
+        return;
+    }
+
     json_t *updates = json_array();
 
 
