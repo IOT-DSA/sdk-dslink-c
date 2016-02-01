@@ -76,12 +76,16 @@ int query_value_update(void *stream, void *node) {
 
         json_t *updates = json_array();
 
-        json_array_append_new(updates, json_string_nocheck(((BrokerNode*)node)->path));
-        json_array_append_new(updates, json_string_nocheck(""));
-        json_array_append(updates, ((BrokerNode*)node)->value);
+        json_t *update = json_array();
+
+        json_array_append_new(update, json_string_nocheck(((BrokerNode*)node)->path));
+        json_array_append_new(update, json_string_nocheck(""));
+        json_array_append(update, ((BrokerNode*)node)->value);
         char ts[32];
         dslink_create_ts(ts, 32);
-        json_array_append_new(updates, json_string_nocheck(ts));
+        json_array_append_new(update, json_string_nocheck(ts));
+
+        json_array_append_new(updates, update);
 
         json_object_set_new_nocheck(resp, "updates", updates);
 

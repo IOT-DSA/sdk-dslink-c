@@ -166,7 +166,7 @@ uint32_t broker_node_incr_rid(DownstreamNode *node) {
 
 void  broker_node_update_value(BrokerNode *node, json_t *value, uint8_t isNewValue) {
     if (node->value) {
-        json_decref(value);
+        json_decref(node->value);
     }
     node->value = value;
     if (isNewValue) {
