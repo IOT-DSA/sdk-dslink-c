@@ -85,9 +85,7 @@ void on_add_node_invoked(RemoteDSLink *link,
     json_object_set_new_nocheck(child->meta, "$type",
                                 json_string_nocheck("dynamic"));
 
-    if (node->list_stream) {
-        update_list_child(node, node->list_stream, name);
-    }
+    broker_node_update_child(node, name);
 }
 
 static
@@ -121,9 +119,8 @@ void on_add_value_invoked(RemoteDSLink *link,
     json_object_set_new_nocheck(child->meta, "$type",
                                 json_string_nocheck("dynamic"));
 
-    if (node->list_stream) {
-        update_list_child(node, node->list_stream, name);
-    }
+    broker_node_update_child(node, name);
+
 }
 
 static

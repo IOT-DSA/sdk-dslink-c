@@ -116,6 +116,19 @@ int broker_node_add(BrokerNode *parent, BrokerNode *child) {
     return 0;
 }
 
+void broker_node_update_child(BrokerNode *parent, const char* name) {
+    if (parent->list_stream) {
+        update_list_child(parent, parent->list_stream, name);
+    }
+
+    BrokerNode *child = dslink_map_get(parent->children, (void *) name);
+    if (child) {
+        listener_dispatch_message(&parent->on_child_added, child);
+    } else {
+        listener_dispatch_message(&parent->on_child_removed, NULL);
+    }
+}
+
 void broker_node_free(BrokerNode *node) {
     if (!node) {
         return;
@@ -196,6 +209,4 @@ void broker_dslink_connect(DownstreamNode *node, RemoteDSLink *link) {
     }
     // notify all listeners of the close event
     listener_dispatch_message(&node->on_link_connect, link);
-
-
 }

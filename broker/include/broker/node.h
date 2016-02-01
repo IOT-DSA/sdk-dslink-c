@@ -68,6 +68,10 @@ BrokerNode *broker_node_create(const char *name, const char *profile);
 void  broker_node_update_value(BrokerNode *node, json_t *value, uint8_t isNewValue);
 
 int broker_node_add(BrokerNode *parent, BrokerNode *child);
+// update all the listener and stream of the children change
+// the change could be adding or removing
+void broker_node_update_child(BrokerNode *parent, const char* name);
+
 void broker_node_free(BrokerNode *node);
 
 uint32_t broker_node_incr_rid(DownstreamNode *node);
