@@ -11,11 +11,12 @@ extern "C" {
 
 #include "broker/remote_dslink.h"
 
+
 #define BROKER_STREAM_FIELDS \
     StreamType type
 
 typedef void (*continuous_invoke_cb)(RemoteDSLink *link, json_t *params);
-typedef void (*invoke_close_cb)(struct BrokerInvokeStream *stream);
+typedef void (*invoke_close_cb)(void *stream);
 
 typedef struct BrokerStream {
 

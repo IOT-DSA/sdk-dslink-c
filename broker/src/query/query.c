@@ -10,13 +10,24 @@ typedef struct ParsedQuery {
 
 int query_child_added(BrokerInvokeStream *stream, BrokerNode *node) {
     ParsedQuery *pQuery = stream->data;
+    if (pQuery && node) {
 
+    }
+    return 0;
 }
 int query_child_removed(BrokerInvokeStream *stream, BrokerNode *node) {
     ParsedQuery *pQuery = stream->data;
+    if (pQuery && node) {
+
+    }
+    return 0;
 }
 int query_value_update(BrokerInvokeStream *stream, BrokerNode *node) {
     ParsedQuery *pQuery = stream->data;
+    if (pQuery && node) {
+
+    }
+    return 0;
 }
 
 ParsedQuery *parse_query(const char * query) {
@@ -45,7 +56,9 @@ ParsedQuery *parse_query(const char * query) {
 
 
 static void start_query_stream(BrokerInvokeStream *stream, ParsedQuery *pQuery) {
+    if (stream && pQuery) {
 
+    }
 }
 
 static
@@ -69,7 +82,7 @@ void query_invoke(struct RemoteDSLink *link,
         BrokerInvokeStream *stream = broker_stream_invoke_init();
         stream->data = pQuery;
         stream->requester = link;
-        stream->requester_rid = (uint32_t)json_integer_value(json_object_get(request, "rid"));
+        stream->requester_rid = (uint32_t) json_integer_value(json_object_get(request, "rid"));
 
         start_query_stream(stream, pQuery);
 
@@ -80,7 +93,8 @@ void query_invoke(struct RemoteDSLink *link,
     }
     return;
 
-exit_with_error:
+    exit_with_error:
+    {
     json_t *top = json_object();
     json_t *resps = json_array();
     json_object_set_new_nocheck(top, "responses", resps);
@@ -94,6 +108,7 @@ exit_with_error:
 
     broker_ws_send_obj(link, top);
     json_decref(top);
+    }
 }
 
 BrokerNode *broker_query_create_action(BrokerNode *parent) {
