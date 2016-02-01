@@ -5,13 +5,72 @@
 #include "broker/query/query.h"
 
 typedef struct ParsedQuery {
-    char *path;
+    char *pattern;
 } ParsedQuery;
+
+
+typedef enum { NOT_MATCH, PARTIAL_MATCH, MATCH} MatchResult;
+
+static
+MatchResult match_query(const char *path, const char *pattern) {
+    while (*path != '\0' && *pattern != '\0') {
+        while (*path == *pattern) {
+            path++;
+            pattern++;
+        }
+        if (*pattern == '?') {
+            ++pattern;
+            while (*path != '/') {
+                ++path;
+            }
+        } else if (*pattern == '*') {
+            ++pattern;
+            if (*pattern == '\0') {
+                return MATCH;
+            }
+            MatchResult bestMatch = NOT_MATCH;
+            while (*path != '\0') {
+
+                if (*path == *pattern) {
+                    MatchResult newMatch = match_query(path, pattern);
+                    if (newMatch == MATCH) {
+                        return MATCH;
+                    }
+                    if (newMatch == PARTIAL_MATCH) {
+                        bestMatch = PARTIAL_MATCH;
+                    }
+                }
+                ++path;
+            }
+            return bestMatch;
+        } else {
+            if (*path == '\0') {
+                return PARTIAL_MATCH;
+            }
+            return NOT_MATCH;
+        }
+    }
+    if (*path == '\0') {
+        if (*pattern == '\0') {
+            return MATCH;
+        } else {
+            return PARTIAL_MATCH;
+        }
+    }
+    return NOT_MATCH;
+}
+
 
 int query_child_added(BrokerInvokeStream *stream, BrokerNode *node) {
     ParsedQuery *pQuery = stream->data;
     if (pQuery && node) {
+        MatchResult rslt = match_query(node->path, pQuery->pattern);
+        if (rslt == MATCH || rslt == PARTIAL_MATCH) {
 
+        }
+        if (rslt == MATCH) {
+
+        }
     }
     return 0;
 }
@@ -49,7 +108,7 @@ ParsedQuery *parse_query(const char * query) {
     memcpy(path, pathstart, pathLen);
     path[pathLen] = 0;
     ParsedQuery *pQuery = malloc(sizeof(ParsedQuery));
-    pQuery->path = path;
+    pQuery->pattern = path;
     return pQuery;
 }
 
