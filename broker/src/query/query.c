@@ -14,7 +14,7 @@ typedef enum { NOT_MATCH, PARTIAL_MATCH, MATCH} MatchResult;
 static
 MatchResult match_query(const char *path, const char *pattern) {
     while (*path != '\0' && *pattern != '\0') {
-        while (*path == *pattern) {
+        while (*pattern && *path == *pattern) {
             path++;
             pattern++;
         }
@@ -43,11 +43,6 @@ MatchResult match_query(const char *path, const char *pattern) {
                 ++path;
             }
             return bestMatch;
-        } else {
-            if (*path == '\0') {
-                return PARTIAL_MATCH;
-            }
-            return NOT_MATCH;
         }
     }
     if (*path == '\0') {
