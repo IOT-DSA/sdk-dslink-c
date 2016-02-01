@@ -353,6 +353,7 @@ int broker_start() {
                 ret = 1;
                 goto exit;
             }
+            broker.data = node;
         }
 
         {

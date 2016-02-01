@@ -75,6 +75,10 @@ BrokerNode *broker_node_create(const char *name, const char *profile) {
         free(node);
         return NULL;
     }
+    listener_init(&node->on_value_update);
+    listener_init(&node->on_child_added);
+    listener_init(&node->on_child_removed);
+    listener_init(&node->on_list_update);
 
     json_t *json = json_string(profile);
     json_object_set(node->meta, "$is", json);
@@ -106,6 +110,13 @@ void broker_node_free(BrokerNode *node) {
         });
         listener_remove_all(&((DownstreamNode *)node)->on_link_connect);
         listener_remove_all(&((DownstreamNode *)node)->on_link_disconnect);
+    } else {
+        // TODO: add a new type for these listeners
+        // they shouldn't be part of base node type
+        listener_remove_all(&node->on_value_update);
+        listener_remove_all(&node->on_child_added);
+        listener_remove_all(&node->on_child_removed);
+        listener_remove_all(&node->on_list_update);
     }
 
     if (node->parent) {
@@ -137,6 +148,18 @@ uint32_t broker_node_incr_rid(DownstreamNode *node) {
     return node->rid;
 }
 
+void  broker_node_update_value(BrokerNode *node, json_t *value, uint8_t isNewValue) {
+    if (node->value) {
+        json_decref(value);
+    }
+    node->value = value;
+    if (isNewValue) {
+
+    } else {
+        json_incref(value);
+    }
+    listener_dispatch_message(&node->on_value_update, node);
+}
 
 void broker_dslink_disconnect(DownstreamNode *node) {
     dslink_map_foreach(&node->list_streams) {

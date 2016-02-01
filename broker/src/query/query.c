@@ -1,40 +1,99 @@
+#include "broker/net/ws.h"
 #include <string.h>
+#include "broker/stream.h"
 #include "broker/msg/msg_invoke.h"
 #include "broker/query/query.h"
 
-static
-void query_invoke(RemoteDSLink *link,
-                  BrokerNode *node,
-                  json_t *req) {
-    if (!(link && node && req)) {
-        return;
-    }
+typedef struct ParsedQuery {
+    char *path;
+} ParsedQuery;
 
-    json_t *params = json_object_get(req, "params");
-    if (!json_is_object(params)) {
-        return;
-    }
+int query_child_added(BrokerInvokeStream *stream, BrokerNode *node) {
+    ParsedQuery *pQuery = stream->data;
 
-    const char *query = json_string_value(json_object_get(params, "query"));
-    if (!query) {
-        return;
-    }
+}
+int query_child_removed(BrokerInvokeStream *stream, BrokerNode *node) {
+    ParsedQuery *pQuery = stream->data;
+}
+int query_value_update(BrokerInvokeStream *stream, BrokerNode *node) {
+    ParsedQuery *pQuery = stream->data;
+}
 
+ParsedQuery *parse_query(const char * query) {
     const char *pos = strchr(query, ' ');
     if (!(pos && strncmp(query, "list", pos - query) == 0)) {
-        return;
+        return NULL;
     }
 
     query = ++pos;
-    const char *path = query;
+    const char *pathstart = query;
     size_t pathLen = 0;
     pos = strchr(query, '|');
     if (!pos) {
-        return;
+        return NULL;
     }
-    pathLen = pos - query;
+    pathLen = pos - pathstart;
 
-    // Assume the user wants to subscribe for now
+    char *path = malloc(pathLen + 1);
+    memcpy(path, pathstart, pathLen);
+    path[pathLen] = 0;
+    ParsedQuery *pQuery = malloc(sizeof(ParsedQuery));
+    pQuery->path = path;
+    return pQuery;
+}
+
+
+
+static void start_query_stream(BrokerInvokeStream *stream, ParsedQuery *pQuery) {
+
+}
+
+static
+void query_invoke(struct RemoteDSLink *link,
+                         struct BrokerNode *node,
+                         json_t *request) {
+    if (link && node && request) {
+        json_t *params = json_object_get(request, "params");
+        if (!json_is_object(params)) {
+            goto exit_with_error;
+        }
+
+        const char *query = json_string_value(json_object_get(params, "query"));
+        if (!query) {
+            goto exit_with_error;
+        }
+        ParsedQuery *pQuery = parse_query(query);
+        if (!pQuery) {
+            goto exit_with_error;
+        }
+        BrokerInvokeStream *stream = broker_stream_invoke_init();
+        stream->data = pQuery;
+        stream->requester = link;
+        stream->requester_rid = (uint32_t)json_integer_value(json_object_get(request, "rid"));
+
+        start_query_stream(stream, pQuery);
+
+        uint32_t *r = malloc(sizeof(uint32_t));
+        *r = stream->requester_rid;
+        dslink_map_set(&link->requester_streams, r, (void **) &stream);
+
+    }
+    return;
+
+exit_with_error:
+    json_t *top = json_object();
+    json_t *resps = json_array();
+    json_object_set_new_nocheck(top, "responses", resps);
+    json_t *resp = json_object();
+    json_array_append_new(resps, resp);
+
+    json_t *rid = json_object_get(request, "rid");
+    json_object_set(resp, "rid", rid);
+    json_object_set_new_nocheck(resp, "stream",
+                                json_string_nocheck("closed"));
+
+    broker_ws_send_obj(link, top);
+    json_decref(top);
 }
 
 BrokerNode *broker_query_create_action(BrokerNode *parent) {

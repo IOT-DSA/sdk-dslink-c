@@ -205,11 +205,7 @@ void on_publish_continuous_invoked(RemoteDSLink *link, json_t *params) {
         return;
     }
 
-    json_incref(value);
-    if (node->value) {
-        json_decref(node->value);
-    }
-    node->value = value;
+    broker_node_update_value(node, value, 0);
 
     // TODO: notify query handlers
 }

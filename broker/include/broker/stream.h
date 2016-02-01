@@ -15,6 +15,7 @@ extern "C" {
     StreamType type
 
 typedef void (*continuous_invoke_cb)(RemoteDSLink *link, json_t *params);
+typedef void (*invoke_close_cb)(struct BrokerInvokeStream *stream);
 
 typedef struct BrokerStream {
 
@@ -48,6 +49,8 @@ typedef struct BrokerInvokeStream {
     continuous_invoke_cb continuous_invoke;
     uint32_t requester_rid;
 
+    void *data;
+    invoke_close_cb close_cb;
 } BrokerInvokeStream;
 
 BrokerListStream *broker_stream_list_init();

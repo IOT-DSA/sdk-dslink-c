@@ -35,6 +35,10 @@ typedef struct BrokerNode {
     on_invocation_cb on_invoke;
     json_t *value;
 
+    Dispatcher on_value_update;
+    Dispatcher on_child_added;
+    Dispatcher on_child_removed;
+    Dispatcher on_list_update;
 } BrokerNode;
 
 typedef struct DownstreamNode {
@@ -58,6 +62,10 @@ typedef struct DownstreamNode {
 BrokerNode *broker_node_get(BrokerNode *root,
                             const char *path, char **out);
 BrokerNode *broker_node_create(const char *name, const char *profile);
+
+// when newValue is 1, node won't add ref count on value
+void  broker_node_update_value(BrokerNode *node, json_t *value, uint8_t isNewValue);
+
 int broker_node_add(BrokerNode *parent, BrokerNode *child);
 void broker_node_free(BrokerNode *node);
 

@@ -17,6 +17,8 @@ typedef struct Broker {
 
     BrokerNode *downstream;
 
+    BrokerNode *data;
+
     // Map<char *name, RemoteDSLink *>
     Map client_connecting;
 
