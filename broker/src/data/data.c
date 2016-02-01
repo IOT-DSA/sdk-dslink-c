@@ -229,7 +229,7 @@ void on_publish_invoked(RemoteDSLink *link,
 
     uint32_t *r = malloc(sizeof(uint32_t));
     *r = rid;
-    dslink_map_set(&link->local_streams, r, (void **) &s);
+    dslink_map_set(&link->requester_streams, r, (void **) &s);
 }
 
 static

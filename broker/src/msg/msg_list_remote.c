@@ -50,7 +50,7 @@ static void send_list_request(BrokerListStream *stream, DownstreamNode *node, Re
     *r = rid;
 
     void *tmp = stream;
-    dslink_map_set(&node->link->local_streams, r, &tmp);
+    dslink_map_set(&node->link->responder_streams, r, &tmp);
 }
 
 

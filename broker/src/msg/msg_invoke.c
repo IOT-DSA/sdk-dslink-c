@@ -43,7 +43,7 @@ int broker_msg_handle_invoke(RemoteDSLink *link, json_t *req) {
 
         uint32_t *r = malloc(sizeof(uint32_t));
         *r = rid;
-        dslink_map_set(&ds->link->local_streams, r, (void **) &s);
+        dslink_map_set(&ds->link->responder_streams, r, (void **) &s);
     }
 
     json_t *newRid = json_integer(rid);

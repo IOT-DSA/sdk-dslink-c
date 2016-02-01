@@ -15,7 +15,7 @@ void broker_handle_req(RemoteDSLink *link, json_t *req) {
     }
 
     uint32_t r = (uint32_t) json_integer_value(jRid);
-    BrokerInvokeStream *stream = dslink_map_get(&link->local_streams, &r);
+    BrokerInvokeStream *stream = dslink_map_get(&link->requester_streams, &r);
     if (stream) {
         if (stream->continuous_invoke) {
             json_t *params = json_object_get(req, "params");
@@ -50,7 +50,7 @@ void broker_handle_resp(RemoteDSLink *link, json_t *resp) {
     }
 
     uint32_t rid = (uint32_t) json_integer_value(jRid);
-    BrokerStream *stream = dslink_map_get(&link->local_streams,
+    BrokerStream *stream = dslink_map_get(&link->responder_streams,
                                     &rid);
     if (!stream) {
         return;

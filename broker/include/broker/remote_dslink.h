@@ -42,7 +42,13 @@ typedef struct RemoteDSLink {
     json_t *linkData;
 
     // Map<uint32_t *, Stream *>
-    Map local_streams;
+
+    // connect to requester
+    // broker receive requests and send back responses
+    Map requester_streams;
+    // connect to responder
+    // broker send requests and receive responses
+    Map responder_streams;
 
 } RemoteDSLink;
 

@@ -281,7 +281,8 @@ exit:
     free(link->auth);
     link->auth = NULL;
     if (ret != 0) {
-        DSLINK_MAP_FREE(&link->local_streams, {});
+        DSLINK_MAP_FREE(&link->requester_streams, {});
+        DSLINK_MAP_FREE(&link->responder_streams, {});
         free((char *)link->path);
         free(link);
     }
