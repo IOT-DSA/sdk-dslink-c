@@ -218,7 +218,7 @@ void on_publish_invoked(RemoteDSLink *link,
     if (!json_is_object(params)) {
         return;
     }
-    on_publish_continuous_invoked(link, req);
+    on_publish_continuous_invoked(link, params);
     uint32_t rid = (uint32_t) json_integer_value(json_object_get(req, "rid"));
     BrokerInvokeStream *s = broker_stream_invoke_init();
     s->continuous_invoke = on_publish_continuous_invoked;
