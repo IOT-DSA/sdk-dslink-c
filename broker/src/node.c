@@ -91,6 +91,22 @@ int broker_node_add(BrokerNode *parent, BrokerNode *child) {
         return 1;
     }
 
+    {
+        size_t pathLen = strlen(parent->path);
+        if (pathLen == 1 && *parent->path == '/') {
+            pathLen = 0;
+        }
+        size_t nameLen = strlen(child->name);
+        char *path = malloc(pathLen + nameLen + 2);
+        child->path = path;
+        if (!path) {
+            return 1;
+        }
+        memcpy(path, parent->path, pathLen);
+        *(path + pathLen) = '/';
+        memcpy(path + pathLen + 1, child->name, nameLen + 1);
+    }
+
     void *tmp = child;
     if (dslink_map_set(parent->children, (void *) child->name, &tmp) != 0) {
         return 1;

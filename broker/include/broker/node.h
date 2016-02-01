@@ -22,6 +22,7 @@ typedef enum BrokerNodeType {
 
 #define BROKER_NODE_FIELDS \
     BrokerNodeType type; \
+    const char *path; \
     const char *name; \
     struct BrokerNode *parent; \
     Map *children; \
