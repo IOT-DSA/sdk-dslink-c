@@ -59,7 +59,7 @@ void col_map_set_large_string_entry_test(void **state) {
         assert_non_null(stored);
         assert_string_equal(stored, val);
     }
-    assert_int_equal(map.items, items);
+    assert_int_equal(map.size, items);
 
     DSLINK_MAP_FREE(&map, {
         free(entry->key);
@@ -127,7 +127,7 @@ void col_map_set_large_uint32_entry_test(void **state) {
         assert_non_null(stored);
         assert_int_equal(*stored, *val);
     }
-    assert_int_equal(map.items, items);
+    assert_int_equal(map.size, items);
 
     DSLINK_MAP_FREE(&map, {
         free(entry->key);
@@ -157,7 +157,7 @@ void col_map_remove_large_uint32_entry_test(void **state) {
         assert_non_null(stored);
         assert_int_equal(*stored, *val);
     }
-    assert_int_equal(map.items, items);
+    assert_int_equal(map.size, items);
 
     for (uint32_t n = 0; n < items; n++) {
         uint32_t *i = calloc(1, sizeof(uint32_t));
