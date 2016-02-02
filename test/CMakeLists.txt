@@ -17,7 +17,6 @@ endfunction(add_memcheck_test)
 
 foreach(tname "col_map")
     add_executable(${tname}_test src/${tname}_test.c)
-    link_directories("${JANSSON_DIR}/lib")
     target_link_libraries(${tname}_test sdk_dslink_c cmocka ${JANSSON_LIB})
     add_dependencies(${tname}_test ${tname}_test sdk_dslink_c cmocka)
     add_memcheck_test(${tname}_test ${tname}_test)

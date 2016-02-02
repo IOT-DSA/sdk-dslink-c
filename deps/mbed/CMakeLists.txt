@@ -35,7 +35,7 @@ set(MBED_SRC_CRYPTO
     "${MBED_SRC_DIR}/md_wrap.c"
     #"${MBED_SRC_DIR}/memory_buffer_alloc.c"
     "${MBED_SRC_DIR}/oid.c"
-    #"${MBED_SRC_DIR}/padlock.c"
+    "${MBED_SRC_DIR}/padlock.c"
     "${MBED_SRC_DIR}/pem.c"
     "${MBED_SRC_DIR}/pk.c"
     "${MBED_SRC_DIR}/pk_wrap.c"

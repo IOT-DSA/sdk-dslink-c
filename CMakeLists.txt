@@ -5,6 +5,11 @@ option(DSLINK_BUILD_BROKER "Whether to build the broker" OFF)
 option(DSLINK_BUILD_EXAMPLES "Whether to build the examples" OFF)
 option(DSLINK_TEST "Whether to enable tests" ON)
 
+option(DSLINK_JANSSON_SYSTEM
+    "Whether to use system Jansson library or manually build it"
+    OFF
+)
+
 ######## Define Macros #######
 
 macro(ADD_C_FLAGS flags)
@@ -18,22 +23,26 @@ foreach(dep "mbed" "wslay" "argtable3")
 endforeach()
 
 include(ExternalProject)
-
 ADD_C_FLAGS("-fPIC")
 
-ExternalProject_Add(JANSSON
-    PREFIX jansson
-    GIT_REPOSITORY "https://github.com/akheron/jansson.git"
-    GIT_TAG "e44b223"
-    CMAKE_ARGS -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-                -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-                -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
-                -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/jansson
-                -DJANSSON_BUILD_DOCS=OFF
-                -DJANSSON_EXAMPLES=OFF
-                -DJANSSON_WITHOUT_TESTS=ON
-)
-set(JANSSON_DIR "${CMAKE_CURRENT_BINARY_DIR}/jansson")
+if (NOT DSLINK_JANSSON_SYSTEM)
+    ExternalProject_Add(JANSSON
+        PREFIX jansson
+        GIT_REPOSITORY "https://github.com/akheron/jansson.git"
+        GIT_TAG "e44b223"
+        CMAKE_ARGS -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+                    -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+                    -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
+                    -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/jansson
+                    -DJANSSON_BUILD_DOCS=OFF
+                    -DJANSSON_EXAMPLES=OFF
+                    -DJANSSON_WITHOUT_TESTS=ON
+    )
+    set(JANSSON_DIR "${CMAKE_CURRENT_BINARY_DIR}/jansson")
+    set(JANSSON_LIB "${JANSSON_DIR}/lib/libjansson.a")
+else()
+    set(JANSSON_LIB "jansson")
+endif()
 
 ##### Configure Flags #####
 
@@ -127,13 +136,7 @@ endif()
 ###### Configure Libraries #####
 
 set(CMAKE_MACOSX_RPATH 1)
-link_directories("${JANSSON_DIR}/lib")
 add_library(sdk_dslink_c-object OBJECT ${LIBRARY_SRC})
-
-set(JANSSON_LIB "${JANSSON_DIR}/lib/libjansson.a")
-if (NOT EXISTS "${JANSSON_DIR}/lib/libjansson.a")
-    set(JANSSON_LIB "jansson")
-endif()
 
 add_library(sdk_dslink_c-static STATIC $<TARGET_OBJECTS:sdk_dslink_c-object>)
 target_link_libraries(sdk_dslink_c-static ${JANSSON_LIB})
