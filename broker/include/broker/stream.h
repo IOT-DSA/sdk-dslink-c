@@ -39,7 +39,7 @@ typedef struct BrokerListStream {
     json_t *updates_cache;
 
     // Map<uint32_t *, RemoteDSLink *>
-    Map clients;
+    Map requester_links;
 
     uint8_t cache_sent;
 

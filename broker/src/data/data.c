@@ -32,7 +32,7 @@ void on_delete_node_invoked(RemoteDSLink *link,
     if (node->list_stream->updates_cache) {
         json_object_del(node->list_stream->updates_cache, node->name);
     }
-    if (node->list_stream->clients.items <= 0) {
+    if (node->list_stream->requester_links.items <= 0) {
         return;
     }
 
@@ -49,7 +49,7 @@ void on_delete_node_invoked(RemoteDSLink *link,
                                 json_string_nocheck("remove"));
     json_array_append_new(updates, update);
     json_object_set_new_nocheck(resp, "updates", updates);
-    dslink_map_foreach(&node->parent->list_stream->clients) {
+    dslink_map_foreach(&node->parent->list_stream->requester_links) {
         uint32_t *rid = entry->key;
         json_object_set_new_nocheck(resp, "rid", json_integer(*rid));
         broker_ws_send_obj(entry->value, top);

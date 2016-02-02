@@ -140,7 +140,7 @@ void update_list_child(BrokerNode *node, BrokerListStream *stream, const char *n
     json_object_set_new_nocheck(resp, "updates", updates);
 
 
-    dslink_map_foreach(&stream->clients) {
+    dslink_map_foreach(&stream->requester_links) {
         json_object_del(resp, "rid");
         json_t *newRid = json_integer(*((uint32_t *) entry->key));
         json_object_set_new_nocheck(resp, "rid", newRid);
@@ -163,7 +163,7 @@ void broker_list_self(RemoteDSLink *reqLink,
     uint32_t *r = dslink_malloc(sizeof(uint32_t));
     *r = reqRid;
     void *tmp = reqLink;
-    dslink_map_set(&node->list_stream->clients, r, &tmp);
+    dslink_map_set(&node->list_stream->requester_links, r, &tmp);
 
     send_list_updates(reqLink, node->list_stream, reqRid);
 

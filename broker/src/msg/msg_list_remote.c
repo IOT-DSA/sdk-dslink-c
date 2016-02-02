@@ -44,7 +44,7 @@ void send_list_request(BrokerListStream *stream,
         void *tmp = reqLink;
         uint32_t *r = dslink_malloc(sizeof(uint32_t));
         *r = reqRid;
-        dslink_map_set(&stream->clients, r, &tmp);
+        dslink_map_set(&stream->requester_links, r, &tmp);
 
         char *p = dslink_strdup(path);
         tmp = stream;
@@ -71,7 +71,7 @@ void broker_list_dslink(RemoteDSLink *reqLink,
             uint32_t *r = dslink_malloc(sizeof(uint32_t));
             *r = reqRid;
             void *tmp = reqLink;
-            dslink_map_set(&stream->clients, r, &tmp);
+            dslink_map_set(&stream->requester_links, r, &tmp);
             send_list_updates(reqLink, stream, reqRid);
             return;
         }
@@ -92,7 +92,7 @@ void broker_list_dslink_send_cache(BrokerListStream *stream){
     json_object_set_new_nocheck(resp, "stream", json_string("open"));
     json_object_set_new_nocheck(resp, "updates", cached_updates);
 
-    dslink_map_foreach(&stream->clients) {
+    dslink_map_foreach(&stream->requester_links) {
         json_object_del(resp, "rid");
         json_t *newRid = json_integer(*((uint32_t *) entry->key));
         json_object_set_new_nocheck(resp, "rid", newRid);
@@ -163,7 +163,7 @@ void broker_list_dslink_response(RemoteDSLink *link, json_t *resp, BrokerListStr
         json_t *resps = json_array();
         json_object_set_new_nocheck(top, "responses", resps);
         json_array_append(resps, resp);
-        dslink_map_foreach(&stream->clients) {
+        dslink_map_foreach(&stream->requester_links) {
             json_object_del(resp, "rid");
             json_t *newRid = json_integer(*((uint32_t *) entry->key));
             json_object_set_new_nocheck(resp, "rid", newRid);

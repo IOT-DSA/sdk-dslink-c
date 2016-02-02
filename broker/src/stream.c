@@ -13,7 +13,7 @@ BrokerListStream *broker_stream_list_init() {
     stream->type = LIST_STREAM;
     listener_init(&stream->on_destroy);
 
-    if (dslink_map_init(&stream->clients, dslink_map_uint32_cmp,
+    if (dslink_map_init(&stream->requester_links, dslink_map_uint32_cmp,
                         dslink_map_uint32_key_len_cal) != 0) {
         dslink_free(stream);
         return NULL;
