@@ -57,6 +57,8 @@ void broker_stream_free(BrokerStream *stream) {
         return;
     }
 
+    listener_dispatch_remove_all(&stream->on_destroy, stream);
+
     if (stream->type == LIST_STREAM) {
         BrokerListStream *s = (BrokerListStream *) stream;
         dslink_free(s->remote_path);

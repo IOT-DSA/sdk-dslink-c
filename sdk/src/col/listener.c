@@ -3,7 +3,7 @@
 #include "dslink/col/listener.h"
 
 
-Listener *listener_add(Dispatcher *dispatcher, int (*callback)(void *, void *), void *data) {
+Listener *listener_add(Dispatcher *dispatcher, int (*callback)(Listener *, void *), void *data) {
     Listener *listener = dslink_malloc(sizeof(Listener));
     listener->callback = callback;
     listener->data = data;
@@ -12,18 +12,35 @@ Listener *listener_add(Dispatcher *dispatcher, int (*callback)(void *, void *), 
 }
 
 void listener_dispatch_message(Dispatcher *dispatcher, void *message) {
-    dslink_list_foreach(&dispatcher->list) {
+    ListNodeBase *next;
+    for (ListNodeBase *node = dispatcher->list.head.next;
+         node != &dispatcher->list.head;
+         node = next) {
         Listener *listener = (Listener *)node;
-        listener->callback(listener->data, message);
+
+        // fetch the next node first
+        next = node->next;
+
+        // callback can safely remote and free the listener
+        listener->callback(listener, message);
     }
 }
 
 void listener_dispatch_remove_all(Dispatcher *dispatcher, void *message) {
-    dslink_list_foreach(&dispatcher->list) {
+    ListNodeBase *next;
+    for (ListNodeBase *node = dispatcher->list.head.next;
+         node != &dispatcher->list.head;
+         node = next) {
         Listener *listener = (Listener *)node;
-        listener->callback(listener->data, message);
+
+        // fetch the next node first
+        next = node->next;
+
         // clear it from the list
         listener->list = NULL;
+
+        // callback can safely free the listener
+        listener->callback(listener, message);
     }
     dispatcher->list.head.next = &dispatcher->list.head;
     dispatcher->list.head.prev = &dispatcher->list.head;

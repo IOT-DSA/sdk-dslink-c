@@ -64,8 +64,9 @@ MatchResult match_query(const char *path, const char *pattern) {
     return NOT_MATCH;
 }
 
-int query_value_update(void *stream, void *node) {
-    ParsedQuery *pQuery = ((BrokerInvokeStream*)stream)->data;
+int query_value_update(Listener *listener, void *node) {
+    BrokerInvokeStream *stream = listener->data;
+    ParsedQuery *pQuery = stream->data;
     if (pQuery && node) {
         json_t *top = json_object();
         json_t *resps = json_array();
@@ -74,7 +75,7 @@ int query_value_update(void *stream, void *node) {
         json_array_append_new(resps, resp);
 
         json_object_set_new_nocheck(resp, "rid",
-            json_integer(((BrokerInvokeStream*)stream)->requester_rid));
+            json_integer(stream->requester_rid));
 
         json_t *updates = json_array();
 
@@ -91,42 +92,48 @@ int query_value_update(void *stream, void *node) {
 
         json_object_set_new_nocheck(resp, "updates", updates);
 
-        broker_ws_send_obj(((BrokerInvokeStream*)stream)->requester, top);
+        broker_ws_send_obj(stream->requester, top);
         json_decref(top);
     }
     return 0;
 }
 
-int query_child_removed(void *stream, void *node) {
-    ParsedQuery *pQuery = ((BrokerInvokeStream*)stream)->data;
+int query_child_removed(Listener *listener, void *node) {
+    BrokerInvokeStream *stream = listener->data;
+    ParsedQuery *pQuery = stream->data;
     if (pQuery && node) {
 
     }
     return 0;
 }
+int query_child_added(Listener *listener, void *node);
 
-int query_child_added(void *stream, void *node) {
-    ParsedQuery *pQuery = ((BrokerInvokeStream*)stream)->data;
+int query_child_added_stream(BrokerInvokeStream *stream, BrokerNode *node) {
+
+    ParsedQuery *pQuery = stream->data;
     if (pQuery && node) {
-        MatchResult rslt = match_query(((BrokerNode*)node)->path, pQuery->pattern);
+        MatchResult rslt = match_query(node->path, pQuery->pattern);
         if (rslt == MATCH || rslt == PARTIAL_MATCH) {
-            printf("watch child %s\n", ((BrokerNode*)node)->path);
-            Listener * listener = listener_add(&((BrokerNode*)node)->on_child_added, query_child_added, stream);
-            const char* key = dslink_strdup(((BrokerNode*)node)->path);
+            printf("watch child %s\n", node->path);
+            Listener * listener = listener_add(&node->on_child_added, query_child_added, stream);
+            const char* key = dslink_strdup(node->path);
             dslink_map_set(&pQuery->child_add_listeners, (void*)key, (void*)&listener);
-            dslink_map_foreach(((BrokerNode*)node)->children) {
+            dslink_map_foreach(node->children) {
                 BrokerNode* child = entry->value;
-                query_child_added(stream, child);
+                query_child_added_stream(stream, child);
             }
         }
         if (rslt == MATCH) {
-            printf("subscribe %s\n", ((BrokerNode*)node)->path);
-            Listener * listener = listener_add(&((BrokerNode*)node)->on_value_update, query_value_update, stream);
-            const char* key = dslink_strdup(((BrokerNode*)node)->path);
+            printf("subscribe %s\n", node->path);
+            Listener * listener = listener_add(&node->on_value_update, query_value_update, stream);
+            const char* key = dslink_strdup(node->path);
             dslink_map_set(&pQuery->value_update_listeners, (void*)key, (void*)&listener);
         }
     }
     return 0;
+}
+int query_child_added(Listener *listener, void *node) {
+    return query_child_added_stream((BrokerInvokeStream *)listener->data, (BrokerNode*)node);
 }
 
 
@@ -208,7 +215,7 @@ void query_invoke(struct RemoteDSLink *link,
             json_decref(top);
         }
 
-        query_child_added(stream, link->broker->data);
+        query_child_added_stream(stream, link->broker->data);
 
     }
     return;

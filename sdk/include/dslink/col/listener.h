@@ -13,7 +13,7 @@ typedef struct Listener {
     List * list;
 
     // callback(data, message)
-    int (*callback)(void*, void*);
+    int (*callback)(struct Listener *, void*);
     void *data;
 } Listener;
 
@@ -23,7 +23,7 @@ typedef struct Dispatcher {
 } Dispatcher;
 
 // listener instance created by add_listener need to be freed in user code
-Listener *listener_add(Dispatcher *dispatcher, int (*callback)(void *, void *), void *data);
+Listener *listener_add(Dispatcher *dispatcher, int (*callback)(Listener *, void *), void *data);
 
 void listener_dispatch_message(Dispatcher *dispatcher, void *message);
 
