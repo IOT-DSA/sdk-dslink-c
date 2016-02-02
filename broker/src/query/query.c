@@ -114,7 +114,6 @@ int query_child_added_stream(BrokerInvokeStream *stream, BrokerNode *node) {
     if (pQuery && node) {
         MatchResult rslt = match_query(node->path, pQuery->pattern);
         if (rslt == MATCH || rslt == PARTIAL_MATCH) {
-            printf("watch child %s\n", node->path);
             Listener * listener = listener_add(&node->on_child_added, query_child_added, stream);
             const char* key = dslink_strdup(node->path);
             dslink_map_set(&pQuery->child_add_listeners, (void*)key, (void*)&listener);
@@ -124,7 +123,6 @@ int query_child_added_stream(BrokerInvokeStream *stream, BrokerNode *node) {
             }
         }
         if (rslt == MATCH) {
-            printf("subscribe %s\n", node->path);
             Listener * listener = listener_add(&node->on_value_update, query_value_update, stream);
             const char* key = dslink_strdup(node->path);
             dslink_map_set(&pQuery->value_update_listeners, (void*)key, (void*)&listener);
@@ -168,6 +166,27 @@ ParsedQuery *parse_query(const char * query) {
     return pQuery;
 }
 
+int query_destroy(Listener *listener, void *s) {
+    BrokerInvokeStream *stream = s;
+    ParsedQuery *pQuery = stream->data;
+    DSLINK_MAP_FREE(&pQuery->child_add_listeners, {
+        Listener *listener = entry->value;
+        listener_remove(listener);
+        dslink_free(listener);
+        dslink_free(entry->key);
+    });
+    DSLINK_MAP_FREE(&pQuery->value_update_listeners, {
+        Listener *listener = entry->value;
+        listener_remove(listener);
+        dslink_free(listener);
+        dslink_free(entry->key);
+    });
+
+    listener_remove(listener);
+    dslink_free(listener);
+
+    return 0;
+}
 
 static
 void query_invoke(struct RemoteDSLink *link,
@@ -196,8 +215,10 @@ void query_invoke(struct RemoteDSLink *link,
 
         uint32_t *r = dslink_malloc(sizeof(uint32_t));
         *r = stream->requester_rid;
-        BrokerInvokeStream *tempStream;
+
+        BrokerInvokeStream *tempStream = stream;
         dslink_map_set(&link->requester_streams, r, (void **) &tempStream);
+        listener_add(&stream->on_destroy, query_destroy, stream);
 
         {
             json_t *top = json_object();

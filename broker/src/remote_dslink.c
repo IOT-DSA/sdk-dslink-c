@@ -1,5 +1,6 @@
 #include <string.h>
 #include <dslink/utils.h>
+#include <broker/stream.h>
 #include "broker/remote_dslink.h"
 
 int broker_remote_dslink_init(RemoteDSLink *link) {
@@ -29,6 +30,12 @@ int broker_remote_dslink_init(RemoteDSLink *link) {
     return ret;
 }
 
+
+void requester_stream_closed(BrokerStream * stream) {
+    listener_dispatch_remove_all(&stream->on_destroy, stream);
+    broker_stream_free((BrokerStream *)stream);
+}
+
 void broker_remote_dslink_free(RemoteDSLink *link) {
     if (link->auth) {
         mbedtls_ecdh_free(&link->auth->tempKey);
@@ -42,8 +49,7 @@ void broker_remote_dslink_free(RemoteDSLink *link) {
     });
     DSLINK_MAP_FREE(&link->requester_streams, {
         dslink_free(entry->key);
-        // TODO: handle value free in a safer way
-        //broker_stream_free(entry->value);
+        requester_stream_closed(entry->value);
     });
     DSLINK_MAP_FREE(&link->sub_sids, {
         dslink_free(entry->key);

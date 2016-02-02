@@ -11,11 +11,14 @@ BrokerListStream *broker_stream_list_init() {
     }
 
     stream->type = LIST_STREAM;
+    listener_init(&stream->on_destroy);
+
     if (dslink_map_init(&stream->clients, dslink_map_uint32_cmp,
                         dslink_map_uint32_key_len_cal) != 0) {
         dslink_free(stream);
         return NULL;
     }
+
 
     stream->updates_cache = json_object();
     if (!stream->updates_cache) {
@@ -33,6 +36,8 @@ BrokerSubStream *broker_stream_sub_init() {
     }
 
     stream->type = SUBSCRIPTION_STREAM;
+    listener_init(&stream->on_destroy);
+
     if (dslink_map_init(&stream->clients, dslink_map_uint32_cmp,
                         dslink_map_uint32_key_len_cal) != 0) {
         dslink_free(stream);
@@ -49,6 +54,7 @@ BrokerInvokeStream *broker_stream_invoke_init() {
     }
 
     stream->type = INVOCATION_STREAM;
+    listener_init(&stream->on_destroy);
     return stream;
 }
 
@@ -56,8 +62,6 @@ void broker_stream_free(BrokerStream *stream) {
     if (!stream) {
         return;
     }
-
-    listener_dispatch_remove_all(&stream->on_destroy, stream);
 
     if (stream->type == LIST_STREAM) {
         BrokerListStream *s = (BrokerListStream *) stream;
