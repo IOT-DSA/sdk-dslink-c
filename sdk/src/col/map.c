@@ -124,7 +124,7 @@ exit:
     if (!(*node)) {
         return DSLINK_ALLOC_ERR;
     }
-    map->items++;
+    map->size++;
     list_insert_node(&map->list, (*node)->entry);
     return ret;
 }
@@ -175,7 +175,7 @@ int dslink_map_set(Map *map, void *key, void **value) {
 
 int dslink_map_setl(Map *map, void *key, size_t len, void **value) {
     int ret;
-    const float loadFactor = (float) map->items / map->capacity;
+    const float loadFactor = (float) map->size / map->capacity;
     if (loadFactor >= map->max_load_factor) {
         if ((ret = dslink_map_rehash_table(map)) != 0) {
             *value = NULL;
@@ -230,7 +230,7 @@ void *dslink_map_removel(Map *map, void **key, size_t len) {
         void *value = node->entry->value;
         list_free_node(node->entry);
         dslink_free(node);
-        map->items--;
+        map->size--;
         return value;
     }
     *key = NULL;

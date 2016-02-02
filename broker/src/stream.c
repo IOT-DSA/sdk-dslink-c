@@ -65,6 +65,10 @@ void broker_stream_free(BrokerStream *stream) {
 
     if (stream->type == LIST_STREAM) {
         BrokerListStream *s = (BrokerListStream *) stream;
+        if (s->requester_links.size > 0) {
+            // don't free it when there is any other attached dslink
+            return;
+        }
         dslink_free(s->remote_path);
         json_decref(s->updates_cache);
     }

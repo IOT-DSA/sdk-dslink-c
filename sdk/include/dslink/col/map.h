@@ -46,7 +46,7 @@ typedef struct MapNode {
 
 typedef struct Map {
 
-    size_t items;
+    size_t size;
     size_t capacity;
     float max_load_factor;
 

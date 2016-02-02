@@ -32,7 +32,7 @@ void on_delete_node_invoked(RemoteDSLink *link,
     if (node->list_stream->updates_cache) {
         json_object_del(node->list_stream->updates_cache, node->name);
     }
-    if (node->list_stream->requester_links.items <= 0) {
+    if (node->list_stream->requester_links.size <= 0) {
         return;
     }
 
