@@ -94,7 +94,7 @@ void col_map_set_simple_uint32_test(void **state) {
         assert_null(tmp);
         uint32_t *stored = dslink_map_get(&map, key);
         assert_non_null(stored);
-        assert_int_equal(stored, val);
+        assert_int_equal(*stored, *val);
 
         i++;
     }
@@ -125,7 +125,7 @@ void col_map_set_large_uint32_entry_test(void **state) {
         assert_null(tmp);
         uint32_t *stored = dslink_map_get(&map, i);
         assert_non_null(stored);
-        assert_int_equal(stored, val);
+        assert_int_equal(*stored, *val);
     }
     assert_int_equal(map.items, items);
 
@@ -155,7 +155,7 @@ void col_map_remove_large_uint32_entry_test(void **state) {
         assert_null(tmp);
         uint32_t *stored = dslink_map_get(&map, i);
         assert_non_null(stored);
-        assert_int_equal(stored, val);
+        assert_int_equal(*stored, *val);
     }
     assert_int_equal(map.items, items);
 
