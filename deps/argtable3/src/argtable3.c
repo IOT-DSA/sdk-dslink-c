@@ -3477,6 +3477,7 @@ TRex *trex_compile(const TRexChar *pattern,const TRexChar **error,int flags)
     exp->_error = error;
     exp->_jmpbuf = malloc(sizeof(jmp_buf));
     exp->_flags = flags;
+    TRex *tmp = exp;
     if(setjmp(*((jmp_buf*)exp->_jmpbuf)) == 0) {
         int res = trex_list(exp);
         exp->_nodes[exp->_first].left = res;
@@ -3506,7 +3507,7 @@ TRex *trex_compile(const TRexChar *pattern,const TRexChar **error,int flags)
         trex_free(exp);
         return NULL;
     }
-    return exp;
+    return tmp;
 }
 
 void trex_free(TRex *exp)
