@@ -79,10 +79,9 @@ int dslink_node_add_child(DSLink *link, DSNode *node) {
     assert(!dslink_map_contains(node->parent->children,
                                 (void *) node->name));
     {
-        DSNode *tmp = node;
         if ((ret = dslink_map_set(node->parent->children,
-                                  (void *) node->name,
-                                  (void **) &tmp)) != 0) {
+                                  dslink_ref((char *) node->name, free),
+                                  dslink_ref(node, free))) != 0) {
             return ret;
         }
     }
@@ -91,11 +90,12 @@ int dslink_node_add_child(DSLink *link, DSNode *node) {
         return ret;
     }
 
-    uint32_t *id = dslink_map_get(link->responder->list_subs,
+    ref_t *refId = dslink_map_get(link->responder->list_subs,
                                   (void *) node->parent->path);
-    if (!id) {
+    if (!refId) {
         return ret;
     }
+    uint32_t *id = refId->data;
     json_t *top = json_object();
     if (!top) {
         return ret;
@@ -145,13 +145,21 @@ DSNode *dslink_node_get_path(DSNode *root, const char *path) {
         if (!node->children) {
             return NULL;
         }
-        node = dslink_map_getl(node->children, (void *) path, end - path);
+        ref_t *ref = dslink_map_getl(node->children, (void *) path, end - path);
+        if (!ref) {
+            return NULL;
+        }
+        node = ref->data;
         return dslink_node_get_path(node, end);
     } else if (*path != '\0') {
         if (!node->children) {
             return NULL;
         }
-        return dslink_map_get(node->children, (void *) path);
+        ref_t *ref = dslink_map_get(node->children, (void *) path);
+        if (!ref) {
+            return NULL;
+        }
+        return ref->data;
     }
 
     return node;
@@ -164,18 +172,11 @@ void dslink_node_tree_free_basic(DSNode *root) {
     DSLINK_CHECKED_EXEC(json_delete, root->value_timestamp);
     DSLINK_CHECKED_EXEC(json_delete, root->value);
     if (root->children) {
-        DSLINK_MAP_FREE(root->children, {
-            if (entry->value) {
-                dslink_node_tree_free_basic(entry->value);
-            }
-        });
+        dslink_map_free(root->children);
         dslink_free(root->children);
     }
     if (root->meta_data) {
-        DSLINK_MAP_FREE(root->meta_data, {
-            dslink_free(entry->key);
-            json_delete(entry->value);
-        });
+        dslink_map_free(root->meta_data);
         dslink_free(root->meta_data);
     }
 
@@ -186,11 +187,12 @@ void dslink_node_tree_free_basic(DSNode *root) {
 
 void dslink_node_tree_free(DSLink *link, DSNode *root) {
     if (link && link->_ws && root->parent && root->parent->name) {
-        uint32_t *rid = dslink_map_get(link->responder->list_subs,
+        ref_t *rrid = dslink_map_get(link->responder->list_subs,
                                        (void *) root->parent->path);
-        if (!rid) {
+        if (!rrid) {
             goto cleanup;
         }
+        uint32_t *rid = rrid->data;
         json_t *top = json_object();
         uint8_t send = 0;
         if (top) {
@@ -255,12 +257,7 @@ int dslink_node_set_meta(DSNode *node,
     // TODO: send updates over the network
 
     if (!value) {
-        const char *tmp = name;
-        json_t *v = dslink_map_remove(node->meta_data, (void **) &tmp);
-        if (v) {
-            dslink_free((void **) tmp);
-            json_delete(v);
-        }
+        dslink_map_remove(node->meta_data, (char *) name);
         return 0;
     }
 
@@ -269,13 +266,9 @@ int dslink_node_set_meta(DSNode *node,
         return DSLINK_ALLOC_ERR;
     }
 
-    json_t *tmp = value;
-    if (dslink_map_set(node->meta_data,
-                       (void *) name, (void **) &tmp) != 0) {
+    if (dslink_map_set(node->meta_data, dslink_ref((char *) name, free),
+                       dslink_ref(value, (free_callback) json_decref)) != 0) {
         dslink_free((void *) name);
-    }
-    if (tmp) {
-        json_delete(tmp);
     }
     return 0;
 }
@@ -300,10 +293,10 @@ int dslink_node_set_value(struct DSLink *link, DSNode *node, json_t *value) {
     node->value_timestamp = jsonTs;
     node->value = value;
 
-    uint32_t *sid = dslink_map_get(link->responder->value_path_subs,
+    ref_t *sid = dslink_map_get(link->responder->value_path_subs,
                                    (void *) node->path);
     if (sid) {
-        dslink_response_send_val(link, node, *sid);
+        dslink_response_send_val(link, node, *((uint32_t *) sid->data));
     }
 
     return 0;

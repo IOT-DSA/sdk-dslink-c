@@ -2,8 +2,6 @@
 #include <string.h>
 
 #include "dslink/msg/request_handler.h"
-#include "dslink/stream.h"
-
 #include "dslink/msg/list_response.h"
 #include "dslink/msg/sub_response.h"
 
@@ -39,9 +37,8 @@ int dslink_request_handle(DSLink *link, json_t *req) {
     } else if (strcmp(method, "close") == 0) {
         uint32_t rid = (uint32_t) json_integer_value(
                                     json_object_get(req, "rid"));
-        void *p = &rid;
-        Stream *s = dslink_map_remove(link->responder->open_streams, &p);
-        if (s) {
+        dslink_map_remove(link->responder->open_streams, &rid);
+        /*if (s) {
             dslink_free(p);
             switch (s->type) {
                 case LIST_STREAM:
@@ -59,7 +56,7 @@ int dslink_request_handle(DSLink *link, json_t *req) {
                 }
             }
             dslink_free(s);
-        }
+        }*/
     } else {
         log_warn("Unrecognized method: %s\n", method);
     }

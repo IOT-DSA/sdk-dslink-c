@@ -23,7 +23,11 @@ BrokerNode *broker_node_get(BrokerNode *root,
         if (!node->children) {
             return NULL;
         }
-        node = dslink_map_getl(node->children, (void *) path, end - path);
+        ref_t *ref = dslink_map_getl(node->children, (void *) path, end - path);
+        if (!ref) {
+            return NULL;
+        }
+        node = ref->data;
         if (node && node->type == DOWNSTREAM_NODE) {
             *out = (char *) end;
             return node;
@@ -33,14 +37,17 @@ BrokerNode *broker_node_get(BrokerNode *root,
         if (!node->children) {
             return NULL;
         }
-        return dslink_map_get(node->children, (void *) path);
+        ref_t *ref = dslink_map_get(node->children, (void *) path);
+        if (!ref) {
+            return NULL;
+        }
+        return ref->data;
     }
 
     return node;
 }
 
 BrokerNode *broker_node_create(const char *name, const char *profile) {
-    profile = dslink_strdup(profile);
     if (!profile) {
         return NULL;
     }
@@ -53,7 +60,6 @@ BrokerNode *broker_node_create(const char *name, const char *profile) {
     node->type = REGULAR_NODE;
     node->name = dslink_strdup(name);
     if (!node->name) {
-        dslink_free((void *) profile);
         dslink_free(node);
         return NULL;
     }
@@ -63,16 +69,14 @@ BrokerNode *broker_node_create(const char *name, const char *profile) {
                         dslink_map_str_key_len_cal) != 0) {
         DSLINK_CHECKED_EXEC(free, node->children);
         dslink_free((void *) node->name);
-        dslink_free((void *) profile);
         dslink_free(node);
         return NULL;
     }
 
     node->meta = json_object();
     if (!node->meta) {
-        DSLINK_MAP_FREE(node->children, {});
+        dslink_map_free(node->children);
         dslink_free((void *) node->name);
-        dslink_free((void *) profile);
         dslink_free(node);
         return NULL;
     }
@@ -108,8 +112,8 @@ int broker_node_add(BrokerNode *parent, BrokerNode *child) {
         memcpy(path + pathLen + 1, child->name, nameLen + 1);
     }
 
-    void *tmp = child;
-    if (dslink_map_set(parent->children, (void *) child->name, &tmp) != 0) {
+    if (dslink_map_set(parent->children, dslink_ref((void *) child->name, free),
+                       dslink_ref(child, NULL)) != 0) {
         return 1;
     }
     child->parent = parent;
@@ -122,8 +126,9 @@ void broker_node_update_child(BrokerNode *parent, const char* name) {
         update_list_child(parent, parent->list_stream, name);
     }
 
-    BrokerNode *child = dslink_map_get(parent->children, (void *) name);
-    if (child) {
+    ref_t *ref = dslink_map_get(parent->children, (void *) name);
+    if (ref) {
+        BrokerNode *child = ref->data;
         listener_dispatch_message(&parent->on_child_added, child);
     } else {
         listener_dispatch_message(&parent->on_child_removed, NULL);
@@ -135,9 +140,7 @@ void broker_node_free(BrokerNode *node) {
         return;
     }
     if (node->type == DOWNSTREAM_NODE) {
-        DSLINK_MAP_FREE(&((DownstreamNode *)node)->list_streams, {
-            dslink_free(entry->key);
-        });
+        dslink_map_free(&((DownstreamNode *)node)->list_streams);
         listener_remove_all(&((DownstreamNode *)node)->on_link_connect);
         listener_remove_all(&((DownstreamNode *)node)->on_link_disconnect);
     } else {
@@ -155,11 +158,7 @@ void broker_node_free(BrokerNode *node) {
     }
 
     if (node->children) {
-        DSLINK_MAP_FREE(node->children, {
-            BrokerNode *child = entry->value;
-            child->parent = NULL;
-            broker_node_free(child);
-        });
+        dslink_map_free(node->children);
         dslink_free(node->children);
     }
 

@@ -50,9 +50,9 @@ void on_delete_node_invoked(RemoteDSLink *link,
     json_array_append_new(updates, update);
     json_object_set_new_nocheck(resp, "updates", updates);
     dslink_map_foreach(&node->parent->list_stream->requester_links) {
-        uint32_t *rid = entry->key;
+        uint32_t *rid = entry->key->data;
         json_object_set_new_nocheck(resp, "rid", json_integer(*rid));
-        broker_ws_send_obj(entry->value, top);
+        broker_ws_send_obj(entry->value->data, top);
     }
 
     json_decref(top);
@@ -159,7 +159,8 @@ void on_publish_invoked(RemoteDSLink *link,
 
     uint32_t *r = dslink_malloc(sizeof(uint32_t));
     *r = rid;
-    dslink_map_set(&link->requester_streams, r, (void **) &s);
+    dslink_map_set(&link->requester_streams, dslink_ref(r, free),
+                   dslink_ref(s, (free_callback) broker_stream_free));
 }
 
 static

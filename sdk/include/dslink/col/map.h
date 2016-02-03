@@ -7,17 +7,8 @@ extern "C" {
 
 #include <stddef.h>
 #include <stdint.h>
+#include "dslink/mem/ref.h"
 #include "list.h"
-
-#define DSLINK_MAP_FREE(map, freeFunc) \
-    for (MapEntry *entry = (MapEntry *) (map)->list.head.next; (void*)entry != &(map)->list.head;) { \
-        { freeFunc; } \
-        MapEntry *tmp = entry->next; \
-        dslink_free(entry->node); \
-        dslink_free(entry); \
-        entry = tmp; \
-    } \
-    if ((map)->table) dslink_free((map)->table)
 
 #define dslink_map_foreach(map) \
     for (MapEntry *entry = (map) ? ((MapEntry *) (map)->list.head.next) : NULL; \
@@ -31,8 +22,8 @@ typedef struct MapEntry {
     struct MapEntry *next;
     List *list;
 
-    void *key;
-    void *value;
+    ref_t *key;
+    ref_t *value;
     struct MapNode *node;
 } MapEntry;
 
@@ -83,28 +74,19 @@ int dslink_map_initbf(Map *map,
                       dslink_map_key_comparator cmp,
                       dslink_map_key_len_calc calc,
                       size_t buckets, float loadFactor);
+void dslink_map_free(Map *map);
 
-/**
- * \param value Value to set. If the value was overwritten then it will be
- *              be set to the previous value. Otherwise it will be set to NULL
- *              upon completion.
- */
-int dslink_map_set(Map *map, void *key, void **value);
-int dslink_map_setl(Map *map, void *key, size_t len, void **value);
-
-/**
- * \param key Key to remove. Upon removal, the key will be set to the original
- *            key. This allows for freeing the original key as well the
- *            associated value.
- */
-void *dslink_map_remove(Map *map, void **key);
-void *dslink_map_removel(Map *map, void **key, size_t len);
+int dslink_map_set(Map *map, ref_t *key, ref_t *value);
+ref_t *dslink_map_remove_get(Map *map, void *key);
+ref_t *dslink_map_removel_get(Map *map, void *key, size_t len);
+void dslink_map_remove(Map *map, void *key);
+void dslink_map_removel(Map *map, void *key, size_t len);
 
 int dslink_map_contains(Map *map, void *key);
 int dslink_map_containsl(Map *map, void *key, size_t len);
 
-void *dslink_map_get(Map *map, void *key);
-void *dslink_map_getl(Map *map, void *key, size_t len);
+ref_t *dslink_map_get(Map *map, void *key);
+ref_t *dslink_map_getl(Map *map, void *key, size_t len);
 
 #ifdef __cplusplus
 }

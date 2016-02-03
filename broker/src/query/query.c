@@ -118,7 +118,7 @@ int query_child_added_stream(BrokerInvokeStream *stream, BrokerNode *node) {
             const char* key = dslink_strdup(node->path);
             dslink_map_set(&pQuery->child_add_listeners, (void*)key, (void*)&listener);
             dslink_map_foreach(node->children) {
-                BrokerNode* child = entry->value;
+                BrokerNode* child = entry->value->data;
                 query_child_added_stream(stream, child);
             }
         }
@@ -169,19 +169,8 @@ ParsedQuery *parse_query(const char * query) {
 int query_destroy(Listener *listener, void *s) {
     BrokerInvokeStream *stream = s;
     ParsedQuery *pQuery = stream->data;
-    DSLINK_MAP_FREE(&pQuery->child_add_listeners, {
-        Listener *listener = entry->value;
-        listener_remove(listener);
-        dslink_free(listener);
-        dslink_free(entry->key);
-    });
-    DSLINK_MAP_FREE(&pQuery->value_update_listeners, {
-        Listener *listener = entry->value;
-        listener_remove(listener);
-        dslink_free(listener);
-        dslink_free(entry->key);
-    });
-
+    dslink_map_free(&pQuery->child_add_listeners);
+    dslink_map_free(&pQuery->value_update_listeners);
     listener_remove(listener);
     dslink_free(listener);
 
@@ -216,8 +205,8 @@ void query_invoke(struct RemoteDSLink *link,
         uint32_t *r = dslink_malloc(sizeof(uint32_t));
         *r = stream->requester_rid;
 
-        BrokerInvokeStream *tempStream = stream;
-        dslink_map_set(&link->requester_streams, r, (void **) &tempStream);
+        dslink_map_set(&link->requester_streams, dslink_ref(r, free),
+                       dslink_ref(stream, (free_callback) broker_stream_free));
         listener_add(&stream->on_destroy, query_destroy, stream);
 
         {

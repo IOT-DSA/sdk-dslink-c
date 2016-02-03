@@ -50,7 +50,7 @@ void build_list_cache(BrokerNode *node, BrokerListStream *stream) {
     }
 
     dslink_map_foreach(node->children) {
-        BrokerNode *child = (BrokerNode *) entry->value;
+        BrokerNode *child = (BrokerNode *) entry->value->data;
 
         json_t *obj = json_object();
         if (!obj) {
@@ -105,11 +105,14 @@ void update_list_child(BrokerNode *node, BrokerListStream *stream, const char *n
                 json_object_set_nocheck(obj, "$type", handle);
             }
         }
-        BrokerNode *child = dslink_map_get(node->children, (void *) name);
-        if (child->type == DOWNSTREAM_NODE) {
-            DownstreamNode *downstreamNode = (DownstreamNode *) child;
-            if (downstreamNode->link && downstreamNode->link->linkData) {
-                json_object_set(obj, "$linkData", downstreamNode->link->linkData);
+        ref_t *ref = dslink_map_get(node->children, (void *) name);
+        if (ref) {
+            BrokerNode *child = ref->data;
+            if (child->type == DOWNSTREAM_NODE) {
+                DownstreamNode *downstreamNode = (DownstreamNode *) child;
+                if (downstreamNode->link && downstreamNode->link->linkData) {
+                    json_object_set(obj, "$linkData", downstreamNode->link->linkData);
+                }
             }
         }
 
@@ -142,10 +145,10 @@ void update_list_child(BrokerNode *node, BrokerListStream *stream, const char *n
 
     dslink_map_foreach(&stream->requester_links) {
         json_object_del(resp, "rid");
-        json_t *newRid = json_integer(*((uint32_t *) entry->key));
+        json_t *newRid = json_integer(*((uint32_t *) entry->key->data));
         json_object_set_new_nocheck(resp, "rid", newRid);
 
-        RemoteDSLink *client = entry->value;
+        RemoteDSLink *client = entry->value->data;
         broker_ws_send_obj(client, top);
     }
     json_decref(top);
@@ -162,8 +165,8 @@ void broker_list_self(RemoteDSLink *reqLink,
     uint32_t reqRid = (uint32_t) json_integer_value(rid);
     uint32_t *r = dslink_malloc(sizeof(uint32_t));
     *r = reqRid;
-    void *tmp = reqLink;
-    dslink_map_set(&node->list_stream->requester_links, r, &tmp);
+    dslink_map_set(&node->list_stream->requester_links, dslink_ref(r, free),
+                   dslink_ref(reqLink, NULL));
 
     send_list_updates(reqLink, node->list_stream, reqRid);
 

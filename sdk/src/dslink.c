@@ -93,16 +93,16 @@ int dslink_init_responder(Responder *responder) {
     return 0;
 cleanup:
     if (responder->open_streams) {
-        DSLINK_MAP_FREE(responder->open_streams, {});
+        dslink_map_free(responder->open_streams);
     }
     if (responder->list_subs) {
-        DSLINK_MAP_FREE(responder->list_subs, {});
+        dslink_map_free(responder->list_subs);
     }
     if (responder->value_path_subs) {
-        DSLINK_MAP_FREE(responder->value_path_subs, {});
+        dslink_map_free(responder->value_path_subs);
     }
     if (responder->value_sid_subs) {
-        DSLINK_MAP_FREE(responder->value_sid_subs, {});
+        dslink_map_free(responder->value_sid_subs);
     }
     if (responder->super_root) {
         dslink_node_tree_free(NULL, responder->super_root);
@@ -221,30 +221,22 @@ exit:
             dslink_node_tree_free(NULL, link.responder->super_root);
         }
         if (link.responder->open_streams) {
-            DSLINK_MAP_FREE(link.responder->open_streams, {
-                dslink_free(entry->key);
-                dslink_free(entry->value);
-            });
+            dslink_map_free(link.responder->open_streams);
             dslink_free(link.responder->open_streams);
         }
 
         if (link.responder->list_subs) {
-            DSLINK_MAP_FREE(link.responder->list_subs, {
-                dslink_free(entry->key);
-                dslink_free(entry->value);
-            });
+            dslink_map_free(link.responder->list_subs);
             dslink_free(link.responder->list_subs);
         }
 
         if (link.responder->value_path_subs) {
-            DSLINK_MAP_FREE(link.responder->value_path_subs, {
-                dslink_free(entry->value);
-            });
+            dslink_map_free(link.responder->value_path_subs);
             dslink_free(link.responder->value_path_subs);
         }
 
         if (link.responder->value_sid_subs) {
-            DSLINK_MAP_FREE(link.responder->value_sid_subs, {});
+            dslink_map_free(link.responder->value_sid_subs);
             dslink_free(link.responder->value_sid_subs);
         }
 

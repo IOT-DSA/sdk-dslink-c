@@ -65,11 +65,27 @@ int dslink_map_initbf(Map *map,
     return 0;
 }
 
+void dslink_map_free(Map *map) {
+    if (!map) {
+        return;
+    }
+    for (MapEntry *entry = (MapEntry *) map->list.head.next;
+            (void *) entry != &map->list.head;) {
+        MapEntry *tmp = entry->next;
+        dslink_ref_decr(entry->key);
+        dslink_ref_decr(entry->value);
+        dslink_free(entry->node);
+        dslink_free(entry);
+        entry = tmp;
+    }
+    dslink_free(map->table);
+}
+
 static
-int dslink_map_get_raw_node(Map *map, MapNode **node,
-                                 void *key, size_t len) {
+int dslink_map_get_raw_node(Map *map, MapNode **node, ref_t *key) {
     int ret = 0;
-    size_t index = dslink_map_index_of_key(key, len, map->capacity);
+    size_t len = map->key_len_calc(key->data);
+    size_t index = dslink_map_index_of_key(key->data, len, map->capacity);
     *node = map->table[index];
     if (!(*node)) {
         *node = map->table[index] = dslink_malloc(sizeof(MapNode));
@@ -83,13 +99,14 @@ int dslink_map_get_raw_node(Map *map, MapNode **node,
             }
             (*node)->entry->node = *node;
             (*node)->entry->key = key;
+            (*node)->entry->value = NULL;
 
             (*node)->next = NULL;
             (*node)->prev = NULL;
         }
     } else {
         while (1) {
-            if (map->cmp((*node)->entry->key, key, len) == 0) {
+            if (map->cmp((*node)->entry->key->data, key->data, len) == 0) {
                 return 1;
             }
             MapNode *tmp = (*node)->next;
@@ -107,6 +124,7 @@ int dslink_map_get_raw_node(Map *map, MapNode **node,
                 }
 
                 tmp->entry->key = key;
+                tmp->entry->value = NULL;
                 tmp->entry->node = tmp;
 
                 tmp->next = NULL;
@@ -144,8 +162,9 @@ int dslink_map_rehash_table(Map *map) {
     map->table = newTable;
     for (MapEntry *entry = (MapEntry *) map->list.head.next;
          (void *)entry != &map->list.head; entry = entry->next) {
-        size_t len = map->key_len_calc(entry->key);
-        size_t index = dslink_map_index_of_key(entry->key, len, newCapacity);
+        size_t len = map->key_len_calc(entry->key->data);
+        size_t index = dslink_map_index_of_key(entry->key->data,
+                                               len, newCapacity);
         MapNode *node = newTable[index];
         if (node) {
             while (1) {
@@ -168,48 +187,39 @@ int dslink_map_rehash_table(Map *map) {
     return 0;
 }
 
-int dslink_map_set(Map *map, void *key, void **value) {
-    size_t len = map->key_len_calc(key);
-    return dslink_map_setl(map, key, len, value);
-}
-
-int dslink_map_setl(Map *map, void *key, size_t len, void **value) {
+int dslink_map_set(Map *map, ref_t *key, ref_t *value) {
+    if (!(key && value)) {
+        return 1;
+    }
     int ret;
     const float loadFactor = (float) map->size / map->capacity;
     if (loadFactor >= map->max_load_factor) {
         if ((ret = dslink_map_rehash_table(map)) != 0) {
-            *value = NULL;
             return ret;
         }
     }
 
     MapNode *node = NULL;
-    if ((ret = dslink_map_get_raw_node(map, &node, key, len)) != 0) {
+    if ((ret = dslink_map_get_raw_node(map, &node, key)) != 0) {
         if (ret == DSLINK_ALLOC_ERR) {
-            *value = NULL;
             return ret;
         }
     }
 
-    void *tmp = node->entry->value;
-    node->entry->value = *value;
-    if (ret == 0) {
-        *value = NULL;
-    } else {
-        *value = tmp;
-    }
+    dslink_ref_decr(node->entry->value);
+    node->entry->value = value;
     return 0;
 }
 
-void *dslink_map_remove(Map *map, void **key) {
-    size_t len = map->key_len_calc(*key);
-    return dslink_map_removel(map, key, len);
+ref_t *dslink_map_remove_get(Map *map, void *key) {
+    size_t len = map->key_len_calc(key);
+    return dslink_map_removel_get(map, key, len);
 }
 
-void *dslink_map_removel(Map *map, void **key, size_t len) {
-    size_t index = dslink_map_index_of_key(*key, len, map->capacity);
+ref_t *dslink_map_removel_get(Map *map, void *key, size_t len) {
+    size_t index = dslink_map_index_of_key(key, len, map->capacity);
     for (MapNode *node = map->table[index]; node != NULL; node = node->next) {
-        if (map->cmp(node->entry->key, *key, len) != 0) {
+        if (map->cmp(node->entry->key->data, key, len) != 0) {
             continue;
         }
         if (node->prev == NULL) {
@@ -226,15 +236,29 @@ void *dslink_map_removel(Map *map, void **key, size_t len) {
                 node->next->prev = node->prev;
             }
         }
-        *key = node->entry->key;
-        void *value = node->entry->value;
+
+        ref_t *ref = node->entry->value;
+        dslink_ref_decr(node->entry->key);
         list_free_node(node->entry);
         dslink_free(node);
         map->size--;
-        return value;
+        return ref;
     }
-    *key = NULL;
     return NULL;
+}
+
+void dslink_map_remove(Map *map, void *key) {
+    ref_t *ref = dslink_map_remove_get(map, key);
+    if (ref) {
+        dslink_ref_decr(ref);
+    }
+}
+
+void dslink_map_removel(Map *map, void *key, size_t len) {
+    ref_t *ref = dslink_map_removel_get(map, key, len);
+    if (ref) {
+        dslink_ref_decr(ref);
+    }
 }
 
 int dslink_map_contains(Map *map, void *key) {
@@ -245,22 +269,22 @@ int dslink_map_contains(Map *map, void *key) {
 int dslink_map_containsl(Map *map, void *key, size_t len) {
     size_t index = dslink_map_index_of_key(key, len, map->capacity);
     for (MapNode *node = map->table[index]; node != NULL; node = node->next) {
-        if (map->cmp(node->entry->key, key, len) == 0) {
+        if (map->cmp(node->entry->key->data, key, len) == 0) {
             return 1;
         }
     }
     return 0;
 }
 
-void *dslink_map_get(Map *map, void *key) {
+ref_t *dslink_map_get(Map *map, void *key) {
     size_t len = map->key_len_calc(key);
     return dslink_map_getl(map, key, len);
 }
 
-void *dslink_map_getl(Map *map, void *key, size_t len) {
+ref_t *dslink_map_getl(Map *map, void *key, size_t len) {
     size_t index = dslink_map_index_of_key(key, len, map->capacity);
     for (MapNode *node = map->table[index]; node != NULL; node = node->next) {
-        if (map->cmp(node->entry->key, key, len) == 0) {
+        if (map->cmp(node->entry->key->data, key, len) == 0) {
             return node->entry->value;
         }
     }

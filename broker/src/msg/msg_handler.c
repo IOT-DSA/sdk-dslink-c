@@ -17,8 +17,9 @@ void broker_handle_req(RemoteDSLink *link, json_t *req) {
 
     const char *method = json_string_value(json_object_get(req, "method"));
     uint32_t r = (uint32_t) json_integer_value(jRid);
-    BrokerInvokeStream *stream = dslink_map_get(&link->requester_streams, &r);
-    if (stream && !method) {
+    ref_t *ref = dslink_map_get(&link->requester_streams, &r);
+    if (ref && !method) {
+        BrokerInvokeStream *stream = ref->data;
         if (stream->continuous_invoke) {
             json_t *params = json_object_get(req, "params");
             stream->continuous_invoke(link,  params);
@@ -77,20 +78,21 @@ void broker_handle_resp(RemoteDSLink *link, json_t *resp) {
                     continue;
                 }
                 uint32_t sid = (uint32_t) json_integer_value(jSid);
-                BrokerSubStream *s = dslink_map_get(&link->sub_sids,
+                ref_t *ref = dslink_map_get(&link->sub_sids,
                                                     &sid);
-                if (!s) {
+                if (!ref) {
                     continue;
                 }
 
+                BrokerSubStream *s = ref->data;
                 json_array_append(updates, update);
                 if (s->last_value) {
                     json_decref(s->last_value);
                 }
                 s->last_value = json_incref(update);
                 dslink_map_foreach(&s->clients) {
-                    uint32_t *reqSid = entry->key;
-                    RemoteDSLink *req = entry->value;
+                    uint32_t *reqSid = entry->key->data;
+                    RemoteDSLink *req = entry->value->data;
                     json_array_set_new(update, 0, json_integer(*reqSid));
                     broker_ws_send_obj(req, top);
                 }
@@ -100,12 +102,13 @@ void broker_handle_resp(RemoteDSLink *link, json_t *resp) {
         return;
     }
 
-    BrokerStream *stream = dslink_map_get(&link->responder_streams,
+    ref_t *ref = dslink_map_get(&link->responder_streams,
                                           &rid);
-    if (!stream) {
+    if (!ref) {
         return;
     }
 
+    BrokerStream *stream = ref->data;
     if (stream->type == LIST_STREAM) {
         broker_list_dslink_response(link, resp, (BrokerListStream *) stream);
     } else if (stream->type == INVOCATION_STREAM) {

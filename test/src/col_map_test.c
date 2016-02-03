@@ -22,18 +22,17 @@ void col_map_set_simple_string_test(void **state) {
         char *key = inputs[i][0];
         char *val = inputs[i][1];
 
-        void *tmp = val;
-        assert_true(!dslink_map_set(&map, key, &tmp));
+        assert_true(!dslink_map_set(&map, dslink_ref(key, NULL),
+                                    dslink_ref(val, NULL)));
         assert_true(dslink_map_contains(&map, key));
-        assert_null(tmp);
-        char *stored = dslink_map_get(&map, key);
+        ref_t *stored = dslink_map_get(&map, key);
         assert_non_null(stored);
-        assert_string_equal(stored, val);
+        assert_string_equal(stored->data, val);
 
         i++;
     }
 
-    DSLINK_MAP_FREE(&map, {});
+    dslink_map_free(&map);
 }
 
 static
@@ -50,21 +49,16 @@ void col_map_set_large_string_entry_test(void **state) {
         assert_true(snprintf(key, len, "%i", n));
         assert_true(snprintf(val, len, "%i %i", n, n));
 
-        void *tmp = val;
-
-        assert_true(!dslink_map_set(&map, key, &tmp));
+        assert_true(!dslink_map_set(&map, dslink_ref(key, free),
+                                    dslink_ref(val, free)));
         assert_true(dslink_map_contains(&map, key));
-        assert_null(tmp);
-        char *stored = dslink_map_get(&map, key);
-        assert_non_null(stored);
-        assert_string_equal(stored, val);
+        ref_t *stored = dslink_map_get(&map, key);
+        assert_non_null(stored->data);
+        assert_string_equal(stored->data, val);
     }
     assert_int_equal(map.size, items);
 
-    DSLINK_MAP_FREE(&map, {
-        free(entry->key);
-        free(entry->value);
-    });
+    dslink_map_free(&map);
 }
 
 static
@@ -88,21 +82,17 @@ void col_map_set_simple_uint32_test(void **state) {
         uint32_t *val = calloc(1, sizeof(uint32_t));
         *val = inputs[i][1];
 
-        void *tmp = val;
-        assert_true(!dslink_map_set(&map, key, &tmp));
+        assert_true(!dslink_map_set(&map, dslink_ref(key, free),
+                                    dslink_ref(val, free)));
         assert_true(dslink_map_contains(&map, key));
-        assert_null(tmp);
-        uint32_t *stored = dslink_map_get(&map, key);
-        assert_non_null(stored);
-        assert_int_equal(*stored, *val);
+        ref_t *stored = dslink_map_get(&map, key);
+        assert_non_null(stored->data);
+        assert_int_equal(*((uint32_t *) stored->data), *val);
 
         i++;
     }
 
-    DSLINK_MAP_FREE(&map, {
-        free(entry->key);
-        free(entry->value);
-    });
+    dslink_map_free(&map);
 }
 
 static
@@ -119,20 +109,16 @@ void col_map_set_large_uint32_entry_test(void **state) {
         uint32_t *val = calloc(1, sizeof(uint32_t));
         *val = n * 2;
 
-        void *tmp = val;
-        assert_true(!dslink_map_set(&map, i, &tmp));
+        assert_true(!dslink_map_set(&map, dslink_ref(i, free),
+                                    dslink_ref(val, free)));
         assert_true(dslink_map_contains(&map, i));
-        assert_null(tmp);
-        uint32_t *stored = dslink_map_get(&map, i);
+        ref_t *stored = dslink_map_get(&map, i);
         assert_non_null(stored);
-        assert_int_equal(*stored, *val);
+        assert_int_equal(*((uint32_t *) stored->data), *val);
     }
     assert_int_equal(map.size, items);
 
-    DSLINK_MAP_FREE(&map, {
-        free(entry->key);
-        free(entry->value);
-    });
+    dslink_map_free(&map);
 }
 
 static
@@ -149,32 +135,21 @@ void col_map_remove_large_uint32_entry_test(void **state) {
         uint32_t *val = calloc(1, sizeof(uint32_t));
         *val = n * 2;
 
-        void *tmp = val;
-        assert_true(!dslink_map_set(&map, i, &tmp));
+        assert_true(!dslink_map_set(&map, dslink_ref(i, free),
+                                    dslink_ref(val, free)));
         assert_true(dslink_map_contains(&map, i));
-        assert_null(tmp);
-        uint32_t *stored = dslink_map_get(&map, i);
+        ref_t *stored = dslink_map_get(&map, i);
         assert_non_null(stored);
-        assert_int_equal(*stored, *val);
+        assert_int_equal(*((uint32_t *) stored->data), *val);
     }
     assert_int_equal(map.size, items);
 
     for (uint32_t n = 0; n < items; n++) {
-        uint32_t *i = calloc(1, sizeof(uint32_t));
-        *i = n;
-        void *tmp = i;
-        uint32_t *removed = dslink_map_remove(&map, &tmp);
-        assert_int_equal(*removed, n * 2);
-        assert_false(dslink_map_contains(&map, i));
-        free(i);
-        free(tmp);
-        free(removed);
+        dslink_map_remove(&map, &n);
+        assert_false(dslink_map_contains(&map, &n));
     }
-
-    DSLINK_MAP_FREE(&map, {
-        free(entry->key);
-        free(entry->value);
-    });
+    assert_int_equal(map.size, 0);
+    dslink_map_free(&map);
 }
 
 int main(void) {

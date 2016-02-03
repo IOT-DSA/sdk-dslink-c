@@ -35,8 +35,9 @@ static
 void close_link(RemoteDSLink *link) {
     dslink_socket_close_nofree(link->socket);
     log_info("DSLink `%s` has disconnected\n", link->dsId);
-    DownstreamNode *node = dslink_map_get(link->broker->downstream->children, (void *) link->name);
-    if (node) {
+    ref_t *ref = dslink_map_get(link->broker->downstream->children, (void *) link->name);
+    if (ref) {
+        DownstreamNode *node = ref->data;
         broker_dslink_disconnect(node);
     }
     broker_remote_dslink_free(link);
@@ -404,7 +405,7 @@ int broker_start() {
                               on_data_callback, on_client_err);
 exit:
     DSLINK_CHECKED_EXEC(json_delete, config);
-    DSLINK_MAP_FREE(&broker.client_connecting, {});
+    dslink_map_free(&broker.client_connecting);
     broker_node_free(broker.root);
     return ret;
 }

@@ -125,9 +125,10 @@ json_t *broker_handshake_handle_conn(Broker *broker,
                 nameLen++;
                 continue;
             }
-            DownstreamNode *node = dslink_map_get(broker->downstream->children,
+            ref_t *ref = dslink_map_get(broker->downstream->children,
                                                   (void *) name);
-            if (node == NULL || strcmp(dsId, node->dsId) == 0) {
+            if (ref == NULL
+                || strcmp(dsId, ((DownstreamNode *) ref->data)->dsId) == 0) {
                 break;
             }
             name[nameLen] = dsId[nameLen];
@@ -142,10 +143,10 @@ json_t *broker_handshake_handle_conn(Broker *broker,
         }
         link->name = link->path + sizeof("/downstream/") - 1;
 
-        void *value = (void *) link;
         // add to connecting map with the name
         if (dslink_map_set(&broker->client_connecting,
-                           (void *) link->name, &value) != 0) {
+                           dslink_ref((void *) link->name, NULL),
+                           dslink_ref(link, NULL)) != 0) {
             dslink_free((void *) link->name);
             goto fail;
         }
@@ -156,9 +157,9 @@ json_t *broker_handshake_handle_conn(Broker *broker,
         if (!tmp) {
             goto fail;
         }
-        void *value = (void *) link;
         // add to connecting map with dsId
-        if (dslink_map_set(&broker->client_connecting, tmp, &value) != 0) {
+        if (dslink_map_set(&broker->client_connecting, dslink_ref(tmp, free),
+                           dslink_ref(link, NULL)) != 0) {
             dslink_free(tmp);
             goto fail;
         }
@@ -183,14 +184,17 @@ int broker_handshake_handle_ws(Broker *broker,
                                const struct wslay_event_callbacks *cb,
                                const char *wsAccept) {
     void *oldDsId = (void *) dsId;
-    RemoteDSLink *link = dslink_map_remove(&broker->client_connecting,
-                                           &oldDsId);
-    if (link && link->name) {
-        void *oldName = (void *) link->name;
-        dslink_map_remove(&broker->client_connecting,
-                          &oldName);
+    ref_t *ref = dslink_map_remove_get(&broker->client_connecting,
+                                       oldDsId);
+    if (!ref) {
+        return 1;
     }
-    if (!(link && auth && link->auth->pubKey)) {
+    RemoteDSLink *link = ref->data;
+    if (link->name) {
+        dslink_map_remove(&broker->client_connecting,
+                          (char *) link->name);
+    }
+    if (!(auth && link->auth->pubKey)) {
         return 1;
     }
 
@@ -215,8 +219,9 @@ int broker_handshake_handle_ws(Broker *broker,
     DownstreamNode *node = NULL;
     int nodeCreated = 0;
     { // Handle retrieval of the downstream node
-        node = dslink_map_get(broker->downstream->children, (void *) link->name);
-        if (!node) {
+        ref = dslink_map_get(broker->downstream->children,
+                                    (char *) link->name);
+        if (!ref) {
             node = dslink_calloc(1, sizeof(DownstreamNode));
             if (!node) {
                 ret = 1;
@@ -233,10 +238,10 @@ int broker_handshake_handle_ws(Broker *broker,
             listener_init(&node->on_link_connect);
             listener_init(&node->on_link_disconnect);
 
-            char *tmpkey = dslink_strdup(link->name);
-            void *tmp = (void *) node;
+            char *tmpKey = dslink_strdup(link->name);
             if (dslink_map_set(broker->downstream->children,
-                               (void *) tmpkey, &tmp) != 0) {
+                               dslink_ref(tmpKey, free),
+                               dslink_ref(node, NULL)) != 0) {
                 dslink_free(node);
                 dslink_free(oldDsId);
                 ret = 1;
@@ -248,6 +253,7 @@ int broker_handshake_handle_ws(Broker *broker,
             json_object_set_new(node->meta, "$is", json_string("node"));
             nodeCreated = 1;
         } else {
+            node = ref->data;
             dslink_free(oldDsId);
             oldDsId = (void *) node->dsId;
         }
@@ -282,8 +288,8 @@ exit:
     dslink_free(link->auth);
     link->auth = NULL;
     if (ret != 0) {
-        DSLINK_MAP_FREE(&link->requester_streams, {});
-        DSLINK_MAP_FREE(&link->responder_streams, {});
+        dslink_map_free(&link->requester_streams);
+        dslink_map_free(&link->responder_streams);
         dslink_free((char *)link->path);
         dslink_free(link);
     }
