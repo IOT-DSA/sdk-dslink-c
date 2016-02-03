@@ -15,7 +15,7 @@ ExternalProject_Add(cmocka_ep
         -DWITH_STATIC_LIB=ON
         -DCMAKE_ARCHIVE_OUTPUT_DIRECTORY_DEBUG:PATH=Debug
         -DCMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELEASE:PATH=Release
-        -DCMAKE_C_FLAGS=-Wno-format
+        -DCMAKE_C_FLAGS=-Wno-format-security -Wno-format
         -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
 
         # Don't build unused examples and disable install step
