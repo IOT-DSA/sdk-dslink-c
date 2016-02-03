@@ -5,13 +5,16 @@
 extern "C" {
 #endif
 
+typedef void (*free_callback)(void *);
+
 typedef struct ref_t {
     int count;
+    free_callback deleter;
     void *data;
 } ref_t;
 
 inline
-ref_t *dslink_ref(void *data) {
+ref_t *dslink_ref(void *data, free_callback deleter) {
     if (!data) {
         return NULL;
     }
@@ -20,6 +23,7 @@ ref_t *dslink_ref(void *data) {
         return NULL;
     }
     ref->count = 1;
+    ref->deleter = deleter;
     ref->data = data;
     return ref;
 }
@@ -31,15 +35,12 @@ ref_t *dslink_ref_incr(ref_t *ref) {
 }
 
 inline
-void *dslink_ref_decr(ref_t *ref) {
+void dslink_ref_decr(ref_t *ref) {
     if (!ref || --ref->count > 0) {
-        return NULL;
+        return;
     }
-    void *tmp = ref->data;
-    if (ref->count <= 0) {
-        dslink_free(ref);
-    }
-    return tmp;
+    ref->deleter(ref->data);
+    dslink_free(ref);
 }
 
 #ifdef __cplusplus
