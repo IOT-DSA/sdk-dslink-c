@@ -86,7 +86,7 @@ BrokerNode *broker_node_create(const char *name, const char *profile) {
     listener_init(&node->on_list_update);
 
     json_t *json = json_string(profile);
-    json_object_set(node->meta, "$is", json);
+    json_object_set_new_nocheck(node->meta, "$is", json);
     return node;
 }
 
