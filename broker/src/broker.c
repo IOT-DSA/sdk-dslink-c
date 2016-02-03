@@ -240,9 +240,8 @@ void on_data_callback(Socket *sock, void *data, void **socketData) {
     }
 
     HttpRequest req;
+    char buf[1024];
     {
-        char buf[1024];
-        memset(buf, 0, sizeof(buf));
         int read = dslink_socket_read(sock, buf, sizeof(buf) - 1);
         buf[read] = '\0';
         broker_http_parse_req(&req, buf);
