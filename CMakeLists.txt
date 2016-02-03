@@ -5,7 +5,7 @@ option(DSLINK_BUILD_BROKER "Whether to build the broker" OFF)
 option(DSLINK_BUILD_EXAMPLES "Whether to build the examples" OFF)
 option(DSLINK_TEST "Whether to enable tests" ON)
 
-option(DSLINK_JANSSON_SYSTEM
+option(USE_JANSSON_SYSTEM_LIB
     "Whether to use system Jansson library or manually build it"
     OFF
 )
