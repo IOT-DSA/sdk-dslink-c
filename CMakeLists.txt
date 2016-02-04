@@ -116,7 +116,6 @@ set(BROKER_SRC
     "${BROKER_SRC_DIR}/broker.c"
     "${BROKER_SRC_DIR}/config.c"
     "${BROKER_SRC_DIR}/handshake.c"
-    "${BROKER_SRC_DIR}/main.c"
     "${BROKER_SRC_DIR}/node.c"
     "${BROKER_SRC_DIR}/remote_dslink.c"
     "${BROKER_SRC_DIR}/stream.c"
@@ -164,9 +163,12 @@ install(DIRECTORY "sdk/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COM
 ####### Configure Broker #######
 
 if (DSLINK_BUILD_BROKER)
-    add_executable(broker "${BROKER_SRC}")
-    target_link_libraries(broker sdk_dslink_c)
-    target_include_directories(broker PRIVATE "broker/include")
+    add_library(sdk_broker_c SHARED "${BROKER_SRC}")
+    target_link_libraries(sdk_broker_c sdk_dslink_c)
+
+    add_executable(broker "${BROKER_SRC_DIR}/main.c")
+    target_link_libraries(broker sdk_broker_c sdk_dslink_c)
+    target_include_directories(sdk_broker_c PUBLIC "broker/include")
 endif()
 
 ###### Configure Examples ######

@@ -12,6 +12,10 @@ set(SDK_TEST_SET
     "col_map_test"
 )
 
+set(BROKER_TEST_SET
+    "node_test"
+)
+
 function(add_memcheck_test name)
     set(memcheck_command "${MEMORYCHECK_COMMAND} ${MEMORYCHECK_COMMAND_OPTIONS}")
     separate_arguments(memcheck_command)
@@ -21,6 +25,14 @@ endfunction(add_memcheck_test)
 
 foreach(name ${SDK_TEST_SET})
     add_executable(sdk_${name} sdk/${name})
-    target_link_libraries(sdk_${name} sdk_dslink_c cmocka ${JANSSON_LIB})
+    target_link_libraries(sdk_${name} sdk_dslink_c cmocka)
     add_memcheck_test(sdk_${name})
 endforeach()
+
+if (DSLINK_BUILD_BROKER)
+    foreach(name ${BROKER_TEST_SET})
+        add_executable(broker_${name} broker/${name})
+        target_link_libraries(broker_${name} sdk_broker_c sdk_dslink_c cmocka)
+        add_memcheck_test(broker_${name})
+    endforeach()
+endif()

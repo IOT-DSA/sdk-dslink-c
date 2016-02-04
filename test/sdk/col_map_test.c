@@ -1,7 +1,8 @@
-#include "cmocka_init.h"
 #include <stdlib.h>
-#include <dslink/col/map.h>
 #include <stdio.h>
+
+#include <dslink/col/map.h>
+#include "cmocka_init.h"
 
 static
 void col_map_set_simple_string_test(void **state) {
@@ -152,7 +153,7 @@ void col_map_remove_large_uint32_entry_test(void **state) {
     dslink_map_free(&map);
 }
 
-int main(void) {
+int main() {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(col_map_set_simple_string_test),
         cmocka_unit_test(col_map_set_large_string_entry_test),

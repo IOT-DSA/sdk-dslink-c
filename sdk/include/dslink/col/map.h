@@ -14,6 +14,10 @@ extern "C" {
     for (MapEntry *entry = (map) ? ((MapEntry *) (map)->list.head.next) : NULL; \
         entry && (void *)entry != &(map)->list.head; entry = entry->next)
 
+#define dslink_map_foreach_nonext(map) \
+    for (MapEntry *entry = (map) ? ((MapEntry *) (map)->list.head.next) : NULL; \
+        entry && (void *)entry != &(map)->list.head;)
+
 typedef int (*dslink_map_key_comparator)(void *key, void *other, size_t len);
 typedef size_t (*dslink_map_key_len_calc)(void *key);
 

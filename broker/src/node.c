@@ -112,7 +112,8 @@ int broker_node_add(BrokerNode *parent, BrokerNode *child) {
         memcpy(path + pathLen + 1, child->name, nameLen + 1);
     }
 
-    if (dslink_map_set(parent->children, dslink_ref((void *) child->name, free),
+    if (dslink_map_set(parent->children,
+                       dslink_ref((void *) child->name, NULL),
                        dslink_ref(child, NULL)) != 0) {
         return 1;
     }
@@ -139,6 +140,25 @@ void broker_node_free(BrokerNode *node) {
     if (!node) {
         return;
     }
+
+    if (node->children) {
+        dslink_map_foreach_nonext(node->children) {
+            dslink_ref_decr(entry->key);
+            {
+                BrokerNode *child = entry->value->data;
+                child->parent = NULL;
+                broker_node_free(child);
+                dslink_ref_decr(entry->value);
+            }
+            MapEntry *tmp = entry->next;
+            free(entry->node);
+            free(entry);
+            entry = tmp;
+        }
+        dslink_free(node->children->table);
+        dslink_free(node->children);
+    }
+
     if (node->type == DOWNSTREAM_NODE) {
         dslink_map_free(&((DownstreamNode *)node)->list_streams);
         listener_remove_all(&((DownstreamNode *)node)->on_link_connect);
@@ -154,16 +174,12 @@ void broker_node_free(BrokerNode *node) {
 
     if (node->parent) {
         void *tmp = (void *) node->name;
-        dslink_map_remove(node->parent->children, &tmp);
-    }
-
-    if (node->children) {
-        dslink_map_free(node->children);
-        dslink_free(node->children);
+        dslink_map_remove(node->parent->children, tmp);
     }
 
     json_decref(node->meta);
     dslink_free((void *) node->name);
+    dslink_free((void *) node->path);
     dslink_free(node);
 }
 
@@ -183,7 +199,7 @@ uint32_t broker_node_incr_sid(DownstreamNode *node) {
     return node->sid++;
 }
 
-void  broker_node_update_value(BrokerNode *node, json_t *value, uint8_t isNewValue) {
+void broker_node_update_value(BrokerNode *node, json_t *value, uint8_t isNewValue) {
     if (node->value) {
         json_decref(node->value);
     }
