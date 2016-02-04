@@ -51,9 +51,7 @@ void send_list_request(BrokerListStream *stream,
                        dslink_ref(stream, NULL));
     }
 
-    uint32_t *r = dslink_malloc(sizeof(uint32_t));
-    *r = rid;
-    dslink_map_set(&node->link->responder_streams, dslink_ref(r, free),
+    dslink_map_set(&node->link->responder_streams, dslink_int_ref(rid),
                    dslink_ref(stream, NULL));
 }
 
