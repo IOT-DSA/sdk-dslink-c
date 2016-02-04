@@ -49,9 +49,11 @@ void node_structure_test(void **state) {
         assert_true(!broker_node_add(c, d));
         assert_true(dslink_map_contains(c->children, "d"));
         assert_string_equal(d->path, "/a/b/c/d");
+    }
 
-        broker_node_free(d);
-        assert_false(dslink_map_contains(c->children, "d"));
+    {
+        broker_node_free(c);
+        assert_false(dslink_map_contains(b->children, "c"));
     }
 
     broker_node_free(root);
