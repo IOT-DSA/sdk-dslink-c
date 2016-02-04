@@ -14,6 +14,9 @@ typedef struct ref_t {
 } ref_t;
 
 ref_t *dslink_ref(void *data, free_callback deleter);
+ref_t *dslink_str_ref(const char *data);
+ref_t *dslink_int_ref(uint32_t data);
+
 ref_t *dslink_ref_incr(ref_t *ref);
 void dslink_ref_decr(ref_t *ref);
 

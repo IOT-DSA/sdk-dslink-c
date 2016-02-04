@@ -75,6 +75,11 @@ void broker_stream_free(BrokerStream *stream) {
     dslink_free(stream);
 }
 
+void requester_stream_closed(BrokerStream * stream, uint32_t rid) {
+    listener_dispatch_remove_all(&stream->on_destroy, &rid);
+    broker_stream_free(stream);
+}
+
 static inline
 void add_to_update(json_t *updates, const char *key, json_t *value) {
     json_t *update = json_array();

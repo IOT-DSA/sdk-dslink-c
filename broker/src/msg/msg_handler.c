@@ -8,6 +8,22 @@
 #include "broker/msg/msg_list.h"
 #include "broker/net/ws.h"
 
+int broker_msg_handle_close(RemoteDSLink *link, json_t *req) {
+    json_t *jRid = json_object_get(req, "rid");
+    if (!json_is_integer(jRid)) {
+        return 1;
+    }
+    uint32_t rid = (uint32_t) json_integer_value(jRid);
+
+    ref_t *ref = dslink_map_remove_get(&link->requester_streams, &rid);
+
+    if (ref) {
+        requester_stream_closed(ref->data, rid);
+        dslink_ref_decr(ref);
+    }
+    return 0;
+}
+
 static
 void broker_handle_req(RemoteDSLink *link, json_t *req) {
     json_t *jRid = json_object_get(req, "rid");
@@ -41,6 +57,10 @@ void broker_handle_req(RemoteDSLink *link, json_t *req) {
     } else if (strcmp(method, "subscribe") == 0) {
         if (broker_msg_handle_subscribe(link, req) != 0) {
             log_err("Failed to handle subscription request\n");
+        }
+    } else if (strcmp(method, "close") == 0) {
+        if (broker_msg_handle_close(link, req) != 0) {
+            log_err("Failed to handle close request\n");
         }
     } else {
         log_err("Method unhandled: %s\n", method);

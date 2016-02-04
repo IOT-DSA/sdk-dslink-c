@@ -1,4 +1,6 @@
 #include <stddef.h>
+#include <dslink/utils.h>
+#include <stdint.h>
 #include "dslink/mem/mem.h"
 #include "dslink/mem/ref.h"
 
@@ -14,6 +16,16 @@ ref_t *dslink_ref(void *data, free_callback deleter) {
     ref->deleter = deleter;
     ref->data = data;
     return ref;
+}
+
+ref_t *dslink_str_ref(const char *data) {
+    return dslink_ref(dslink_strdup(data), dslink_free);
+}
+
+ref_t *dslink_int_ref(uint32_t data) {
+    uint32_t *r = dslink_malloc(sizeof(uint32_t));
+    *r = data;
+    return dslink_ref(r, dslink_free);
 }
 
 ref_t *dslink_ref_incr(ref_t *ref) {

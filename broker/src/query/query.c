@@ -115,8 +115,7 @@ int query_child_added_stream(BrokerInvokeStream *stream, BrokerNode *node) {
         MatchResult rslt = match_query(node->path, pQuery->pattern);
         if (rslt == MATCH || rslt == PARTIAL_MATCH) {
             Listener * listener = listener_add(&node->on_child_added, query_child_added, stream);
-            const char* key = dslink_strdup(node->path);
-            dslink_map_set(&pQuery->child_add_listeners, (void*)key, (void*)&listener);
+            dslink_map_set(&pQuery->child_add_listeners, dslink_str_ref(node->path), dslink_ref(listener, NULL));
             dslink_map_foreach(node->children) {
                 BrokerNode* child = entry->value->data;
                 query_child_added_stream(stream, child);
@@ -124,8 +123,7 @@ int query_child_added_stream(BrokerInvokeStream *stream, BrokerNode *node) {
         }
         if (rslt == MATCH) {
             Listener * listener = listener_add(&node->on_value_update, query_value_update, stream);
-            const char* key = dslink_strdup(node->path);
-            dslink_map_set(&pQuery->value_update_listeners, (void*)key, (void*)&listener);
+            dslink_map_set(&pQuery->value_update_listeners, dslink_str_ref(node->path), dslink_ref(listener, NULL));
         }
     }
     return 0;
@@ -166,8 +164,9 @@ ParsedQuery *parse_query(const char * query) {
     return pQuery;
 }
 
-int query_destroy(Listener *listener, void *s) {
-    BrokerInvokeStream *stream = s;
+int query_destroy(Listener *listener, void *rid) {
+    (void) rid;
+    BrokerInvokeStream *stream = listener->data;
     ParsedQuery *pQuery = stream->data;
     dslink_map_free(&pQuery->child_add_listeners);
     dslink_map_free(&pQuery->value_update_listeners);
@@ -200,13 +199,8 @@ void query_invoke(struct RemoteDSLink *link,
         stream->requester = link;
         stream->requester_rid = (uint32_t) json_integer_value(json_object_get(request, "rid"));
 
-
-
-        uint32_t *r = dslink_malloc(sizeof(uint32_t));
-        *r = stream->requester_rid;
-
-        dslink_map_set(&link->requester_streams, dslink_ref(r, free),
-                       dslink_ref(stream, (free_callback) broker_stream_free));
+        dslink_map_set(&link->requester_streams, dslink_int_ref(stream->requester_rid),
+                       dslink_ref(stream, NULL));
         listener_add(&stream->on_destroy, query_destroy, stream);
 
         {

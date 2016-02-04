@@ -29,12 +29,6 @@ int broker_remote_dslink_init(RemoteDSLink *link) {
     return ret;
 }
 
-
-void requester_stream_closed(BrokerStream * stream) {
-    listener_dispatch_remove_all(&stream->on_destroy, stream);
-    broker_stream_free((BrokerStream *)stream);
-}
-
 void broker_remote_dslink_free(RemoteDSLink *link) {
     if (link->auth) {
         mbedtls_ecdh_free(&link->auth->tempKey);
@@ -42,6 +36,12 @@ void broker_remote_dslink_free(RemoteDSLink *link) {
         dslink_free(link->auth);
     }
     dslink_map_free(&link->responder_streams);
+    dslink_map_foreach(&link->requester_streams) {
+        BrokerStream *stream = entry->value->data;
+        requester_stream_closed(stream, *((uint32_t*)entry->key->data));
+        broker_stream_free(stream);
+        entry->value->data = NULL;
+    }
     dslink_map_free(&link->requester_streams);
     dslink_map_free(&link->sub_sids);
     dslink_map_free(&link->sub_paths);
