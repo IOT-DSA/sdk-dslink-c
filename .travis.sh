@@ -10,6 +10,6 @@ fi
 rm -rf build
 mkdir -p build
 cd build
-cmake -DDSLINK_TEST=ON ${CMAKE_FLAGS} ..
+cmake -DDSLINK_TEST=ON -DDSLINK_BUILD_BROKER=ON -DUSE_VALGRIND=ON ${CMAKE_FLAGS} ..
 make
 make test
