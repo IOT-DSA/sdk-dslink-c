@@ -28,6 +28,10 @@ typedef enum BrokerNodeType {
     Map *children; \
     json_t *meta
 
+typedef struct BrokerNodeBase {
+    BROKER_NODE_FIELDS;
+} BrokerNodeBase;
+
 typedef struct BrokerNode {
 
     BROKER_NODE_FIELDS;

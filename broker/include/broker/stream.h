@@ -13,11 +13,11 @@ extern "C" {
 
 typedef void (*continuous_invoke_cb)(RemoteDSLink *link, json_t *params);
 typedef void (*invoke_close_cb)(void *stream);
-
+typedef void (*stream_close_cb)(void *stream, uint32_t reqRid);
 
 #define BROKER_STREAM_FIELDS \
     StreamType type; \
-    Dispatcher on_destroy;
+    stream_close_cb close_cb;
 
 
 
@@ -31,8 +31,8 @@ typedef struct BrokerListStream {
 
     BROKER_STREAM_FIELDS
 
+    struct BrokerNodeBase *node;
     char *remote_path;
-
     uint32_t responder_rid;
 
     // JSON object of all the updates
@@ -54,7 +54,6 @@ typedef struct BrokerInvokeStream {
     uint32_t requester_rid;
 
     void *data;
-    invoke_close_cb close_cb;
 } BrokerInvokeStream;
 
 typedef struct BrokerSubStream {
@@ -68,7 +67,7 @@ typedef struct BrokerSubStream {
 
 } BrokerSubStream;
 
-BrokerListStream *broker_stream_list_init();
+BrokerListStream *broker_stream_list_init(void *node);
 BrokerInvokeStream *broker_stream_invoke_init();
 BrokerSubStream *broker_stream_sub_init();
 

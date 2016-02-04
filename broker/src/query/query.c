@@ -164,16 +164,12 @@ ParsedQuery *parse_query(const char * query) {
     return pQuery;
 }
 
-int query_destroy(Listener *listener, void *rid) {
+void query_destroy(void *s, uint32_t rid) {
     (void) rid;
-    BrokerInvokeStream *stream = listener->data;
+    BrokerInvokeStream *stream = s;
     ParsedQuery *pQuery = stream->data;
     dslink_map_free(&pQuery->child_add_listeners);
     dslink_map_free(&pQuery->value_update_listeners);
-    listener_remove(listener);
-    dslink_free(listener);
-
-    return 0;
 }
 
 static
@@ -201,7 +197,8 @@ void query_invoke(struct RemoteDSLink *link,
 
         dslink_map_set(&link->requester_streams, dslink_int_ref(stream->requester_rid),
                        dslink_ref(stream, NULL));
-        listener_add(&stream->on_destroy, query_destroy, stream);
+        stream->close_cb = query_destroy;
+
 
         {
             json_t *top = json_object();

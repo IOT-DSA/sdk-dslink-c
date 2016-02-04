@@ -2,17 +2,17 @@
 #include <string.h>
 #include <dslink/utils.h>
 #include <dslink/mem/mem.h>
+#include <broker/msg/msg_list.h>
 #include "broker/stream.h"
 
-BrokerListStream *broker_stream_list_init() {
+BrokerListStream *broker_stream_list_init(void *node) {
     BrokerListStream *stream = dslink_calloc(1, sizeof(BrokerListStream));
     if (!stream) {
         return NULL;
     }
 
     stream->type = LIST_STREAM;
-    listener_init(&stream->on_destroy);
-
+    stream->close_cb = broker_list_req_closed;
     if (dslink_map_init(&stream->requester_links, dslink_map_uint32_cmp,
                         dslink_map_uint32_key_len_cal) != 0) {
         dslink_free(stream);
@@ -26,6 +26,8 @@ BrokerListStream *broker_stream_list_init() {
         return NULL;
     }
 
+    stream->node = node;
+
     return stream;
 }
 
@@ -36,7 +38,6 @@ BrokerSubStream *broker_stream_sub_init() {
     }
 
     stream->type = SUBSCRIPTION_STREAM;
-    listener_init(&stream->on_destroy);
 
     if (dslink_map_init(&stream->clients, dslink_map_uint32_cmp,
                         dslink_map_uint32_key_len_cal) != 0) {
@@ -54,7 +55,6 @@ BrokerInvokeStream *broker_stream_invoke_init() {
     }
 
     stream->type = INVOCATION_STREAM;
-    listener_init(&stream->on_destroy);
     return stream;
 }
 
@@ -76,7 +76,9 @@ void broker_stream_free(BrokerStream *stream) {
 }
 
 void requester_stream_closed(BrokerStream * stream, uint32_t rid) {
-    listener_dispatch_remove_all(&stream->on_destroy, &rid);
+    if (stream->close_cb) {
+        stream->close_cb(stream, rid);
+    }
     broker_stream_free(stream);
 }
 

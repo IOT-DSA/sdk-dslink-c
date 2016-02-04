@@ -1,6 +1,5 @@
 #include <string.h>
 #include <dslink/utils.h>
-#include <dslink/mem/mem.h>
 
 #include "broker/net/ws.h"
 #include "broker/broker.h"
@@ -37,20 +36,16 @@ void send_list_request(BrokerListStream *stream,
     json_decref(top);
 
     if (stream == NULL) {
-        stream = broker_stream_list_init();
+        stream = broker_stream_list_init(node);
         stream->remote_path = dslink_strdup(path);
         stream->responder_rid = rid;
 
-        uint32_t *r = dslink_malloc(sizeof(uint32_t));
-        *r = reqRid;
-        dslink_map_set(&stream->requester_links, dslink_ref(r, free),
-                       dslink_ref(reqLink, NULL));
-
-        char *p = dslink_strdup(path);
-        dslink_map_set(&node->list_streams, dslink_ref(p, free),
+        dslink_map_set(&node->list_streams, dslink_str_ref(path),
                        dslink_ref(stream, NULL));
+        broker_add_requester_list_stream(reqLink, stream, reqRid);
     }
-
+    // can be first time list
+    // can also hapen after link disconnect and reconnect
     dslink_map_set(&node->link->responder_streams, dslink_int_ref(rid),
                    dslink_ref(stream, NULL));
 }
@@ -66,10 +61,8 @@ void broker_list_dslink(RemoteDSLink *reqLink,
                                                   (char *) path);
         if (ref) {
             BrokerListStream *stream = ref->data;
-            uint32_t *r = dslink_malloc(sizeof(uint32_t));
-            *r = reqRid;
-            dslink_map_set(&stream->requester_links, dslink_ref(r, free),
-                           dslink_ref(reqLink, NULL));
+
+            broker_add_requester_list_stream(reqLink, stream, reqRid);
             send_list_updates(reqLink, stream, reqRid);
             return;
         }

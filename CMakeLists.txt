@@ -104,6 +104,7 @@ set(BROKER_SRC
     "${BROKER_SRC_DIR}/query/query.c"
 
     "${BROKER_SRC_DIR}/msg/msg_handler.c"
+    "${BROKER_SRC_DIR}/msg/msg_close.c"
     "${BROKER_SRC_DIR}/msg/msg_invoke.c"
     "${BROKER_SRC_DIR}/msg/msg_list.c"
     "${BROKER_SRC_DIR}/msg/msg_list_remote.c"
