@@ -30,7 +30,7 @@ void send_list_updates(RemoteDSLink *reqLink,
     json_decref(top);
 }
 
-void broker_list_req_closed(void *s, uint32_t reqRid) {
+int broker_list_req_closed(void *s, uint32_t reqRid) {
     BrokerListStream *stream = s;
     ref_t *ref = dslink_map_remove_get(&stream->requester_links, &reqRid);
     if (ref) {
@@ -49,6 +49,7 @@ void broker_list_req_closed(void *s, uint32_t reqRid) {
             node->list_stream = NULL;
         }
     }
+    return 0;
 }
 
 void broker_add_requester_list_stream(RemoteDSLink *reqLink, BrokerListStream *stream, uint32_t reqRid) {

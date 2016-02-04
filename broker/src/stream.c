@@ -12,7 +12,7 @@ BrokerListStream *broker_stream_list_init(void *node) {
     }
 
     stream->type = LIST_STREAM;
-    stream->close_cb = broker_list_req_closed;
+    stream->req_close_cb = broker_list_req_closed;
     if (dslink_map_init(&stream->requester_links, dslink_map_uint32_cmp,
                         dslink_map_uint32_key_len_cal) != 0) {
         dslink_free(stream);
@@ -76,10 +76,19 @@ void broker_stream_free(BrokerStream *stream) {
 }
 
 void requester_stream_closed(BrokerStream * stream, uint32_t rid) {
-    if (stream->close_cb) {
-        stream->close_cb(stream, rid);
+    if (stream->req_close_cb) {
+        stream->req_close_cb(stream, rid);
     }
     broker_stream_free(stream);
+}
+
+void responder_stream_closed(BrokerStream * stream, uint32_t rid) {
+    if (stream->resp_close_cb) {
+        if (stream->resp_close_cb(stream, rid)) {
+            broker_stream_free(stream);
+        }
+    }
+
 }
 
 static inline

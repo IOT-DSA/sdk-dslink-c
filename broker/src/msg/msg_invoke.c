@@ -1,9 +1,25 @@
 #include <jansson.h>
 #include <dslink/mem/mem.h>
+
 #include "broker/broker.h"
 #include "broker/net/ws.h"
 #include "broker/msg/msg_invoke.h"
 #include "broker/stream.h"
+#include "broker/msg/msg_close.h"
+
+int remote_invoke_req_closed(void *s, uint32_t reqId) {
+    (void) reqId;
+    BrokerInvokeStream *stream = s;
+    broker_send_close_request(stream->responder, stream->responder_rid);
+    dslink_map_remove(&stream->responder->responder_streams, &stream->responder_rid);
+    return 0;
+}
+int remote_invoke_resp_disconnected(void *s, uint32_t respRid) {
+    (void)s;
+    (void)respRid;
+    // TODO, send a disconnect error to requester, and remove it from request map
+    return 0;
+}
 
 int broker_msg_handle_invoke(RemoteDSLink *link, json_t *req) {
     json_t *jRid = json_object_get(req, "rid");
@@ -39,11 +55,18 @@ int broker_msg_handle_invoke(RemoteDSLink *link, json_t *req) {
     uint32_t rid = broker_node_incr_rid(ds);
     {
         BrokerInvokeStream *s = broker_stream_invoke_init();
-        s->requester_rid = (uint32_t) json_integer_value(jRid);
-        s->requester = link;
 
+        s->responder_rid = rid;
+        s->responder = ds->link;
         dslink_map_set(&ds->link->responder_streams, dslink_int_ref(rid),
                        dslink_ref(s, NULL));
+        s->resp_close_cb = remote_invoke_resp_disconnected;
+
+        s->requester_rid = (uint32_t) json_integer_value(jRid);
+        s->requester = link;
+        dslink_map_set(&ds->link->requester_streams, dslink_int_ref(s->requester_rid),
+                       dslink_ref(s, NULL));
+        s->req_close_cb = remote_invoke_req_closed;
     }
 
     json_t *newRid = json_integer(rid);
