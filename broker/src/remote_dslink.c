@@ -39,7 +39,6 @@ void broker_remote_dslink_free(RemoteDSLink *link) {
     dslink_map_foreach(&link->requester_streams) {
         BrokerStream *stream = entry->value->data;
         requester_stream_closed(stream, *((uint32_t*)entry->key->data));
-        broker_stream_free(stream);
         entry->value->data = NULL;
     }
     dslink_map_free(&link->requester_streams);
