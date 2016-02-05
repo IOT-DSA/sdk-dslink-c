@@ -7,6 +7,8 @@ include_directories(${CMOCKA_INCLUDE_DIR} include)
 
 find_program(MEMORYCHECK_COMMAND valgrind)
 set(MEMORYCHECK_COMMAND_OPTIONS "--trace-children=yes --leak-check=full --error-exitcode=1")
+set(memcheck_command "${MEMORYCHECK_COMMAND} ${MEMORYCHECK_COMMAND_OPTIONS}")
+separate_arguments(memcheck_command)
 
 set(SDK_TEST_SET
     "col_map_test"
@@ -17,10 +19,10 @@ set(BROKER_TEST_SET
 )
 
 function(add_memcheck_test name)
-    set(memcheck_command "${MEMORYCHECK_COMMAND} ${MEMORYCHECK_COMMAND_OPTIONS}")
-    separate_arguments(memcheck_command)
     add_test(${name} ${name} ${ARGN})
-    add_test(memcheck_${name} ${memcheck_command} ./${name} ${ARGN})
+    if (USE_VALGRIND)
+        add_test(memcheck_${name} ${memcheck_command} ./${name} ${ARGN})
+    endif()
 endfunction(add_memcheck_test)
 
 foreach(name ${SDK_TEST_SET})
