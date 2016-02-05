@@ -214,7 +214,7 @@ void broker_node_update_value(BrokerNode *node, json_t *value, uint8_t isNewValu
 
 void broker_dslink_disconnect(DownstreamNode *node) {
     dslink_map_foreach(&node->list_streams) {
-        BrokerListStream *stream = (BrokerListStream *)entry->value->data;
+        BrokerListStream *stream = entry->value->data;
         broker_stream_list_disconnect(stream);
     }
     // notify all listeners of the close event
@@ -226,7 +226,7 @@ void broker_dslink_disconnect(DownstreamNode *node) {
 void broker_dslink_connect(DownstreamNode *node, RemoteDSLink *link) {
     node->link = link;
     dslink_map_foreach(&node->list_streams) {
-        BrokerListStream *stream = (BrokerListStream *)entry->value;
+        BrokerListStream *stream = entry->value->data;
         broker_stream_list_connect(stream, node);
     }
     // notify all listeners of the close event
