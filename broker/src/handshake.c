@@ -15,7 +15,14 @@ json_t *broker_handshake_handle_conn(Broker *broker,
                                      const char *dsId,
                                      json_t *handshake) {
     if (dslink_map_contains(&broker->client_connecting, (void *) dsId)) {
-        return NULL;
+        ref_t *ref = dslink_map_remove_get(&broker->client_connecting,
+                                           (void *) dsId);
+        RemoteDSLink *link = ref->data;
+        dslink_map_remove(&broker->client_connecting,
+                          (void *) link->name);
+        broker_remote_dslink_free(link);
+        dslink_free(link);
+        dslink_ref_decr(ref);
     }
 
     RemoteDSLink *link = dslink_calloc(1, sizeof(RemoteDSLink));
