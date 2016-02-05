@@ -13,7 +13,8 @@ else
     gcc-5 \
     cmake \
     libjansson-dev \
-    libjansson4
+    libjansson4 \
+    valgrind
   if [ "${BUILD_ARCH}" == "arm" ]
   then
     sudo apt-get instal -qq -y
