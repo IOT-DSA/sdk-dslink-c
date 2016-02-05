@@ -63,6 +63,7 @@ int broker_start_server(json_t *config, void *data,
     int clientsLen = 1;
     while (1) {
         fd_set readFds;
+        FD_ZERO(&readFds);
         FD_SET(srv.fd, &readFds);
         int maxFd = srv.fd;
         for (int i = 0; i < clientsLen; ++i) {
