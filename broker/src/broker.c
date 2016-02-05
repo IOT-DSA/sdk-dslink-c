@@ -358,29 +358,21 @@ int broker_start() {
         }
 
         {
-            BrokerNode *node = broker_node_create("downstream", "node");
-            if (!node) {
+            broker.downstream = broker_node_create("downstream", "node");
+            if (!broker.downstream) {
                 ret = 1;
                 goto exit;
             }
 
-            if (broker_node_add(broker.root, node) != 0) {
-                broker_node_free(node);
+            if (broker_node_add(broker.root, broker.downstream) != 0) {
+                broker_node_free(broker.downstream);
+                broker.downstream = NULL;
                 ret = 1;
                 goto exit;
             }
-
-            broker.downstream = node;
         }
 
         if (dslink_map_init(&broker.client_connecting,
-                        dslink_map_str_cmp,
-                        dslink_map_str_key_len_cal) != 0) {
-            ret = 1;
-            goto exit;
-        }
-
-        if (dslink_map_init(broker.downstream->children,
                         dslink_map_str_cmp,
                         dslink_map_str_key_len_cal) != 0) {
             ret = 1;
