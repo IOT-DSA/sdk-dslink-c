@@ -109,10 +109,8 @@ json_t *broker_handshake_handle_conn(Broker *broker,
             goto fail;
         }
         size_t nameLen = dsIdLen - 43;
-        {
-            if (dsId[nameLen - 1] == '-') {
-                nameLen--;
-            }
+        if (dsId[nameLen - 1] == '-') {
+            nameLen--;
         }
         // find a valid name from broker->client_names
         memcpy(name, dsId, nameLen);
@@ -128,7 +126,7 @@ json_t *broker_handshake_handle_conn(Broker *broker,
             ref_t *ref = dslink_map_get(broker->downstream->children,
                                                   (void *) name);
             if (ref == NULL
-                || strcmp(dsId, ((DownstreamNode *) ref->data)->dsId) == 0) {
+                || strcmp(dsId, ((DownstreamNode *) ref->data)->dsId->data) == 0) {
                 break;
             }
             name[nameLen] = dsId[nameLen];
@@ -153,12 +151,12 @@ json_t *broker_handshake_handle_conn(Broker *broker,
     }
 
     {
-        char *tmp = dslink_strdup(dsId);
+        ref_t *tmp = dslink_ref(dslink_strdup(dsId), dslink_free);
         if (!tmp) {
             goto fail;
         }
         // add to connecting map with dsId
-        if (dslink_map_set(&broker->client_connecting, dslink_ref(tmp, free),
+        if (dslink_map_set(&broker->client_connecting, tmp,
                            dslink_ref(link, NULL)) != 0) {
             dslink_free(tmp);
             goto fail;
@@ -183,13 +181,14 @@ int broker_handshake_handle_ws(Broker *broker,
                                void **socketData,
                                const struct wslay_event_callbacks *cb,
                                const char *wsAccept) {
-    void *oldDsId = (void *) dsId;
+    ref_t *oldDsId = NULL;
     ref_t *ref = dslink_map_remove_get(&broker->client_connecting,
-                                       oldDsId);
+                                       (char *) dsId);
     if (!ref) {
         return 1;
     }
     RemoteDSLink *link = ref->data;
+    dslink_ref_decr(ref);
     if (link->name) {
         dslink_map_remove(&broker->client_connecting,
                           (char *) link->name);
@@ -243,7 +242,6 @@ int broker_handshake_handle_ws(Broker *broker,
                                dslink_ref(tmpKey, free),
                                dslink_ref(node, NULL)) != 0) {
                 dslink_free(node);
-                dslink_free(oldDsId);
                 ret = 1;
                 goto exit;
             }
@@ -251,11 +249,11 @@ int broker_handshake_handle_ws(Broker *broker,
             node->name = dslink_strdup(link->name);
             node->meta = json_object();
             json_object_set_new(node->meta, "$is", json_string("node"));
+            oldDsId = dslink_ref(dslink_strdup(dsId), dslink_free);
             nodeCreated = 1;
         } else {
             node = ref->data;
-            dslink_free(oldDsId);
-            oldDsId = (void *) node->dsId;
+            oldDsId = node->dsId;
         }
     }
 

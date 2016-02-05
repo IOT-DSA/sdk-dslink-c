@@ -54,6 +54,7 @@ void broker_remote_dslink_free(RemoteDSLink *link) {
 
     dslink_map_free(&link->sub_sids);
     dslink_map_free(&link->sub_paths);
+    dslink_free((void *) link->path);
     json_decref(link->linkData);
     wslay_event_context_free(link->ws);
 }

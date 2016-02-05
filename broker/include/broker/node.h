@@ -58,7 +58,7 @@ typedef struct DownstreamNode {
     Dispatcher on_link_connect;
     Dispatcher on_link_disconnect;
 
-    const char *dsId;
+    ref_t *dsId;
     uint32_t rid;
     uint32_t sid;
 

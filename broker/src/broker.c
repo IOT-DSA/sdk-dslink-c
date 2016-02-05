@@ -34,7 +34,7 @@
 static
 void close_link(RemoteDSLink *link) {
     dslink_socket_close_nofree(link->socket);
-    log_info("DSLink `%s` has disconnected\n", link->dsId);
+    log_info("DSLink `%s` has disconnected\n", (char *) link->dsId->data);
     ref_t *ref = dslink_map_get(link->broker->downstream->children, (void *) link->name);
     if (ref) {
         DownstreamNode *node = ref->data;
@@ -121,7 +121,7 @@ void on_ws_data(wslay_event_context_ptr ctx,
         if (!data) {
             return;
         }
-        log_debug("Received data from %s: %.*s\n", link->dsId,
+        log_debug("Received data from %s: %.*s\n", (char *) link->dsId->data,
                   (int) arg->msg_length, arg->msg);
 
         broker_msg_handle(link, data);

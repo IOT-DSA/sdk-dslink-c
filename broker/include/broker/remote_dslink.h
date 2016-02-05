@@ -35,7 +35,8 @@ typedef struct RemoteDSLink {
     struct DownstreamNode *node;
     RemoteAuth *auth;
 
-    const char *dsId;
+    // char *
+    ref_t *dsId;
     const char *path;
     const char *name;
 
