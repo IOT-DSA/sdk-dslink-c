@@ -152,7 +152,7 @@ json_t *broker_handshake_handle_conn(Broker *broker,
         if (dslink_map_set(&broker->client_connecting,
                            dslink_ref((void *) link->name, NULL),
                            dslink_ref(link, NULL)) != 0) {
-            dslink_free((void *) link->name);
+            dslink_free((void *) link->path);
             goto fail;
         }
     }
@@ -246,7 +246,7 @@ int broker_handshake_handle_ws(Broker *broker,
 
             char *tmpKey = dslink_strdup(link->name);
             if (dslink_map_set(broker->downstream->children,
-                               dslink_ref(tmpKey, free),
+                               dslink_ref(tmpKey, dslink_free),
                                dslink_ref(node, NULL)) != 0) {
                 dslink_free(node);
                 ret = 1;
