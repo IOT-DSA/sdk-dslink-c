@@ -107,6 +107,8 @@ int dslink_map_get_raw_node(Map *map, MapNode **node, ref_t *key) {
     } else {
         while (1) {
             if (map->cmp((*node)->entry->key->data, key->data, len) == 0) {
+                dslink_ref_decr((*node)->entry->key);
+                (*node)->entry->key = key;
                 return 1;
             }
             MapNode *tmp = (*node)->next;
