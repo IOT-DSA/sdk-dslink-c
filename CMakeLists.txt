@@ -63,7 +63,7 @@ include_directories("${CMAKE_CURRENT_BINARY_DIR}/include")
 include_directories("${JANSSON_DIR}/include")
 include_directories("sdk/include")
 
-set(DSLINK_SRC_DIR "sdk/src")
+set(DSLINK_SRC_DIR "${CMAKE_CURRENT_LIST_DIR}/sdk/src")
 set(DSLINK_SRC
     "${DSLINK_SRC_DIR}/col/list.c"
     "${DSLINK_SRC_DIR}/col/listener.c"
@@ -95,7 +95,7 @@ set(LIBRARY_SRC
     "${WSLAY_SRC}"
 )
 
-set(BROKER_SRC_DIR "broker/src")
+set(BROKER_SRC_DIR "${CMAKE_CURRENT_LIST_DIR}/broker/src")
 set(BROKER_SRC
     "${BROKER_SRC_DIR}/data/data.c"
     "${BROKER_SRC_DIR}/data/data_actions.c"
@@ -122,7 +122,7 @@ set(BROKER_SRC
     "${BROKER_SRC_DIR}/stream.c"
 )
 
-set(EXAMPLE_RESPONDER_SRC_DIR "examples/responder/src")
+set(EXAMPLE_RESPONDER_SRC_DIR "${CMAKE_CURRENT_LIST_DIR}/examples/responder/src")
 set(EXAMPLE_RESPONDER_SRC
     "${EXAMPLE_RESPONDER_SRC_DIR}/main.c"
 )
