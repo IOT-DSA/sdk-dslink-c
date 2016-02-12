@@ -19,7 +19,7 @@ endmacro()
 ##### Configure Dependencies #####
 
 foreach(dep "mbed" "wslay" "argtable3")
-    include("${CMAKE_CURRENT_SOURCE_DIR}/deps/${dep}/CMakeLists.txt")
+    include("${CMAKE_CURRENT_LIST_DIR}/deps/${dep}/CMakeLists.txt")
 endforeach()
 
 include(ExternalProject)
@@ -130,7 +130,7 @@ set(EXAMPLE_RESPONDER_SRC
 ###### Configure Tests #####
 
 if (DSLINK_TEST)
-    add_subdirectory(test)
+    add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/test)
     enable_testing()
 endif()
 
