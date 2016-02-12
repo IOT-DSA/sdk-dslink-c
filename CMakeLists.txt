@@ -61,7 +61,7 @@ endif()
 
 include_directories("${CMAKE_CURRENT_BINARY_DIR}/include")
 include_directories("${JANSSON_DIR}/include")
-include_directories("sdk/include")
+include_directories("${CMAKE_CURRENT_LIST_DIR}/sdk/include")
 
 set(DSLINK_SRC_DIR "${CMAKE_CURRENT_LIST_DIR}/sdk/src")
 set(DSLINK_SRC
@@ -109,6 +109,7 @@ set(BROKER_SRC
     "${BROKER_SRC_DIR}/msg/msg_list.c"
     "${BROKER_SRC_DIR}/msg/msg_list_remote.c"
     "${BROKER_SRC_DIR}/msg/msg_subscribe.c"
+    "${BROKER_SRC_DIR}/msg/msg_unsubscribe.c"
 
     "${BROKER_SRC_DIR}/net/http.c"
     "${BROKER_SRC_DIR}/net/server.c"

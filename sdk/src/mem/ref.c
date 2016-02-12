@@ -1,6 +1,4 @@
-#include <stddef.h>
-#include <dslink/utils.h>
-#include <stdint.h>
+#include "dslink/utils.h"
 #include "dslink/mem/mem.h"
 #include "dslink/mem/ref.h"
 
@@ -28,12 +26,12 @@ ref_t *dslink_int_ref(uint32_t data) {
     return dslink_ref(r, dslink_free);
 }
 
-ref_t *dslink_ref_incr(ref_t *ref) {
+ref_t *dslink_incref(ref_t *ref) {
     ref->count++;
     return ref;
 }
 
-void dslink_ref_decr(ref_t *ref) {
+void dslink_decref(ref_t *ref) {
     if (!ref || --ref->count > 0) {
         return;
     }

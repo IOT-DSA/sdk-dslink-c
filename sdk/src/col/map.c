@@ -72,8 +72,8 @@ void dslink_map_free(Map *map) {
     for (MapEntry *entry = (MapEntry *) map->list.head.next;
             (void *) entry != &map->list.head;) {
         MapEntry *tmp = entry->next;
-        dslink_ref_decr(entry->key);
-        dslink_ref_decr(entry->value);
+        dslink_decref(entry->key);
+        dslink_decref(entry->value);
         dslink_free(entry->node);
         dslink_free(entry);
         entry = tmp;
@@ -107,7 +107,7 @@ int dslink_map_get_raw_node(Map *map, MapNode **node, ref_t *key) {
     } else {
         while (1) {
             if (map->cmp((*node)->entry->key->data, key->data, len) == 0) {
-                dslink_ref_decr((*node)->entry->key);
+                dslink_decref((*node)->entry->key);
                 (*node)->entry->key = key;
                 return 1;
             }
@@ -208,7 +208,7 @@ int dslink_map_set(Map *map, ref_t *key, ref_t *value) {
         }
     }
 
-    dslink_ref_decr(node->entry->value);
+    dslink_decref(node->entry->value);
     node->entry->value = value;
     return 0;
 }
@@ -240,7 +240,7 @@ ref_t *dslink_map_removel_get(Map *map, void *key, size_t len) {
         }
 
         ref_t *ref = node->entry->value;
-        dslink_ref_decr(node->entry->key);
+        dslink_decref(node->entry->key);
         list_free_node(node->entry);
         dslink_free(node);
         map->size--;
@@ -252,14 +252,14 @@ ref_t *dslink_map_removel_get(Map *map, void *key, size_t len) {
 void dslink_map_remove(Map *map, void *key) {
     ref_t *ref = dslink_map_remove_get(map, key);
     if (ref) {
-        dslink_ref_decr(ref);
+        dslink_decref(ref);
     }
 }
 
 void dslink_map_removel(Map *map, void *key, size_t len) {
     ref_t *ref = dslink_map_removel_get(map, key, len);
     if (ref) {
-        dslink_ref_decr(ref);
+        dslink_decref(ref);
     }
 }
 

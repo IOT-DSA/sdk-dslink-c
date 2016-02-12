@@ -34,7 +34,7 @@ int broker_list_req_closed(void *s, uint32_t reqRid) {
     BrokerListStream *stream = s;
     ref_t *ref = dslink_map_remove_get(&stream->requester_links, &reqRid);
     if (ref) {
-        dslink_ref_decr(ref);
+        dslink_decref(ref);
     }
     if (stream->requester_links.size == 0) {
         if (stream->node->type == DOWNSTREAM_NODE) {

@@ -71,6 +71,11 @@ void broker_stream_free(BrokerStream *stream) {
         }
         dslink_free(s->remote_path);
         json_decref(s->updates_cache);
+    } else if (stream->type == SUBSCRIPTION_STREAM) {
+        BrokerSubStream *s = (BrokerSubStream *) stream;
+        dslink_map_free(&s->clients);
+        dslink_decref(s->remote_path);
+        json_decref(s->last_value);
     }
     dslink_free(stream);
 }

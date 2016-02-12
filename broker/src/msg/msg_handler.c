@@ -2,6 +2,7 @@
 #include <dslink/log.h>
 
 #include <string.h>
+#include "broker/msg/msg_unsubscribe.h"
 #include "broker/msg/msg_subscribe.h"
 #include "broker/msg/msg_invoke.h"
 #include "broker/msg/msg_handler.h"
@@ -19,7 +20,7 @@ int broker_msg_handle_close(RemoteDSLink *link, json_t *req) {
 
     if (ref) {
         requester_stream_closed(ref->data, rid);
-        dslink_ref_decr(ref);
+        dslink_decref(ref);
     }
     return 0;
 }
@@ -56,7 +57,11 @@ void broker_handle_req(RemoteDSLink *link, json_t *req) {
         }
     } else if (strcmp(method, "subscribe") == 0) {
         if (broker_msg_handle_subscribe(link, req) != 0) {
-            log_err("Failed to handle subscription request\n");
+            log_err("Failed to handle subscribe request\n");
+        }
+    } else if (strcmp(method, "unsubscribe") == 0) {
+        if (broker_msg_handle_unsubscribe(link, req) != 0) {
+            log_err("Failed to handle unsubscribe request\n");
         }
     } else if (strcmp(method, "close") == 0) {
         if (broker_msg_handle_close(link, req) != 0) {
@@ -174,23 +179,19 @@ void broker_msg_handle(RemoteDSLink *link,
         }
     }
 
-    {
-        if (link->isRequester && reqs) {
-            json_t *req;
-            size_t index = 0;
-            json_array_foreach(reqs, index, req) {
-                broker_handle_req(link, req);
-            }
+    if (link->isRequester && reqs) {
+        json_t *req;
+        size_t index = 0;
+        json_array_foreach(reqs, index, req) {
+            broker_handle_req(link, req);
         }
     }
 
-    {
-        if (link->isResponder && resps) {
-            json_t *resp;
-            size_t index = 0;
-            json_array_foreach(resps, index, resp) {
-                broker_handle_resp(link, resp);
-            }
+    if (link->isResponder && resps) {
+        json_t *resp;
+        size_t index = 0;
+        json_array_foreach(resps, index, resp) {
+            broker_handle_resp(link, resp);
         }
     }
 

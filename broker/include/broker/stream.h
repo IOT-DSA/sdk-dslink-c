@@ -18,18 +18,18 @@ typedef int (*stream_close_cb)(void *stream, uint32_t reqRid);
 #define BROKER_STREAM_FIELDS \
     StreamType type; \
     stream_close_cb req_close_cb; \
-    stream_close_cb resp_close_cb;
+    stream_close_cb resp_close_cb
 
 
 typedef struct BrokerStream {
 
-    BROKER_STREAM_FIELDS
+    BROKER_STREAM_FIELDS;
 
 } BrokerStream;
 
 typedef struct BrokerListStream {
 
-    BROKER_STREAM_FIELDS
+    BROKER_STREAM_FIELDS;
 
     struct BrokerNodeBase *node;
     char *remote_path;
@@ -47,7 +47,7 @@ typedef struct BrokerListStream {
 
 typedef struct BrokerInvokeStream {
 
-    BROKER_STREAM_FIELDS
+    BROKER_STREAM_FIELDS;
 
     RemoteDSLink *requester;
     RemoteDSLink *responder;
@@ -60,7 +60,13 @@ typedef struct BrokerInvokeStream {
 
 typedef struct BrokerSubStream {
 
-    BROKER_STREAM_FIELDS
+    BROKER_STREAM_FIELDS;
+
+    RemoteDSLink *responder;
+    uint32_t responder_sid;
+
+    // char *
+    ref_t *remote_path;
 
     json_t *last_value;
 

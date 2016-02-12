@@ -42,7 +42,7 @@ void delete_nodes(DSLink *link, DSNode *node,
         ref_t *n = dslink_map_remove_get(node->children, &key);
         if (n) {
             dslink_node_tree_free(link, n->data);
-            dslink_ref_decr(n);
+            dslink_decref(n);
         }
     }
 }

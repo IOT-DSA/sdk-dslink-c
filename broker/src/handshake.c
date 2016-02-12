@@ -22,7 +22,7 @@ json_t *broker_handshake_handle_conn(Broker *broker,
                           (void *) link->name);
         broker_remote_dslink_free(link);
         dslink_free(link);
-        dslink_ref_decr(ref);
+        dslink_decref(ref);
     }
 
     RemoteDSLink *link = dslink_calloc(1, sizeof(RemoteDSLink));
@@ -195,7 +195,7 @@ int broker_handshake_handle_ws(Broker *broker,
         return 1;
     }
     RemoteDSLink *link = ref->data;
-    dslink_ref_decr(ref);
+    dslink_decref(ref);
     if (link->name) {
         dslink_map_remove(&broker->client_connecting,
                           (char *) link->name);

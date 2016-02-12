@@ -25,10 +25,11 @@ void handle_subscribe(RemoteDSLink *link, json_t *sub) {
         ref_t *ref = dslink_map_get(&node->link->sub_paths, (void *) path);
         if (ref) {
             BrokerSubStream *bss = ref->data;
-            uint32_t *s = dslink_malloc(sizeof(uint32_t));
-            *s = sid;
-            dslink_map_set(&bss->clients, dslink_ref(s, dslink_free),
+            ref_t *s = dslink_int_ref(sid);
+            dslink_map_set(&bss->clients, s,
                            dslink_ref(link, NULL));
+            dslink_map_set(&link->sub_sids, dslink_incref(s),
+                           dslink_ref(bss, NULL));
 
             if (bss->last_value) {
                 json_t *top = json_object();
@@ -76,21 +77,22 @@ void handle_subscribe(RemoteDSLink *link, json_t *sub) {
         json_decref(top);
     }
     BrokerSubStream *bss = broker_stream_sub_init();
+    bss->responder = node->link;
+    bss->responder_sid = respSid;
     {
-        uint32_t *s = dslink_malloc(sizeof(uint32_t));
-        *s = sid;
-        dslink_map_set(&bss->clients, dslink_ref(s, free),
-                       dslink_ref(link, NULL));
-    }
-    {
-        uint32_t *s = dslink_malloc(sizeof(uint32_t));
-        *s = respSid;
-        dslink_map_set(&node->link->sub_sids, dslink_ref(s, free),
+        ref_t *ref = dslink_int_ref(sid);
+        dslink_map_set(&bss->clients, ref, dslink_ref(link, NULL));
+        dslink_map_set(&link->sub_sids, dslink_incref(ref),
                        dslink_ref(bss, NULL));
     }
     {
-        char *p = dslink_strdup(path);
-        dslink_map_set(&node->link->sub_paths, dslink_ref(p, free),
+        ref_t *ref = dslink_int_ref(respSid);
+        dslink_map_set(&node->link->sub_sids, ref,
+                       dslink_ref(bss, NULL));
+
+        ref = dslink_ref(dslink_strdup(path), dslink_free);
+        bss->remote_path = dslink_incref(ref);
+        dslink_map_set(&node->link->sub_paths, ref,
                        dslink_ref(bss, NULL));
     }
 }

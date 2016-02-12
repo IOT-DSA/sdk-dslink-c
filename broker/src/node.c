@@ -143,12 +143,12 @@ void broker_node_free(BrokerNode *node) {
 
     if (node->children) {
         dslink_map_foreach_nonext(node->children) {
-            dslink_ref_decr(entry->key);
+            dslink_decref(entry->key);
             {
                 BrokerNode *child = entry->value->data;
                 child->parent = NULL;
                 broker_node_free(child);
-                dslink_ref_decr(entry->value);
+                dslink_decref(entry->value);
             }
             MapEntry *tmp = entry->next;
             free(entry->node);
