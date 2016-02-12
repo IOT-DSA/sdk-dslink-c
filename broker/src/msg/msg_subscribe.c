@@ -14,13 +14,21 @@ void handle_subscribe(RemoteDSLink *link, json_t *sub) {
         return;
     }
 
+    char *out = NULL;
+    DownstreamNode *node = (DownstreamNode *) broker_node_get(link->broker->root,
+                                                              path, &out);
+    if (!node || node->type != DOWNSTREAM_NODE) {
+        return;
+    }
+
     {
-        ref_t *ref = dslink_map_get(&link->sub_paths, (void *) path);
+        ref_t *ref = dslink_map_get(&node->link->sub_paths, (void *) path);
         if (ref) {
             BrokerSubStream *bss = ref->data;
             uint32_t *s = dslink_malloc(sizeof(uint32_t));
             *s = sid;
-            dslink_map_set(&bss->clients, dslink_ref(s, free), dslink_ref(link, NULL));
+            dslink_map_set(&bss->clients, dslink_ref(s, dslink_free),
+                           dslink_ref(link, NULL));
 
             if (bss->last_value) {
                 json_t *top = json_object();
@@ -33,9 +41,10 @@ void handle_subscribe(RemoteDSLink *link, json_t *sub) {
                 json_t *updates = json_array();
                 json_object_set_new_nocheck(newResp, "updates", updates);
 
-                json_t *update = bss->last_value;
+                json_t *update = json_array();
                 json_array_set_new(update, 0, json_integer(sid));
-                json_array_append(updates, update);
+                json_array_append(update, bss->last_value);
+                json_array_append_new(updates, update);
 
                 broker_ws_send_obj(link, top);
                 json_decref(top);
@@ -44,14 +53,7 @@ void handle_subscribe(RemoteDSLink *link, json_t *sub) {
         }
     }
 
-    char *out = NULL;
-    BrokerNode *node = broker_node_get(link->broker->root, path, &out);
-    if (!node || node->type != DOWNSTREAM_NODE) {
-        return;
-    }
-
-    DownstreamNode *dn = (DownstreamNode *) node;
-    uint32_t respSid = broker_node_incr_sid(dn);
+    uint32_t respSid = broker_node_incr_sid(node);
     {
         json_t *top = json_object();
         json_t *reqs = json_array();
@@ -60,7 +62,7 @@ void handle_subscribe(RemoteDSLink *link, json_t *sub) {
         json_t *req = json_object();
         json_array_append_new(reqs, req);
 
-        uint32_t rid = broker_node_incr_rid(dn);
+        uint32_t rid = broker_node_incr_rid(node);
         json_object_set_new_nocheck(req, "rid", json_integer(rid));
         json_object_set_new_nocheck(req, "method", json_string("subscribe"));
         json_t *paths = json_array();
@@ -70,7 +72,7 @@ void handle_subscribe(RemoteDSLink *link, json_t *sub) {
         json_object_set_new_nocheck(p, "path", json_string(out));
         json_object_set_new_nocheck(p, "sid", json_integer(respSid));
 
-        broker_ws_send_obj(((DownstreamNode *) node)->link, top);
+        broker_ws_send_obj(node->link, top);
         json_decref(top);
     }
     BrokerSubStream *bss = broker_stream_sub_init();
@@ -83,12 +85,12 @@ void handle_subscribe(RemoteDSLink *link, json_t *sub) {
     {
         uint32_t *s = dslink_malloc(sizeof(uint32_t));
         *s = respSid;
-        dslink_map_set(&dn->link->sub_sids, dslink_ref(s, free),
+        dslink_map_set(&node->link->sub_sids, dslink_ref(s, free),
                        dslink_ref(bss, NULL));
     }
     {
         char *p = dslink_strdup(path);
-        dslink_map_set(&dn->link->sub_paths, dslink_ref(p, free),
+        dslink_map_set(&node->link->sub_paths, dslink_ref(p, free),
                        dslink_ref(bss, NULL));
     }
 }

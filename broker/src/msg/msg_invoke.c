@@ -1,5 +1,4 @@
 #include <jansson.h>
-#include <dslink/mem/mem.h>
 
 #include "broker/broker.h"
 #include "broker/net/ws.h"
@@ -14,6 +13,7 @@ int remote_invoke_req_closed(void *s, uint32_t reqId) {
     dslink_map_remove(&stream->responder->responder_streams, &stream->responder_rid);
     return 0;
 }
+
 int remote_invoke_resp_disconnected(void *s, uint32_t respRid) {
     (void)s;
     (void)respRid;
