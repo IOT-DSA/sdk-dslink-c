@@ -13,5 +13,5 @@ and is feature incomplete!
 
 * mkdir build
 * cd build
-* cmake -DDSLINK_BUILD_EXAMPLES=ON ..
+* cmake -DDSLINK_BUILD_EXAMPLES=ON -DDSLINK_BUILD_BROKER=ON ..
 * make
