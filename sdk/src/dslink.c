@@ -214,8 +214,6 @@ int dslink_init(int argc, char **argv,
     }
 
 exit:
-    mbedtls_ecdh_free(&ctx);
-    DSLINK_CHECKED_EXEC(dslink_socket_close, sock);
     if (link.responder) {
         if (link.responder->super_root) {
             dslink_node_tree_free(NULL, link.responder->super_root);
@@ -242,7 +240,9 @@ exit:
 
         dslink_free(link.responder);
     }
-    DSLINK_CHECKED_EXEC(free, dsId);
+    mbedtls_ecdh_free(&ctx);
+    DSLINK_CHECKED_EXEC(dslink_socket_close, sock);
+    DSLINK_CHECKED_EXEC(dslink_free, dsId);
     DSLINK_CHECKED_EXEC(dslink_url_free, url);
     DSLINK_CHECKED_EXEC(json_delete, handshake);
     return ret;

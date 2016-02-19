@@ -48,10 +48,10 @@ DSNode *dslink_node_create(DSNode *parent,
 
     return node;
 cleanup:
-    DSLINK_CHECKED_EXEC(free, (void *) name);
-    DSLINK_CHECKED_EXEC(free, (void *) profile);
+    DSLINK_CHECKED_EXEC(dslink_free, (void *) name);
+    DSLINK_CHECKED_EXEC(dslink_free, (void *) profile);
     if (node) {
-        DSLINK_CHECKED_EXEC(free, (void *) node->path);
+        DSLINK_CHECKED_EXEC(dslink_free, (void *) node->path);
         dslink_free(node);
     }
     return NULL;
@@ -80,8 +80,8 @@ int dslink_node_add_child(DSLink *link, DSNode *node) {
                                 (void *) node->name));
     {
         if ((ret = dslink_map_set(node->parent->children,
-                                  dslink_ref((char *) node->name, free),
-                                  dslink_ref(node, free))) != 0) {
+                                  dslink_ref((char *) node->name, NULL),
+                                  dslink_ref(node, NULL))) != 0) {
             return ret;
         }
     }
@@ -166,13 +166,26 @@ DSNode *dslink_node_get_path(DSNode *root, const char *path) {
 }
 
 void dslink_node_tree_free_basic(DSNode *root) {
-    DSLINK_CHECKED_EXEC(free, (void *) root->path);
-    DSLINK_CHECKED_EXEC(free, (void *) root->name);
-    DSLINK_CHECKED_EXEC(free, (void *) root->profile);
+    DSLINK_CHECKED_EXEC(dslink_free, (void *) root->path);
+    DSLINK_CHECKED_EXEC(dslink_free, (void *) root->name);
+    DSLINK_CHECKED_EXEC(dslink_free, (void *) root->profile);
     DSLINK_CHECKED_EXEC(json_delete, root->value_timestamp);
     DSLINK_CHECKED_EXEC(json_delete, root->value);
     if (root->children) {
-        dslink_map_free(root->children);
+        dslink_map_foreach_nonext(root->children) {
+            dslink_decref(entry->key);
+            {
+                DSNode *child = entry->value->data;
+                child->parent = NULL;
+                dslink_node_tree_free_basic(child);
+                dslink_decref(entry->value);
+            }
+            MapEntry *tmp = entry->next;
+            free(entry->node);
+            free(entry);
+            entry = tmp;
+        }
+        dslink_free(root->children->table);
         dslink_free(root->children);
     }
     if (root->meta_data) {

@@ -235,7 +235,11 @@ void io_handler(uv_poll_t *poll, int status, int events) {
         return;
     }
     DSLink *link = poll->data;
-    wslay_event_recv(link->_ws);
+    int stat = wslay_event_recv(link->_ws);
+    if (stat == 0 && (link->_ws->error == WSLAY_ERR_NO_MORE_MSG
+                      || link->_ws->error == 0)) {
+        uv_stop(&link->loop);
+    }
 }
 
 static
@@ -280,6 +284,8 @@ void dslink_handshake_handle_ws(DSLink *link) {
 
     uv_run(&link->loop, UV_RUN_DEFAULT);
     uv_loop_close(&link->loop);
+    uv_timer_stop(&ping);
+
     wslay_event_context_free(ptr);
     link->_ws = NULL;
 }
