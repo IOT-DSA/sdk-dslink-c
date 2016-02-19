@@ -5,7 +5,7 @@ then
   brew install jansson
 else
   sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-  sudo add-apt-repository ppa:smspillaz/cmake-2.8.12 -y
+  sudo add-apt-repository ppa:george-edison55/cmake-3.x -y
   sudo apt-get update
   sudo apt-get install -qq -y \
     gcc-4.8 \

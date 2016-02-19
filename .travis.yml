@@ -5,12 +5,16 @@ matrix:
   include:
   - os: linux
     compiler: clang
+    dist: trusty
   - os: linux
     compiler: gcc-4.8
+    dist: trusty
   - os: linux
     compiler: gcc-4.9
+    dist: trusty
   - os: linux
     compiler: gcc-5
+    dist: trusty
   - os: osx
     compiler: clang
   - os: osx
