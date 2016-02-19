@@ -124,24 +124,6 @@ int dslink_socket_read(Socket *sock, char *buf, size_t len) {
     return r;
 }
 
-int dslink_socket_read_timeout(Socket *sock, char *buf,
-                               size_t len, uint32_t timeout) {
-    int r;
-    if (sock->secure) {
-        SslSocket *s = (SslSocket *) sock;
-        mbedtls_ssl_conf_read_timeout(&s->conf, timeout);
-        r = mbedtls_ssl_read(&s->ssl, (unsigned char *) buf, len);
-    } else {
-        r = mbedtls_net_recv_timeout(&sock->socket_fd,
-                                     (unsigned char *) buf, len, timeout);
-    }
-    if (r < 0) {
-        errno = r;
-        return DSLINK_SOCK_READ_ERR;
-    }
-    return r;
-}
-
 int dslink_socket_write(Socket *sock, char *buf, size_t len) {
     int r;
     if (sock->secure) {

@@ -41,9 +41,6 @@ int dslink_socket_connect(Socket **sock,
                           uint_fast8_t secure);
 
 int dslink_socket_read(Socket *sock, char *buf, size_t len);
-int dslink_socket_read_timeout(Socket *sock, char *buf,
-                               size_t len, uint32_t timeout);
-
 int dslink_socket_write(Socket *sock, char *buf, size_t len);
 
 void dslink_socket_close(Socket *sock);
