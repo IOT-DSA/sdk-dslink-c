@@ -227,6 +227,6 @@ include_directories (${CMAKE_CURRENT_BINARY_DIR}/include)
 include_directories (${CMAKE_CURRENT_BINARY_DIR}/private_include)
 file(GLOB JANSSON_SRC "${CMAKE_CURRENT_LIST_DIR}/src/*.c")
 
-add_library(jansson STATIC "${JANSSON_SRC}")
+add_library(jansson STATIC ${JANSSON_SRC})
 export(TARGETS jansson FILE "${PROJECT_BINARY_DIR}/JanssonTargets.cmake")
 export(PACKAGE jansson)
