@@ -8,7 +8,7 @@ MBed:
   
 Jansson:
 
-  - Commit: e44b223
+  - Commit: e081017
   - Source: https://github.com/akheron/jansson
   - License: MIT
 
@@ -23,3 +23,9 @@ ArgTable3:
   - Commit: de93cfd
   - Source: https://github.com/argtable/argtable3
   - License: BSD 3-clause
+
+Libuv:
+
+  - Commit: 12548de
+  - Source: https://github.com/libuv/libuv
+  - License: MIT

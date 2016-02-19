@@ -48,10 +48,11 @@ void delete_nodes(DSLink *link, DSNode *node,
 }
 
 static
-void create_node(void *data, EventLoop *loop) {
-    DSLink *link = ((void **) data)[0];
-    DSNode *parent = ((void **) data)[1];
-    int *num = ((void **) data)[2];
+void create_node(uv_timer_t *timer) {
+    void **data = timer->data;
+    DSLink *link = data[0];
+    DSNode *parent = data[1];
+    int *num = data[2];
     if (!dslink_map_contains(link->responder->list_subs,
                              (void *) parent->path)) {
         free(num);
@@ -65,18 +66,18 @@ void create_node(void *data, EventLoop *loop) {
     if (!(parent->children && dslink_map_contains(parent->children, buf))) {
         DSNode *child = dslink_node_create(parent, buf, "node");
         if (!child) {
-            free(num);
-            free(data);
+            dslink_free(num);
+            dslink_free(data);
+            uv_timer_stop(timer);
             return;
         }
         dslink_node_add_child(link, child);
     }
 
-    if (++(*num) < NODE_COUNT) {
-        dslink_event_loop_schedd(loop, create_node, data, 1000);
-    } else {
-        free(num);
-        free(data);
+    if (++(*num) > NODE_COUNT) {
+        dslink_free(num);
+        dslink_free(data);
+        uv_timer_stop(timer);
     }
 }
 
@@ -98,7 +99,10 @@ void list_opened(DSLink *link, DSNode *node) {
     a[0] = link;
     a[1] = node;
     a[2] = pos;
-    dslink_event_loop_schedd(&link->loop, create_node, a, 1000);
+    uv_timer_t *timer = malloc(sizeof(uv_timer_t));
+    uv_timer_init(&link->loop, timer);
+    timer->data = a;
+    uv_timer_start(timer, create_node, 0, 1000);
 }
 
 static

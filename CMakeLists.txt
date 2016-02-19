@@ -5,11 +5,6 @@ option(DSLINK_BUILD_BROKER "Whether to build the broker" OFF)
 option(DSLINK_BUILD_EXAMPLES "Whether to build the examples" OFF)
 option(DSLINK_TEST "Whether to enable tests" ON)
 
-option(USE_JANSSON_SYSTEM_LIB
-    "Whether to use system Jansson library or manually build it"
-    OFF
-)
-
 ######## Define Macros #######
 
 macro(ADD_C_FLAGS flags)
@@ -18,31 +13,12 @@ endmacro()
 
 ##### Configure Dependencies #####
 
-foreach(dep "mbed" "wslay" "argtable3")
+foreach(dep "mbed" "wslay" "argtable3" "jansson" "libuv")
     include("${CMAKE_CURRENT_LIST_DIR}/deps/${dep}/CMakeLists.txt")
 endforeach()
 
 include(ExternalProject)
 ADD_C_FLAGS("-fPIC")
-
-if (NOT DSLINK_JANSSON_SYSTEM)
-    ExternalProject_Add(JANSSON
-        PREFIX jansson
-        GIT_REPOSITORY "https://github.com/akheron/jansson.git"
-        GIT_TAG "e44b223"
-        CMAKE_ARGS -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-                    -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-                    -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
-                    -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/jansson
-                    -DJANSSON_BUILD_DOCS=OFF
-                    -DJANSSON_EXAMPLES=OFF
-                    -DJANSSON_WITHOUT_TESTS=ON
-    )
-    set(JANSSON_DIR "${CMAKE_CURRENT_BINARY_DIR}/jansson")
-    set(JANSSON_LIB "${JANSSON_DIR}/lib/libjansson.a")
-else()
-    set(JANSSON_LIB "jansson")
-endif()
 
 ##### Configure Flags #####
 
@@ -50,6 +26,9 @@ ADD_C_FLAGS("-std=gnu99")
 ADD_C_FLAGS("-Wall -Wextra -Werror")
 ADD_C_FLAGS("-Wno-overlength-strings")
 ADD_C_FLAGS("-pedantic")
+if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+    ADD_C_FLAGS("-pthread")
+endif()
 
 string(TOUPPER "${CMAKE_BUILD_TYPE}" DSLINK_BUILD_TYPE)
 if (DSLINK_BUILD_TYPE STREQUAL DEBUG AND NOT USE_VALGRIND)
@@ -78,7 +57,6 @@ set(DSLINK_SRC
 
     "${DSLINK_SRC_DIR}/base64_url.c"
     "${DSLINK_SRC_DIR}/dslink.c"
-    "${DSLINK_SRC_DIR}/event_loop.c"
     "${DSLINK_SRC_DIR}/handshake.c"
     "${DSLINK_SRC_DIR}/log.c"
     "${DSLINK_SRC_DIR}/node.c"
@@ -141,10 +119,10 @@ set(CMAKE_MACOSX_RPATH 1)
 add_library(sdk_dslink_c-object OBJECT ${LIBRARY_SRC})
 
 add_library(sdk_dslink_c-static STATIC $<TARGET_OBJECTS:sdk_dslink_c-object>)
-target_link_libraries(sdk_dslink_c-static ${JANSSON_LIB})
+target_link_libraries(sdk_dslink_c-static jansson libuv)
 
 add_library(sdk_dslink_c SHARED $<TARGET_OBJECTS:sdk_dslink_c-object>)
-target_link_libraries(sdk_dslink_c ${JANSSON_LIB})
+target_link_libraries(sdk_dslink_c jansson libuv)
 
 set(DSLINK_INSTALL_LIB_DIR lib CACHE PATH "Installation directory for libraries")
 set(DSLINK_INSTALL_BIN_DIR bin CACHE PATH "Installation directory for executables")

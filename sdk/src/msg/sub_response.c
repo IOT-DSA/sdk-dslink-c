@@ -98,15 +98,16 @@ int dslink_response_sub(DSLink *link, json_t *paths, json_t *rid) {
             return DSLINK_ALLOC_ERR;
         }
         *sid = (uint32_t) json_integer_value(json_object_get(value, "sid"));
+        ref_t *ref = dslink_int_ref(*sid);
         if (dslink_map_set(link->responder->value_path_subs,
-                           dslink_ref((char *) node->path, free),
-                           dslink_ref(sid, free)) != 0) {
+                           dslink_ref((char *) node->path, NULL),
+                           ref) != 0) {
             dslink_free(sid);
             return 1;
         }
         if (dslink_map_set(link->responder->value_sid_subs,
-                           dslink_ref(sid, free),
-                           dslink_ref((char *) node->path, free)) != 0) {
+                           dslink_incref(ref),
+                           dslink_ref((char *) node->path, NULL)) != 0) {
             dslink_map_remove(link->responder->value_path_subs,
                               (char *) node->path);
             dslink_free(sid);
@@ -126,18 +127,17 @@ int dslink_response_unsub(DSLink *link, json_t *sids, json_t *rid) {
     json_t *value;
     json_array_foreach(sids, index, value) {
         uint32_t sid = (uint32_t) json_integer_value(value);
-        dslink_map_remove(link->responder->value_sid_subs, &sid);
-        /*if (path) {
+        ref_t *ref = dslink_map_remove_get(link->responder->value_sid_subs, &sid);
+        if (ref) {
+            char *path = ref->data;
+            dslink_decref(ref);
             DSNode *node = dslink_node_get_path(link->responder->super_root,
                                                 path);
             if (node && node->on_unsubscribe) {
                 node->on_unsubscribe(link, node);
             }
-
-            void *tmp = path;
-            dslink_map_remove(link->responder->value_path_subs, &tmp);
-            dslink_free(p);
-        }*/
+            dslink_map_remove(link->responder->value_path_subs, path);
+        }
     }
 
     return dslink_response_send_closed(link, rid);

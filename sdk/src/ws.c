@@ -7,6 +7,7 @@
 
 #include <wslay/wslay.h>
 #include <wslay_event.h>
+#include <dslink/socket_private.h>
 
 #include "dslink/msg/request_handler.h"
 #include "dslink/handshake.h"
@@ -152,13 +153,8 @@ ssize_t want_read_cb(wslay_event_context_ptr ctx,
     (void) flags;
 
     DSLink *link = user_data;
-    if (link->_delay == 0) {
-        wslay_event_set_error(ctx, WSLAY_ERR_WOULDBLOCK);
-        return -1;
-    }
-    int read = dslink_socket_read_timeout(link->_socket,
-                                          (char *) buf,len, link->_delay);
-    link->_delay = 0;
+    int read = dslink_socket_read(link->_socket,
+                                  (char *) buf, len);
     if (read == 0) {
         wslay_event_set_error(ctx, WSLAY_ERR_NO_MORE_MSG);
         return -1;
@@ -233,22 +229,19 @@ exit:
 }
 
 static
-void io_handler(void *data, EventLoop *loop, uint32_t delay) {
-    (void) loop;
-    DSLink *link = data;
-    link->_delay = delay;
-    int stat = wslay_event_recv(link->_ws);
-    if (stat == 0 && (link->_ws->error == WSLAY_ERR_NO_MORE_MSG
-                      || link->_ws->error == 0)) {
-        loop->shutdown = 1;
+void io_handler(uv_poll_t *poll, int status, int events) {
+    (void) events;
+    if (status < 0) {
+        return;
     }
+    DSLink *link = poll->data;
+    wslay_event_recv(link->_ws);
 }
 
 static
-void ping_handler(void *data, EventLoop *loop) {
-    DSLink *link = data;
+void ping_handler(uv_timer_t *timer) {
+    DSLink *link = timer->data;
     dslink_ws_send(link->_ws, "{}");
-    dslink_event_loop_schedd(loop, ping_handler, link, 30000);
 }
 
 void dslink_handshake_handle_ws(DSLink *link) {
@@ -268,11 +261,25 @@ void dslink_handshake_handle_ws(DSLink *link) {
     }
     link->_ws = ptr;
 
-    dslink_event_loop_init(&link->loop, io_handler, link);
-    dslink_event_loop_sched(&link->loop, ping_handler, link);
-    dslink_event_loop_process(&link->loop);
+    uv_loop_init(&link->loop);
+    mbedtls_net_set_nonblock(&link->_socket->socket_fd);
 
-    dslink_event_loop_free(&link->loop);
+    uv_poll_t poll;
+    {
+        uv_poll_init(&link->loop, &poll, link->_socket->socket_fd.fd);
+        poll.data = link;
+        uv_poll_start(&poll, UV_READABLE, io_handler);
+    }
+
+    uv_timer_t ping;
+    {
+        uv_timer_init(&link->loop, &ping);
+        ping.data = link;
+        uv_timer_start(&ping, ping_handler, 0, 30000);
+    }
+
+    uv_run(&link->loop, UV_RUN_DEFAULT);
+    uv_loop_close(&link->loop);
     wslay_event_context_free(ptr);
     link->_ws = NULL;
 }

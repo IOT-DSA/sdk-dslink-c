@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-#include "event_loop.h"
+#include <uv.h>
 #include "socket.h"
 #include "node.h"
 
@@ -22,12 +22,11 @@ struct DSLinkConfig {
 };
 
 struct DSLink {
-    uint32_t _delay; // Delay used in the I/O handler
     struct wslay_event_context *_ws; // Event context for WSLay
     Socket *_socket; // Socket for the _ws connection
 
     Responder *responder; // Responder, only initialized for responder DSLinks
-    EventLoop loop; // Primary event loop
+    uv_loop_t loop; // Primary event loop
 };
 
 struct Responder {

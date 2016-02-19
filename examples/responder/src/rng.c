@@ -4,18 +4,19 @@
 #include "rng.h"
 
 static
-void gen_number(void *data, EventLoop *loop) {
-    DSLink *link = ((void **) data)[0];
-    DSNode *node = ((void **) data)[1];
+void gen_number(uv_timer_t *timer) {
+    void **data = timer->data;
+    DSLink *link = data[0];
+    DSNode *node = data[1];
     if (!dslink_map_contains(link->responder->value_path_subs,
                              (void *) node->path)) {
-        free(data);
+        dslink_free(data);
+        uv_timer_stop(timer);
         return;
     }
 
     int x = rand();
     dslink_node_set_value(link, node, json_integer(x));
-    dslink_event_loop_schedd(loop, gen_number, data, 1000);
 }
 
 static
@@ -25,7 +26,11 @@ void responder_rng_subbed(DSLink *link, DSNode *node) {
     void **a = malloc(sizeof(void *) * 2);
     a[0] = link;
     a[1] = node;
-    dslink_event_loop_schedd(&link->loop, gen_number, a, 1000);
+
+    uv_timer_t *timer = malloc(sizeof(uv_timer_t));
+    uv_timer_init(&link->loop, timer);
+    timer->data = a;
+    uv_timer_start(timer, gen_number, 0, 1000);
 }
 
 static

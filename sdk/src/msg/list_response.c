@@ -134,7 +134,7 @@ int dslink_response_list(DSLink *link, json_t *req, DSNode *node) {
             return 1;
         }
 
-        uint32_t *rid = dslink_malloc(sizeof(uint32_t));
+        ref_t *rid = dslink_ref(dslink_malloc(sizeof(uint32_t)), dslink_free);
         if (!rid) {
             dslink_free((void *) stream->path);
             dslink_free(stream);
@@ -143,11 +143,11 @@ int dslink_response_list(DSLink *link, json_t *req, DSNode *node) {
         }
         {
             uint32_t r = (uint32_t) json_integer_value(jsonRid);
-            *rid = r;
+            *((uint32_t *) rid->data) = r;
         }
 
         if (dslink_map_set(link->responder->open_streams,
-                           dslink_ref(rid, free),
+                           rid,
                            dslink_ref(stream, free)) != 0) {
             dslink_free(rid);
             dslink_free(stream);
@@ -156,7 +156,8 @@ int dslink_response_list(DSLink *link, json_t *req, DSNode *node) {
         }
 
         if (dslink_map_set(link->responder->list_subs,
-                           dslink_ref((void *) stream->path, free), dslink_ref(rid, free)) != 0) {
+                           dslink_ref((void *) stream->path, dslink_free),
+                           dslink_incref(rid)) != 0) {
             dslink_map_remove(link->responder->open_streams, rid);
             dslink_free(rid);
             dslink_free((void *) stream->path);
