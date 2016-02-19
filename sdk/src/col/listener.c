@@ -21,7 +21,7 @@ void listener_dispatch_message(Dispatcher *dispatcher, void *message) {
         // fetch the next node first
         next = node->next;
 
-        // callback can safely remote and free the listener
+        // callback can safely remove and free the listener
         listener->callback(listener, message);
     }
 }

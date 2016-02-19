@@ -296,11 +296,11 @@ int dslink_node_set_value(struct DSLink *link, DSNode *node, json_t *value) {
     }
 
     if (node->value_timestamp) {
-        json_delete(node->value_timestamp);
+        json_decref(node->value_timestamp);
     }
 
     if (node->value) {
-        json_delete(node->value);
+        json_decref(node->value);
     }
 
     node->value_timestamp = jsonTs;

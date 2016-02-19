@@ -5,7 +5,18 @@
 
 static
 void handle_unsubscribe(RemoteDSLink *link, uint32_t sid) {
-    ref_t *ref = dslink_map_remove_get(&link->sub_sids, &sid);
+    ref_t *ref = dslink_map_remove_get(&link->local_subs, &sid);
+    if (ref) {
+        Listener *listener = ref->data;
+        listener_remove(listener);
+
+        dslink_free(listener->data);
+        dslink_free(listener);
+        dslink_decref(ref);
+        return;
+    }
+
+    ref = dslink_map_remove_get(&link->sub_sids, &sid);
     if (!ref) {
         return;
     }

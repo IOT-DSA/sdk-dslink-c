@@ -25,6 +25,14 @@ int broker_remote_dslink_init(RemoteDSLink *link) {
         dslink_map_free(&link->responder_streams);
         dslink_map_free(&link->requester_streams);
         dslink_map_free(&link->sub_sids);
+        return ret;
+    }
+    if ((ret = dslink_map_init(&link->local_subs, dslink_map_str_cmp,
+                               dslink_map_str_key_len_cal)) != 0) {
+        dslink_map_free(&link->responder_streams);
+        dslink_map_free(&link->requester_streams);
+        dslink_map_free(&link->sub_sids);
+        dslink_map_free(&link->sub_paths);
     }
     return ret;
 }
@@ -50,7 +58,7 @@ void broker_remote_dslink_free(RemoteDSLink *link) {
         entry->value->data = NULL;
     }
     dslink_map_free(&link->responder_streams);
-
+    dslink_map_free(&link->local_subs);
     dslink_map_free(&link->sub_sids);
     dslink_map_free(&link->sub_paths);
     dslink_free((void *) link->path);

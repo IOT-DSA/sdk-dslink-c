@@ -7,6 +7,47 @@
 #include "broker/msg/msg_subscribe.h"
 
 static
+int handle_data_val_update(Listener *listener, void *data) {
+    (void) listener;
+    json_t *top = json_object();
+    json_t *resps = json_array();
+    json_object_set_new_nocheck(top, "responses", resps);
+
+    json_t *resp = json_object();
+    json_array_append_new(resps, resp);
+
+    json_object_set_new_nocheck(resp, "rid", json_integer(0));
+
+    json_t *updates = json_array();
+    json_object_set_new_nocheck(resp, "updates", updates);
+
+    void **arr = listener->data;
+    uint32_t *sid = arr[0];
+    RemoteDSLink *link = arr[1];
+    {
+        json_t *update = json_array();
+        json_array_append_new(updates, update);
+
+        json_array_append_new(update, json_integer(*sid));
+        BrokerNode *node = data;
+        if (node->value) {
+            json_array_append(update, node->value);
+        } else {
+            json_array_append_new(update, NULL);
+        }
+        {
+            char ts[32];
+            dslink_create_ts(ts, sizeof(ts));
+            json_t *jsonTs = json_string(ts);
+            json_array_append_new(update, jsonTs);
+        }
+    }
+    broker_ws_send_obj(link, top);
+    json_decref(top);
+    return 0;
+}
+
+static
 void handle_subscribe(RemoteDSLink *link, json_t *sub) {
     const char *path = json_string_value(json_object_get(sub, "path"));
     uint32_t sid = (uint32_t) json_integer_value(json_object_get(sub, "sid"));
@@ -17,7 +58,22 @@ void handle_subscribe(RemoteDSLink *link, json_t *sub) {
     char *out = NULL;
     DownstreamNode *node = (DownstreamNode *) broker_node_get(link->broker->root,
                                                               path, &out);
-    if (!node || node->type != DOWNSTREAM_NODE) {
+    if (!node) {
+        return;
+    }
+    if (node->type != DOWNSTREAM_NODE) {
+        BrokerNode *n = (BrokerNode *) node;
+        ref_t *key = dslink_int_ref(sid);
+
+        void **data = malloc(sizeof(void *) * 2);
+        data[0] = key->data;
+        data[1] = link;
+
+        Listener *l = listener_add(&n->on_value_update,
+                                   handle_data_val_update, data);
+        handle_data_val_update(l, n);
+        ref_t *value = dslink_ref(l, NULL);
+        dslink_map_set(&link->local_subs, key, value);
         return;
     }
 
