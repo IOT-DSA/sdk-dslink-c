@@ -5,7 +5,7 @@ then
   brew install jansson
 else
   sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-  sudo add-apt-repository ppa:kalakris/cmake -y
+  sudo add-apt-repository ppa:george-edison55/precise-backports -y
   sudo apt-get update
   sudo apt-get install -qq -y \
     gcc-4.8 \
