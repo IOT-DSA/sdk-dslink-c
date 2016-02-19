@@ -83,7 +83,7 @@ else()
     endif()
 endif()
 
-add_library(libuv STATIC "${LIBUV_SRC}")
+add_library(libuv STATIC ${LIBUV_SRC})
 target_compile_options(libuv PRIVATE "-fno-strict-aliasing" "-Wno-unused-parameter")
 target_compile_options(libuv PRIVATE "-Wno-implicit-function-declaration")
 export(TARGETS libuv
