@@ -1,23 +1,111 @@
 #include <sys/select.h>
 #include <inttypes.h>
 #include <string.h>
-#include <errno.h>
 
 #define LOG_TAG "server"
 #include <dslink/log.h>
 #include <dslink/socket_private.h>
 #include <dslink/mem/mem.h>
+#include <uv.h>
 
 #include "broker/net/server.h"
 
+typedef struct Server Server;
+
 typedef struct Client {
+    Server *server;
     Socket *sock;
     void *sock_data;
 } Client;
 
+struct Server {
+
+    mbedtls_net_context srv;
+    DataReadyCallback data_ready;
+    void *data;
+
+};
+
+static
+void broker_server_free_client(uv_handle_t *handle) {
+    dslink_free(handle);
+}
+
+static
+void broker_server_client_ready(uv_poll_t *poll,
+                                int status,
+                                int events) {
+    (void) status;
+    (void) events;
+
+    Client *client = poll->data;
+    Server *server = client->server;
+    server->data_ready(client->sock, server->data, &client->sock_data);
+    if (client->sock->socket_fd.fd == -1) {
+        // The callback closed the connection
+        dslink_socket_free(client->sock);
+        dslink_free(client);
+        uv_close((uv_handle_t *) poll, broker_server_free_client);
+    }
+}
+
+static
+void broker_server_new_client(uv_poll_t *poll,
+                              int status, int events) {
+    (void) status;
+    (void) events;
+
+    Server *server = poll->data;
+    Client *client = dslink_calloc(1, sizeof(Client));
+    if (!client) {
+        goto fail;
+    }
+
+    client->server = server;
+    client->sock = dslink_socket_init(0);
+    if (!client->sock) {
+        dslink_free(client);
+        goto fail;
+    }
+
+    if (mbedtls_net_accept(&server->srv, &client->sock->socket_fd,
+                           NULL, 0, NULL) != 0) {
+        log_warn("Failed to accept a client connection\n");
+        goto fail_poll_setup;
+    }
+
+    uv_poll_t *clientPoll = dslink_malloc(sizeof(uv_poll_t));
+    if (!clientPoll) {
+        goto fail_poll_setup;
+    }
+
+    uv_loop_t *loop = poll->loop;
+    if (uv_poll_init(loop, clientPoll,
+                     client->sock->socket_fd.fd) != 0) {
+        dslink_free(clientPoll);
+        goto fail_poll_setup;
+    }
+
+    clientPoll->data = client;
+    uv_poll_start(clientPoll, UV_READABLE, broker_server_client_ready);
+
+    log_debug("Accepted a client connection\n");
+    return;
+fail:
+    {
+        mbedtls_net_context tmp;
+        mbedtls_net_init(&tmp);
+        mbedtls_net_accept(&server->srv, &tmp, NULL, 0, NULL);
+        mbedtls_net_free(&tmp);
+    }
+    return;
+fail_poll_setup:
+    dslink_socket_free(client->sock);
+    dslink_free(client);
+}
+
 int broker_start_server(json_t *config, void *data,
-                        DataReadyCallback cb,
-                        ClientErrorCallback cec) {
+                        DataReadyCallback cb) {
     json_incref(config);
 
     const char *host = NULL;
@@ -49,9 +137,12 @@ int broker_start_server(json_t *config, void *data,
         return 1;
     }
 
-    mbedtls_net_context srv;
-    mbedtls_net_init(&srv);
-    if (mbedtls_net_bind(&srv, host, port, MBEDTLS_NET_PROTO_TCP) != 0) {
+    Server server;
+    mbedtls_net_init(&server.srv);
+    server.data_ready = cb;
+    server.data = data;
+
+    if (mbedtls_net_bind(&server.srv, host, port, MBEDTLS_NET_PROTO_TCP) != 0) {
         log_fatal("Failed to bind to %s:%s\n", host, port);
         json_decref(config);
         return 1;
@@ -59,111 +150,18 @@ int broker_start_server(json_t *config, void *data,
         log_info("HTTP server bound to %s:%s\n", host, port);
     }
 
-    Client **clients = dslink_calloc(1, sizeof(Client *));
-    int clientsLen = 1;
-    while (1) {
-        fd_set readFds;
-        FD_ZERO(&readFds);
-        FD_SET(srv.fd, &readFds);
-        int maxFd = srv.fd;
-        for (int i = 0; i < clientsLen; ++i) {
-            Client *client = clients[i];
-            if (client) {
-                FD_SET(client->sock->socket_fd.fd, &readFds);
-                if (client->sock->socket_fd.fd > maxFd) {
-                    maxFd = client->sock->socket_fd.fd;
-                }
-            }
-        }
+    uv_loop_t loop;
+    uv_loop_init(&loop);
+    loop.data = data;
 
-        int ready = select(maxFd + 1, &readFds, NULL, NULL, NULL);
-        if (ready < 0) {
-            log_debug("Error in select(): %s\nclose all clients\n", strerror(errno));
-            for (int i = 0; i < clientsLen; ++i) {
-                Client *client = clients[i];
-                if (client) {
-                    cec(client->sock_data);
-                    clients[i] = NULL;
-                    dslink_socket_close(client->sock);
-                    dslink_free(client);
-                }
-            }
-            continue;
-        }
+    uv_poll_t poll;
+    uv_poll_init(&loop, &poll, server.srv.fd);
+    poll.data = &server;
+    uv_poll_start(&poll, UV_READABLE, broker_server_new_client);
+    uv_run(&loop, UV_RUN_DEFAULT);
 
-        for (int i = 0; i < clientsLen; ++i) {
-            Client *client = clients[i];
-            if (client == NULL || !FD_ISSET(client->sock->socket_fd.fd, &readFds)) {
-                continue;
-            }
-
-            cb(client->sock, data, &client->sock_data);
-            if (client->sock->socket_fd.fd == -1) {
-                // The callback closed the connection
-                clients[i] = NULL;
-                dslink_socket_free(client->sock);
-                dslink_free(client);
-            }
-        }
-
-        if (!FD_ISSET(srv.fd, &readFds)) {
-            continue;
-        }
-
-        int i = 0;
-        Client *client = NULL;
-        for (; i < clientsLen; ++i) {
-            // Look for an available opening in the clients array
-            Client *tmp = clients[i];
-            if (tmp == NULL) {
-                client = clients[i] = dslink_calloc(1, sizeof(Client));
-                if (client) {
-                    client->sock = dslink_socket_init(0);
-                    if (!client->sock) {
-                        dslink_free(client);
-                        client = clients[i] = NULL;
-                    }
-                }
-                break;
-            }
-        }
-        if (!client) {
-            clientsLen++;
-            Client **new = realloc(clients, sizeof(clients) * clientsLen);
-            if (new) {
-                clients = new;
-                client = clients[i] = dslink_calloc(1, sizeof(Client));
-                if (client) {
-                    client->sock = dslink_socket_init(0);
-                    if (!client->sock) {
-                        dslink_free(client);
-                        client = clients[i] = NULL;
-                    }
-                }
-            } else {
-                clientsLen--;
-            }
-        }
-
-        if (client) {
-            if (mbedtls_net_accept(&srv, &client->sock->socket_fd,
-                                   NULL, 0, NULL) != 0) {
-                log_warn("Failed to accept a client connection\n");
-                dslink_socket_free(client->sock);
-                dslink_free(client);
-                clients[i] = NULL;
-                continue;
-            }
-
-            mbedtls_net_set_nonblock(&client->sock->socket_fd);
-            log_debug("Accepted a client connection\n");
-        } else {
-            mbedtls_net_context tmp;
-            mbedtls_net_init(&tmp);
-            mbedtls_net_accept(&srv, &tmp, NULL, 0, NULL);
-            mbedtls_net_free(&tmp);
-        }
-    }
-    // The return will never be reached
+    uv_poll_stop(&poll);
+    uv_loop_close(&loop);
+    json_decref(config);
     return 0;
 }

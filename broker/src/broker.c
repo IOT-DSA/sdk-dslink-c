@@ -222,7 +222,6 @@ int handle_ws(Broker *broker, HttpRequest *req,
         goto fail;
     }
 
-
     return 0;
 fail:
     broker_send_bad_request(sock);
@@ -272,15 +271,6 @@ void on_data_callback(Socket *sock, void *data, void **socketData) {
 
 exit:
     dslink_socket_close_nofree(sock);
-}
-
-static
-void on_client_err(void *socketData) {
-    if (!socketData) {
-        return;
-    }
-
-    close_link(socketData);
 }
 
 int broker_start() {
@@ -397,9 +387,9 @@ int broker_start() {
     }
 
     ret = broker_start_server(config, &broker,
-                              on_data_callback, on_client_err);
+                              on_data_callback);
 exit:
-    DSLINK_CHECKED_EXEC(json_delete, config);
+    json_decref(config);
     dslink_map_free(&broker.client_connecting);
     broker_node_free(broker.root);
     return ret;
