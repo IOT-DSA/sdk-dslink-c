@@ -48,6 +48,13 @@ BrokerNode *broker_node_get(BrokerNode *root,
 }
 
 BrokerNode *broker_node_create(const char *name, const char *profile) {
+    size_t nameLen = strlen(name);
+    size_t profileLen = strlen(profile);
+    return broker_node_createl(name, nameLen, profile, profileLen);
+}
+
+BrokerNode *broker_node_createl(const char *name, size_t nameLen,
+                                const char *profile, size_t profileLen) {
     if (!profile) {
         return NULL;
     }
@@ -58,7 +65,7 @@ BrokerNode *broker_node_create(const char *name, const char *profile) {
     }
 
     node->type = REGULAR_NODE;
-    node->name = dslink_strdup(name);
+    node->name = dslink_strdupl(name, nameLen);
     if (!node->name) {
         dslink_free(node);
         return NULL;
@@ -85,7 +92,7 @@ BrokerNode *broker_node_create(const char *name, const char *profile) {
     listener_init(&node->on_child_removed);
     listener_init(&node->on_list_update);
 
-    json_t *json = json_string(profile);
+    json_t *json = json_stringn(profile, profileLen);
     json_object_set_new_nocheck(node->meta, "$is", json);
     return node;
 }

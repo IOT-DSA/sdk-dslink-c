@@ -1,4 +1,6 @@
 #include <stdlib.h>
+#include <dslink/utils.h>
+#include <string.h>
 #include "broker/msg/msg_list.h"
 #include "broker/broker.h"
 #include "broker/data/data_actions.h"
@@ -123,6 +125,58 @@ void on_add_value_invoked(RemoteDSLink *link,
 }
 
 static
+void create_dynamic_data_node(BrokerNode *node, const char *path,
+                              json_t *value) {
+    if (*path == '/') {
+        path++;
+    }
+
+    if (*path == '\0') {
+        json_object_set_new_nocheck(node->meta, "$type",
+                                    json_string_nocheck("dynamic"));
+        broker_node_update_value(node, value, 0);
+    } else {
+        const char *name = strchr(path, '/');
+        if (!name) {
+            name = path + strlen(path);
+        }
+
+        BrokerNode *child = NULL;
+        if (node->children) {
+            ref_t *r = dslink_map_getl(node->children, (char *) path,
+                                       name - path);
+            if (r) {
+                child = r->data;
+            }
+        }
+
+        if (child) {
+            create_dynamic_data_node(child, name, value);
+            return;
+        }
+
+         child = broker_node_createl(path, name - path,
+                                     "node", sizeof("node") - 1);
+        if (!child) {
+            return;
+        }
+
+        if (broker_node_add(node, child) != 0) {
+            broker_node_free(child);
+            return;
+        }
+
+        char *tmp = dslink_strdupl(path, name - path);
+        if (!tmp) {
+            return;
+        }
+        broker_node_update_child(node, tmp);
+        dslink_free(tmp);
+        create_dynamic_data_node(child, name, value);
+    }
+}
+
+static
 void on_publish_continuous_invoked(RemoteDSLink *link, json_t *params) {
     if (!json_is_object(params)) {
         return;
@@ -137,10 +191,11 @@ void on_publish_continuous_invoked(RemoteDSLink *link, json_t *params) {
     char *tmp = (char *) path;
     BrokerNode *node = broker_node_get(link->broker->root, path,
                                        (void *) &tmp);
-    if (!(node && node->type == REGULAR_NODE)) {
-        return;
+    if (node && node->type == REGULAR_NODE) {
+        broker_node_update_value(node, value, 0);
+    } else if (!node && dslink_str_starts_with(path, "/data")) {
+        create_dynamic_data_node(link->broker->root, path, value);
     }
-    broker_node_update_value(node, value, 0);
 }
 
 static

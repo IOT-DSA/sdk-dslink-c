@@ -67,6 +67,8 @@ typedef struct DownstreamNode {
 BrokerNode *broker_node_get(BrokerNode *root,
                             const char *path, char **out);
 BrokerNode *broker_node_create(const char *name, const char *profile);
+BrokerNode *broker_node_createl(const char *name, size_t nameLen,
+                                const char *profile, size_t profileLen);
 
 // when newValue is 1, node won't add ref count on value
 void  broker_node_update_value(BrokerNode *node, json_t *value, uint8_t isNewValue);
