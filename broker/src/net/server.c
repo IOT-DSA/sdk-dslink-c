@@ -1,4 +1,3 @@
-#include <sys/select.h>
 #include <inttypes.h>
 #include <string.h>
 
@@ -19,11 +18,8 @@ typedef struct Client {
 } Client;
 
 struct Server {
-
     mbedtls_net_context srv;
     DataReadyCallback data_ready;
-    void *data;
-
 };
 
 static
@@ -40,7 +36,7 @@ void broker_server_client_ready(uv_poll_t *poll,
 
     Client *client = poll->data;
     Server *server = client->server;
-    server->data_ready(client->sock, server->data, &client->sock_data);
+    server->data_ready(client->sock, poll->loop->data, &client->sock_data);
     if (client->sock->socket_fd.fd == -1) {
         // The callback closed the connection
         dslink_socket_free(client->sock);
@@ -104,12 +100,28 @@ fail_poll_setup:
     dslink_free(client);
 }
 
+static
+void start_http_server(Server *server, const char *host,
+                       const char *port, uv_loop_t *loop,
+                       uv_poll_t *poll) {
+    if (mbedtls_net_bind(&server->srv, host, port, MBEDTLS_NET_PROTO_TCP) != 0) {
+        log_fatal("Failed to bind to %s:%s\n", host, port);
+        return;
+    } else {
+        log_info("HTTP server bound to %s:%s\n", host, port);
+    }
+
+    uv_poll_init(loop, poll, server->srv.fd);
+    poll->data = server;
+    uv_poll_start(poll, UV_READABLE, broker_server_new_client);
+}
+
 int broker_start_server(json_t *config, void *data,
                         DataReadyCallback cb) {
     json_incref(config);
 
-    const char *host = NULL;
-    const char *port = NULL;
+    const char *httpHost = NULL;
+    const char *httpPort = NULL;
     {
         json_t *http = json_object_get(config, "http");
         if (http) {
@@ -118,49 +130,36 @@ int broker_start_server(json_t *config, void *data,
                 json_decref(config);
                 return 0;
             }
-            host = json_string_value(json_object_get(http, "host"));
+            httpHost = json_string_value(json_object_get(http, "host"));
 
             json_t *jsonPort = json_object_get(http, "port");
             if (jsonPort) {
-                uint32_t p = (uint32_t) json_integer_value(jsonPort);
+                json_int_t p = json_integer_value(jsonPort);
 
                 char buf[8];
-                int len = snprintf(buf, sizeof(buf) - 1, "%" PRIu32, p);
+                int len = snprintf(buf, sizeof(buf) - 1,
+                                   "%" JSON_INTEGER_FORMAT, p);
                 buf[len] = '\0';
-                port = buf;
+                httpPort = buf;
             }
         }
-    }
-
-    if (!(host && port)) {
-        json_decref(config);
-        return 1;
-    }
-
-    Server server;
-    mbedtls_net_init(&server.srv);
-    server.data_ready = cb;
-    server.data = data;
-
-    if (mbedtls_net_bind(&server.srv, host, port, MBEDTLS_NET_PROTO_TCP) != 0) {
-        log_fatal("Failed to bind to %s:%s\n", host, port);
-        json_decref(config);
-        return 1;
-    } else {
-        log_info("HTTP server bound to %s:%s\n", host, port);
     }
 
     uv_loop_t loop;
     uv_loop_init(&loop);
     loop.data = data;
 
-    uv_poll_t poll;
-    uv_poll_init(&loop, &poll, server.srv.fd);
-    poll.data = &server;
-    uv_poll_start(&poll, UV_READABLE, broker_server_new_client);
-    uv_run(&loop, UV_RUN_DEFAULT);
+    Server httpServer;
+    uv_poll_t httpPoll;
+    if (httpHost && httpPort) {
+        mbedtls_net_init(&httpServer.srv);
+        httpServer.data_ready = cb;
 
-    uv_poll_stop(&poll);
+        start_http_server(&httpServer, httpHost, httpPort, &loop, &httpPoll);
+    }
+
+    uv_run(&loop, UV_RUN_DEFAULT);
+    uv_poll_stop(&httpPoll);
     uv_loop_close(&loop);
     json_decref(config);
     return 0;

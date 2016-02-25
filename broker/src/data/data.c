@@ -76,8 +76,11 @@ void on_add_node_invoked(RemoteDSLink *link,
         return;
     }
 
-    // TODO: error handling
     BrokerNode *child = broker_node_create(name, "node");
+    if (!child) {
+        return;
+    }
+
     if (broker_node_add(node, child) != 0) {
         broker_node_free(child);
         return;

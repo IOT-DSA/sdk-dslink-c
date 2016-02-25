@@ -200,7 +200,6 @@ void query_invoke(struct RemoteDSLink *link,
                        dslink_ref(stream, NULL));
         stream->req_close_cb = query_destroy;
 
-
         {
             json_t *top = json_object();
             json_t *resps = json_array();
@@ -216,13 +215,11 @@ void query_invoke(struct RemoteDSLink *link,
             broker_ws_send_obj(link, top);
             json_decref(top);
         }
-
         query_child_added_stream(stream, link->broker->data);
-
     }
     return;
 
-    exit_with_error:
+exit_with_error:
     {
         json_t *top = json_object();
         json_t *resps = json_array();
