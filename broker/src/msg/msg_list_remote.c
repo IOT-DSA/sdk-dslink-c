@@ -22,7 +22,7 @@ void send_list_request(BrokerListStream *stream,
     json_object_set_new_nocheck(req, "method", json_string("list"));
     json_object_set_new_nocheck(req, "path", json_string(path));
 
-    uint32_t rid = 0;
+    uint32_t rid;
     if (stream == NULL) {
         rid = broker_node_incr_rid(node);
     } else {
@@ -30,7 +30,7 @@ void send_list_request(BrokerListStream *stream,
     }
 
     json_object_set_new_nocheck(req, "rid",
-                                json_integer((json_int_t) rid));
+                                json_integer(rid));
 
     broker_ws_send_obj(node->link, top);
     json_decref(top);
@@ -45,7 +45,7 @@ void send_list_request(BrokerListStream *stream,
         broker_add_requester_list_stream(reqLink, stream, reqRid);
     }
     // can be first time list
-    // can also hapen after link disconnect and reconnect
+    // can also happen after link disconnect and reconnect
     dslink_map_set(&node->link->responder_streams, dslink_int_ref(rid),
                    dslink_ref(stream, NULL));
 }

@@ -15,8 +15,8 @@ int remote_invoke_req_closed(void *s, uint32_t reqId) {
 }
 
 int remote_invoke_resp_disconnected(void *s, uint32_t respRid) {
-    (void)s;
-    (void)respRid;
+    (void) s;
+    (void) respRid;
     // TODO, send a disconnect error to requester, and remove it from request map
     return 0;
 }
@@ -45,7 +45,6 @@ int broker_msg_handle_invoke(RemoteDSLink *link, json_t *req) {
         return 1;
     }
 
-    // TODO: error handling
     json_t *top = json_object();
     json_t *reqs = json_array();
     json_object_set_new_nocheck(top, "requests", reqs);

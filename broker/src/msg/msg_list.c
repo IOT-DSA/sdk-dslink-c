@@ -1,11 +1,10 @@
 #include <string.h>
 #include <dslink/utils.h>
-#include <dslink/mem/mem.h>
-#include <broker/msg/msg_close.h>
 
 #include "broker/net/ws.h"
 #include "broker/broker.h"
 #include "broker/msg/msg_list.h"
+#include "broker/msg/msg_close.h"
 
 void send_list_updates(RemoteDSLink *reqLink,
                        BrokerListStream *stream,
@@ -118,14 +117,14 @@ fail:
     return;
 }
 
-void update_list_child(BrokerNode *node, BrokerListStream *stream, const char *name) {
+void update_list_child(BrokerNode *node,
+                       BrokerListStream *stream,
+                       const char *name) {
     if (!(node && stream && name)) {
         return;
     }
 
     json_t *updates = json_array();
-
-
     if (dslink_map_contains(node->children, (void *) name)) {
         json_t *obj = json_object();
         {
@@ -195,21 +194,18 @@ void update_list_child(BrokerNode *node, BrokerListStream *stream, const char *n
 
 static
 void broker_list_self(RemoteDSLink *reqLink,
-                         BrokerNode *node, json_t *rid) {
+                      BrokerNode *node, json_t *rid) {
     if (!node->list_stream) {
         node->list_stream = broker_stream_list_init(node);
         build_list_cache(node, node->list_stream);
     }
 
     uint32_t reqRid = (uint32_t) json_integer_value(rid);
-    uint32_t *r = dslink_malloc(sizeof(uint32_t));
-    *r = reqRid;
-    dslink_map_set(&node->list_stream->requester_links, dslink_ref(r, free),
+    dslink_map_set(&node->list_stream->requester_links,
+                   dslink_int_ref(reqRid),
                    dslink_ref(reqLink, NULL));
 
     send_list_updates(reqLink, node->list_stream, reqRid);
-
-    return;
 }
 
 
@@ -219,7 +215,6 @@ int broker_msg_handle_list(RemoteDSLink *link, json_t *req) {
     if (!(path && rid)) {
         return 1;
     }
-
 
     char *out = NULL;
     BrokerNode *node = broker_node_get(link->broker->root, path, &out);

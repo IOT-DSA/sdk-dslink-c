@@ -80,7 +80,6 @@ void broker_handle_req(RemoteDSLink *link, json_t *req) {
 
 static
 void broker_handle_resp(RemoteDSLink *link, json_t *resp) {
-    // TODO: error handling
     json_t *jRid = json_object_get(resp, "rid");
     if (!jRid) {
         return;
