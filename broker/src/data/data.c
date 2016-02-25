@@ -85,6 +85,8 @@ void on_add_node_invoked(RemoteDSLink *link,
 
     json_object_set_new_nocheck(child->meta, "$type",
                                 json_string_nocheck("dynamic"));
+    json_object_set_new_nocheck(child->meta, "$writable",
+                                json_string_nocheck("write"));
 
     broker_node_update_child(node, name);
 }
@@ -105,7 +107,6 @@ void on_add_value_invoked(RemoteDSLink *link,
         return;
     }
 
-    // TODO: error handling
     BrokerNode *child = broker_node_create(name, "node");
     if (broker_node_add(node, child) != 0) {
         broker_node_free(child);
@@ -119,12 +120,13 @@ void on_add_value_invoked(RemoteDSLink *link,
 
     json_object_set_new_nocheck(child->meta, "$type",
                                 json_string_nocheck("dynamic"));
+    json_object_set_new_nocheck(child->meta, "$writable",
+                                json_string_nocheck("write"));
 
     broker_node_update_child(node, name);
 
 }
 
-static
 void create_dynamic_data_node(BrokerNode *node, const char *path,
                               json_t *value) {
     if (*path == '/') {
@@ -134,6 +136,8 @@ void create_dynamic_data_node(BrokerNode *node, const char *path,
     if (*path == '\0') {
         json_object_set_new_nocheck(node->meta, "$type",
                                     json_string_nocheck("dynamic"));
+        json_object_set_new_nocheck(node->meta, "$writable",
+                                    json_string_nocheck("write"));
         broker_node_update_value(node, value, 0);
     } else {
         const char *name = strchr(path, '/');
@@ -165,6 +169,7 @@ void create_dynamic_data_node(BrokerNode *node, const char *path,
             broker_node_free(child);
             return;
         }
+        create_actions(child);
 
         char *tmp = dslink_strdupl(path, name - path);
         if (!tmp) {

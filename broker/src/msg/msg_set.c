@@ -1,3 +1,5 @@
+#include <dslink/utils.h>
+#include "broker/data/data.h"
 #include "broker/net/ws.h"
 #include "broker/broker.h"
 #include "broker/msg/msg_set.h"
@@ -27,6 +29,12 @@ int broker_msg_handle_set(RemoteDSLink *link, json_t *req) {
 
         broker_ws_send_obj(dsn->link, top);
         json_decref(top);
+    } else if (node) {
+        json_t *value = json_object_get(req, "value");
+        broker_node_update_value(node, value, 0);
+    } else if (dslink_str_starts_with(path, "/data")) {
+        json_t *value = json_object_get(req, "value");
+        create_dynamic_data_node(link->broker->root, path, value);
     }
 
     return 0;

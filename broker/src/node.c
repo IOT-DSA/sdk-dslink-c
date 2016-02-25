@@ -211,9 +211,7 @@ void broker_node_update_value(BrokerNode *node, json_t *value, uint8_t isNewValu
         json_decref(node->value);
     }
     node->value = value;
-    if (isNewValue) {
-
-    } else {
+    if (!isNewValue) {
         json_incref(value);
     }
     listener_dispatch_message(&node->on_value_update, node);

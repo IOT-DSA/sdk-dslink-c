@@ -97,6 +97,10 @@ void build_list_cache(BrokerNode *node, BrokerListStream *stream) {
             if (handle) {
                 json_object_set_nocheck(obj, "$type", handle);
             }
+            handle = json_object_get(node->meta, "$writable");
+            if (handle) {
+                json_object_set_nocheck(obj, "$writable", handle);
+            }
         }
 
         if (child->type == DOWNSTREAM_NODE) {
@@ -133,6 +137,11 @@ void update_list_child(BrokerNode *node, BrokerListStream *stream, const char *n
             handle = json_object_get(node->meta, "$type");
             if (handle) {
                 json_object_set_nocheck(obj, "$type", handle);
+            }
+
+            handle = json_object_get(node->meta, "$writable");
+            if (handle) {
+                json_object_set_nocheck(obj, "$writable", handle);
             }
         }
         ref_t *ref = dslink_map_get(node->children, (void *) name);
