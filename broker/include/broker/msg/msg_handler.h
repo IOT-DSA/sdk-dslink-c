@@ -5,7 +5,6 @@
 extern "C" {
 #endif
 
-#include <jansson.h>
 #include "broker/broker.h"
 
 void broker_msg_handle(RemoteDSLink *link, json_t *data);

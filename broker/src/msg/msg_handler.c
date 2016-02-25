@@ -2,6 +2,7 @@
 #include <dslink/log.h>
 
 #include <string.h>
+#include "broker/msg/msg_set.h"
 #include "broker/msg/msg_unsubscribe.h"
 #include "broker/msg/msg_subscribe.h"
 #include "broker/msg/msg_invoke.h"
@@ -9,6 +10,7 @@
 #include "broker/msg/msg_list.h"
 #include "broker/net/ws.h"
 
+static
 int broker_msg_handle_close(RemoteDSLink *link, json_t *req) {
     json_t *jRid = json_object_get(req, "rid");
     if (!json_is_integer(jRid)) {
@@ -62,6 +64,10 @@ void broker_handle_req(RemoteDSLink *link, json_t *req) {
     } else if (strcmp(method, "unsubscribe") == 0) {
         if (broker_msg_handle_unsubscribe(link, req) != 0) {
             log_err("Failed to handle unsubscribe request\n");
+        }
+    } else if (strcmp(method, "set") == 0) {
+        if (broker_msg_handle_set(link, req) != 0) {
+            log_err("Failed to handle set request");
         }
     } else if (strcmp(method, "close") == 0) {
         if (broker_msg_handle_close(link, req) != 0) {

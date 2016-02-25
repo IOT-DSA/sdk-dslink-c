@@ -5,7 +5,6 @@
 extern "C" {
 #endif
 
-#include <jansson.h>
 #include "broker/remote_dslink.h"
 
 int broker_msg_handle_unsubscribe(RemoteDSLink *link, json_t *req);

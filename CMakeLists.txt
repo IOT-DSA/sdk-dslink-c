@@ -86,6 +86,7 @@ set(BROKER_SRC
     "${BROKER_SRC_DIR}/msg/msg_invoke.c"
     "${BROKER_SRC_DIR}/msg/msg_list.c"
     "${BROKER_SRC_DIR}/msg/msg_list_remote.c"
+    "${BROKER_SRC_DIR}/msg/msg_set.c"
     "${BROKER_SRC_DIR}/msg/msg_subscribe.c"
     "${BROKER_SRC_DIR}/msg/msg_unsubscribe.c"
 
