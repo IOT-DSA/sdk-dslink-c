@@ -101,12 +101,12 @@ fail_poll_setup:
 }
 
 static
-void start_http_server(Server *server, const char *host,
+int start_http_server(Server *server, const char *host,
                        const char *port, uv_loop_t *loop,
                        uv_poll_t *poll) {
     if (mbedtls_net_bind(&server->srv, host, port, MBEDTLS_NET_PROTO_TCP) != 0) {
         log_fatal("Failed to bind to %s:%s\n", host, port);
-        return;
+        return 0;
     } else {
         log_info("HTTP server bound to %s:%s\n", host, port);
     }
@@ -114,6 +114,7 @@ void start_http_server(Server *server, const char *host,
     uv_poll_init(loop, poll, server->srv.fd);
     poll->data = server;
     uv_poll_start(poll, UV_READABLE, broker_server_new_client);
+    return 1;
 }
 
 static
@@ -164,13 +165,15 @@ int broker_start_server(json_t *config, void *data,
     uv_loop_init(&loop);
     loop.data = data;
 
+    int httpActive = 0;
     Server httpServer;
     uv_poll_t httpPoll;
     if (httpHost && httpPort) {
         mbedtls_net_init(&httpServer.srv);
         httpServer.data_ready = cb;
 
-        start_http_server(&httpServer, httpHost, httpPort, &loop, &httpPoll);
+        httpActive = start_http_server(&httpServer, httpHost, httpPort,
+                                       &loop, &httpPoll);
     }
 
     uv_signal_t sigInt;
@@ -181,13 +184,17 @@ int broker_start_server(json_t *config, void *data,
     uv_signal_init(&loop, &sigTerm);
     uv_signal_start(&sigTerm, stop_server, SIGTERM);
 
-    uv_run(&loop, UV_RUN_DEFAULT);
+    if (httpActive) {
+        uv_run(&loop, UV_RUN_DEFAULT);
+    }
 
     uv_loop_close(&loop);
     uv_signal_stop(&sigInt);
     uv_signal_stop(&sigTerm);
 
-    uv_poll_stop(&httpPoll);
+    if (httpActive) {
+        uv_poll_stop(&httpPoll);
+    }
 #if defined(__unix__) || defined(__APPLE__)
     dslink_free(loop.watchers);
 #endif
