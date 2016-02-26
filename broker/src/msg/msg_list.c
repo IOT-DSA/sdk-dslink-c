@@ -51,7 +51,9 @@ int broker_list_req_closed(void *s, uint32_t reqRid) {
     return 0;
 }
 
-void broker_add_requester_list_stream(RemoteDSLink *reqLink, BrokerListStream *stream, uint32_t reqRid) {
+void broker_add_requester_list_stream(RemoteDSLink *reqLink,
+                                      BrokerListStream *stream,
+                                      uint32_t reqRid) {
     dslink_map_set(&stream->requester_links, dslink_int_ref(reqRid),
                    dslink_ref(reqLink, NULL));
     dslink_map_set(&reqLink->requester_streams, dslink_int_ref(reqRid),

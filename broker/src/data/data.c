@@ -79,6 +79,16 @@ void on_delete_node_invoked(RemoteDSLink *link,
         broker_ws_send_obj(entry->value->data, top);
     }
 
+    char *replaced = dslink_str_replace_all(node->path, "/", "%2F");
+    if (replaced) {
+        char tmp[256];
+        int len = snprintf(tmp, sizeof(tmp) - 1, "data/%s", replaced);
+        tmp[len] = '\0';
+
+        remove(tmp);
+        dslink_free(replaced);
+    }
+
     json_decref(top);
     broker_node_free(node);
 }
