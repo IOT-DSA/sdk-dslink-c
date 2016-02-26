@@ -12,6 +12,7 @@ separate_arguments(memcheck_command)
 
 set(SDK_TEST_SET
     "col_map_test"
+    "utils_test"
 )
 
 set(BROKER_TEST_SET

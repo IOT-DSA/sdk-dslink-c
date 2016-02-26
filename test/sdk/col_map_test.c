@@ -50,8 +50,8 @@ void col_map_set_large_string_entry_test(void **state) {
         assert_true(snprintf(key, len, "%i", n));
         assert_true(snprintf(val, len, "%i %i", n, n));
 
-        assert_true(!dslink_map_set(&map, dslink_ref(key, free),
-                                    dslink_ref(val, free)));
+        assert_true(!dslink_map_set(&map, dslink_ref(key, dslink_free),
+                                    dslink_ref(val, dslink_free)));
         assert_true(dslink_map_contains(&map, key));
         ref_t *stored = dslink_map_get(&map, key);
         assert_non_null(stored->data);
@@ -83,8 +83,8 @@ void col_map_set_simple_uint32_test(void **state) {
         uint32_t *val = calloc(1, sizeof(uint32_t));
         *val = inputs[i][1];
 
-        assert_true(!dslink_map_set(&map, dslink_ref(key, free),
-                                    dslink_ref(val, free)));
+        assert_true(!dslink_map_set(&map, dslink_ref(key, dslink_free),
+                                    dslink_ref(val, dslink_free)));
         assert_true(dslink_map_contains(&map, key));
         ref_t *stored = dslink_map_get(&map, key);
         assert_non_null(stored->data);
@@ -110,8 +110,8 @@ void col_map_set_large_uint32_entry_test(void **state) {
         uint32_t *val = calloc(1, sizeof(uint32_t));
         *val = n * 2;
 
-        assert_true(!dslink_map_set(&map, dslink_ref(i, free),
-                                    dslink_ref(val, free)));
+        assert_true(!dslink_map_set(&map, dslink_ref(i, dslink_free),
+                                    dslink_ref(val, dslink_free)));
         assert_true(dslink_map_contains(&map, i));
         ref_t *stored = dslink_map_get(&map, i);
         assert_non_null(stored);
@@ -136,8 +136,8 @@ void col_map_remove_large_uint32_entry_test(void **state) {
         uint32_t *val = calloc(1, sizeof(uint32_t));
         *val = n * 2;
 
-        assert_true(!dslink_map_set(&map, dslink_ref(i, free),
-                                    dslink_ref(val, free)));
+        assert_true(!dslink_map_set(&map, dslink_ref(i, dslink_free),
+                                    dslink_ref(val, dslink_free)));
         assert_true(dslink_map_contains(&map, i));
         ref_t *stored = dslink_map_get(&map, i);
         assert_non_null(stored);

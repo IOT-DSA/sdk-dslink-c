@@ -15,6 +15,9 @@ int dslink_strcasecmp(const char *a, const char *b);
 char *dslink_strdup(const char *str);
 char *dslink_strdupl(const char *str, size_t len);
 int dslink_str_starts_with(const char *a, const char *b);
+char *dslink_str_replace_all(const char *haystack,
+                             const char *needle,
+                             const char *replacement);
 
 size_t dslink_create_ts(char *buf, size_t bufLen);
 

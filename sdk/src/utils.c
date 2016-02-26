@@ -56,6 +56,50 @@ char *dslink_strdupl(const char *str, size_t len) {
     return tmp;
 }
 
+static
+char *dslink_str_replace_all_rep(const char *haystack,
+                                 const char *needle,
+                                 const char *replacement,
+                                 int shouldDup) {
+
+    char *start = strstr(haystack, needle);
+    if (!start) {
+        if (shouldDup) {
+            return dslink_strdup(haystack);
+        } else {
+            return (char *) haystack;
+        }
+    }
+
+    const size_t haystackLen = strlen(haystack);
+    const size_t needleLen = strlen(needle);
+    const size_t replacementLen = strlen(replacement);
+    char *dup = dslink_malloc(haystackLen - needleLen + replacementLen + 1);
+    if (!dup) {
+        return NULL;
+    }
+
+    size_t len = start - haystack;
+    memcpy(dup, haystack, len);
+    memcpy(dup + len, replacement, replacementLen);
+    len += replacementLen;
+
+    size_t remainder = (haystack + haystackLen) - (start + needleLen);
+    memcpy(dup + len, start + needleLen, remainder);
+    dup[haystackLen - needleLen + replacementLen] = '\0';
+
+    if (!shouldDup) {
+        dslink_free((char *) haystack);
+    }
+    return dslink_str_replace_all_rep(dup, needle, replacement, 0);
+}
+
+char *dslink_str_replace_all(const char *haystack,
+                             const char *needle,
+                             const char *replacement) {
+    return dslink_str_replace_all_rep(haystack, needle, replacement, 1);
+}
+
 int dslink_str_starts_with(const char *a, const char *b) {
     while (*b) {
         if (*a++ != *b++) {
