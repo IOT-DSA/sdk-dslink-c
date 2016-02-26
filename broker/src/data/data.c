@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <dslink/utils.h>
 #include <string.h>
+#include <uv.h>
 #include "broker/msg/msg_list.h"
 #include "broker/broker.h"
 #include "broker/data/data_actions.h"
@@ -23,6 +24,28 @@ void broker_data_send_closed_resp(RemoteDSLink *link, json_t *req) {
 
     broker_ws_send_obj(link, top);
     json_decref(top);
+}
+
+void broker_data_node_update(BrokerNode *node,
+                             json_t *value,
+                             uint8_t isNewValue) {
+    broker_node_update_value(node, value, isNewValue);
+
+    uv_fs_t dir;
+    uv_fs_mkdir(NULL, &dir, "data", 0770, NULL);
+
+    char *replaced = dslink_str_replace_all(node->path, "/", "%2F");
+    if (!replaced) {
+        goto exit;
+    }
+
+    char tmp[512];
+    int len = snprintf(tmp, sizeof(tmp) - 1, "data/%s", replaced);
+    tmp[len] = '\0';
+
+    json_dump_file(value, tmp, JSON_PRESERVE_ORDER | JSON_ENCODE_ANY);
+exit:
+    DSLINK_CHECKED_EXEC(dslink_free, replaced);
 }
 
 static
@@ -131,7 +154,7 @@ void on_add_value_invoked(RemoteDSLink *link,
 }
 
 void create_dynamic_data_node(BrokerNode *node, const char *path,
-                              json_t *value) {
+                              json_t *value, uint8_t serialize) {
     if (*path == '/') {
         path++;
     }
@@ -141,7 +164,11 @@ void create_dynamic_data_node(BrokerNode *node, const char *path,
                                     json_string_nocheck("dynamic"));
         json_object_set_new_nocheck(node->meta, "$writable",
                                     json_string_nocheck("write"));
-        broker_node_update_value(node, value, 0);
+        if (serialize) {
+            broker_data_node_update(node, value, 0);
+        } else {
+            broker_node_update_value(node, value, 0);
+        }
     } else {
         const char *name = strchr(path, '/');
         if (!name) {
@@ -158,7 +185,7 @@ void create_dynamic_data_node(BrokerNode *node, const char *path,
         }
 
         if (child) {
-            create_dynamic_data_node(child, name, value);
+            create_dynamic_data_node(child, name, value, serialize);
             return;
         }
 
@@ -180,7 +207,7 @@ void create_dynamic_data_node(BrokerNode *node, const char *path,
         }
         broker_node_update_child(node, tmp);
         dslink_free(tmp);
-        create_dynamic_data_node(child, name, value);
+        create_dynamic_data_node(child, name, value, serialize);
     }
 }
 
@@ -202,7 +229,7 @@ void on_publish_continuous_invoked(RemoteDSLink *link, json_t *params) {
     if (node && node->type == REGULAR_NODE) {
         broker_node_update_value(node, value, 0);
     } else if (!node && dslink_str_starts_with(path, "/data")) {
-        create_dynamic_data_node(link->broker->root, path, value);
+        create_dynamic_data_node(link->broker->root, path, value, 0);
     }
 }
 
@@ -241,6 +268,38 @@ int create_actions(BrokerNode *node) {
     return 0;
 }
 
+static
+void deserialize_data_nodes(BrokerNode *root) {
+    uv_fs_t dir;
+    if (uv_fs_scandir(NULL, &dir, "data", 0, NULL) < 0) {
+        return;
+    }
+
+    uv_dirent_t d;
+    while (uv_fs_scandir_next(&dir, &d) != UV_EOF) {
+        if (d.type != UV_DIRENT_FILE) {
+            continue;
+        }
+
+        char *path = dslink_str_replace_all(d.name, "%2F", "/");
+        if (!path) {
+            continue;
+        }
+
+        char tmp[256];
+        int len = snprintf(tmp, sizeof(tmp) - 1, "data/%s", d.name);
+        tmp[len] = '\0';
+
+        json_error_t err;
+        json_t *val = json_load_file(tmp, JSON_PRESERVE_ORDER | JSON_DECODE_ANY, &err);
+        if (val) {
+            create_dynamic_data_node(root, path, val, 0);
+        }
+
+        dslink_free(path);
+    }
+}
+
 int broker_data_node_populate(BrokerNode *dataNode) {
     if (!dataNode) {
         return 1;
@@ -257,6 +316,7 @@ int broker_data_node_populate(BrokerNode *dataNode) {
     addNode->on_invoke = on_add_node_invoked;
     addValue->on_invoke = on_add_value_invoked;
     publish->on_invoke = on_publish_invoked;
+    deserialize_data_nodes(dataNode->parent);
 
     return 0;
 }
