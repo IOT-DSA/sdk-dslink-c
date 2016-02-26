@@ -116,6 +116,21 @@ void start_http_server(Server *server, const char *host,
     uv_poll_start(poll, UV_READABLE, broker_server_new_client);
 }
 
+static
+void stop_server(uv_signal_t* handle, int signum) {
+    const char *sig;
+    if (signum == SIGINT) {
+        sig = "SIGINT";
+    } else if (signum == SIGTERM) {
+        sig = "SIGTERM";
+    } else {
+        // Ignore unknown signal
+        return;
+    }
+    log_warn("Received %s, gracefully terminating broker...\n", sig);
+    uv_stop(handle->loop);
+}
+
 int broker_start_server(json_t *config, void *data,
                         DataReadyCallback cb) {
     json_incref(config);
@@ -158,9 +173,25 @@ int broker_start_server(json_t *config, void *data,
         start_http_server(&httpServer, httpHost, httpPort, &loop, &httpPoll);
     }
 
+    uv_signal_t sigInt;
+    uv_signal_init(&loop, &sigInt);
+    uv_signal_start(&sigInt, stop_server, SIGINT);
+
+    uv_signal_t sigTerm;
+    uv_signal_init(&loop, &sigTerm);
+    uv_signal_start(&sigTerm, stop_server, SIGTERM);
+
     uv_run(&loop, UV_RUN_DEFAULT);
-    uv_poll_stop(&httpPoll);
+
     uv_loop_close(&loop);
+    uv_signal_stop(&sigInt);
+    uv_signal_stop(&sigTerm);
+
+    uv_poll_stop(&httpPoll);
+#if defined(__unix__) || defined(__APPLE__)
+    dslink_free(loop.watchers);
+#endif
+
     json_decref(config);
     return 0;
 }
