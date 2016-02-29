@@ -7,28 +7,31 @@
 #include "broker/msg/msg_list.h"
 #include "broker/msg/msg_close.h"
 
-#define LIST_SET_TOP_LEVEL(obj, node)                                \
-    {                                                                \
-        json_t *profile = json_object_get(node->meta, "$is");        \
-        assert(profile);                                             \
-        json_object_set_nocheck(obj, "$is", profile);                \
-        json_t *handle = json_object_get(node->meta, "$invokable");  \
-        if (handle) {                                                \
-            json_object_set_nocheck(obj, "$invokable", handle);      \
-        }                                                            \
-        handle = json_object_get(node->meta, "$type");               \
-        if (handle) {                                                \
-            json_object_set_nocheck(obj, "$type", handle);           \
-        }                                                            \
-        handle = json_object_get(node->meta, "$writable");           \
-        if (handle) {                                                \
-            json_object_set_nocheck(obj, "$writable", handle);       \
-        }                                                            \
-        handle = json_object_get(node->meta, "$hidden");             \
-        if (handle) {                                                \
-            json_object_set_nocheck(obj, "$hidden", handle);         \
-        }                                                            \
+static
+void list_set_top_level(json_t *obj, BrokerNode *child) {
+    assert(obj);
+    assert(child);
+
+    json_t *profile = json_object_get(child->meta, "$is");
+    assert(profile);
+    json_object_set_nocheck(obj, "$is", profile);
+    json_t *handle = json_object_get(child->meta, "$invokable");
+    if (handle) {
+        json_object_set_nocheck(obj, "$invokable", handle);
     }
+    handle = json_object_get(child->meta, "$type");
+    if (handle) {
+        json_object_set_nocheck(obj, "$type", handle);
+    }
+    handle = json_object_get(child->meta, "$writable");
+    if (handle) {
+        json_object_set_nocheck(obj, "$writable", handle);
+    }
+    handle = json_object_get(child->meta, "$hidden");
+    if (handle) {
+        json_object_set_nocheck(obj, "$hidden", handle);
+    }
+}
 
 void send_list_updates(RemoteDSLink *reqLink,
                        BrokerListStream *stream,
@@ -106,7 +109,7 @@ void build_list_cache(BrokerNode *node, BrokerListStream *stream) {
         if (!obj) {
             goto fail;
         }
-        LIST_SET_TOP_LEVEL(obj, child);
+        list_set_top_level(obj, child);
         if (child->type == DOWNSTREAM_NODE) {
             DownstreamNode *downstreamNode = (DownstreamNode *) child;
             if (downstreamNode->link && downstreamNode->link->linkData) {
@@ -135,7 +138,7 @@ void update_list_child(BrokerNode *node,
         node = ref->data;
 
         json_t *obj = json_object();
-        LIST_SET_TOP_LEVEL(obj, node);
+        list_set_top_level(obj, node);
         if (node->type == DOWNSTREAM_NODE) {
             DownstreamNode *dsn = (DownstreamNode *) node;
             if (dsn->link && dsn->link->linkData) {
