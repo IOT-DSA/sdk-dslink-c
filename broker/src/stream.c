@@ -3,7 +3,6 @@
 #include <dslink/utils.h>
 #include <dslink/mem/mem.h>
 #include <broker/msg/msg_list.h>
-#include "broker/stream.h"
 
 BrokerListStream *broker_stream_list_init(void *node) {
     BrokerListStream *stream = dslink_calloc(1, sizeof(BrokerListStream));
@@ -21,12 +20,11 @@ BrokerListStream *broker_stream_list_init(void *node) {
 
 
     stream->updates_cache = json_object();
+    stream->node = node;
     if (!stream->updates_cache) {
         dslink_free(stream);
         return NULL;
     }
-
-    stream->node = node;
 
     return stream;
 }
@@ -80,20 +78,19 @@ void broker_stream_free(BrokerStream *stream) {
     dslink_free(stream);
 }
 
-void requester_stream_closed(BrokerStream * stream, uint32_t rid) {
+void requester_stream_closed(BrokerStream *stream, uint32_t rid) {
     if (stream->req_close_cb) {
         stream->req_close_cb(stream, rid);
     }
     broker_stream_free(stream);
 }
 
-void responder_stream_closed(BrokerStream * stream, uint32_t rid) {
+void responder_stream_closed(BrokerStream *stream, uint32_t rid) {
     if (stream->resp_close_cb) {
         if (stream->resp_close_cb(stream, rid)) {
             broker_stream_free(stream);
         }
     }
-
 }
 
 static inline
@@ -109,8 +106,6 @@ void add_to_update(json_t *updates, const char *key, json_t *value) {
 }
 
 json_t *broker_stream_list_get_cache(BrokerListStream *stream) {
-    // TODO: check allocation
-
     size_t cacheSize = json_object_size(stream->updates_cache);
     if (cacheSize == 0) {
         return NULL;
@@ -140,7 +135,8 @@ json_t *broker_stream_list_get_cache(BrokerListStream *stream) {
     return updates;
 }
 
-void broker_stream_list_reset_remote_cache(BrokerListStream *stream, RemoteDSLink *link) {
+void broker_stream_list_reset_remote_cache(BrokerListStream *stream,
+                                           RemoteDSLink *link) {
     json_object_clear(stream->updates_cache);
     if (link) {
         json_object_set_new_nocheck(stream->updates_cache,
@@ -155,7 +151,8 @@ void broker_stream_list_reset_remote_cache(BrokerListStream *stream, RemoteDSLin
         char ts[32];
         dslink_create_ts(ts, 32);
         json_object_set_new_nocheck(stream->updates_cache,
-                                    "$disconnectedTs", json_string_nocheck(ts));
+                                    "$disconnectedTs",
+                                    json_string_nocheck(ts));
         stream->cache_sent = 0;
     }
 }

@@ -61,8 +61,6 @@ void broker_add_requester_list_stream(RemoteDSLink *reqLink,
                    dslink_ref(stream, NULL));
 }
 
-
-
 static
 void build_list_cache(BrokerNode *node, BrokerListStream *stream) {
     {

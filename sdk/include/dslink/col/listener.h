@@ -10,10 +10,10 @@ extern "C" {
 typedef struct Listener {
     struct Listener *prev;
     struct Listener *next;
-    List * list;
+    List *list;
 
     // callback(data, message)
-    int (*callback)(struct Listener *, void*);
+    int (*callback)(struct Listener *, void *);
     void *data;
 } Listener;
 

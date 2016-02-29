@@ -14,8 +14,11 @@ typedef struct ParsedQuery {
     Map value_update_listeners;
 } ParsedQuery;
 
-
-typedef enum { NOT_MATCH, PARTIAL_MATCH, MATCH} MatchResult;
+typedef enum {
+    NOT_MATCH,
+    PARTIAL_MATCH,
+    MATCH
+} MatchResult;
 
 static
 MatchResult match_query(const char *path, const char *pattern) {
@@ -128,10 +131,10 @@ int query_child_added_stream(BrokerInvokeStream *stream, BrokerNode *node) {
     }
     return 0;
 }
+
 int query_child_added(Listener *listener, void *node) {
     return query_child_added_stream((BrokerInvokeStream *)listener->data, (BrokerNode*)node);
 }
-
 
 ParsedQuery *parse_query(const char * query) {
     const char *pos = strchr(query, ' ');
