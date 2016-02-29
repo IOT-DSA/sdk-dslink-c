@@ -1,3 +1,4 @@
+#include <broker/node.h>
 #include "broker/utils.h"
 #include "broker/stream.h"
 #include "broker/net/ws.h"
@@ -35,6 +36,11 @@ void handle_unsubscribe(RemoteDSLink *link, uint32_t sid) {
         json_array_append_new(reqs, req);
         json_object_set_new_nocheck(req, "method",
                                     json_string_nocheck("unsubscribe"));
+
+        uint32_t rid = broker_node_incr_rid(link->node);
+        json_object_set_new_nocheck(req, "rid",
+                                    json_integer(rid));
+
         {
             json_t *sids = json_array();
             json_array_append_new(sids, json_integer(bss->responder_sid));
