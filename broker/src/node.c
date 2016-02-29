@@ -97,6 +97,21 @@ BrokerNode *broker_node_createl(const char *name, size_t nameLen,
     return node;
 }
 
+static
+void broker_node_update_child(BrokerNode *parent, const char* name) {
+    if (parent->list_stream) {
+        update_list_child(parent, parent->list_stream, name);
+    }
+
+    ref_t *ref = dslink_map_get(parent->children, (void *) name);
+    if (ref) {
+        BrokerNode *child = ref->data;
+        listener_dispatch_message(&parent->on_child_added, child);
+    } else {
+        listener_dispatch_message(&parent->on_child_removed, NULL);
+    }
+}
+
 int broker_node_add(BrokerNode *parent, BrokerNode *child) {
     if (!(child && parent && parent->children)
         || dslink_map_contains(parent->children, (void *) child->name)) {
@@ -125,22 +140,9 @@ int broker_node_add(BrokerNode *parent, BrokerNode *child) {
         return 1;
     }
     child->parent = parent;
+    broker_node_update_child(parent, child->name);
 
     return 0;
-}
-
-void broker_node_update_child(BrokerNode *parent, const char* name) {
-    if (parent->list_stream) {
-        update_list_child(parent, parent->list_stream, name);
-    }
-
-    ref_t *ref = dslink_map_get(parent->children, (void *) name);
-    if (ref) {
-        BrokerNode *child = ref->data;
-        listener_dispatch_message(&parent->on_child_added, child);
-    } else {
-        listener_dispatch_message(&parent->on_child_removed, NULL);
-    }
 }
 
 void broker_node_free(BrokerNode *node) {

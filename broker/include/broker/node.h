@@ -74,9 +74,6 @@ BrokerNode *broker_node_createl(const char *name, size_t nameLen,
 void  broker_node_update_value(BrokerNode *node, json_t *value, uint8_t isNewValue);
 
 int broker_node_add(BrokerNode *parent, BrokerNode *child);
-// update all the listener and stream of the children change
-// the change could be adding or removing
-void broker_node_update_child(BrokerNode *parent, const char* name);
 
 void broker_node_free(BrokerNode *node);
 

@@ -99,17 +99,15 @@ void on_add_node_invoked(RemoteDSLink *link,
         return;
     }
 
-    if (broker_node_add(node, child) != 0) {
-        broker_node_free(child);
-        return;
-    }
-
     json_object_set_new_nocheck(child->meta, "$type",
                                 json_string_nocheck("dynamic"));
     json_object_set_new_nocheck(child->meta, "$writable",
                                 json_string_nocheck("write"));
 
-    broker_node_update_child(node, name);
+    if (broker_node_add(node, child) != 0) {
+        broker_node_free(child);
+        return;
+    }
 }
 
 static
@@ -129,6 +127,11 @@ void on_add_value_invoked(RemoteDSLink *link,
     }
 
     BrokerNode *child = broker_node_create(name, "node");
+    json_object_set_new_nocheck(child->meta, "$type",
+                                json_string_nocheck("dynamic"));
+    json_object_set_new_nocheck(child->meta, "$writable",
+                                json_string_nocheck("write"));
+
     if (broker_node_add(node, child) != 0) {
         broker_node_free(child);
         return;
@@ -138,14 +141,6 @@ void on_add_value_invoked(RemoteDSLink *link,
         broker_node_free(child);
         return;
     }
-
-    json_object_set_new_nocheck(child->meta, "$type",
-                                json_string_nocheck("dynamic"));
-    json_object_set_new_nocheck(child->meta, "$writable",
-                                json_string_nocheck("write"));
-
-    broker_node_update_child(node, name);
-
 }
 
 void broker_create_dynamic_data_node(BrokerNode *node, const char *path,
@@ -196,12 +191,6 @@ void broker_create_dynamic_data_node(BrokerNode *node, const char *path,
         }
         create_actions(child);
 
-        char *tmp = dslink_strdupl(path, name - path);
-        if (!tmp) {
-            return;
-        }
-        broker_node_update_child(node, tmp);
-        dslink_free(tmp);
         broker_create_dynamic_data_node(child, name, value, serialize);
     }
 }

@@ -239,7 +239,7 @@ exit_with_error:
 
 BrokerNode *broker_query_create_action(BrokerNode *parent) {
     BrokerNode *node = broker_node_create("query", "node");
-    if (!node || broker_node_add(parent, node) != 0) {
+    if (!node) {
         broker_node_free(node);
         return NULL;
     }
@@ -268,6 +268,10 @@ BrokerNode *broker_query_create_action(BrokerNode *parent) {
         || broker_invoke_create_param(columnList, "value", "dynamic") != 0
         || broker_invoke_create_param(columnList, "ts", "string") != 0
         || json_object_set_new(node->meta, "$columns", columnList) != 0) {
+        goto fail;
+    }
+
+    if (broker_node_add(parent, node) != 0) {
         goto fail;
     }
 
