@@ -6,6 +6,7 @@
 #include <dslink/socket_private.h>
 #include <dslink/mem/mem.h>
 #include <uv.h>
+#include <uv-common.h>
 
 #include "broker/net/server.h"
 
@@ -188,15 +189,15 @@ int broker_start_server(json_t *config, void *data,
         uv_run(&loop, UV_RUN_DEFAULT);
     }
 
-    uv_loop_close(&loop);
     uv_signal_stop(&sigInt);
     uv_signal_stop(&sigTerm);
 
     if (httpActive) {
         uv_poll_stop(&httpPoll);
     }
+    uv_loop_close(&loop);
 #if defined(__unix__) || defined(__APPLE__)
-    dslink_free(loop.watchers);
+    uv__free(loop.watchers);
 #endif
 
     json_decref(config);

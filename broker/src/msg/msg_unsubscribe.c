@@ -1,4 +1,4 @@
-#include "broker/data/data.h"
+#include "broker/utils.h"
 #include "broker/stream.h"
 #include "broker/net/ws.h"
 #include "broker/msg/msg_unsubscribe.h"
@@ -51,7 +51,7 @@ void handle_unsubscribe(RemoteDSLink *link, uint32_t sid) {
 }
 
 int broker_msg_handle_unsubscribe(RemoteDSLink *link, json_t *req) {
-    broker_data_send_closed_resp(link, req);
+    broker_utils_send_closed_resp(link, req);
 
     json_t *sids = json_object_get(req, "sids");
     if (sids) {

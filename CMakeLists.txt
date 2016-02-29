@@ -100,6 +100,7 @@ set(BROKER_SRC
     "${BROKER_SRC_DIR}/node.c"
     "${BROKER_SRC_DIR}/remote_dslink.c"
     "${BROKER_SRC_DIR}/stream.c"
+    "${BROKER_SRC_DIR}/utils.c"
 )
 
 set(EXAMPLE_RESPONDER_SRC_DIR "${CMAKE_CURRENT_LIST_DIR}/examples/responder/src")

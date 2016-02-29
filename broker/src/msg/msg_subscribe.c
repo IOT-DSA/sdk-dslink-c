@@ -1,8 +1,8 @@
 #include <dslink/utils.h>
+#include "broker/utils.h"
 #include "broker/stream.h"
 #include "broker/net/ws.h"
 #include "broker/broker.h"
-#include "broker/data/data.h"
 #include "broker/msg/msg_subscribe.h"
 
 static
@@ -153,7 +153,7 @@ void handle_subscribe(RemoteDSLink *link, json_t *sub) {
 }
 
 int broker_msg_handle_subscribe(RemoteDSLink *link, json_t *req) {
-    broker_data_send_closed_resp(link, req);
+    broker_utils_send_closed_resp(link, req);
 
     json_t *paths = json_object_get(req, "paths");
     if (!json_is_array(paths)) {
