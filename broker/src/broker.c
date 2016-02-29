@@ -300,6 +300,7 @@ int broker_start() {
                 goto exit;
             }
 
+            json_object_set_new_nocheck(node->meta, "$hidden", json_true());
             if (broker_node_add(broker.root, node) != 0) {
                 broker_node_free(node);
                 ret = 1;

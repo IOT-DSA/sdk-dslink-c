@@ -1,5 +1,6 @@
 #include <string.h>
 #include <dslink/utils.h>
+#include <assert.h>
 
 #include "broker/net/ws.h"
 #include "broker/broker.h"
@@ -64,13 +65,10 @@ void broker_add_requester_list_stream(RemoteDSLink *reqLink,
 
 static
 void build_list_cache(BrokerNode *node, BrokerListStream *stream) {
-
-    json_t *profile = json_object_get(node->meta, "$is");
-    if (profile) {
+    {
+        json_t *profile = json_object_get(node->meta, "$is");
+        assert(profile);
         json_object_set_nocheck(stream->updates_cache, "$is", profile);
-    } else {
-        json_object_set_new_nocheck(stream->updates_cache, "$is",
-                                    json_string_nocheck("node"));
     }
     {
         const char *key;
@@ -89,23 +87,29 @@ void build_list_cache(BrokerNode *node, BrokerListStream *stream) {
         }
 
         {
-            json_object_set_new(obj, "$is", json_string("node"));
-            json_t *handle = json_object_get(node->meta, "$invokable");
+            json_t *prof = json_object_get(child->meta, "$is");
+            assert(prof);
+            json_object_set_nocheck(obj, "$is", prof);
+            json_t *handle = json_object_get(child->meta, "$invokable");
             if (handle) {
                 json_object_set_nocheck(obj, "$invokable", handle);
             }
-            handle = json_object_get(node->meta, "$type");
+            handle = json_object_get(child->meta, "$type");
             if (handle) {
                 json_object_set_nocheck(obj, "$type", handle);
             }
-            handle = json_object_get(node->meta, "$writable");
+            handle = json_object_get(child->meta, "$writable");
             if (handle) {
                 json_object_set_nocheck(obj, "$writable", handle);
+            }
+            handle = json_object_get(child->meta, "$hidden");
+            if (handle) {
+                json_object_set_nocheck(obj, "$hidden", handle);
             }
         }
 
         if (child->type == DOWNSTREAM_NODE) {
-            DownstreamNode *downstreamNode = (DownstreamNode *)child;
+            DownstreamNode *downstreamNode = (DownstreamNode *) child;
             if (downstreamNode->link && downstreamNode->link->linkData) {
                 json_object_set_nocheck(obj, "$linkData",
                                         downstreamNode->link->linkData);
@@ -128,9 +132,15 @@ void update_list_child(BrokerNode *node,
 
     json_t *updates = json_array();
     if (dslink_map_contains(node->children, (void *) name)) {
+        ref_t *ref = dslink_map_get(node->children, (void *) name);
+        node = ref->data;
+
         json_t *obj = json_object();
         {
-            json_object_set_new(obj, "$is", json_string("node"));
+            json_t *profile = json_object_get(node->meta, "$is");
+            assert(profile);
+            json_object_set_nocheck(obj, "$is", profile);
+
             json_t *handle = json_object_get(node->meta, "$invokable");
             if (handle) {
                 json_object_set_nocheck(obj, "$invokable", handle);
@@ -144,15 +154,15 @@ void update_list_child(BrokerNode *node,
             if (handle) {
                 json_object_set_nocheck(obj, "$writable", handle);
             }
+            handle = json_object_get(node->meta, "$hidden");
+            if (handle) {
+                json_object_set_nocheck(obj, "$hidden", handle);
+            }
         }
-        ref_t *ref = dslink_map_get(node->children, (void *) name);
-        if (ref) {
-            BrokerNode *child = ref->data;
-            if (child->type == DOWNSTREAM_NODE) {
-                DownstreamNode *downstreamNode = (DownstreamNode *) child;
-                if (downstreamNode->link && downstreamNode->link->linkData) {
-                    json_object_set(obj, "$linkData", downstreamNode->link->linkData);
-                }
+        if (node->type == DOWNSTREAM_NODE) {
+            DownstreamNode *dsn = (DownstreamNode *) node;
+            if (dsn->link && dsn->link->linkData) {
+                json_object_set(obj, "$linkData", dsn->link->linkData);
             }
         }
 
