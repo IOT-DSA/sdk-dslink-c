@@ -7,6 +7,29 @@
 #include "broker/msg/msg_list.h"
 #include "broker/msg/msg_close.h"
 
+#define LIST_SET_TOP_LEVEL(obj, node)                                \
+    {                                                                \
+        json_t *profile = json_object_get(node->meta, "$is");        \
+        assert(profile);                                             \
+        json_object_set_nocheck(obj, "$is", profile);                \
+        json_t *handle = json_object_get(node->meta, "$invokable");  \
+        if (handle) {                                                \
+            json_object_set_nocheck(obj, "$invokable", handle);      \
+        }                                                            \
+        handle = json_object_get(node->meta, "$type");               \
+        if (handle) {                                                \
+            json_object_set_nocheck(obj, "$type", handle);           \
+        }                                                            \
+        handle = json_object_get(node->meta, "$writable");           \
+        if (handle) {                                                \
+            json_object_set_nocheck(obj, "$writable", handle);       \
+        }                                                            \
+        handle = json_object_get(node->meta, "$hidden");             \
+        if (handle) {                                                \
+            json_object_set_nocheck(obj, "$hidden", handle);         \
+        }                                                            \
+    }
+
 void send_list_updates(RemoteDSLink *reqLink,
                        BrokerListStream *stream,
                        uint32_t reqRid) {
@@ -83,29 +106,7 @@ void build_list_cache(BrokerNode *node, BrokerListStream *stream) {
         if (!obj) {
             goto fail;
         }
-
-        {
-            json_t *prof = json_object_get(child->meta, "$is");
-            assert(prof);
-            json_object_set_nocheck(obj, "$is", prof);
-            json_t *handle = json_object_get(child->meta, "$invokable");
-            if (handle) {
-                json_object_set_nocheck(obj, "$invokable", handle);
-            }
-            handle = json_object_get(child->meta, "$type");
-            if (handle) {
-                json_object_set_nocheck(obj, "$type", handle);
-            }
-            handle = json_object_get(child->meta, "$writable");
-            if (handle) {
-                json_object_set_nocheck(obj, "$writable", handle);
-            }
-            handle = json_object_get(child->meta, "$hidden");
-            if (handle) {
-                json_object_set_nocheck(obj, "$hidden", handle);
-            }
-        }
-
+        LIST_SET_TOP_LEVEL(obj, child);
         if (child->type == DOWNSTREAM_NODE) {
             DownstreamNode *downstreamNode = (DownstreamNode *) child;
             if (downstreamNode->link && downstreamNode->link->linkData) {
@@ -134,29 +135,7 @@ void update_list_child(BrokerNode *node,
         node = ref->data;
 
         json_t *obj = json_object();
-        {
-            json_t *profile = json_object_get(node->meta, "$is");
-            assert(profile);
-            json_object_set_nocheck(obj, "$is", profile);
-
-            json_t *handle = json_object_get(node->meta, "$invokable");
-            if (handle) {
-                json_object_set_nocheck(obj, "$invokable", handle);
-            }
-            handle = json_object_get(node->meta, "$type");
-            if (handle) {
-                json_object_set_nocheck(obj, "$type", handle);
-            }
-
-            handle = json_object_get(node->meta, "$writable");
-            if (handle) {
-                json_object_set_nocheck(obj, "$writable", handle);
-            }
-            handle = json_object_get(node->meta, "$hidden");
-            if (handle) {
-                json_object_set_nocheck(obj, "$hidden", handle);
-            }
-        }
+        LIST_SET_TOP_LEVEL(obj, node);
         if (node->type == DOWNSTREAM_NODE) {
             DownstreamNode *dsn = (DownstreamNode *) node;
             if (dsn->link && dsn->link->linkData) {
