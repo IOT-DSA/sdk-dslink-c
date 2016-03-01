@@ -113,7 +113,7 @@ void handle_subscribe(RemoteDSLink *link, json_t *sub) {
     {
         json_t *top = json_object();
         json_t *reqs = json_array();
-        json_object_set_nocheck(top, "requests", reqs);
+        json_object_set_new_nocheck(top, "requests", reqs);
 
         json_t *req = json_object();
         json_array_append_new(reqs, req);
