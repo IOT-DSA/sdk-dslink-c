@@ -124,16 +124,21 @@ void stop_server(uv_signal_t* handle, int signum) {
 
     Broker *broker = handle->loop->data;
     dslink_map_foreach(broker->downstream->children) {
-        RemoteDSLink *link = entry->value->data;
-        while (link->dsId->count > 0) {
-            dslink_decref(link->dsId);
+        DownstreamNode *node = entry->value->data;
+
+        // Ensure the dsId is freed
+        node->dsId->count = 1;
+        dslink_decref(node->dsId);
+        node->dsId = NULL;
+
+        if (node->link) {
+            RemoteDSLink *link = node->link;
+            dslink_socket_close(link->client->sock);
+            uv_close((uv_handle_t *) link->client->poll,
+                     broker_server_free_client);
+            dslink_free(link->client);
+            broker_remote_dslink_free(link);
         }
-        link->dsId = NULL;
-        dslink_socket_close(link->client->sock);
-        uv_close((uv_handle_t *) link->client->poll,
-                 broker_server_free_client);
-        dslink_free(link->client);
-        broker_remote_dslink_free(link);
     }
 
     uv_stop(handle->loop);
