@@ -182,10 +182,9 @@ fail:
 }
 
 int broker_handshake_handle_ws(Broker *broker,
-                               Socket *socket,
+                               Client *client,
                                const char *dsId,
                                const char *auth,
-                               void **socketData,
                                const struct wslay_event_callbacks *cb,
                                const char *wsAccept) {
     ref_t *oldDsId = NULL;
@@ -264,11 +263,11 @@ int broker_handshake_handle_ws(Broker *broker,
         }
     }
 
-    link->socket = socket;
+    link->client = client;
     link->dsId = oldDsId;
     link->node = node;
     node->dsId = oldDsId;
-    *socketData = link;
+    client->sock_data = link;
 
     wslay_event_context_ptr ws;
     if (wslay_event_context_server_init(&ws, cb, link) != 0) {
@@ -276,7 +275,7 @@ int broker_handshake_handle_ws(Broker *broker,
         goto exit;
     }
     link->ws = ws;
-    broker_send_ws_init(socket, wsAccept);
+    broker_send_ws_init(client->sock, wsAccept);
 
     // set the ->link and update all existing stream
     broker_dslink_connect(node, link);

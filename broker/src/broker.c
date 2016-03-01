@@ -33,7 +33,7 @@
 
 static
 void close_link(RemoteDSLink *link) {
-    dslink_socket_close_nofree(link->socket);
+    dslink_socket_close_nofree(link->client->sock);
     log_info("DSLink `%s` has disconnected\n", (char *) link->dsId->data);
     ref_t *ref = dslink_map_get(link->broker->downstream->children, (void *) link->name);
     broker_remote_dslink_free(link);
@@ -67,7 +67,7 @@ ssize_t want_read_cb(wslay_event_context_ptr ctx,
     (void) flags;
 
     RemoteDSLink *link = user_data;
-    int ret = dslink_socket_read(link->socket, (char *) buf, len);
+    int ret = dslink_socket_read(link->client->sock, (char *) buf, len);
     if (ret == 0) {
         link->pendingClose = 1;
         wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
@@ -91,7 +91,7 @@ ssize_t want_write_cb(wslay_event_context_ptr ctx,
     (void) flags;
 
     RemoteDSLink *link = user_data;
-    int written = dslink_socket_write(link->socket, (char *) data, len);
+    int written = dslink_socket_write(link->client->sock, (char *) data, len);
     if (written < 0) {
         if (errno == MBEDTLS_ERR_SSL_WANT_WRITE) {
             wslay_event_set_error(ctx, WSLAY_ERR_WANT_WRITE);
@@ -188,8 +188,7 @@ void broker_send_ws_init(Socket *sock, const char *accept) {
 }
 
 static
-int handle_ws(Broker *broker, HttpRequest *req,
-               Socket *sock, void **socketData) {
+int handle_ws(Broker *broker, HttpRequest *req, Client *client) {
     size_t len = 0;
     const char *key = broker_http_header_get(req->headers,
                                              "Sec-WebSocket-Key", &len);
@@ -217,22 +216,22 @@ int handle_ws(Broker *broker, HttpRequest *req,
             on_ws_data     // wslay_event_on_msg_recv_callback
     };
 
-    if (broker_handshake_handle_ws(broker, sock, dsId,
-                                   auth, socketData, &cb, accept) != 0) {
+    if (broker_handshake_handle_ws(broker, client, dsId,
+                                   auth, &cb, accept) != 0) {
         goto fail;
     }
 
     return 0;
 fail:
-    broker_send_bad_request(sock);
-    dslink_socket_close_nofree(sock);
+    broker_send_bad_request(client->sock);
+    dslink_socket_close_nofree(client->sock);
     return 1;
 }
 
 static
-void on_data_callback(Socket *sock, void *data, void **socketData) {
+void on_data_callback(Client *client, void *data) {
     Broker *broker = data;
-    RemoteDSLink *link = *socketData;
+    RemoteDSLink *link = client->sock_data;
     if (link) {
         link->ws->read_enabled = 1;
         wslay_event_recv(link->ws);
@@ -245,32 +244,32 @@ void on_data_callback(Socket *sock, void *data, void **socketData) {
     HttpRequest req;
     char buf[1024];
     {
-        int read = dslink_socket_read(sock, buf, sizeof(buf) - 1);
+        int read = dslink_socket_read(client->sock, buf, sizeof(buf) - 1);
         buf[read] = '\0';
         broker_http_parse_req(&req, buf);
     }
 
     if (strcmp(req.uri.resource, "/conn") == 0) {
         if (strcmp(req.method, "POST") != 0) {
-            broker_send_bad_request(sock);
+            broker_send_bad_request(client->sock);
             goto exit;
         }
 
-        handle_conn(broker, &req, sock);
+        handle_conn(broker, &req, client->sock);
     } else if (strcmp(req.uri.resource, "/ws") == 0) {
         if (strcmp(req.method, "GET") != 0) {
-            broker_send_bad_request(sock);
+            broker_send_bad_request(client->sock);
             goto exit;
         }
 
-        handle_ws(broker, &req, sock, socketData);
+        handle_ws(broker, &req, client);
         return;
     } else {
-        broker_send_not_found_error(sock);
+        broker_send_not_found_error(client->sock);
     }
 
 exit:
-    dslink_socket_close_nofree(sock);
+    dslink_socket_close_nofree(client->sock);
 }
 
 int broker_start() {

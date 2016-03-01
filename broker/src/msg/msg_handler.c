@@ -108,8 +108,7 @@ void broker_handle_resp(RemoteDSLink *link, json_t *resp) {
                     continue;
                 }
                 uint32_t sid = (uint32_t) json_integer_value(jSid);
-                ref_t *ref = dslink_map_get(&link->sub_sids,
-                                                    &sid);
+                ref_t *ref = dslink_map_get(&link->sub_sids, &sid);
                 if (!ref) {
                     continue;
                 }

@@ -6,15 +6,15 @@ extern "C" {
 #endif
 
 #include "broker/broker.h"
+#include "broker/net/server.h"
 
 json_t *broker_handshake_handle_conn(Broker *broker,
                                      const char *dsId,
                                      json_t *handshake);
 int broker_handshake_handle_ws(Broker *broker,
-                               Socket *socket,
+                               Client *client,
                                const char *dsId,
                                const char *auth,
-                               void **socketData,
                                const struct wslay_event_callbacks *cb,
                                const char *wsAccept);
 

@@ -5,18 +5,8 @@
 #include <dslink/log.h>
 #include <dslink/socket_private.h>
 #include <dslink/mem/mem.h>
-#include <uv.h>
 #include <uv-common.h>
-
-#include "broker/net/server.h"
-
-typedef struct Server Server;
-
-typedef struct Client {
-    Server *server;
-    Socket *sock;
-    void *sock_data;
-} Client;
+#include "broker/broker.h"
 
 struct Server {
     mbedtls_net_context srv;
@@ -37,7 +27,7 @@ void broker_server_client_ready(uv_poll_t *poll,
 
     Client *client = poll->data;
     Server *server = client->server;
-    server->data_ready(client->sock, poll->loop->data, &client->sock_data);
+    server->data_ready(client, poll->loop->data);
     if (client->sock->socket_fd.fd == -1) {
         // The callback closed the connection
         dslink_socket_free(client->sock);
@@ -84,6 +74,7 @@ void broker_server_new_client(uv_poll_t *poll,
     }
 
     clientPoll->data = client;
+    client->poll = clientPoll;
     uv_poll_start(clientPoll, UV_READABLE, broker_server_client_ready);
 
     log_debug("Accepted a client connection\n");
@@ -130,6 +121,21 @@ void stop_server(uv_signal_t* handle, int signum) {
         return;
     }
     log_warn("Received %s, gracefully terminating broker...\n", sig);
+
+    Broker *broker = handle->loop->data;
+    dslink_map_foreach(broker->downstream->children) {
+        RemoteDSLink *link = entry->value->data;
+        while (link->dsId->count > 0) {
+            dslink_decref(link->dsId);
+        }
+        link->dsId = NULL;
+        dslink_socket_close(link->client->sock);
+        uv_close((uv_handle_t *) link->client->poll,
+                 broker_server_free_client);
+        dslink_free(link->client);
+        broker_remote_dslink_free(link);
+    }
+
     uv_stop(handle->loop);
 }
 

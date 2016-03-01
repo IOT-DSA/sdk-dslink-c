@@ -14,6 +14,8 @@ extern "C" {
 #include <dslink/col/listener.h>
 #include <dslink/socket.h>
 
+#include "broker/net/server.h"
+
 typedef struct RemoteAuth {
 
     char salt[48];
@@ -29,7 +31,7 @@ typedef struct RemoteDSLink {
     uint8_t pendingClose;
 
     wslay_event_context_ptr ws;
-    Socket *socket;
+    Client *client;
 
     struct Broker *broker;
     struct DownstreamNode *node;

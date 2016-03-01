@@ -2,7 +2,7 @@
 #include <string.h>
 #include <dslink/utils.h>
 #include <dslink/mem/mem.h>
-#include <broker/msg/msg_list.h>
+#include "broker/msg/msg_list.h"
 
 BrokerListStream *broker_stream_list_init(void *node) {
     BrokerListStream *stream = dslink_calloc(1, sizeof(BrokerListStream));
