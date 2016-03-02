@@ -43,7 +43,6 @@ typedef struct BrokerNode {
     Dispatcher on_value_update;
     Dispatcher on_child_added;
     Dispatcher on_child_removed;
-    Dispatcher on_list_update;
 } BrokerNode;
 
 typedef struct DownstreamNode {

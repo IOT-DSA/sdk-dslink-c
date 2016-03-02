@@ -18,7 +18,7 @@ BrokerNode *broker_node_get(BrokerNode *root,
     }
 
     BrokerNode *node = root;
-    const char *end = strchr(path, '/');
+    char *end = strchr(path, '/');
     if (end) {
         if (!node->children) {
             return NULL;
@@ -29,7 +29,7 @@ BrokerNode *broker_node_get(BrokerNode *root,
         }
         node = ref->data;
         if (node && node->type == DOWNSTREAM_NODE) {
-            *out = (char *) end;
+            *out = end;
             return node;
         }
         return broker_node_get(node, end, out);
@@ -90,7 +90,6 @@ BrokerNode *broker_node_createl(const char *name, size_t nameLen,
     listener_init(&node->on_value_update);
     listener_init(&node->on_child_added);
     listener_init(&node->on_child_removed);
-    listener_init(&node->on_list_update);
 
     json_t *json = json_stringn(profile, profileLen);
     json_object_set_new_nocheck(node->meta, "$is", json);
@@ -176,7 +175,6 @@ void broker_node_free(BrokerNode *node) {
         listener_remove_all(&node->on_value_update);
         listener_remove_all(&node->on_child_added);
         listener_remove_all(&node->on_child_removed);
-        listener_remove_all(&node->on_list_update);
     }
 
     if (node->parent) {
