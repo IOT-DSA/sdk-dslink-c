@@ -65,12 +65,10 @@ int dslink_map_initbf(Map *map,
     return 0;
 }
 
-void dslink_map_free(Map *map) {
-    if (!(map && map->table)) {
-        return;
-    }
+static
+void dslink_map_entry_clear(Map *map) {
     for (MapEntry *entry = (MapEntry *) map->list.head.next;
-            (void *) entry != &map->list.head;) {
+         (void *) entry != &map->list.head;) {
         MapEntry *tmp = entry->next;
         dslink_decref(entry->key);
         dslink_decref(entry->value);
@@ -78,7 +76,24 @@ void dslink_map_free(Map *map) {
         dslink_free(entry);
         entry = tmp;
     }
+}
+
+void dslink_map_free(Map *map) {
+    if (!(map && map->table)) {
+        return;
+    }
+    dslink_map_entry_clear(map);
     dslink_free(map->table);
+}
+
+void dslink_map_clear(Map *map) {
+    if (!(map && map->table && map->size > 0)) {
+        return;
+    }
+    dslink_map_entry_clear(map);
+    list_init(&map->list);
+    memset(map->table, 0, map->capacity * sizeof(void *));
+    map->size = 0;
 }
 
 static

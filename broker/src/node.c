@@ -220,6 +220,23 @@ void broker_dslink_disconnect(DownstreamNode *node) {
         BrokerListStream *stream = entry->value->data;
         broker_stream_list_disconnect(stream);
     }
+
+    dslink_map_foreach(&node->local_subs) {
+        Listener *l = entry->value->data;
+        listener_remove(l);
+        dslink_free(l->data);
+        dslink_free(l);
+    }
+
+    dslink_map_foreach(&node->sub_sids) {
+        BrokerSubStream *stream = entry->value->data;
+        dslink_map_remove(&stream->clients, entry->key->data);
+    }
+
+    dslink_map_clear(&node->local_subs);
+    dslink_map_clear(&node->sub_paths);
+    dslink_map_clear(&node->sub_sids);
+
     node->link = NULL;
 }
 

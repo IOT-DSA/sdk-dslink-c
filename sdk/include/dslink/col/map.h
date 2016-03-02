@@ -10,13 +10,15 @@ extern "C" {
 #include "dslink/mem/ref.h"
 #include "list.h"
 
-#define dslink_map_foreach(map) \
-    for (MapEntry *entry = (map) ? ((MapEntry *) (map)->list.head.next) : NULL; \
-        entry && (void *)entry != &(map)->list.head; entry = entry->next)
+#define dslink_map_foreach(map)                                                 \
+    for (MapEntry *entry = ((uintptr_t) map != (uintptr_t) NULL)                \
+            ? ((MapEntry *) (map)->list.head.next) : NULL;                      \
+        entry && (void *) entry != &(map)->list.head; entry = entry->next)
 
-#define dslink_map_foreach_nonext(map) \
-    for (MapEntry *entry = (map) ? ((MapEntry *) (map)->list.head.next) : NULL; \
-        entry && (void *)entry != &(map)->list.head;)
+#define dslink_map_foreach_nonext(map)                                          \
+    for (MapEntry *entry = ((uintptr_t) map != (uintptr_t) NULL)                \
+            ? ((MapEntry *) (map)->list.head.next) : NULL;                      \
+        entry && (void *) entry != &(map)->list.head;)
 
 typedef int (*dslink_map_key_comparator)(void *key, void *other, size_t len);
 typedef size_t (*dslink_map_key_len_calc)(void *key);
@@ -78,6 +80,7 @@ int dslink_map_initbf(Map *map,
                       dslink_map_key_comparator cmp,
                       dslink_map_key_len_calc calc,
                       size_t buckets, float loadFactor);
+void dslink_map_clear(Map *map);
 void dslink_map_free(Map *map);
 
 int dslink_map_set(Map *map, ref_t *key, ref_t *value);

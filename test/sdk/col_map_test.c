@@ -5,6 +5,35 @@
 #include "cmocka_init.h"
 
 static
+void col_map_clear_test(void **state) {
+    (void) state;
+
+    Map map;
+    assert_true(!dslink_map_init(&map, dslink_map_str_cmp,
+                                 dslink_map_str_key_len_cal));
+
+    assert_true(!dslink_map_set(&map, dslink_str_ref("a"), dslink_str_ref("a")));
+    assert_true(!dslink_map_set(&map, dslink_str_ref("b"), dslink_str_ref("b")));
+    assert_true(!dslink_map_set(&map, dslink_str_ref("c"), dslink_str_ref("c")));
+    assert_int_equal(map.size, 3);
+
+    dslink_map_clear(&map);
+    assert_int_equal(map.size, 0);
+    dslink_map_foreach(&map) {
+        // There shouldn't be any elements
+        assert_false(1);
+    }
+
+    dslink_map_set(&map, dslink_str_ref("1"), dslink_str_ref("2"));
+    dslink_map_foreach(&map) {
+        assert_string_equal("1", entry->key->data);
+        assert_string_equal("2", entry->value->data);
+    }
+
+    dslink_map_free(&map);
+}
+
+static
 void col_map_set_simple_string_test(void **state) {
     (void) state;
     char *inputs[][2] = {
@@ -155,6 +184,7 @@ void col_map_remove_large_uint32_entry_test(void **state) {
 
 int main() {
     const struct CMUnitTest tests[] = {
+        cmocka_unit_test(col_map_clear_test),
         cmocka_unit_test(col_map_set_simple_string_test),
         cmocka_unit_test(col_map_set_large_string_entry_test),
         cmocka_unit_test(col_map_set_simple_uint32_test),
