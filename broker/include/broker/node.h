@@ -51,14 +51,10 @@ typedef struct DownstreamNode {
     BROKER_NODE_FIELDS;
 
     struct RemoteDSLink *link;
+    ref_t *dsId;
 
     // Map<char *, Stream *>
     Map list_streams;
-
-    Dispatcher on_link_connect;
-    Dispatcher on_link_disconnect;
-
-    ref_t *dsId;
 
     // Map<uint32_t *, Listener *>
     Map local_subs;

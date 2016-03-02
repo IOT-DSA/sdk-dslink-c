@@ -18,9 +18,6 @@ DownstreamNode *broker_init_downstream_node(Broker *broker, const char *name) {
         return NULL;
     }
     node->type = DOWNSTREAM_NODE;
-    listener_init(&node->on_link_connect);
-    listener_init(&node->on_link_disconnect);
-
     if (dslink_map_init(&node->sub_sids, dslink_map_uint32_cmp,
                         dslink_map_uint32_key_len_cal) != 0
         || dslink_map_init(&node->sub_paths, dslink_map_str_cmp,

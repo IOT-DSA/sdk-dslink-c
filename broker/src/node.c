@@ -170,8 +170,6 @@ void broker_node_free(BrokerNode *node) {
 
     if (node->type == DOWNSTREAM_NODE) {
         dslink_map_free(&((DownstreamNode *)node)->list_streams);
-        listener_remove_all(&((DownstreamNode *)node)->on_link_connect);
-        listener_remove_all(&((DownstreamNode *)node)->on_link_disconnect);
     } else {
         // TODO: add a new type for these listeners
         // they shouldn't be part of base node type
@@ -224,9 +222,6 @@ void broker_dslink_disconnect(DownstreamNode *node) {
         BrokerListStream *stream = entry->value->data;
         broker_stream_list_disconnect(stream);
     }
-    // notify all listeners of the close event
-    listener_dispatch_message(&node->on_link_disconnect, NULL);
-
     node->link = NULL;
 }
 
@@ -236,6 +231,4 @@ void broker_dslink_connect(DownstreamNode *node, RemoteDSLink *link) {
         BrokerListStream *stream = entry->value->data;
         broker_stream_list_connect(stream, node);
     }
-    // notify all listeners of the close event
-    listener_dispatch_message(&node->on_link_connect, link);
 }
