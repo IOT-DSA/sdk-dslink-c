@@ -137,6 +137,7 @@ void stop_server(uv_signal_t* handle, int signum) {
             uv_close((uv_handle_t *) link->client->poll,
                      broker_server_free_client);
             dslink_free(link->client);
+            link->client = NULL;
             broker_remote_dslink_free(link);
         }
     }

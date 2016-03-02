@@ -8,7 +8,6 @@
 #include <wslay_event.h>
 
 #include "broker/msg/msg_handler.h"
-#include "broker/net/server.h"
 #include "broker/handshake.h"
 #include "broker/config.h"
 #include "broker/data/data.h"
@@ -91,6 +90,11 @@ ssize_t want_write_cb(wslay_event_context_ptr ctx,
     (void) flags;
 
     RemoteDSLink *link = user_data;
+    if (!link->client) {
+        wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
+        return -1;
+    }
+
     int written = dslink_socket_write(link->client->sock, (char *) data, len);
     if (written < 0) {
         if (errno == MBEDTLS_ERR_SSL_WANT_WRITE) {
