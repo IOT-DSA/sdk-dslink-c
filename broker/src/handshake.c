@@ -11,6 +11,60 @@
 #include "broker/msg/msg_list.h"
 #include "broker/handshake.h"
 
+static
+DownstreamNode *broker_init_downstream_node(Broker *broker, const char *name) {
+    DownstreamNode *node = dslink_calloc(1, sizeof(DownstreamNode));
+    if (!node) {
+        return NULL;
+    }
+    node->type = DOWNSTREAM_NODE;
+    listener_init(&node->on_link_connect);
+    listener_init(&node->on_link_disconnect);
+
+    if (dslink_map_init(&node->sub_sids, dslink_map_uint32_cmp,
+                        dslink_map_uint32_key_len_cal) != 0
+        || dslink_map_init(&node->sub_paths, dslink_map_str_cmp,
+                           dslink_map_str_key_len_cal) != 0
+        || dslink_map_init(&node->local_subs, dslink_map_str_cmp,
+                           dslink_map_str_key_len_cal) != 0
+        || dslink_map_init(&node->list_streams, dslink_map_str_cmp,
+                           dslink_map_str_key_len_cal) != 0) {
+        goto fail;
+    }
+
+    node->name = dslink_strdup(name);
+    node->meta = json_object();
+    if (!(node->name
+          && node->meta
+          && json_object_set_new_nocheck(node->meta, "$is",
+                                         json_string_nocheck("node")) == 0)) {
+        goto fail;
+    }
+
+    char *tmpKey = dslink_strdup(name);
+    if (!tmpKey) {
+        goto fail;
+    }
+    if (dslink_map_set(broker->downstream->children,
+                       dslink_ref(tmpKey, dslink_free),
+                       dslink_ref(node, NULL)) != 0) {
+        dslink_free(tmpKey);
+        goto fail;
+    }
+    return node;
+
+fail:
+    dslink_map_free(&node->sub_sids);
+    dslink_map_free(&node->sub_paths);
+    dslink_map_free(&node->local_subs);
+    dslink_map_free(&node->list_streams);
+
+    DSLINK_CHECKED_EXEC(dslink_free, (char *) node->name);
+    json_decref(node->meta);
+    dslink_free(node);
+    return NULL;
+}
+
 json_t *broker_handshake_handle_conn(Broker *broker,
                                      const char *dsId,
                                      json_t *handshake) {
@@ -222,41 +276,21 @@ int broker_handshake_handle_ws(Broker *broker,
     }
 
     DownstreamNode *node = NULL;
-    int nodeCreated = 0;
     { // Handle retrieval of the downstream node
         ref = dslink_map_get(broker->downstream->children,
                                     (char *) link->name);
         if (!ref) {
-            node = dslink_calloc(1, sizeof(DownstreamNode));
+            node = broker_init_downstream_node(broker, link->name);
             if (!node) {
                 ret = 1;
                 goto exit;
             }
-            node->type = DOWNSTREAM_NODE;
-
-            if (dslink_map_init(&node->list_streams, dslink_map_str_cmp,
-                                dslink_map_str_key_len_cal) != 0) {
-                dslink_free(node);
-                ret = 1;
-                goto exit;
-            }
-            listener_init(&node->on_link_connect);
-            listener_init(&node->on_link_disconnect);
-
-            char *tmpKey = dslink_strdup(link->name);
-            if (dslink_map_set(broker->downstream->children,
-                               dslink_ref(tmpKey, dslink_free),
-                               dslink_ref(node, NULL)) != 0) {
-                dslink_free(node);
-                ret = 1;
-                goto exit;
-            }
-
-            node->name = dslink_strdup(link->name);
-            node->meta = json_object();
-            json_object_set_new(node->meta, "$is", json_string("node"));
             oldDsId = dslink_ref(dslink_strdup(dsId), dslink_free);
-            nodeCreated = 1;
+            if (broker->downstream->list_stream) {
+                update_list_child(broker->downstream,
+                                  broker->downstream->list_stream,
+                                  link->name);
+            }
         } else {
             node = ref->data;
             oldDsId = node->dsId;
@@ -279,12 +313,6 @@ int broker_handshake_handle_ws(Broker *broker,
 
     // set the ->link and update all existing stream
     broker_dslink_connect(node, link);
-
-    if (nodeCreated && broker->downstream->list_stream) {
-        // update the downstream node of this child update
-        update_list_child(broker->downstream, broker->downstream->list_stream, link->name);
-    }
-
     log_info("DSLink `%s` has connected\n", dsId);
 exit:
     mbedtls_ecdh_free(&link->auth->tempKey);

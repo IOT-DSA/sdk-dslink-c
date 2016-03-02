@@ -8,7 +8,6 @@ void list_init(List *list) {
     list->head.prev = &list->head;
 }
 
-
 ListNode *dslink_list_insert(List *list, void *data) {
     ListNode *node = dslink_malloc(sizeof(ListNode));
     if (!node) {
@@ -19,4 +18,3 @@ ListNode *dslink_list_insert(List *list, void *data) {
     node->value = data;
     return node;
 }
-

@@ -14,26 +14,6 @@ int broker_remote_dslink_init(RemoteDSLink *link) {
         dslink_map_free(&link->responder_streams);
         return ret;
     }
-    if ((ret = dslink_map_init(&link->sub_sids, dslink_map_uint32_cmp,
-                               dslink_map_uint32_key_len_cal)) != 0) {
-        dslink_map_free(&link->responder_streams);
-        dslink_map_free(&link->requester_streams);
-        return ret;
-    }
-    if ((ret = dslink_map_init(&link->sub_paths, dslink_map_str_cmp,
-                               dslink_map_str_key_len_cal)) != 0) {
-        dslink_map_free(&link->responder_streams);
-        dslink_map_free(&link->requester_streams);
-        dslink_map_free(&link->sub_sids);
-        return ret;
-    }
-    if ((ret = dslink_map_init(&link->local_subs, dslink_map_str_cmp,
-                               dslink_map_str_key_len_cal)) != 0) {
-        dslink_map_free(&link->responder_streams);
-        dslink_map_free(&link->requester_streams);
-        dslink_map_free(&link->sub_sids);
-        dslink_map_free(&link->sub_paths);
-    }
     return ret;
 }
 
@@ -58,10 +38,8 @@ void broker_remote_dslink_free(RemoteDSLink *link) {
         entry->value->data = NULL;
     }
     dslink_map_free(&link->responder_streams);
-    dslink_map_free(&link->local_subs);
-    dslink_map_free(&link->sub_sids);
-    dslink_map_free(&link->sub_paths);
     dslink_free((void *) link->path);
     json_decref(link->linkData);
     wslay_event_context_free(link->ws);
+    link->ws = NULL;
 }

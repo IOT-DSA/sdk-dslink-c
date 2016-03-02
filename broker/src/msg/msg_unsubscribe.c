@@ -6,7 +6,7 @@
 
 static
 void handle_unsubscribe(RemoteDSLink *link, uint32_t sid) {
-    ref_t *ref = dslink_map_remove_get(&link->local_subs, &sid);
+    ref_t *ref = dslink_map_remove_get(&link->node->local_subs, &sid);
     if (ref) {
         Listener *listener = ref->data;
         listener_remove(listener);
@@ -17,7 +17,7 @@ void handle_unsubscribe(RemoteDSLink *link, uint32_t sid) {
         return;
     }
 
-    ref = dslink_map_remove_get(&link->sub_sids, &sid);
+    ref = dslink_map_remove_get(&link->node->sub_sids, &sid);
     if (!ref) {
         return;
     }
@@ -25,8 +25,8 @@ void handle_unsubscribe(RemoteDSLink *link, uint32_t sid) {
     BrokerSubStream *bss = ref->data;
     dslink_map_remove(&bss->clients, &sid);
     if (bss->clients.size == 0) {
-        dslink_map_remove(&bss->responder->sub_paths, bss->remote_path->data);
-        dslink_map_remove(&bss->responder->sub_sids, &bss->responder_sid);
+        dslink_map_remove(&bss->responder->node->sub_paths, bss->remote_path->data);
+        dslink_map_remove(&bss->responder->node->sub_sids, &bss->responder_sid);
 
         json_t *top = json_object();
         json_t *reqs = json_array();

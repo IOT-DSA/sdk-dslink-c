@@ -66,7 +66,7 @@ int dslink_map_initbf(Map *map,
 }
 
 void dslink_map_free(Map *map) {
-    if (!map) {
+    if (!(map && map->table)) {
         return;
     }
     for (MapEntry *entry = (MapEntry *) map->list.head.next;

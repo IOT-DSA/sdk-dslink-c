@@ -72,18 +72,18 @@ void handle_subscribe(RemoteDSLink *link, json_t *sub) {
                                    handle_data_val_update, data);
         handle_data_val_update(l, n);
         ref_t *value = dslink_ref(l, NULL);
-        dslink_map_set(&link->local_subs, key, value);
+        dslink_map_set(&link->node->local_subs, key, value);
         return;
     }
 
     {
-        ref_t *ref = dslink_map_get(&node->link->sub_paths, (void *) path);
+        ref_t *ref = dslink_map_get(&node->link->node->sub_paths, (void *) path);
         if (ref) {
             BrokerSubStream *bss = ref->data;
             ref_t *s = dslink_int_ref(sid);
             dslink_map_set(&bss->clients, s,
                            dslink_ref(link, NULL));
-            dslink_map_set(&link->sub_sids, dslink_incref(s),
+            dslink_map_set(&link->node->sub_sids, dslink_incref(s),
                            dslink_ref(bss, NULL));
 
             if (bss->last_value) {
@@ -137,17 +137,17 @@ void handle_subscribe(RemoteDSLink *link, json_t *sub) {
     {
         ref_t *ref = dslink_int_ref(sid);
         dslink_map_set(&bss->clients, ref, dslink_ref(link, NULL));
-        dslink_map_set(&link->sub_sids, dslink_incref(ref),
+        dslink_map_set(&link->node->sub_sids, dslink_incref(ref),
                        dslink_ref(bss, NULL));
     }
     {
         ref_t *ref = dslink_int_ref(respSid);
-        dslink_map_set(&node->link->sub_sids, ref,
+        dslink_map_set(&node->sub_sids, ref,
                        dslink_ref(bss, NULL));
 
         ref = dslink_ref(dslink_strdup(path), dslink_free);
         bss->remote_path = dslink_incref(ref);
-        dslink_map_set(&node->link->sub_paths, ref,
+        dslink_map_set(&node->sub_paths, ref,
                        dslink_ref(bss, NULL));
     }
 }

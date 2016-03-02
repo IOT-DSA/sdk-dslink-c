@@ -17,6 +17,9 @@ int broker_ws_send_obj(RemoteDSLink *link, json_t *obj) {
 }
 
 int broker_ws_send(RemoteDSLink *link, const char *data) {
+    if (!link->ws) {
+        return -1;
+    }
     struct wslay_event_msg msg;
     msg.msg = (const uint8_t *) data;
     msg.msg_length = strlen(data);

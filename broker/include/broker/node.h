@@ -59,6 +59,16 @@ typedef struct DownstreamNode {
     Dispatcher on_link_disconnect;
 
     ref_t *dsId;
+
+    // Map<uint32_t *, Listener *>
+    Map local_subs;
+
+    // Map<uint32_t *, BrokerSubStream *>
+    Map sub_sids;
+
+    // Map<char *, BrokerSubStream *>
+    Map sub_paths;
+
     uint32_t rid;
     uint32_t sid;
 
