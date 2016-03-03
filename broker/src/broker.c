@@ -31,22 +31,6 @@
                     "Sec-WebSocket-Accept: %s\r\n\r\n"
 
 static
-void close_link(RemoteDSLink *link) {
-    dslink_socket_close_nofree(link->client->sock);
-    log_info("DSLink `%s` has disconnected\n", (char *) link->dsId->data);
-    ref_t *ref = dslink_map_get(link->broker->downstream->children, (void *) link->name);
-    broker_remote_dslink_free(link);
-    // it's possible that free link still rely on node->link to close related streams
-    // so link need to be freed before disconnected from node
-    if (ref) {
-        DownstreamNode *node = ref->data;
-        broker_dslink_disconnect(node);
-    }
-
-    dslink_free(link);
-}
-
-static
 int generate_accept_key(const char *buf, size_t bufLen,
                         char *out, size_t outLen) {
     char data[256];
@@ -185,12 +169,6 @@ exit:
     return;
 }
 
-void broker_send_ws_init(Socket *sock, const char *accept) {
-    char buf[1024];
-    int bLen = snprintf(buf, sizeof(buf), WS_RESP, accept);
-    dslink_socket_write(sock, buf, (size_t) bLen);
-}
-
 static
 int handle_ws(Broker *broker, HttpRequest *req, Client *client) {
     size_t len = 0;
@@ -240,7 +218,7 @@ void on_data_callback(Client *client, void *data) {
         link->ws->read_enabled = 1;
         wslay_event_recv(link->ws);
         if (link->pendingClose) {
-            close_link(link);
+            broker_close_link(link);
         }
         return;
     }
@@ -274,6 +252,27 @@ void on_data_callback(Client *client, void *data) {
 
 exit:
     dslink_socket_close_nofree(client->sock);
+}
+
+void broker_close_link(RemoteDSLink *link) {
+    dslink_socket_close_nofree(link->client->sock);
+    log_info("DSLink `%s` has disconnected\n", (char *) link->dsId->data);
+    ref_t *ref = dslink_map_get(link->broker->downstream->children, (void *) link->name);
+    broker_remote_dslink_free(link);
+    // it's possible that free link still rely on node->link to close related streams
+    // so link need to be freed before disconnected from node
+    if (ref) {
+        DownstreamNode *node = ref->data;
+        broker_dslink_disconnect(node);
+    }
+
+    dslink_free(link);
+}
+
+void broker_send_ws_init(Socket *sock, const char *accept) {
+    char buf[1024];
+    int bLen = snprintf(buf, sizeof(buf), WS_RESP, accept);
+    dslink_socket_write(sock, buf, (size_t) bLen);
 }
 
 int broker_start() {

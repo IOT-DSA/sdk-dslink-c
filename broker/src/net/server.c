@@ -6,17 +6,14 @@
 #include <dslink/socket_private.h>
 #include <dslink/mem/mem.h>
 #include <uv-common.h>
+
+#include "broker/utils.h"
 #include "broker/broker.h"
 
 struct Server {
     mbedtls_net_context srv;
     DataReadyCallback data_ready;
 };
-
-static
-void broker_server_free_client(uv_handle_t *handle) {
-    dslink_free(handle);
-}
 
 static
 void broker_server_client_ready(uv_poll_t *poll,
@@ -32,7 +29,7 @@ void broker_server_client_ready(uv_poll_t *poll,
         // The callback closed the connection
         dslink_socket_free(client->sock);
         dslink_free(client);
-        uv_close((uv_handle_t *) poll, broker_server_free_client);
+        uv_close((uv_handle_t *) poll, broker_free_handle);
     }
 }
 
@@ -135,7 +132,7 @@ void stop_server(uv_signal_t* handle, int signum) {
             RemoteDSLink *link = node->link;
             dslink_socket_close(link->client->sock);
             uv_close((uv_handle_t *) link->client->poll,
-                     broker_server_free_client);
+                     broker_free_handle);
             dslink_free(link->client);
             link->client = NULL;
             broker_remote_dslink_free(link);

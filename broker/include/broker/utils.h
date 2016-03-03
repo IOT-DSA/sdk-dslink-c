@@ -7,6 +7,7 @@ extern "C" {
 
 #include "broker/remote_dslink.h"
 
+void broker_free_handle(uv_handle_t *handle);
 void broker_utils_send_closed_resp(RemoteDSLink *link,
                                    json_t *req);
 
