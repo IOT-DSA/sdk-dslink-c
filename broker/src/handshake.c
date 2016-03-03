@@ -175,16 +175,20 @@ json_t *broker_handshake_handle_conn(Broker *broker,
         // find a valid name from broker->client_names
         memcpy(name, dsId, nameLen);
         while (1) {
-            // TODO: what if it's all conflicted with exiting dslink?
-            // is this error handled already
-
-            if (dslink_map_contains(&broker->client_connecting, name)) {
-                name[nameLen] = dsId[nameLen];
-                nameLen++;
-                continue;
+            ref_t *ref = dslink_map_get(&broker->client_connecting, name);
+            if (ref) {
+                RemoteDSLink *l = ref->data;
+                if (strcmp(l->dsId->data, dsId) == 0) {
+                    dslink_map_remove(&broker->client_connecting, name);
+                    broker_remote_dslink_free(l);
+                    break;
+                } else {
+                    name[nameLen] = dsId[nameLen];
+                    nameLen++;
+                }
             }
-            ref_t *ref = dslink_map_get(broker->downstream->children,
-                                                  (void *) name);
+            ref = dslink_map_get(broker->downstream->children,
+                                 (void *) name);
             if (ref == NULL
                 || strcmp(dsId, ((DownstreamNode *) ref->data)->dsId->data) == 0) {
                 break;
