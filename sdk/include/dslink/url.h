@@ -5,6 +5,8 @@
 extern "C" {
 #endif
 
+#include <stdint.h>
+
 typedef struct Url {
     uint_fast8_t secure;
     unsigned short port;
