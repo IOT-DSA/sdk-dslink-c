@@ -64,7 +64,9 @@ void broker_list_dslink(RemoteDSLink *reqLink,
         send_list_updates(reqLink, stream, reqRid);
         return;
     }
-    send_list_request(NULL, node, reqLink, path, reqRid);
+    if (node->link) {
+        send_list_request(NULL, node, reqLink, path, reqRid);
+    }
 }
 
 static
