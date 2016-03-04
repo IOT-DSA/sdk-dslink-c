@@ -172,7 +172,6 @@ void update_list_child(BrokerNode *node,
     json_object_set_new_nocheck(resp, "stream", json_string("open"));
     json_object_set_new_nocheck(resp, "updates", updates);
 
-
     dslink_map_foreach(&stream->requester_links) {
         json_object_del(resp, "rid");
         json_t *newRid = json_integer(*((uint32_t *) entry->key->data));
@@ -193,10 +192,7 @@ void broker_list_self(RemoteDSLink *reqLink,
     }
 
     uint32_t reqRid = (uint32_t) json_integer_value(rid);
-    dslink_map_set(&node->list_stream->requester_links,
-                   dslink_int_ref(reqRid),
-                   dslink_ref(reqLink, NULL));
-
+    broker_add_requester_list_stream(reqLink, node->list_stream, reqRid);
     send_list_updates(reqLink, node->list_stream, reqRid);
 }
 

@@ -55,17 +55,14 @@ void broker_list_dslink(RemoteDSLink *reqLink,
                         DownstreamNode *node,
                         const char *path,
                         uint32_t reqRid) {
-    // TODO: so much error handling
-    {
-        ref_t *ref = dslink_map_get(&node->list_streams,
-                                                  (char *) path);
-        if (ref) {
-            BrokerListStream *stream = ref->data;
+    ref_t *ref = dslink_map_get(&node->list_streams,
+                                (char *) path);
+    if (ref) {
+        BrokerListStream *stream = ref->data;
 
-            broker_add_requester_list_stream(reqLink, stream, reqRid);
-            send_list_updates(reqLink, stream, reqRid);
-            return;
-        }
+        broker_add_requester_list_stream(reqLink, stream, reqRid);
+        send_list_updates(reqLink, stream, reqRid);
+        return;
     }
     send_list_request(NULL, node, reqLink, path, reqRid);
 }
