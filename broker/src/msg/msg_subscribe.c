@@ -77,7 +77,7 @@ void handle_subscribe(RemoteDSLink *link, json_t *sub) {
     }
 
     {
-        ref_t *ref = dslink_map_get(&node->link->node->sub_paths, (void *) path);
+        ref_t *ref = dslink_map_get(&node->sub_paths, (void *) path);
         if (ref) {
             BrokerSubStream *bss = ref->data;
             ref_t *s = dslink_int_ref(sid);

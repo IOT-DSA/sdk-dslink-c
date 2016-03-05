@@ -4,11 +4,7 @@
 #include "dslink/col/map.h"
 #include "dslink/err.h"
 
-static inline
-uint32_t dslink_map_hash_key(void *key, size_t len);
-
-static inline
-size_t dslink_map_index_of_key(void *key, size_t len, size_t capacity);
+/*************************** Comparators *******************************/
 
 int dslink_map_str_cmp(void *key, void *other, size_t len) {
     return strncmp((char *) key, (char *) other, len);
@@ -28,6 +24,39 @@ int dslink_map_uint32_cmp(void *key, void *other, size_t len) {
 size_t dslink_map_uint32_key_len_cal(void *key) {
     (void) key;
     return sizeof(uint32_t);
+}
+
+int dslink_map_ptr_cmp(void *key, void *other, size_t len) {
+    (void) len;
+    return key != other;
+}
+
+size_t dslink_map_ptr_key_len_cal(void *key) {
+    (void) key;
+    return sizeof(void *);
+}
+
+/***********************************************************************/
+
+static inline
+uint32_t dslink_map_hash_key(void *key, size_t len) {
+    // Jenkins hash algorithm
+    uint32_t hash;
+    char *c = key;
+    for(hash = 0; len-- > 0;) {
+        hash += *c++;
+        hash += (hash << 10);
+        hash ^= (hash >> 6);
+    }
+    hash += (hash << 3);
+    hash ^= (hash >> 11);
+    hash += (hash << 15);
+    return hash;
+}
+
+static inline
+size_t dslink_map_index_of_key(void *key, size_t len, size_t capacity) {
+    return dslink_map_hash_key(key, len) % capacity;
 }
 
 inline
@@ -229,8 +258,7 @@ int dslink_map_set(Map *map, ref_t *key, ref_t *value) {
 }
 
 ref_t *dslink_map_remove_get(Map *map, void *key) {
-    size_t len = map->key_len_calc(key);
-    return dslink_map_removel_get(map, key, len);
+    return dslink_map_removel_get(map, key, map->key_len_calc(key));
 }
 
 ref_t *dslink_map_removel_get(Map *map, void *key, size_t len) {
@@ -265,10 +293,7 @@ ref_t *dslink_map_removel_get(Map *map, void *key, size_t len) {
 }
 
 void dslink_map_remove(Map *map, void *key) {
-    ref_t *ref = dslink_map_remove_get(map, key);
-    if (ref) {
-        dslink_decref(ref);
-    }
+    dslink_map_removel(map, key, map->key_len_calc(key));
 }
 
 void dslink_map_removel(Map *map, void *key, size_t len) {
@@ -279,8 +304,7 @@ void dslink_map_removel(Map *map, void *key, size_t len) {
 }
 
 int dslink_map_contains(Map *map, void *key) {
-    size_t len = map->key_len_calc(key);
-    return dslink_map_containsl(map, key, len);
+    return dslink_map_containsl(map, key, map->key_len_calc(key));
 }
 
 int dslink_map_containsl(Map *map, void *key, size_t len) {
@@ -306,25 +330,4 @@ ref_t *dslink_map_getl(Map *map, void *key, size_t len) {
         }
     }
     return NULL;
-}
-
-static inline
-uint32_t dslink_map_hash_key(void *key, size_t len) {
-    // Jenkins hash algorithm
-    uint32_t hash;
-    char *c = key;
-    for(hash = 0; len-- > 0;) {
-        hash += *c++;
-        hash += (hash << 10);
-        hash ^= (hash >> 6);
-    }
-    hash += (hash << 3);
-    hash ^= (hash >> 11);
-    hash += (hash << 15);
-    return hash;
-}
-
-static inline
-size_t dslink_map_index_of_key(void *key, size_t len, size_t capacity) {
-    return dslink_map_hash_key(key, len) % capacity;
 }
