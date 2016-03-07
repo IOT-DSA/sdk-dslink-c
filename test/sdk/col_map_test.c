@@ -182,22 +182,6 @@ void col_map_remove_large_uint32_entry_test(void **state) {
     dslink_map_free(&map);
 }
 
-static
-void col_map_ptr_cmp_test(void **state) {
-    (void) state;
-    Map map;
-    assert_true(!dslink_map_init(&map, dslink_map_ptr_cmp,
-                                 dslink_map_ptr_key_len_cal));
-
-    void *p = malloc(1);
-    assert_non_null(p);
-    assert_true(!dslink_map_set(&map,
-                                dslink_ref(&p, NULL),
-                                dslink_ref(p, dslink_free)));
-    assert_true(dslink_map_contains(&map, &p));
-    dslink_map_free(&map);
-}
-
 int main() {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(col_map_clear_test),
@@ -205,8 +189,7 @@ int main() {
         cmocka_unit_test(col_map_set_large_string_entry_test),
         cmocka_unit_test(col_map_set_simple_uint32_test),
         cmocka_unit_test(col_map_set_large_uint32_entry_test),
-        cmocka_unit_test(col_map_remove_large_uint32_entry_test),
-        cmocka_unit_test(col_map_ptr_cmp_test)
+        cmocka_unit_test(col_map_remove_large_uint32_entry_test)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

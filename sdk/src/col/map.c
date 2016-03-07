@@ -26,16 +26,6 @@ size_t dslink_map_uint32_key_len_cal(void *key) {
     return sizeof(uint32_t);
 }
 
-int dslink_map_ptr_cmp(void *key, void *other, size_t len) {
-    (void) len;
-    return key != other;
-}
-
-size_t dslink_map_ptr_key_len_cal(void *key) {
-    (void) key;
-    return sizeof(void *);
-}
-
 /***********************************************************************/
 
 static inline

@@ -67,9 +67,6 @@ size_t dslink_map_str_key_len_cal(void *key);
 int dslink_map_uint32_cmp(void *key, void *other, size_t len);
 size_t dslink_map_uint32_key_len_cal(void *key);
 
-int dslink_map_ptr_cmp(void *key, void *other, size_t len);
-size_t dslink_map_ptr_key_len_cal(void *key);
-
 ///
 
 int dslink_map_init(Map *map,
