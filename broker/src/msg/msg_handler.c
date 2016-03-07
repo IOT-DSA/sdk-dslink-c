@@ -21,7 +21,7 @@ int broker_msg_handle_close(RemoteDSLink *link, json_t *req) {
     ref_t *ref = dslink_map_remove_get(&link->requester_streams, &rid);
 
     if (ref) {
-        requester_stream_closed(ref->data, rid);
+        requester_stream_closed(ref->data, link);
         dslink_decref(ref);
     }
     return 0;

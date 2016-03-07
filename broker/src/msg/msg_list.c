@@ -56,9 +56,9 @@ void send_list_updates(RemoteDSLink *reqLink,
     json_decref(top);
 }
 
-int broker_list_req_closed(void *s, uint32_t reqRid) {
+int broker_list_req_closed(void *s, RemoteDSLink *link) {
     BrokerListStream *stream = s;
-    ref_t *ref = dslink_map_remove_get(&stream->requester_links, &reqRid);
+    ref_t *ref = dslink_map_remove_get(&stream->requester_links, link);
     if (ref) {
         dslink_decref(ref);
     }
@@ -81,8 +81,8 @@ int broker_list_req_closed(void *s, uint32_t reqRid) {
 void broker_add_requester_list_stream(RemoteDSLink *reqLink,
                                       BrokerListStream *stream,
                                       uint32_t reqRid) {
-    dslink_map_set(&stream->requester_links, dslink_int_ref(reqRid),
-                   dslink_ref(reqLink, NULL));
+    dslink_map_set(&stream->requester_links, dslink_ref(reqLink, NULL),
+                   dslink_int_ref(reqRid));
     dslink_map_set(&reqLink->requester_streams, dslink_int_ref(reqRid),
                    dslink_ref(stream, NULL));
 }
@@ -174,10 +174,10 @@ void update_list_child(BrokerNode *node,
 
     dslink_map_foreach(&stream->requester_links) {
         json_object_del(resp, "rid");
-        json_t *newRid = json_integer(*((uint32_t *) entry->key->data));
+        json_t *newRid = json_integer(*((uint32_t *) entry->value->data));
         json_object_set_new_nocheck(resp, "rid", newRid);
 
-        RemoteDSLink *client = entry->value->data;
+        RemoteDSLink *client = entry->key->data;
         broker_ws_send_obj(client, top);
     }
     json_decref(top);

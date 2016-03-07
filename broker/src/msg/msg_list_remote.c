@@ -84,10 +84,10 @@ void broker_list_dslink_send_cache(BrokerListStream *stream){
 
     dslink_map_foreach(&stream->requester_links) {
         json_object_del(resp, "rid");
-        json_t *newRid = json_integer(*((uint32_t *) entry->key->data));
+        json_t *newRid = json_integer(*((uint32_t *) entry->value->data));
         json_object_set_new_nocheck(resp, "rid", newRid);
 
-        RemoteDSLink *client = entry->value->data;
+        RemoteDSLink *client = entry->key->data;
         broker_ws_send_obj(client, top);
     }
 
@@ -155,10 +155,10 @@ void broker_list_dslink_response(RemoteDSLink *link, json_t *resp, BrokerListStr
         json_array_append(resps, resp);
         dslink_map_foreach(&stream->requester_links) {
             json_object_del(resp, "rid");
-            json_t *newRid = json_integer(*((uint32_t *) entry->key->data));
+            json_t *newRid = json_integer(*((uint32_t *) entry->value->data));
             json_object_set_new_nocheck(resp, "rid", newRid);
 
-            RemoteDSLink *client = entry->value->data;
+            RemoteDSLink *client = entry->key->data;
             broker_ws_send_obj(client, top);
         }
         json_decref(top);

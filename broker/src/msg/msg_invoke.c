@@ -6,17 +6,17 @@
 #include "broker/stream.h"
 #include "broker/msg/msg_close.h"
 
-int remote_invoke_req_closed(void *s, uint32_t reqId) {
-    (void) reqId;
+int remote_invoke_req_closed(void *s, RemoteDSLink *link) {
+    (void) link;
     BrokerInvokeStream *stream = s;
     broker_send_close_request(stream->responder, stream->responder_rid);
     dslink_map_remove(&stream->responder->responder_streams, &stream->responder_rid);
     return 0;
 }
 
-int remote_invoke_resp_disconnected(void *s, uint32_t respRid) {
+int remote_invoke_resp_disconnected(void *s, RemoteDSLink *link) {
     (void) s;
-    (void) respRid;
+    (void) link;
     // TODO, send a disconnect error to requester, and remove it from request map
     return 0;
 }

@@ -13,7 +13,7 @@ extern "C" {
 
 typedef void (*continuous_invoke_cb)(RemoteDSLink *link, json_t *params);
 typedef void (*invoke_close_cb)(void *stream);
-typedef int (*stream_close_cb)(void *stream, uint32_t reqRid);
+typedef int (*stream_close_cb)(void *stream, RemoteDSLink *link);
 
 #define BROKER_STREAM_FIELDS \
     StreamType type; \
@@ -38,7 +38,7 @@ typedef struct BrokerListStream {
     // JSON object of all the updates
     json_t *updates_cache;
 
-    // Map<uint32_t *, RemoteDSLink *>
+    // Map<RemoteDSLink *, uint32_t *>
     Map requester_links;
 
     uint8_t cache_sent;
@@ -79,8 +79,8 @@ BrokerListStream *broker_stream_list_init(void *node);
 BrokerInvokeStream *broker_stream_invoke_init();
 BrokerSubStream *broker_stream_sub_init();
 
-void requester_stream_closed(BrokerStream *stream, uint32_t rid);
-void responder_stream_closed(BrokerStream * stream, uint32_t rid);
+void requester_stream_closed(BrokerStream *stream, RemoteDSLink *link);
+void responder_stream_closed(BrokerStream * stream, RemoteDSLink *link);
 void broker_stream_free(BrokerStream *stream);
 json_t *broker_stream_list_get_cache(BrokerListStream *stream);
 void broker_stream_list_reset_remote_cache(BrokerListStream *stream, RemoteDSLink *link);

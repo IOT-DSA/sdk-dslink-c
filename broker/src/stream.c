@@ -26,8 +26,8 @@ BrokerListStream *broker_stream_list_init(void *node) {
 
     stream->type = LIST_STREAM;
     stream->req_close_cb = broker_list_req_closed;
-    if (dslink_map_init(&stream->requester_links, dslink_map_uint32_cmp,
-                        dslink_map_uint32_key_len_cal) != 0) {
+    if (dslink_map_init(&stream->requester_links, broker_map_dslink_cmp,
+                        broker_map_dslink_len) != 0) {
         dslink_free(stream);
         return NULL;
     }
@@ -93,16 +93,16 @@ void broker_stream_free(BrokerStream *stream) {
     dslink_free(stream);
 }
 
-void requester_stream_closed(BrokerStream *stream, uint32_t rid) {
+void requester_stream_closed(BrokerStream *stream, RemoteDSLink *link) {
     if (stream->req_close_cb) {
-        stream->req_close_cb(stream, rid);
+        stream->req_close_cb(stream, link);
     }
     broker_stream_free(stream);
 }
 
-void responder_stream_closed(BrokerStream *stream, uint32_t rid) {
+void responder_stream_closed(BrokerStream *stream, RemoteDSLink *link) {
     if (stream->resp_close_cb) {
-        if (stream->resp_close_cb(stream, rid)) {
+        if (stream->resp_close_cb(stream, link)) {
             broker_stream_free(stream);
         }
     }

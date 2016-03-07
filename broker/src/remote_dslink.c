@@ -26,14 +26,14 @@ void broker_remote_dslink_free(RemoteDSLink *link) {
 
     dslink_map_foreach(&link->requester_streams) {
         BrokerStream *stream = entry->value->data;
-        requester_stream_closed(stream, *((uint32_t*)entry->key->data));
+        requester_stream_closed(stream, link);
         entry->value->data = NULL;
     }
     dslink_map_free(&link->requester_streams);
 
     dslink_map_foreach(&link->responder_streams) {
         BrokerStream *stream = entry->value->data;
-        responder_stream_closed(stream, *((uint32_t*)entry->key->data));
+        responder_stream_closed(stream, link);
         // free the node only when resp_close_callback return TRUE
         entry->value->data = NULL;
     }

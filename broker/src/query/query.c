@@ -167,8 +167,8 @@ ParsedQuery *parse_query(const char * query) {
     return pQuery;
 }
 
-int query_destroy(void *s, uint32_t rid) {
-    (void) rid;
+int query_destroy(void *s, RemoteDSLink *link) {
+    (void) link;
     BrokerInvokeStream *stream = s;
     ParsedQuery *pQuery = stream->data;
     dslink_map_free(&pQuery->child_add_listeners);
