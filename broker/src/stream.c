@@ -4,6 +4,20 @@
 #include <dslink/mem/mem.h>
 #include "broker/msg/msg_list.h"
 
+static
+int broker_map_dslink_cmp(void *key, void *other, size_t len) {
+    (void) len;
+    RemoteDSLink *a = key;
+    RemoteDSLink *b = other;
+    return strcmp(a->dsId->data, b->dsId->data);
+}
+
+static
+size_t broker_map_dslink_len(void *key) {
+    RemoteDSLink *a = key;
+    return strlen(a->dsId->data);
+}
+
 BrokerListStream *broker_stream_list_init(void *node) {
     BrokerListStream *stream = dslink_calloc(1, sizeof(BrokerListStream));
     if (!stream) {
@@ -37,8 +51,8 @@ BrokerSubStream *broker_stream_sub_init() {
 
     stream->type = SUBSCRIPTION_STREAM;
 
-    if (dslink_map_init(&stream->clients, dslink_map_uint32_cmp,
-                        dslink_map_uint32_key_len_cal) != 0) {
+    if (dslink_map_init(&stream->clients, broker_map_dslink_cmp,
+                        broker_map_dslink_len) != 0) {
         dslink_free(stream);
         return NULL;
     }

@@ -81,8 +81,7 @@ void handle_subscribe(RemoteDSLink *link, json_t *sub) {
         if (ref) {
             BrokerSubStream *bss = ref->data;
             ref_t *s = dslink_int_ref(sid);
-            dslink_map_set(&bss->clients, s,
-                           dslink_ref(link, NULL));
+            dslink_map_set(&bss->clients, dslink_ref(link, NULL), s);
             dslink_map_set(&link->node->sub_sids, dslink_incref(s),
                            dslink_ref(bss, NULL));
 
@@ -136,7 +135,7 @@ void handle_subscribe(RemoteDSLink *link, json_t *sub) {
     bss->responder_sid = respSid;
     {
         ref_t *ref = dslink_int_ref(sid);
-        dslink_map_set(&bss->clients, ref, dslink_ref(link, NULL));
+        dslink_map_set(&bss->clients, dslink_ref(link, NULL), ref);
         dslink_map_set(&link->node->sub_sids, dslink_incref(ref),
                        dslink_ref(bss, NULL));
     }

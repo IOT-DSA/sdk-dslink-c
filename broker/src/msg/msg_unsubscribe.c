@@ -23,7 +23,7 @@ void handle_unsubscribe(RemoteDSLink *link, uint32_t sid) {
     }
 
     BrokerSubStream *bss = ref->data;
-    dslink_map_remove(&bss->clients, &sid);
+    dslink_map_remove(&bss->clients, link);
     if (bss->clients.size == 0) {
         dslink_map_remove(&bss->responder->node->sub_paths, bss->remote_path->data);
         dslink_map_remove(&bss->responder->node->sub_sids, &bss->responder_sid);

@@ -120,8 +120,8 @@ void broker_handle_resp(RemoteDSLink *link, json_t *resp) {
                 }
                 s->last_value = json_incref(update);
                 dslink_map_foreach(&s->clients) {
-                    uint32_t *reqSid = entry->key->data;
-                    RemoteDSLink *req = entry->value->data;
+                    RemoteDSLink *req = entry->key->data;
+                    uint32_t *reqSid = entry->value->data;
                     json_array_set_new(update, 0, json_integer(*reqSid));
                     broker_ws_send_obj(req, top);
                 }
