@@ -14,6 +14,27 @@
 #include "broker/handshake.h"
 
 static
+int generate_salt(unsigned char *salt, size_t len) {
+    unsigned char buf[32];
+    mbedtls_entropy_context ent;
+    mbedtls_entropy_init(&ent);
+    if (mbedtls_entropy_func(&ent, buf,
+                             sizeof(buf)) != 0) {
+        mbedtls_entropy_free(&ent);
+        return -1;
+    }
+    mbedtls_entropy_free(&ent);
+
+    if (mbedtls_base64_encode(salt,
+                              len, &len,
+                              buf, sizeof(buf)) != 0) {
+        return -1;
+    }
+
+    return 0;
+}
+
+static
 DownstreamNode *broker_init_downstream_node(Broker *broker, const char *name) {
     DownstreamNode *node = dslink_calloc(1, sizeof(DownstreamNode));
     if (!node) {
@@ -123,23 +144,9 @@ json_t *broker_handshake_handle_conn(Broker *broker,
         goto fail;
     }
 
-    {
-        unsigned char buf[32];
-        mbedtls_entropy_context ent;
-        mbedtls_entropy_init(&ent);
-        if (mbedtls_entropy_func(&ent, buf,
-                                 sizeof(buf)) != 0) {
-            mbedtls_entropy_free(&ent);
-            goto fail;
-        }
-        mbedtls_entropy_free(&ent);
-
-        size_t len = 0;
-        if (mbedtls_base64_encode((unsigned char *) link->auth->salt,
-                                  sizeof(link->auth->salt), &len,
-                                  buf, sizeof(buf)) != 0) {
-            goto fail;
-        }
+    if (generate_salt((unsigned char *) link->auth->salt,
+                      sizeof(link->auth->salt)) != 0) {
+        goto fail;
     }
 
     json_object_set_new_nocheck(resp, "wsUri", json_string("/ws"));
