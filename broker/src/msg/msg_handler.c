@@ -131,8 +131,7 @@ void broker_handle_resp(RemoteDSLink *link, json_t *resp) {
         return;
     }
 
-    ref_t *ref = dslink_map_get(&link->responder_streams,
-                                          &rid);
+    ref_t *ref = dslink_map_get(&link->responder_streams, &rid);
     if (!ref) {
         return;
     }

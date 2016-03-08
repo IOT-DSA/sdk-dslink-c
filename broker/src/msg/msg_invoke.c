@@ -6,6 +6,23 @@
 #include "broker/stream.h"
 #include "broker/msg/msg_close.h"
 
+static
+void send_invoke_request(DownstreamNode *node,
+                         json_t *req,
+                         uint32_t rid,
+                         const char *path) {
+    json_t *top = json_object();
+    json_t *reqs = json_array();
+    json_object_set_new_nocheck(top, "requests", reqs);
+    json_array_append(reqs, req);
+
+    json_object_set_new_nocheck(req, "rid", json_integer(rid));
+    json_object_set_new_nocheck(req, "path", json_string(path));
+
+    broker_ws_send_obj(node->link, top);
+    json_decref(top);
+}
+
 int remote_invoke_req_closed(void *s, RemoteDSLink *link) {
     (void) link;
     BrokerInvokeStream *stream = s;
@@ -22,13 +39,13 @@ int remote_invoke_resp_disconnected(void *s, RemoteDSLink *link) {
 }
 
 int broker_msg_handle_invoke(RemoteDSLink *link, json_t *req) {
-    json_t *jRid = json_object_get(req, "rid");
-    json_t *jPath = json_object_get(req, "path");
-    if (!(jRid && jPath)) {
+    json_t *reqRid = json_object_get(req, "rid");
+    json_t *reqPath = json_object_get(req, "path");
+    if (!(reqRid && reqPath)) {
         return 1;
     }
 
-    const char *path = json_string_value(jPath);
+    const char *path = json_string_value(reqPath);
     char *out = NULL;
     BrokerNode *node = broker_node_get(link->broker->root, path, &out);
     if (!node) {
@@ -45,35 +62,28 @@ int broker_msg_handle_invoke(RemoteDSLink *link, json_t *req) {
         return 1;
     }
 
-    json_t *top = json_object();
-    json_t *reqs = json_array();
-    json_object_set_new_nocheck(top, "requests", reqs);
-    json_array_append(reqs, req);
-
     DownstreamNode *ds = (DownstreamNode *) node;
     uint32_t rid = broker_node_incr_rid(ds);
-    {
-        BrokerInvokeStream *s = broker_stream_invoke_init();
 
-        s->responder_rid = rid;
-        s->responder = ds->link;
-        dslink_map_set(&ds->link->responder_streams, dslink_int_ref(rid),
-                       dslink_ref(s, NULL));
-        s->resp_close_cb = remote_invoke_resp_disconnected;
+    BrokerInvokeStream *s = broker_stream_invoke_init();
 
-        s->requester_rid = (uint32_t) json_integer_value(jRid);
-        s->requester = link;
-        dslink_map_set(&ds->link->requester_streams, dslink_int_ref(s->requester_rid),
-                       dslink_ref(s, NULL));
-        s->req_close_cb = remote_invoke_req_closed;
-    }
+    s->responder_rid = rid;
+    s->responder = ds->link;
+    s->resp_close_cb = remote_invoke_resp_disconnected;
 
-    json_t *newRid = json_integer(rid);
-    json_object_set_new_nocheck(req, "rid", newRid);
-    json_object_set_new_nocheck(req, "path", json_string(out));
+    s->requester_rid = (uint32_t) json_integer_value(reqRid);
+    s->requester = link;
+    s->req_close_cb = remote_invoke_req_closed;
 
-    broker_ws_send_obj(ds->link, top);
-    json_decref(top);
+    ref_t *refStream = dslink_ref(s, NULL);
+    dslink_map_set(&ds->link->responder_streams, dslink_int_ref(rid),
+                   refStream);
+
+    dslink_map_set(&link->requester_streams,
+                   dslink_int_ref(s->requester_rid),
+                   dslink_incref(refStream));
+
+    send_invoke_request(ds, req, rid, out);
     return 0;
 }
 
