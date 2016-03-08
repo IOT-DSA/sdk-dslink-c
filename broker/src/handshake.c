@@ -9,6 +9,9 @@
 #include <dslink/utils.h>
 #include <dslink/mem/mem.h>
 
+#include "broker/net/ws_handler.h"
+#include "broker/net/ws.h"
+
 #include "broker/utils.h"
 #include "broker/msg/msg_list.h"
 #include "broker/handshake.h"
@@ -249,8 +252,8 @@ int broker_handshake_handle_ws(Broker *broker,
                                Client *client,
                                const char *dsId,
                                const char *auth,
-                               const struct wslay_event_callbacks *cb,
                                const char *wsAccept) {
+
     ref_t *oldDsId = NULL;
     ref_t *ref = dslink_map_remove_get(&broker->client_connecting,
                                        (char *) dsId);
@@ -323,12 +326,14 @@ int broker_handshake_handle_ws(Broker *broker,
     client->sock_data = link;
 
     wslay_event_context_ptr ws;
-    if (wslay_event_context_server_init(&ws, cb, link) != 0) {
+    if (wslay_event_context_server_init(&ws,
+                                        broker_ws_callbacks(),
+                                        link) != 0) {
         ret = 1;
         goto exit;
     }
     link->ws = ws;
-    broker_send_ws_init(client->sock, wsAccept);
+    broker_ws_send_init(client->sock, wsAccept);
 
     // set the ->link and update all existing stream
     broker_dslink_connect(node, link);

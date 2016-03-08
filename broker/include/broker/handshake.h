@@ -15,7 +15,6 @@ int broker_handshake_handle_ws(Broker *broker,
                                Client *client,
                                const char *dsId,
                                const char *auth,
-                               const struct wslay_event_callbacks *cb,
                                const char *wsAccept);
 
 #ifdef __cplusplus

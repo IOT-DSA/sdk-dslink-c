@@ -25,8 +25,6 @@ typedef struct Broker {
 } Broker;
 
 int broker_start();
-
-void broker_send_ws_init(Socket *sock, const char *accept);
 void broker_close_link(RemoteDSLink *link);
 
 #ifdef __cplusplus

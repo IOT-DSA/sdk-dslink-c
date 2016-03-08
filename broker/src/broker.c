@@ -1,13 +1,7 @@
 #include <string.h>
 
-#include <mbedtls/ssl.h>
-#include <mbedtls/base64.h>
-#include <mbedtls/sha1.h>
-
-#include <wslay/wslay.h>
 #include <wslay_event.h>
 
-#include "broker/msg/msg_handler.h"
 #include "broker/handshake.h"
 #include "broker/config.h"
 #include "broker/data/data.h"
@@ -16,111 +10,12 @@
 #define LOG_TAG "broker"
 #include <dslink/log.h>
 #include <dslink/utils.h>
-#include <dslink/socket_private.h>
-#include <dslink/err.h>
 #include "broker/net/ws.h"
 
 #define CONN_RESP "HTTP/1.1 200 OK\r\n" \
                     "Connection: close\r\n" \
                     "Content-Length: %d\r\n" \
                     "\r\n%s\r\n"
-
-#define WS_RESP "HTTP/1.1 101 Switching Protocols\r\n" \
-                    "Upgrade: websocket\r\n" \
-                    "Connection: Upgrade\r\n" \
-                    "Sec-WebSocket-Accept: %s\r\n\r\n"
-
-static
-int generate_accept_key(const char *buf, size_t bufLen,
-                        char *out, size_t outLen) {
-    char data[256];
-    memset(data, 0, sizeof(data));
-    int len = snprintf(data, sizeof(data), "%.*s%s", (int) bufLen, buf,
-                          "258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
-    unsigned char sha1[20];
-    mbedtls_sha1((unsigned char *) data, (size_t) len, sha1);
-    return mbedtls_base64_encode((unsigned char *) out, outLen,
-                                 &outLen, sha1, sizeof(sha1));
-}
-
-static
-ssize_t want_read_cb(wslay_event_context_ptr ctx,
-                     uint8_t *buf, size_t len,
-                     int flags, void *user_data) {
-    (void) flags;
-
-    RemoteDSLink *link = user_data;
-    int ret = dslink_socket_read(link->client->sock, (char *) buf, len);
-    if (ret == 0) {
-        link->pendingClose = 1;
-        wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
-        return -1;
-    } else if (ret == DSLINK_SOCK_READ_ERR) {
-        if (errno == MBEDTLS_ERR_SSL_WANT_READ) {
-            wslay_event_set_error(ctx, WSLAY_ERR_WOULDBLOCK);
-        } else {
-            wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
-        }
-        return -1;
-    }
-
-    return ret;
-}
-
-static
-ssize_t want_write_cb(wslay_event_context_ptr ctx,
-                      const uint8_t *data, size_t len,
-                      int flags, void *user_data) {
-    (void) flags;
-
-    RemoteDSLink *link = user_data;
-    if (!link->client) {
-        wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
-        return -1;
-    }
-
-    int written = dslink_socket_write(link->client->sock, (char *) data, len);
-    if (written < 0) {
-        if (errno == MBEDTLS_ERR_SSL_WANT_WRITE) {
-            wslay_event_set_error(ctx, WSLAY_ERR_WANT_WRITE);
-        } else {
-            wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
-        }
-        return -1;
-    }
-
-    return written;
-}
-
-static
-void on_ws_data(wslay_event_context_ptr ctx,
-                const struct wslay_event_on_msg_recv_arg *arg,
-                void *user_data) {
-    (void) ctx;
-    RemoteDSLink *link = user_data;
-    if (arg->opcode == WSLAY_TEXT_FRAME) {
-        if (arg->msg_length == 2
-            && arg->msg[0] == '{'
-            && arg->msg[1] == '}') {
-            broker_ws_send(link, "{}");
-            return;
-        }
-
-        json_error_t err;
-        json_t *data = json_loadb((char *) arg->msg,
-                                  arg->msg_length, 0, &err);
-        if (!data) {
-            return;
-        }
-        log_debug("Received data from %s: %.*s\n", (char *) link->dsId->data,
-                  (int) arg->msg_length, arg->msg);
-
-        broker_msg_handle(link, data);
-        json_decref(data);
-    } else if (arg->opcode == WSLAY_CONNECTION_CLOSE) {
-        link->pendingClose = 1;
-    }
-}
 
 static
 void handle_conn(Broker *broker, HttpRequest *req, Socket *sock) {
@@ -178,7 +73,7 @@ int handle_ws(Broker *broker, HttpRequest *req, Client *client) {
         goto fail;
     }
     char accept[64];
-    if (generate_accept_key(key, len, accept, sizeof(accept)) != 0) {
+    if (broker_ws_generate_accept_key(key, len, accept, sizeof(accept)) != 0) {
         goto fail;
     }
 
@@ -188,18 +83,8 @@ int handle_ws(Broker *broker, HttpRequest *req, Client *client) {
         goto fail;
     }
 
-    static const struct wslay_event_callbacks cb = {
-            want_read_cb,  // wslay_event_recv_callback
-            want_write_cb, // wslay_event_send_callback
-            NULL,          // wslay_event_genmask_callback
-            NULL,          // wslay_event_on_frame_recv_start_callback
-            NULL,          // wslay_event_on_frame_recv_chunk_callback
-            NULL,          // wslay_event_on_frame_recv_end_callback
-            on_ws_data     // wslay_event_on_msg_recv_callback
-    };
-
     if (broker_handshake_handle_ws(broker, client, dsId,
-                                   auth, &cb, accept) != 0) {
+                                   auth, accept) != 0) {
         goto fail;
     }
 
@@ -269,10 +154,63 @@ void broker_close_link(RemoteDSLink *link) {
     dslink_free(link);
 }
 
-void broker_send_ws_init(Socket *sock, const char *accept) {
-    char buf[1024];
-    int bLen = snprintf(buf, sizeof(buf), WS_RESP, accept);
-    dslink_socket_write(sock, buf, (size_t) bLen);
+static
+void broker_free(Broker *broker) {
+    broker_node_free(broker->root);
+    dslink_map_free(&broker->client_connecting);
+    memset(broker, 0, sizeof(Broker));
+}
+
+static
+int broker_init(Broker *broker) {
+    memset(broker, 0, sizeof(Broker));
+    broker->root = broker_node_create("", "node");
+    if (!broker->root) {
+        goto fail;
+    }
+    broker->root->path = dslink_strdup("/");
+    json_object_set_new(broker->root->meta, "$downstream",
+                        json_string_nocheck("/downstream"));
+
+    broker->sys = broker_node_create("sys", "static");
+    if (!(broker->sys && broker_node_add(broker->root, broker->sys) == 0
+          && broker_sys_node_populate(broker->sys) == 0)) {
+        broker_node_free(broker->sys);
+        goto fail;
+    }
+
+    broker->data = broker_node_create("data", "node");
+    if (!(broker->data && broker_node_add(broker->root, broker->data) == 0
+          && broker_data_node_populate(broker->data) == 0)) {
+        broker_node_free(broker->data);
+        goto fail;
+    }
+
+    broker->downstream = broker_node_create("downstream", "node");
+    if (!(broker->downstream
+          && broker_node_add(broker->root, broker->downstream) == 0)) {
+        broker_node_free(broker->downstream);
+        goto fail;
+    }
+
+    BrokerNode *node = broker_node_create("defs", "static");
+    if (!(node && json_object_set_new_nocheck(node->meta,
+                                              "$hidden",
+                                              json_true()) == 0
+          && broker_node_add(broker->root, node) == 0)) {
+        broker_node_free(node);
+        goto fail;
+    }
+
+    if (dslink_map_init(&broker->client_connecting, dslink_map_str_cmp,
+                        dslink_map_str_key_len_cal) != 0) {
+        goto fail;
+    }
+
+    return 0;
+fail:
+    broker_free(broker);
+    return 1;
 }
 
 int broker_start() {
@@ -284,96 +222,9 @@ int broker_start() {
     }
 
     Broker broker;
-    memset(&broker, 0, sizeof(Broker));
-    {
-        broker.root = broker_node_create("", "node");
-        if (!broker.root) {
-            ret = 1;
-            goto exit;
-        }
-        broker.root->path = dslink_strdup("/");
-        json_object_set_new(broker.root->meta, "$downstream",
-                            json_string_nocheck("/downstream"));
-
-        {
-            BrokerNode *node = broker_node_create("defs", "static");
-            if (!node) {
-                ret = 1;
-                goto exit;
-            }
-
-            json_object_set_new_nocheck(node->meta, "$hidden", json_true());
-            if (broker_node_add(broker.root, node) != 0) {
-                broker_node_free(node);
-                ret = 1;
-                goto exit;
-            }
-        }
-
-        {
-            BrokerNode *node = broker_node_create("sys", "static");
-            if (!node) {
-                ret = 1;
-                goto exit;
-            }
-
-            if (broker_node_add(broker.root, node) != 0) {
-                broker_node_free(node);
-                ret = 1;
-                goto exit;
-            }
-
-            if (broker_sys_node_populate(node) != 0) {
-                broker_node_free(node);
-                ret = 1;
-                goto exit;
-            }
-
-            broker.sys = node;
-        }
-
-        {
-            BrokerNode *node = broker_node_create("data", "node");
-            if (!node) {
-                ret = 1;
-                goto exit;
-            }
-
-            if (broker_node_add(broker.root, node) != 0) {
-                broker_node_free(node);
-                ret = 1;
-                goto exit;
-            }
-
-            if (broker_data_node_populate(node) != 0) {
-                broker_node_free(node);
-                ret = 1;
-                goto exit;
-            }
-            broker.data = node;
-        }
-
-        {
-            broker.downstream = broker_node_create("downstream", "node");
-            if (!broker.downstream) {
-                ret = 1;
-                goto exit;
-            }
-
-            if (broker_node_add(broker.root, broker.downstream) != 0) {
-                broker_node_free(broker.downstream);
-                broker.downstream = NULL;
-                ret = 1;
-                goto exit;
-            }
-        }
-
-        if (dslink_map_init(&broker.client_connecting,
-                        dslink_map_str_cmp,
-                        dslink_map_str_key_len_cal) != 0) {
-            ret = 1;
-            goto exit;
-        }
+    if (broker_init(&broker) != 0) {
+        ret = 1;
+        goto exit;
     }
 
     {
@@ -393,7 +244,6 @@ int broker_start() {
                               on_data_callback);
 exit:
     json_decref(config);
-    dslink_map_free(&broker.client_connecting);
-    broker_node_free(broker.root);
+    broker_free(&broker);
     return ret;
 }
