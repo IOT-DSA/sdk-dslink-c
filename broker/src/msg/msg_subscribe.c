@@ -32,7 +32,6 @@ void send_subscribe_request(DownstreamNode *node,
 
 static
 int handle_data_val_update(Listener *listener, void *data) {
-    (void) listener;
     json_t *top = json_object();
     json_t *resps = json_array();
     json_object_set_new_nocheck(top, "responses", resps);
@@ -72,6 +71,77 @@ int handle_data_val_update(Listener *listener, void *data) {
 }
 
 static
+void handle_local_subscribe(BrokerNode *node, RemoteDSLink *link, uint32_t sid) {
+    ref_t *key = dslink_int_ref(sid);
+    void **data = malloc(sizeof(void *) * 2);
+    data[0] = key->data;
+    data[1] = link;
+
+    Listener *l = listener_add(&node->on_value_update,
+                               handle_data_val_update, data);
+    handle_data_val_update(l, node);
+    ref_t *value = dslink_ref(l, NULL);
+    dslink_map_set(&link->node->local_subs, key, value);
+}
+
+static
+void handle_remote_subscribe(DownstreamNode *node, RemoteDSLink *link,
+                             uint32_t sid, const char *path,
+                             const char *respPath) {
+    ref_t *ref = dslink_map_get(&node->sub_paths, (void *) path);
+    if (ref) {
+        BrokerSubStream *bss = ref->data;
+        ref_t *s = dslink_int_ref(sid);
+        dslink_map_set(&bss->clients, dslink_ref(link, NULL), s);
+        dslink_map_set(&link->node->sub_sids, dslink_incref(s),
+                       dslink_incref(ref));
+
+        if (bss->last_value) {
+            json_t *top = json_object();
+            json_t *resps = json_array();
+            json_object_set_new_nocheck(top, "responses", resps);
+            json_t *newResp = json_object();
+            json_array_append_new(resps, newResp);
+            json_object_set_new_nocheck(newResp, "rid", json_integer(0));
+
+            json_t *updates = json_array();
+            json_object_set_new_nocheck(newResp, "updates", updates);
+
+            json_t *update = json_array();
+            json_array_set_new(update, 0, json_integer(sid));
+            json_array_append(update, bss->last_value);
+            json_array_append_new(updates, update);
+
+            broker_ws_send_obj(link, top);
+            json_decref(top);
+        }
+        return;
+    }
+
+    uint32_t respSid = broker_node_incr_sid(node);
+    send_subscribe_request(node, respPath, respSid);
+    BrokerSubStream *bss = broker_stream_sub_init();
+    bss->responder = node->link;
+    bss->responder_sid = respSid;
+    ref_t *bssRef = dslink_ref(bss, NULL);
+    {
+        ref = dslink_int_ref(sid);
+        dslink_map_set(&bss->clients, dslink_ref(link, NULL), ref);
+        dslink_map_set(&link->node->sub_sids, dslink_incref(ref), bssRef);
+    }
+    {
+        ref = dslink_int_ref(respSid);
+        dslink_map_set(&node->sub_sids, ref,
+                       dslink_incref(bssRef));
+
+        ref = dslink_ref(dslink_strdup(path), dslink_free);
+        bss->remote_path = dslink_incref(ref);
+        dslink_map_set(&node->sub_paths, ref,
+                       dslink_incref(bssRef));
+    }
+}
+
+static
 void handle_subscribe(RemoteDSLink *link, json_t *sub) {
     const char *path = json_string_value(json_object_get(sub, "path"));
     uint32_t sid = (uint32_t) json_integer_value(json_object_get(sub, "sid"));
@@ -85,74 +155,11 @@ void handle_subscribe(RemoteDSLink *link, json_t *sub) {
     if (!node) {
         return;
     }
-    if (node->type != DOWNSTREAM_NODE) {
-        BrokerNode *n = (BrokerNode *) node;
-        ref_t *key = dslink_int_ref(sid);
 
-        void **data = malloc(sizeof(void *) * 2);
-        data[0] = key->data;
-        data[1] = link;
-
-        Listener *l = listener_add(&n->on_value_update,
-                                   handle_data_val_update, data);
-        handle_data_val_update(l, n);
-        ref_t *value = dslink_ref(l, NULL);
-        dslink_map_set(&link->node->local_subs, key, value);
-        return;
-    }
-
-    {
-        ref_t *ref = dslink_map_get(&node->sub_paths, (void *) path);
-        if (ref) {
-            BrokerSubStream *bss = ref->data;
-            ref_t *s = dslink_int_ref(sid);
-            dslink_map_set(&bss->clients, dslink_ref(link, NULL), s);
-            dslink_map_set(&link->node->sub_sids, dslink_incref(s),
-                           dslink_incref(ref));
-
-            if (bss->last_value) {
-                json_t *top = json_object();
-                json_t *resps = json_array();
-                json_object_set_new_nocheck(top, "responses", resps);
-                json_t *newResp = json_object();
-                json_array_append_new(resps, newResp);
-                json_object_set_new_nocheck(newResp, "rid", json_integer(0));
-
-                json_t *updates = json_array();
-                json_object_set_new_nocheck(newResp, "updates", updates);
-
-                json_t *update = json_array();
-                json_array_set_new(update, 0, json_integer(sid));
-                json_array_append(update, bss->last_value);
-                json_array_append_new(updates, update);
-
-                broker_ws_send_obj(link, top);
-                json_decref(top);
-            }
-            return;
-        }
-    }
-
-    uint32_t respSid = broker_node_incr_sid(node);
-    send_subscribe_request(node, out, respSid);
-    BrokerSubStream *bss = broker_stream_sub_init();
-    bss->responder = node->link;
-    bss->responder_sid = respSid;
-    ref_t *bssRef = dslink_ref(bss, NULL);
-    {
-        ref_t *ref = dslink_int_ref(sid);
-        dslink_map_set(&bss->clients, dslink_ref(link, NULL), ref);
-        dslink_map_set(&link->node->sub_sids, dslink_incref(ref), bssRef);
-    }
-    {
-        ref_t *ref = dslink_int_ref(respSid);
-        dslink_map_set(&node->sub_sids, ref,
-                       dslink_incref(bssRef));
-
-        ref = dslink_ref(dslink_strdup(path), dslink_free);
-        bss->remote_path = dslink_incref(ref);
-        dslink_map_set(&node->sub_paths, ref,
-                       dslink_incref(bssRef));
+    if (node->type == REGULAR_NODE) {
+        handle_local_subscribe((BrokerNode *) node, link, sid);
+    } else {
+        handle_remote_subscribe(node, link, sid, path, out);
     }
 }
 
