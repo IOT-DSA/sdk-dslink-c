@@ -2,6 +2,7 @@
 #include <string.h>
 #include <dslink/utils.h>
 #include <dslink/mem/mem.h>
+#include "broker/msg/msg_unsubscribe.h"
 #include "broker/msg/msg_list.h"
 
 static
@@ -70,7 +71,7 @@ BrokerInvokeStream *broker_stream_invoke_init() {
     return stream;
 }
 
-void broker_stream_free(BrokerStream *stream) {
+void broker_stream_free(BrokerStream *stream, RemoteDSLink *link) {
     if (!stream) {
         return;
     }
@@ -85,10 +86,19 @@ void broker_stream_free(BrokerStream *stream) {
         dslink_free(s->remote_path);
         json_decref(s->updates_cache);
     } else if (stream->type == SUBSCRIPTION_STREAM) {
-        BrokerSubStream *s = (BrokerSubStream *) stream;
-        dslink_map_free(&s->clients);
-        dslink_decref(s->remote_path);
-        json_decref(s->last_value);
+        BrokerSubStream *bss = (BrokerSubStream *) stream;
+        dslink_map_remove(&bss->clients, link);
+        if (bss->clients.size > 0) {
+            return;
+        }
+
+        dslink_map_remove(&bss->responder->node->sub_paths, bss->remote_path->data);
+        dslink_map_remove(&bss->responder->node->sub_sids, &bss->responder_sid);
+        broker_msg_send_unsubscribe(bss, link);
+
+        dslink_map_free(&bss->clients);
+        dslink_decref(bss->remote_path);
+        json_decref(bss->last_value);
     }
     dslink_free(stream);
 }
@@ -97,13 +107,13 @@ void requester_stream_closed(BrokerStream *stream, RemoteDSLink *link) {
     if (stream->req_close_cb) {
         stream->req_close_cb(stream, link);
     }
-    broker_stream_free(stream);
+    broker_stream_free(stream, link);
 }
 
 void responder_stream_closed(BrokerStream *stream, RemoteDSLink *link) {
     if (stream->resp_close_cb) {
         if (stream->resp_close_cb(stream, link)) {
-            broker_stream_free(stream);
+            broker_stream_free(stream, link);
         }
     }
 }

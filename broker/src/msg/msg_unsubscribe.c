@@ -1,8 +1,32 @@
+#include "broker/net/ws.h"
 #include "broker/node.h"
 #include "broker/utils.h"
 #include "broker/stream.h"
-#include "broker/net/ws.h"
 #include "broker/msg/msg_unsubscribe.h"
+
+void broker_msg_send_unsubscribe(BrokerSubStream *bss, RemoteDSLink *link) {
+    json_t *top = json_object();
+    json_t *reqs = json_array();
+    json_object_set_new_nocheck(top, "requests", reqs);
+
+    json_t *req = json_object();
+    json_array_append_new(reqs, req);
+    json_object_set_new_nocheck(req, "method",
+                                json_string_nocheck("unsubscribe"));
+
+    uint32_t rid = broker_node_incr_rid(link->node);
+    json_object_set_new_nocheck(req, "rid",
+                                json_integer(rid));
+
+    {
+        json_t *sids = json_array();
+        json_array_append_new(sids, json_integer(bss->responder_sid));
+        json_object_set_new_nocheck(req, "sids", sids);
+    }
+
+    broker_ws_send_obj(bss->responder, top);
+    json_decref(top);
+}
 
 static
 void handle_unsubscribe(RemoteDSLink *link, uint32_t sid) {
@@ -23,36 +47,7 @@ void handle_unsubscribe(RemoteDSLink *link, uint32_t sid) {
     }
 
     BrokerSubStream *bss = ref->data;
-    dslink_map_remove(&bss->clients, link);
-    if (bss->clients.size == 0) {
-        dslink_map_remove(&bss->responder->node->sub_paths, bss->remote_path->data);
-        dslink_map_remove(&bss->responder->node->sub_sids, &bss->responder_sid);
-
-        json_t *top = json_object();
-        json_t *reqs = json_array();
-        json_object_set_new_nocheck(top, "requests", reqs);
-
-        json_t *req = json_object();
-        json_array_append_new(reqs, req);
-        json_object_set_new_nocheck(req, "method",
-                                    json_string_nocheck("unsubscribe"));
-
-        uint32_t rid = broker_node_incr_rid(link->node);
-        json_object_set_new_nocheck(req, "rid",
-                                    json_integer(rid));
-
-        {
-            json_t *sids = json_array();
-            json_array_append_new(sids, json_integer(bss->responder_sid));
-            json_object_set_new_nocheck(req, "sids", sids);
-        }
-
-        broker_ws_send_obj(bss->responder, top);
-        json_decref(top);
-
-        broker_stream_free((BrokerStream *) bss);
-    }
-
+    broker_stream_free((BrokerStream *) bss, link);
     dslink_decref(ref);
 }
 
@@ -71,4 +66,3 @@ int broker_msg_handle_unsubscribe(RemoteDSLink *link, json_t *req) {
 
     return 0;
 }
-

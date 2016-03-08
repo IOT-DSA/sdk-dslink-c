@@ -156,7 +156,7 @@ void broker_handle_resp(RemoteDSLink *link, json_t *resp) {
         if (json_is_string(jStreamStat)) {
             const char *streamStat = json_string_value(jStreamStat);
             if (strcmp(streamStat, "closed") == 0) {
-                broker_stream_free(stream);
+                broker_stream_free(stream, link);
             }
         }
     }
