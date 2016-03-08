@@ -144,8 +144,8 @@ void handle_remote_subscribe(DownstreamNode *node, RemoteDSLink *link,
 static
 void handle_subscribe(RemoteDSLink *link, json_t *sub) {
     const char *path = json_string_value(json_object_get(sub, "path"));
-    uint32_t sid = (uint32_t) json_integer_value(json_object_get(sub, "sid"));
-    if (!(path && sid)) {
+    json_t *jSid = json_object_get(sub, "sid");
+    if (!(path && jSid)) {
         return;
     }
 
@@ -156,6 +156,7 @@ void handle_subscribe(RemoteDSLink *link, json_t *sub) {
         return;
     }
 
+    uint32_t sid = (uint32_t) json_integer_value(jSid);
     if (node->type == REGULAR_NODE) {
         handle_local_subscribe((BrokerNode *) node, link, sid);
     } else {
