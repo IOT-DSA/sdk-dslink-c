@@ -31,6 +31,7 @@ json_t *broker_config_gen() {
     }
 
     json_object_set_new_nocheck(server, "log_level", json_string("info"));
+    json_object_set_new_nocheck(server, "allowAllLinks", json_true());
 
     if (json_dump_file(server, BROKER_CONF_LOC,
                        JSON_PRESERVE_ORDER | JSON_INDENT(2)) != 0) {
@@ -63,4 +64,31 @@ json_t *broker_config_get() {
     }
     log_info("Broker configuration loaded\n");
     return config;
+}
+
+
+uint8_t broker_enable_token = 1;
+
+int broker_config_load(json_t* json) {
+    // load log level
+    json_t *jsonLog = json_object_get(json, "log_level");
+    if (json_is_string(jsonLog)) {
+        const char *str = json_string_value(jsonLog);
+        if (dslink_log_set_lvl(str) != 0) {
+            log_warn("Invalid log level in the broker configuration\n");
+        }
+    } else {
+        log_warn("Missing `log_level` from the broker configuration\n");
+    }
+
+    // load allowAllLinks (use token or not)
+    json_t* allowAllLinks = json_object_get(json, "allowAllLinks");
+    if (json_is_false(allowAllLinks)) {
+        broker_enable_token = 0;
+    } else {
+        // true by default
+        broker_enable_token = 1;
+    }
+
+    return 0;
 }

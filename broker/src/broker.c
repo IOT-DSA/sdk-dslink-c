@@ -227,18 +227,9 @@ int broker_start() {
         goto exit;
     }
 
-    {
-        json_t *jsonLog = json_object_get(config, "log_level");
-        if (jsonLog) {
-            const char *str = json_string_value(jsonLog);
-            if ((ret = dslink_log_set_lvl(str)) != 0) {
-                log_fatal("Invalid log level in the broker configuration\n");
-                goto exit;
-            }
-        } else {
-            log_warn("Missing `log_level` from the broker configuration\n");
-        }
-    }
+
+    broker_config_load(config);
+
 
     ret = broker_start_server(config, &broker,
                               on_data_callback);
