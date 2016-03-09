@@ -36,7 +36,7 @@ exit:
 static
 void on_delete_node_invoked(RemoteDSLink *link,
                             BrokerNode *node, json_t *req) {
-    broker_utils_send_closed_resp(link, req);
+    broker_utils_send_closed_resp(link, req, NULL);
     node = node->parent;
     if (node->list_stream->updates_cache) {
         json_object_del(node->list_stream->updates_cache, node->name);
@@ -81,7 +81,7 @@ void on_delete_node_invoked(RemoteDSLink *link,
 static
 void on_add_node_invoked(RemoteDSLink *link,
                          BrokerNode *node, json_t *req) {
-    broker_utils_send_closed_resp(link, req);
+    broker_utils_send_closed_resp(link, req, NULL);
 
     json_t *params = json_object_get(req, "params");
     if (!json_is_object(params)) {
@@ -113,7 +113,7 @@ void on_add_node_invoked(RemoteDSLink *link,
 static
 void on_add_value_invoked(RemoteDSLink *link,
                          BrokerNode *node, json_t *req) {
-    broker_utils_send_closed_resp(link, req);
+    broker_utils_send_closed_resp(link, req, NULL);
 
     json_t *params = json_object_get(req, "params");
     if (!json_is_object(params)) {

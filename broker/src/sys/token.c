@@ -3,6 +3,7 @@
 //
 
 #include <broker/sys/token.h>
+#include <broker/utils.h>
 #include "broker/msg/msg_invoke.h"
 
 static
@@ -14,11 +15,36 @@ int load_tokens(BrokerNode *tokenRootNode){
 static
 void add_token_invoke(RemoteDSLink *link,
                   BrokerNode *node,
-                  json_t *request) {
-    (void)(link);
-    (void)(node);
-    (void)(request);
+                  json_t *req) {
 
+    json_t *params = json_object_get(req, "params");
+    if (!json_is_object(params)) {
+        broker_utils_send_closed_resp(link, req, "invalidParameter");
+        return;
+    }
+    node = node->parent;
+
+//
+//    node = node->parent;
+//    const char *name = json_string_value(json_object_get(params, "Name"));
+//    if (!name || dslink_map_contains(node->children, (void *) name)) {
+//        return;
+//    }
+//
+//    BrokerNode *child = broker_node_create(name, "node");
+//    if (!child) {
+//        return;
+//    }
+//
+//    json_object_set_new_nocheck(child->meta, "$type",
+//                                json_string_nocheck("dynamic"));
+//    json_object_set_new_nocheck(child->meta, "$writable",
+//                                json_string_nocheck("write"));
+//
+//    if (broker_node_add(node, child) != 0) {
+//        broker_node_free(child);
+//        return;
+//    }
 }
 
 int init_tokens(BrokerNode *sysNode) {

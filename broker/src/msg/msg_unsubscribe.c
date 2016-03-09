@@ -52,7 +52,7 @@ void handle_unsubscribe(RemoteDSLink *link, uint32_t sid) {
 }
 
 int broker_msg_handle_unsubscribe(RemoteDSLink *link, json_t *req) {
-    broker_utils_send_closed_resp(link, req);
+    broker_utils_send_closed_resp(link, req, NULL);
 
     json_t *sids = json_object_get(req, "sids");
     if (sids) {

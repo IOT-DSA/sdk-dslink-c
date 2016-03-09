@@ -9,7 +9,7 @@ extern "C" {
 
 void broker_free_handle(uv_handle_t *handle);
 void broker_utils_send_closed_resp(RemoteDSLink *link,
-                                   json_t *req);
+                                   json_t *req, const char* errorType);
 
 #ifdef __cplusplus
 }

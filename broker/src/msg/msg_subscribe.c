@@ -165,7 +165,7 @@ void handle_subscribe(RemoteDSLink *link, json_t *sub) {
 }
 
 int broker_msg_handle_subscribe(RemoteDSLink *link, json_t *req) {
-    broker_utils_send_closed_resp(link, req);
+    broker_utils_send_closed_resp(link, req, NULL);
 
     json_t *paths = json_object_get(req, "paths");
     if (!json_is_array(paths)) {
