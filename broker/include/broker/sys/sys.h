@@ -8,7 +8,7 @@ extern "C" {
 
 #include "broker/node.h"
 
-int broker_sys_node_populate(BrokerNode *dataNode);
+int broker_sys_node_populate(BrokerNode *sysNode);
 
 #ifdef __cplusplus
 }
