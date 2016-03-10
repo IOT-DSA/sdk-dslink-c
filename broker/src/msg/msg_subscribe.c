@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include <dslink/utils.h>
 #include <dslink/col/list.h>
 
