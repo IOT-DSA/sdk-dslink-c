@@ -1,6 +1,5 @@
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 
 #include <jansson.h>
 
@@ -269,17 +268,14 @@ void broker_dslink_connect(DownstreamNode *dsn, RemoteDSLink *link) {
     if (ref) {
         List *subs = ref->data;
 
+        size_t len = strlen(link->path);
         dslink_list_foreach(subs) {
             PendingSub *sub = ((ListNode *) node)->value;
             if (!sub->req->link) {
                 continue;
             }
 
-            // TODO: optimize
-            char *out = NULL;
-            broker_node_get(link->broker->root, sub->path, &out);
-            assert(out);
-
+            const char *out = sub->path + len;
             broker_subscribe_remote(dsn, sub->req->link,
                                     sub->reqSid, sub->path, out);
         }
