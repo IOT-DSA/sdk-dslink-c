@@ -1,9 +1,29 @@
 #include <dslink/utils.h>
+#include <dslink/col/list.h>
+
 #include "broker/utils.h"
 #include "broker/stream.h"
 #include "broker/net/ws.h"
 #include "broker/broker.h"
 #include "broker/msg/msg_subscribe.h"
+
+static
+void subs_list_free(void *p) {
+    List *subs = p;
+    dslink_list_foreach_nonext(subs) {
+        ListNode *entry = (ListNode *) node;
+
+        PendingSub *sub = entry->value;
+        dslink_free((char *) sub->path);
+        dslink_free(sub);
+        node = node->next;
+        if ((intptr_t) node != (intptr_t) subs) {
+            dslink_free(node);
+        }
+    }
+
+    dslink_free(subs);
+}
 
 static
 void send_subscribe_request(DownstreamNode *node,
@@ -84,8 +104,7 @@ void handle_local_subscribe(BrokerNode *node, RemoteDSLink *link, uint32_t sid) 
     dslink_map_set(&link->node->local_subs, key, value);
 }
 
-static
-void handle_remote_subscribe(DownstreamNode *node, RemoteDSLink *link,
+void broker_subscribe_remote(DownstreamNode *node, RemoteDSLink *link,
                              uint32_t sid, const char *path,
                              const char *respPath) {
     ref_t *ref = dslink_map_get(&node->sub_paths, (void *) path);
@@ -141,6 +160,36 @@ void handle_remote_subscribe(DownstreamNode *node, RemoteDSLink *link,
     }
 }
 
+void broker_subscribe_disconnected_remote(RemoteDSLink *link,
+                                          const char *path,
+                                          uint32_t sid) {
+    const char *name = path + sizeof("/downstream");
+    const char *end = strchr(name, '/');
+    if (!end) {
+        return;
+    }
+
+    const size_t len = end - name;
+    ref_t *ref = dslink_map_getl(&link->broker->remote_pending_sub,
+                                 (char *) name, len);
+    List *subs;
+    if (ref) {
+        subs = ref->data;
+    } else {
+        subs = dslink_calloc(1, sizeof(List));
+        list_init(subs);
+        dslink_map_set(&link->broker->remote_pending_sub,
+                       dslink_strl_ref(name, len),
+                       dslink_ref(subs, subs_list_free));
+    }
+
+    PendingSub *ps = dslink_malloc(sizeof(PendingSub));
+    ps->path = dslink_strdup(path);
+    ps->reqSid = sid;
+    ps->req = link->node;
+    dslink_list_insert(subs, ps);
+}
+
 static
 void handle_subscribe(RemoteDSLink *link, json_t *sub) {
     const char *path = json_string_value(json_object_get(sub, "path"));
@@ -153,6 +202,12 @@ void handle_subscribe(RemoteDSLink *link, json_t *sub) {
     DownstreamNode *node = (DownstreamNode *) broker_node_get(link->broker->root,
                                                               path, &out);
     if (!node) {
+        if (dslink_str_starts_with(path, "/downstream/")) {
+            uint32_t s = (uint32_t) json_integer_value(jSid);
+            broker_subscribe_disconnected_remote(link, path, s);
+        } else {
+            // TODO: add local pending sub to broker instance
+        }
         return;
     }
 
@@ -160,7 +215,7 @@ void handle_subscribe(RemoteDSLink *link, json_t *sub) {
     if (node->type == REGULAR_NODE) {
         handle_local_subscribe((BrokerNode *) node, link, sid);
     } else {
-        handle_remote_subscribe(node, link, sid, path, out);
+        broker_subscribe_remote(node, link, sid, path, out);
     }
 }
 

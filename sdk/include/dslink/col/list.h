@@ -12,6 +12,9 @@ extern "C" {
 #define dslink_list_foreach(list) \
     for (ListNodeBase *node = (list)->head.next; node != &(list)->head; node = node->next)
 
+#define dslink_list_foreach_nonext(list) \
+    for (ListNodeBase *node = (list)->head.next; node != &(list)->head;)
+
 typedef struct ListNodeBase {
     struct ListNodeBase *prev;
     struct ListNodeBase *next;

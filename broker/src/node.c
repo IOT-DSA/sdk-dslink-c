@@ -1,10 +1,15 @@
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
+
 #include <jansson.h>
+
 #include <dslink/mem/mem.h>
 #include <dslink/utils.h>
+
+#include "broker/broker.h"
+#include "broker/msg/msg_subscribe.h"
 #include "broker/stream.h"
-#include "broker/node.h"
 #include "broker/msg/msg_list.h"
 
 BrokerNode *broker_node_get(BrokerNode *root,
@@ -230,6 +235,18 @@ void broker_dslink_disconnect(DownstreamNode *node) {
 
     dslink_map_foreach(&node->sub_sids) {
         BrokerSubStream *stream = entry->value->data;
+
+        if (stream->responder == node->link) {
+            // This link is the responder that's being disconnected
+            dslink_map_foreach(&stream->clients) {
+                RemoteDSLink *link = entry->key->data;
+                uint32_t *sid = entry->value->data;
+                broker_subscribe_disconnected_remote(link,
+                                                     stream->remote_path->data,
+                                                     *sid);
+            }
+        }
+
         dslink_map_remove(&stream->clients, node->link);
     }
 
@@ -240,10 +257,33 @@ void broker_dslink_disconnect(DownstreamNode *node) {
     node->link = NULL;
 }
 
-void broker_dslink_connect(DownstreamNode *node, RemoteDSLink *link) {
-    node->link = link;
-    dslink_map_foreach(&node->list_streams) {
+void broker_dslink_connect(DownstreamNode *dsn, RemoteDSLink *link) {
+    dsn->link = link;
+    dslink_map_foreach(&dsn->list_streams) {
         BrokerListStream *stream = entry->value->data;
-        broker_stream_list_connect(stream, node);
+        broker_stream_list_connect(stream, dsn);
+    }
+
+    ref_t *ref = dslink_map_remove_get(&link->broker->remote_pending_sub,
+                                       (char *) dsn->name);
+    if (ref) {
+        List *subs = ref->data;
+
+        dslink_list_foreach(subs) {
+            PendingSub *sub = ((ListNode *) node)->value;
+            if (!sub->req->link) {
+                continue;
+            }
+
+            // TODO: optimize
+            char *out = NULL;
+            broker_node_get(link->broker->root, sub->path, &out);
+            assert(out);
+
+            broker_subscribe_remote(dsn, sub->req->link,
+                                    sub->reqSid, sub->path, out);
+        }
+
+        dslink_decref(ref);
     }
 }

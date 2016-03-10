@@ -20,6 +20,10 @@ ref_t *dslink_str_ref(const char *data) {
     return dslink_ref(dslink_strdup(data), dslink_free);
 }
 
+ref_t *dslink_strl_ref(const char *data, size_t len) {
+    return dslink_ref(dslink_strdupl(data, len), dslink_free);
+}
+
 ref_t *dslink_int_ref(uint32_t data) {
     uint32_t *r = dslink_malloc(sizeof(uint32_t));
     *r = data;

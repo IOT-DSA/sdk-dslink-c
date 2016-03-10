@@ -158,6 +158,7 @@ static
 void broker_free(Broker *broker) {
     broker_node_free(broker->root);
     dslink_map_free(&broker->client_connecting);
+    dslink_map_free(&broker->remote_pending_sub);
     memset(broker, 0, sizeof(Broker));
 }
 
@@ -203,6 +204,11 @@ int broker_init(Broker *broker) {
     }
 
     if (dslink_map_init(&broker->client_connecting, dslink_map_str_cmp,
+                        dslink_map_str_key_len_cal) != 0) {
+        goto fail;
+    }
+
+    if (dslink_map_init(&broker->remote_pending_sub, dslink_map_str_cmp,
                         dslink_map_str_key_len_cal) != 0) {
         goto fail;
     }

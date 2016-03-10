@@ -22,6 +22,9 @@ typedef struct Broker {
     // Map<char *name, RemoteDSLink *>
     Map client_connecting;
 
+    // Map<char *dslinkName, List<PendingSub *> *>
+    Map remote_pending_sub;
+
 } Broker;
 
 int broker_start();
