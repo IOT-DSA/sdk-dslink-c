@@ -39,7 +39,8 @@ void handle_conn(Broker *broker, HttpRequest *req, Socket *sock) {
     if (!dsId) {
         goto exit;
     }
-    json_t *resp = broker_handshake_handle_conn(broker, dsId, body);
+    const char *token = broker_http_param_get(&req->uri, "token");
+    json_t *resp = broker_handshake_handle_conn(broker, dsId, token, body);
     json_decref(body);
     if (!resp) {
         broker_send_internal_error(sock);

@@ -10,6 +10,7 @@ extern "C" {
 
 json_t *broker_handshake_handle_conn(Broker *broker,
                                      const char *dsId,
+                                     const char *token,
                                      json_t *handshake);
 int broker_handshake_handle_ws(Broker *broker,
                                Client *client,

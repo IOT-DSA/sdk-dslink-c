@@ -14,6 +14,8 @@ extern "C" {
 
 int init_tokens(BrokerNode *sysNode);
 
+BrokerNode *getTokenNode(const char *hashedToken, const char *dsId);
+
 #ifdef __cplusplus
 }
 #endif

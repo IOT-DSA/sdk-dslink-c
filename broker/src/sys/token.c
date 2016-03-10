@@ -2,49 +2,184 @@
 // Created by rinick on 09/03/16.
 //
 
+#include <string.h>
 #include <broker/sys/token.h>
 #include <broker/utils.h>
 #include "broker/msg/msg_invoke.h"
+#include <dslink/base64_url.h>
+#include <broker/net/ws.h>
+#include <mbedtls/entropy.h>
+#include <mbedtls/sha256.h>
+
+#define LOG_TAG "token"
+#include <dslink/log.h>
 
 static
-int load_tokens(BrokerNode *tokenRootNode){
-    (void) tokenRootNode;
-    return 0;
+BrokerNode *tokenRootNode;
+
+static
+unsigned char randomByte() {
+    static mbedtls_entropy_context ent;
+    static unsigned char buffer[32];
+    static int buffer_pos = -1;
+    if (buffer_pos < 0) {
+        mbedtls_entropy_init(&ent);
+    }
+    ++buffer_pos;
+    if (buffer_pos >= (int)sizeof(buffer)) {
+        buffer_pos = 0;
+    }
+    if (buffer_pos == 0) {
+        mbedtls_entropy_func(&ent, buffer, sizeof(buffer));
+    }
+
+    return (unsigned char)(buffer[buffer_pos] & 0x7F);
+}
+
+unsigned char randomChar() {
+    while(1) {
+        unsigned char n = (unsigned char)(randomByte() & 0x7F);
+        if ((n >= '0' && n <= '9') ||
+            (n >= 'A' && n <= 'Z') ||
+            (n >= 'a' && n <= 'z')) {
+            return n;
+        }
+    }
 }
 
 static
 void add_token_invoke(RemoteDSLink *link,
                   BrokerNode *node,
                   json_t *req) {
+    (void) node;
 
-    json_t *params = json_object_get(req, "params");
-    if (!json_is_object(params)) {
+    json_t *params = NULL;
+    if (req) {
+        params = json_object_get(req, "params");
+    }
+    if (params && !json_is_object(params)) {
         broker_utils_send_closed_resp(link, req, "invalidParameter");
         return;
     }
-    node = node->parent;
 
-//
-//    node = node->parent;
-//    const char *name = json_string_value(json_object_get(params, "Name"));
-//    if (!name || dslink_map_contains(node->children, (void *) name)) {
-//        return;
-//    }
-//
-//    BrokerNode *child = broker_node_create(name, "node");
-//    if (!child) {
-//        return;
-//    }
-//
-//    json_object_set_new_nocheck(child->meta, "$type",
-//                                json_string_nocheck("dynamic"));
-//    json_object_set_new_nocheck(child->meta, "$writable",
-//                                json_string_nocheck("write"));
-//
-//    if (broker_node_add(node, child) != 0) {
-//        broker_node_free(child);
-//        return;
-//    }
+    char tokenName[49] = {0};
+    do {
+        // find a token name that's not in the parent node's children
+        for (size_t i = 0; i < 16; ++i) {
+            tokenName[i] = randomChar();
+        }
+    } while (dslink_map_contains(tokenRootNode->children, tokenName));
+
+    BrokerNode *tokenNode = broker_node_create(tokenName, "node");
+    if (!tokenNode) {
+        return;
+    }
+
+    // generate full token
+    for (size_t i = 16; i < 48; ++i) {
+        tokenName[i] = randomChar();
+    }
+
+    if (json_object_set_new_nocheck(tokenNode->meta, "$$token", json_string_nocheck(tokenName)) != 0) {
+        goto fail;
+    }
+
+    if (params) {
+        json_t* timeRange = json_object_get(params , "TimeRange");
+        if (json_is_string(timeRange)) {
+            json_object_set_nocheck(tokenNode->meta, "$$timeRange", timeRange);
+        }
+
+        json_t* count = json_object_get(params , "Count");
+        if (json_is_string(timeRange)) {
+            json_object_set_nocheck(tokenNode->meta, "$$count", count);
+        }
+
+        json_t* mamaged = json_object_get(params , "Managed");
+        if (json_is_string(timeRange)) {
+            json_object_set_nocheck(tokenNode->meta, "$$mamaged", mamaged);
+        }
+    }
+
+    if (broker_node_add(tokenRootNode, tokenNode) != 0) {
+        goto fail;
+    }
+
+    log_info("Token added `%s`\n", tokenName);
+
+    if (link && req) {
+        json_t *top = json_object();
+        json_t *resps = json_array();
+        json_object_set_new_nocheck(top, "responses", resps);
+        json_t *resp = json_object();
+        json_array_append_new(resps, resp);
+
+        json_t *rid = json_object_get(req, "rid");
+        json_object_set(resp, "rid", rid);
+        json_object_set_new_nocheck(resp, "stream",
+                                    json_string_nocheck("closed"));
+
+        json_t *updates = json_array();
+        json_t *row = json_array();
+        json_array_append_new(updates, row);
+        json_array_append_new(row, json_string_nocheck(tokenName));
+        json_object_set_new_nocheck(resp, "updates", updates);
+
+        broker_ws_send_obj(link, top);
+        json_decref(top);
+    }
+
+    return;
+fail:
+    broker_node_free(tokenNode);
+}
+
+BrokerNode *getTokenNode(const char *hashedToken, const char *dsId) {
+    char tokenId[17] = {0};
+    char tokenHash[64] = {0};
+    memcpy(tokenId, hashedToken, 16);
+    strncpy(tokenHash, hashedToken+16, 64);
+
+    ref_t *ref = dslink_map_get(tokenRootNode->children, tokenId);
+    if (!ref) {
+        return NULL;
+    }
+    BrokerNode* node = ref->data;
+    json_t* tokenJson = json_object_get(node->meta, "$$token");
+    if (!json_is_string(tokenJson)) {
+        return NULL;
+    }
+    const char * token = json_string_value(tokenJson);
+
+
+    unsigned char hashBinary[40];
+    size_t outlen;
+    dslink_base64_url_decode(hashBinary,40, &outlen, (unsigned char*)tokenHash, strlen(tokenHash));
+
+
+    size_t id_len = strlen(dsId) ;
+    char *in = dslink_malloc(id_len + 49);
+    memcpy(in, dsId, id_len);
+    memcpy(in + id_len, token, 48);
+    *(in + id_len + 48) = '\0';
+
+    unsigned char auth[32];
+    mbedtls_sha256((unsigned char *) in, id_len + 48, auth, 0);
+    dslink_free(in);
+
+    if (memcmp(auth, hashBinary, 32) == 0) {
+        return node;
+    }
+
+
+    return NULL;
+}
+
+static
+int load_tokens(){
+    // add a testing token;
+    add_token_invoke(NULL,NULL,NULL);
+    return 0;
 }
 
 int init_tokens(BrokerNode *sysNode) {
@@ -58,7 +193,7 @@ int init_tokens(BrokerNode *sysNode) {
         return 1;
     }
 
-    BrokerNode *tokenRootNode = broker_node_create("root", "node");
+    tokenRootNode = broker_node_create("root", "node");
     if (!tokenRootNode) {
         return 1;
     }
@@ -102,6 +237,6 @@ int init_tokens(BrokerNode *sysNode) {
 
     addTokenAction->on_invoke = add_token_invoke;
 
-    return load_tokens(tokenRootNode);
+    return load_tokens();
 }
 

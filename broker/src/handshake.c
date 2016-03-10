@@ -8,6 +8,8 @@
 #include <dslink/handshake.h>
 #include <dslink/utils.h>
 #include <dslink/mem/mem.h>
+#include <broker/config.h>
+#include <broker/sys/token.h>
 
 #include "broker/net/ws_handler.h"
 #include "broker/net/ws.h"
@@ -90,6 +92,7 @@ fail:
 
 json_t *broker_handshake_handle_conn(Broker *broker,
                                      const char *dsId,
+                                     const char *token,
                                      json_t *handshake) {
     if (dslink_map_contains(&broker->client_connecting, (void *) dsId)) {
         ref_t *ref = dslink_map_remove_get(&broker->client_connecting,
@@ -169,6 +172,7 @@ json_t *broker_handshake_handle_conn(Broker *broker,
         link->linkData = linkData;
     }
 
+
     {
         char buf[512] = {0};
         snprintf(buf, sizeof(buf), "/downstream/");
@@ -182,6 +186,7 @@ json_t *broker_handshake_handle_conn(Broker *broker,
         if (dsId[nameLen - 1] == '-') {
             nameLen--;
         }
+        int nodeExists = 0;
         // find a valid name from broker->client_names
         memcpy(name, dsId, nameLen);
         while (1) {
@@ -199,14 +204,29 @@ json_t *broker_handshake_handle_conn(Broker *broker,
             }
             ref = dslink_map_get(broker->downstream->children,
                                  (void *) name);
-            if (ref == NULL
-                || strcmp(dsId, ((DownstreamNode *) ref->data)->dsId->data) == 0) {
+            if (ref == NULL) {
                 break;
             }
+            if (strcmp(dsId, ((DownstreamNode *) ref->data)->dsId->data) == 0) {
+                nodeExists = 1;
+                break;
+            }
+
             name[nameLen] = dsId[nameLen];
             nameLen++;
         }
-
+        if (!nodeExists && broker_enable_token) {
+            if (!token) {
+                goto fail;
+            }
+            BrokerNode* tokenNode = getTokenNode(token, dsId);
+            if (tokenNode) {
+                //TODO create downstream node
+                //TODO reduce token count
+            } else {
+                goto fail;
+            }
+        }
         json_object_set_new_nocheck(resp, "path", json_string(buf));
 
         link->path = dslink_strdup(buf);

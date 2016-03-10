@@ -84,10 +84,10 @@ int broker_config_load(json_t* json) {
     // load allowAllLinks (use token or not)
     json_t* allowAllLinks = json_object_get(json, "allowAllLinks");
     if (json_is_false(allowAllLinks)) {
-        broker_enable_token = 0;
+        broker_enable_token = 1;
     } else {
         // true by default
-        broker_enable_token = 1;
+        broker_enable_token = 0;
     }
 
     return 0;
