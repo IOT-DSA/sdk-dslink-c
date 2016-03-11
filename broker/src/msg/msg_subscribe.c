@@ -14,14 +14,14 @@ void subs_list_free(void *p) {
     List *subs = p;
     dslink_list_foreach_nonext(subs) {
         ListNode *entry = (ListNode *) node;
-
         PendingSub *sub = entry->value;
         dslink_free((char *) sub->path);
         dslink_free(sub);
-        node = node->next;
+        ListNodeBase *tmp = node->next;
         if ((intptr_t) node != (intptr_t) subs) {
             dslink_free(node);
         }
+        node = tmp;
     }
 
     dslink_free(subs);
