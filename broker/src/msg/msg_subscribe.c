@@ -127,11 +127,13 @@ void broker_subscribe_remote(DownstreamNode *node, RemoteDSLink *link,
 
             json_t *updates = json_array();
             json_object_set_new_nocheck(newResp, "updates", updates);
+            json_array_append(updates, bss->last_value);
 
-            json_t *update = json_array();
-            json_array_set_new(update, 0, json_integer(sid));
-            json_array_append(update, bss->last_value);
-            json_array_append_new(updates, update);
+            if (json_is_array(bss->last_value)) {
+                json_array_set_new(bss->last_value, 0, json_integer(sid));
+            } else if (json_is_object(bss->last_value)) {
+                json_object_set_new(bss->last_value, "sid", json_integer(sid));
+            }
 
             broker_ws_send_obj(link, top);
             json_decref(top);

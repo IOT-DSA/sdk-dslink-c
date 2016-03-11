@@ -103,28 +103,54 @@ void broker_handle_resp(RemoteDSLink *link, json_t *resp) {
                                index, update) {
                 json_array_clear(updates);
 
-                json_t *jSid = json_array_get(update, 0);
-                if (!jSid) {
-                    continue;
-                }
-                uint32_t sid = (uint32_t) json_integer_value(jSid);
-                ref_t *ref = dslink_map_get(&link->node->sub_sids, &sid);
-                if (!ref) {
-                    continue;
+                if (json_is_array(update)) {
+                    json_t *jSid = json_array_get(update, 0);
+                    if (!jSid) {
+                        continue;
+                    }
+                    uint32_t sid = (uint32_t) json_integer_value(jSid);
+                    ref_t *ref = dslink_map_get(&link->node->sub_sids, &sid);
+                    if (!ref) {
+                        continue;
+                    }
+
+                    BrokerSubStream *s = ref->data;
+                    json_array_append(updates, update);
+                    if (s->last_value) {
+                        json_decref(s->last_value);
+                    }
+                    s->last_value = json_incref(update);
+                    dslink_map_foreach(&s->clients) {
+                        RemoteDSLink *req = entry->key->data;
+                        uint32_t *reqSid = entry->value->data;
+                        json_array_set_new(update, 0, json_integer(*reqSid));
+                        broker_ws_send_obj(req, top);
+                    }
+                } else if (json_is_object(update)) {
+                    json_t *jSid = json_object_get(update, "sid");
+                    if (!jSid) {
+                        continue;
+                    }
+                    uint32_t sid = (uint32_t) json_integer_value(jSid);
+                    ref_t *ref = dslink_map_get(&link->node->sub_sids, &sid);
+                    if (!ref) {
+                        continue;
+                    }
+
+                    BrokerSubStream *s = ref->data;
+                    json_array_append(updates, update);
+                    if (s->last_value) {
+                        json_decref(s->last_value);
+                    }
+                    s->last_value = json_incref(update);
+                    dslink_map_foreach(&s->clients) {
+                        RemoteDSLink *req = entry->key->data;
+                        uint32_t *reqSid = entry->value->data;
+                        json_object_set_new(update, "sid", json_integer(*reqSid));
+                        broker_ws_send_obj(req, top);
+                    }
                 }
 
-                BrokerSubStream *s = ref->data;
-                json_array_append(updates, update);
-                if (s->last_value) {
-                    json_decref(s->last_value);
-                }
-                s->last_value = json_incref(update);
-                dslink_map_foreach(&s->clients) {
-                    RemoteDSLink *req = entry->key->data;
-                    uint32_t *reqSid = entry->value->data;
-                    json_array_set_new(update, 0, json_integer(*reqSid));
-                    broker_ws_send_obj(req, top);
-                }
             }
         }
         json_decref(top);
