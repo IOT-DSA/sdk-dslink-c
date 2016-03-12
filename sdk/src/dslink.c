@@ -14,8 +14,9 @@
         goto cleanup; \
     } \
     if (dslink_map_init(responder->var, \
-    dslink_map_##type##_cmp, \
-    dslink_map_##type##_key_len_cal) != 0) { \
+            dslink_map_##type##_cmp, \
+            dslink_map_##type##_key_len_cal, \
+            dslink_map_hash_key) != 0) { \
         dslink_free(responder->var); \
         responder->var = NULL; \
         goto cleanup; \

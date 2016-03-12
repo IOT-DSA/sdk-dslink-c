@@ -77,7 +77,7 @@ BrokerNode *broker_node_createl(const char *name, size_t nameLen,
 
     node->children = dslink_malloc(sizeof(Map));
     if (dslink_map_init(node->children, dslink_map_str_cmp,
-                        dslink_map_str_key_len_cal) != 0) {
+                        dslink_map_str_key_len_cal, dslink_map_hash_key) != 0) {
         DSLINK_CHECKED_EXEC(free, node->children);
         dslink_free((void *) node->name);
         dslink_free(node);

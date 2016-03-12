@@ -157,12 +157,10 @@ ParsedQuery *parse_query(const char * query) {
     ParsedQuery *pQuery = dslink_malloc(sizeof(ParsedQuery));
     pQuery->pattern = path;
 
-    dslink_map_init(&pQuery->child_add_listeners,
-                    dslink_map_str_cmp,
-                    dslink_map_str_key_len_cal);
-    dslink_map_init(&pQuery->value_update_listeners,
-                    dslink_map_str_cmp,
-                    dslink_map_str_key_len_cal);
+    dslink_map_init(&pQuery->child_add_listeners, dslink_map_str_cmp,
+                    dslink_map_str_key_len_cal, dslink_map_hash_key);
+    dslink_map_init(&pQuery->value_update_listeners, dslink_map_str_cmp,
+                    dslink_map_str_key_len_cal, dslink_map_hash_key);
 
     return pQuery;
 }

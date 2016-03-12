@@ -19,6 +19,12 @@ size_t broker_map_dslink_len(void *key) {
     return strlen(a->dsId->data);
 }
 
+static
+uint32_t broker_map_dslink_hash(void *key, size_t len) {
+    key = ((RemoteDSLink *) key)->dsId->data;
+    return dslink_map_hash_key(key, len);
+}
+
 BrokerListStream *broker_stream_list_init(void *node) {
     BrokerListStream *stream = dslink_calloc(1, sizeof(BrokerListStream));
     if (!stream) {
@@ -28,11 +34,10 @@ BrokerListStream *broker_stream_list_init(void *node) {
     stream->type = LIST_STREAM;
     stream->req_close_cb = broker_list_req_closed;
     if (dslink_map_init(&stream->requester_links, broker_map_dslink_cmp,
-                        broker_map_dslink_len) != 0) {
+                        broker_map_dslink_len, broker_map_dslink_hash) != 0) {
         dslink_free(stream);
         return NULL;
     }
-
 
     stream->updates_cache = json_object();
     stream->node = node;
@@ -53,7 +58,7 @@ BrokerSubStream *broker_stream_sub_init() {
     stream->type = SUBSCRIPTION_STREAM;
 
     if (dslink_map_init(&stream->clients, broker_map_dslink_cmp,
-                        broker_map_dslink_len) != 0) {
+                        broker_map_dslink_len, broker_map_dslink_hash) != 0) {
         dslink_free(stream);
         return NULL;
     }

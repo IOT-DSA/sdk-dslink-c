@@ -6,11 +6,11 @@ int broker_remote_dslink_init(RemoteDSLink *link) {
     memset(link, 0, sizeof(RemoteDSLink));
     int ret = 0;
     if (dslink_map_init(&link->responder_streams, dslink_map_uint32_cmp,
-                           dslink_map_uint32_key_len_cal) != 0) {
+                           dslink_map_uint32_key_len_cal, dslink_map_hash_key) != 0) {
         return ret;
     }
     if (dslink_map_init(&link->requester_streams, dslink_map_uint32_cmp,
-                           dslink_map_uint32_key_len_cal) != 0) {
+                           dslink_map_uint32_key_len_cal, dslink_map_hash_key) != 0) {
         dslink_map_free(&link->responder_streams);
         return ret;
     }

@@ -10,7 +10,8 @@ void col_map_clear_test(void **state) {
 
     Map map;
     assert_true(!dslink_map_init(&map, dslink_map_str_cmp,
-                                 dslink_map_str_key_len_cal));
+                                 dslink_map_str_key_len_cal,
+                                 dslink_map_hash_key));
 
     assert_true(!dslink_map_set(&map, dslink_str_ref("a"), dslink_str_ref("a")));
     assert_true(!dslink_map_set(&map, dslink_str_ref("b"), dslink_str_ref("b")));
@@ -46,7 +47,8 @@ void col_map_set_simple_string_test(void **state) {
 
     Map map;
     assert_true(!dslink_map_init(&map, dslink_map_str_cmp,
-                                 dslink_map_str_key_len_cal));
+                                 dslink_map_str_key_len_cal,
+                                 dslink_map_hash_key));
     int i = 0;
     while (inputs[i][0]) {
         char *key = inputs[i][0];
@@ -70,7 +72,8 @@ void col_map_set_large_string_entry_test(void **state) {
     (void) state;
     Map map;
     assert_true(!dslink_map_init(&map, dslink_map_str_cmp,
-                                 dslink_map_str_key_len_cal));
+                                 dslink_map_str_key_len_cal,
+                                 dslink_map_hash_key));
     const int items = 100;
     for (int n = 0; n < items; n++) {
         size_t len = sizeof(char) * 12;
@@ -104,7 +107,8 @@ void col_map_set_simple_uint32_test(void **state) {
 
     Map map;
     assert_true(!dslink_map_init(&map, dslink_map_uint32_cmp,
-                                 dslink_map_uint32_key_len_cal));
+                                 dslink_map_uint32_key_len_cal,
+                                 dslink_map_hash_key));
     int i = 0;
     while (inputs[i][0]) {
         uint32_t *key = calloc(1, sizeof(uint32_t));
@@ -130,7 +134,8 @@ void col_map_set_large_uint32_entry_test(void **state) {
     (void) state;
     Map map;
     assert_true(!dslink_map_init(&map, dslink_map_uint32_cmp,
-                                 dslink_map_uint32_key_len_cal));
+                                 dslink_map_uint32_key_len_cal,
+                                 dslink_map_hash_key));
     const uint32_t items = 100;
     for (uint32_t n = 0; n < items; n++) {
         uint32_t *i = calloc(1, sizeof(uint32_t));
@@ -156,7 +161,8 @@ void col_map_remove_large_uint32_entry_test(void **state) {
     (void) state;
     Map map;
     assert_true(!dslink_map_init(&map, dslink_map_uint32_cmp,
-                                 dslink_map_uint32_key_len_cal));
+                                 dslink_map_uint32_key_len_cal,
+                                 dslink_map_hash_key));
     const uint32_t items = 100;
     for (uint32_t n = 0; n < items; n++) {
         uint32_t *i = calloc(1, sizeof(uint32_t));

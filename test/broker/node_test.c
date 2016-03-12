@@ -139,7 +139,7 @@ void node_get_test(void **state) {
         assert_non_null(n);
         n->type = DOWNSTREAM_NODE;
         n->name = dslink_strdup("test");
-        assert_true(!dslink_map_init(&n->list_streams, NULL, NULL));
+        assert_true(!dslink_map_init(&n->list_streams, NULL, NULL, NULL));
 
         assert_non_null(n->name);
         assert_true(!broker_node_add(d, (BrokerNode *) n));

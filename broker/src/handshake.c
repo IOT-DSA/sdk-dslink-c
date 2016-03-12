@@ -47,13 +47,13 @@ DownstreamNode *broker_init_downstream_node(Broker *broker, const char *name) {
     }
     node->type = DOWNSTREAM_NODE;
     if (dslink_map_init(&node->sub_sids, dslink_map_uint32_cmp,
-                        dslink_map_uint32_key_len_cal) != 0
+                        dslink_map_uint32_key_len_cal, dslink_map_hash_key) != 0
         || dslink_map_init(&node->sub_paths, dslink_map_str_cmp,
-                           dslink_map_str_key_len_cal) != 0
+                           dslink_map_str_key_len_cal, dslink_map_hash_key) != 0
         || dslink_map_init(&node->local_subs, dslink_map_str_cmp,
-                           dslink_map_str_key_len_cal) != 0
+                           dslink_map_str_key_len_cal, dslink_map_hash_key) != 0
         || dslink_map_init(&node->list_streams, dslink_map_str_cmp,
-                           dslink_map_str_key_len_cal) != 0) {
+                           dslink_map_str_key_len_cal, dslink_map_hash_key) != 0) {
         goto fail;
     }
 

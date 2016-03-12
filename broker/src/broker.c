@@ -207,12 +207,12 @@ int broker_init(Broker *broker) {
     }
 
     if (dslink_map_init(&broker->client_connecting, dslink_map_str_cmp,
-                        dslink_map_str_key_len_cal) != 0) {
+                        dslink_map_str_key_len_cal, dslink_map_hash_key) != 0) {
         goto fail;
     }
 
     if (dslink_map_init(&broker->remote_pending_sub, dslink_map_str_cmp,
-                        dslink_map_str_key_len_cal) != 0) {
+                        dslink_map_str_key_len_cal, dslink_map_hash_key) != 0) {
         goto fail;
     }
 

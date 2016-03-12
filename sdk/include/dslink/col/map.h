@@ -22,6 +22,7 @@ extern "C" {
 
 typedef int (*dslink_map_key_comparator)(void *key, void *other, size_t len);
 typedef size_t (*dslink_map_key_len_calc)(void *key);
+typedef uint32_t (*dslink_map_key_hash_func)(void *key, size_t len);
 
 typedef struct MapEntry {
     struct MapEntry *prev;
@@ -56,6 +57,9 @@ typedef struct Map {
     // when the map doesn't know the key size in order to rehash the key.
     dslink_map_key_len_calc key_len_calc;
 
+    // Gets the hash data from the key
+    dslink_map_key_hash_func hash_key;
+
     List list;
 } Map;
 
@@ -69,17 +73,23 @@ size_t dslink_map_uint32_key_len_cal(void *key);
 
 ///
 
+uint32_t dslink_map_hash_key(void *key, size_t len);
+
 int dslink_map_init(Map *map,
                     dslink_map_key_comparator cmp,
-                    dslink_map_key_len_calc calc);
+                    dslink_map_key_len_calc calc,
+                    dslink_map_key_hash_func hash);
 int dslink_map_initb(Map *map,
                      dslink_map_key_comparator cmp,
                      dslink_map_key_len_calc calc,
+                     dslink_map_key_hash_func hash,
                      size_t buckets);
 int dslink_map_initbf(Map *map,
                       dslink_map_key_comparator cmp,
                       dslink_map_key_len_calc calc,
+                      dslink_map_key_hash_func hash,
                       size_t buckets, float loadFactor);
+
 void dslink_map_clear(Map *map);
 void dslink_map_free(Map *map);
 

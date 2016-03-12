@@ -68,7 +68,8 @@ int dslink_node_add_child(DSLink *link, DSNode *node) {
         }
         if (dslink_map_init(node->parent->children,
                             dslink_map_str_cmp,
-                            dslink_map_str_key_len_cal) != 0) {
+                            dslink_map_str_key_len_cal,
+                            dslink_map_hash_key) != 0) {
             dslink_free(node->parent->children);
             node->parent->children = NULL;
             return DSLINK_ALLOC_ERR;
@@ -260,7 +261,8 @@ int dslink_node_set_meta(DSNode *node,
         }
         if (dslink_map_init(node->meta_data,
                             dslink_map_str_cmp,
-                            dslink_map_str_key_len_cal) != 0) {
+                            dslink_map_str_key_len_cal,
+                            dslink_map_hash_key) != 0) {
             dslink_free(node->meta_data);
             node->meta_data = NULL;
             return DSLINK_ALLOC_ERR;

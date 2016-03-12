@@ -28,7 +28,6 @@ size_t dslink_map_uint32_key_len_cal(void *key) {
 
 /***********************************************************************/
 
-static inline
 uint32_t dslink_map_hash_key(void *key, size_t len) {
     // Jenkins hash algorithm
     uint32_t hash;
@@ -45,28 +44,31 @@ uint32_t dslink_map_hash_key(void *key, size_t len) {
 }
 
 static inline
-size_t dslink_map_index_of_key(void *key, size_t len, size_t capacity) {
-    return dslink_map_hash_key(key, len) % capacity;
+size_t dslink_map_index_of_key(Map *map, void *key, size_t len) {
+    return map->hash_key(key, len) % map->capacity;
 }
 
 inline
 int dslink_map_init(Map *map,
                     dslink_map_key_comparator cmp,
-                    dslink_map_key_len_calc calc) {
-    return dslink_map_initb(map, cmp, calc, 8);
+                    dslink_map_key_len_calc calc,
+                    dslink_map_key_hash_func hash) {
+    return dslink_map_initb(map, cmp, calc, hash, 8);
 }
 
 inline
 int dslink_map_initb(Map *map,
                      dslink_map_key_comparator cmp,
                      dslink_map_key_len_calc calc,
+                     dslink_map_key_hash_func hash,
                      size_t buckets) {
-    return dslink_map_initbf(map, cmp, calc, buckets, 0.75F);
+    return dslink_map_initbf(map, cmp, calc, hash, buckets, 0.75F);
 }
 
 int dslink_map_initbf(Map *map,
                       dslink_map_key_comparator cmp,
                       dslink_map_key_len_calc calc,
+                      dslink_map_key_hash_func hash,
                       size_t buckets, float loadFactor) {
     if (!map) {
         return 1;
@@ -78,6 +80,7 @@ int dslink_map_initbf(Map *map,
     }
     list_init(&map->list);
     map->max_load_factor = loadFactor;
+    map->hash_key = hash;
     map->capacity = buckets;
     map->cmp = cmp;
     map->key_len_calc = calc;
@@ -119,7 +122,7 @@ static
 int dslink_map_get_raw_node(Map *map, MapNode **node, ref_t *key) {
     int ret = 0;
     size_t len = map->key_len_calc(key->data);
-    size_t index = dslink_map_index_of_key(key->data, len, map->capacity);
+    size_t index = dslink_map_index_of_key(map, key->data, len);
     *node = map->table[index];
     if (!(*node)) {
         *node = map->table[index] = dslink_malloc(sizeof(MapNode));
@@ -199,8 +202,7 @@ int dslink_map_rehash_table(Map *map) {
     for (MapEntry *entry = (MapEntry *) map->list.head.next;
          (void *)entry != &map->list.head; entry = entry->next) {
         size_t len = map->key_len_calc(entry->key->data);
-        size_t index = dslink_map_index_of_key(entry->key->data,
-                                               len, newCapacity);
+        size_t index = dslink_map_index_of_key(map, entry->key->data, len);
         MapNode *node = newTable[index];
         if (node) {
             while (1) {
@@ -252,7 +254,7 @@ ref_t *dslink_map_remove_get(Map *map, void *key) {
 }
 
 ref_t *dslink_map_removel_get(Map *map, void *key, size_t len) {
-    size_t index = dslink_map_index_of_key(key, len, map->capacity);
+    size_t index = dslink_map_index_of_key(map, key, len);
     for (MapNode *node = map->table[index]; node != NULL; node = node->next) {
         if (map->cmp(node->entry->key->data, key, len) != 0) {
             continue;
@@ -298,7 +300,7 @@ int dslink_map_contains(Map *map, void *key) {
 }
 
 int dslink_map_containsl(Map *map, void *key, size_t len) {
-    size_t index = dslink_map_index_of_key(key, len, map->capacity);
+    size_t index = dslink_map_index_of_key(map, key, len);
     for (MapNode *node = map->table[index]; node != NULL; node = node->next) {
         if (map->cmp(node->entry->key->data, key, len) == 0) {
             return 1;
@@ -313,7 +315,7 @@ ref_t *dslink_map_get(Map *map, void *key) {
 }
 
 ref_t *dslink_map_getl(Map *map, void *key, size_t len) {
-    size_t index = dslink_map_index_of_key(key, len, map->capacity);
+    size_t index = dslink_map_index_of_key(map, key, len);
     for (MapNode *node = map->table[index]; node != NULL; node = node->next) {
         if (map->cmp(node->entry->key->data, key, len) == 0) {
             return node->entry->value;
