@@ -10,6 +10,7 @@
 #define LOG_TAG "broker"
 #include <dslink/log.h>
 #include <dslink/utils.h>
+#include <broker/upstream/upstream_node.h>
 #include "broker/net/ws.h"
 
 #define CONN_RESP "HTTP/1.1 200 OK\r\n" \
@@ -180,6 +181,13 @@ int broker_init(Broker *broker) {
     if (!(broker->sys && broker_node_add(broker->root, broker->sys) == 0
           && broker_sys_node_populate(broker->sys) == 0)) {
         broker_node_free(broker->sys);
+        goto fail;
+    }
+
+    broker->upstream = broker_node_create("upstream", "static");
+    if (!(broker->upstream && broker_node_add(broker->root, broker->upstream) == 0
+          && broker_upstream_node_populate(broker->sys) == 0)) {
+        broker_node_free(broker->upstream);
         goto fail;
     }
 
