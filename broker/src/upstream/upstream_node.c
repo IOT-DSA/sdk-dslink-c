@@ -1,6 +1,3 @@
-//
-// Created by rinick on 12/03/16.
-//
 #include <broker/upstream/upstream_node.h>
 
 int broker_upstream_node_populate(BrokerNode *upstreamNode) {

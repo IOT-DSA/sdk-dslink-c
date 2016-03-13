@@ -1,8 +1,3 @@
-//
-// Created by rinick on 11/03/16.
-//
-
-
 #include <broker/node.h>
 #include <broker/utils.h>
 

@@ -1,9 +1,5 @@
-//
-// Created by rinick on 12/03/16.
-//
-
-#ifndef SDK_DSLINK_C_UPSTREAM_NODE_H
-#define SDK_DSLINK_C_UPSTREAM_NODE_H
+#ifndef BROKER_UPSTREAM_UPSTREAM_NODE_H
+#define BROKER_UPSTREAM_UPSTREAM_NODE_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -19,4 +15,4 @@ int init_sys_upstream_node(BrokerNode *sysNode);
 }
 #endif
 
-#endif //SDK_DSLINK_C_UPSTREAM_NODE_H
+#endif // BROKER_UPSTREAM_UPSTREAM_NODE_H

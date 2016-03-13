@@ -1,10 +1,5 @@
-//
-// Created by rinick on 09/03/16.
-//
-
-#ifndef SDK_DSLINK_C_TOKEN_H
-#define SDK_DSLINK_C_TOKEN_H
-
+#ifndef BROKER_SYS_TOKEN_H
+#define BROKER_SYS_TOKEN_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -20,5 +15,4 @@ BrokerNode *getTokenNode(const char *hashedToken, const char *dsId);
 }
 #endif
 
-
-#endif //SDK_DSLINK_C_TOKEN_H
+#endif // BROKER_SYS_TOKEN_H

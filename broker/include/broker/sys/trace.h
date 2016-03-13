@@ -1,9 +1,5 @@
-//
-// Created by rinick on 11/03/16.
-//
-
-#ifndef SDK_DSLINK_C_TRACE_H
-#define SDK_DSLINK_C_TRACE_H
+#ifndef BROKER_SYS_TRACE_H
+#define BROKER_SYS_TRACE_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -17,4 +13,4 @@ int init_trace_node(BrokerNode *sysNode);
 }
 #endif
 
-#endif //SDK_DSLINK_C_TRACE_H
+#endif // BROKER_SYS_TRACE_H

@@ -1,7 +1,3 @@
-//
-// Created by rinick on 09/03/16.
-//
-
 #include <string.h>
 #include <broker/sys/token.h>
 #include <broker/utils.h>
