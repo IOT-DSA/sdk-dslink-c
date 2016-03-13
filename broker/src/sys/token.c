@@ -15,6 +15,7 @@ BrokerNode *tokenRootNode;
 
 static
 unsigned char randomByte() {
+    // reuse the entropy
     static mbedtls_entropy_context ent;
     static unsigned char buffer[32];
     static int buffer_pos = -1;
@@ -32,6 +33,7 @@ unsigned char randomByte() {
     return (unsigned char)(buffer[buffer_pos] & 0x7F);
 }
 
+static
 unsigned char randomChar() {
     while(1) {
         unsigned char n = (unsigned char)(randomByte() & 0x7F);
@@ -41,6 +43,27 @@ unsigned char randomChar() {
             return n;
         }
     }
+}
+
+static
+void save_token_node(BrokerNode *node) {
+    char tmp[128];
+    sprintf(tmp, "token/%s", node->name);
+    json_dump_file(node->meta, tmp, 0);
+}
+static
+void load_token_node(const char* tokenName, json_t* data) {
+    BrokerNode *tokenNode = broker_node_create(tokenName, "node");
+    if (!tokenNode) {
+        return;
+    }
+    const char* key;
+    json_t* value;
+    json_object_foreach(data, key, value) {
+        json_object_set_nocheck(tokenNode->meta, key, value);
+    }
+
+    broker_node_add(tokenRootNode, tokenNode);
 }
 
 static
@@ -102,6 +125,7 @@ void add_token_invoke(RemoteDSLink *link,
     }
 
     log_info("Token added `%s`\n", tokenName);
+    save_token_node(tokenNode);
 
     if (link && req) {
         json_t *top = json_object();
@@ -173,8 +197,31 @@ BrokerNode *getTokenNode(const char *hashedToken, const char *dsId) {
 
 static
 int load_tokens(){
-    // add a testing token;
-    add_token_invoke(NULL,NULL,NULL);
+    uv_fs_t dir;
+
+    uv_fs_mkdir(NULL, &dir, "token", 0770, NULL);
+
+    if (uv_fs_scandir(NULL, &dir, "token", 0, NULL) < 0) {
+        return 0;
+    }
+
+    uv_dirent_t d;
+    while (uv_fs_scandir_next(&dir, &d) != UV_EOF) {
+        if (d.type != UV_DIRENT_FILE) {
+            continue;
+        }
+
+        char tmp[256];
+        int len = snprintf(tmp, sizeof(tmp) - 1, "token/%s", d.name);
+        tmp[len] = '\0';
+
+        json_error_t err;
+        json_t *val = json_load_file(tmp, 0 , &err);
+        if (val) {
+            load_token_node(d.name, val);
+            json_decref(val);
+        }
+    }
     return 0;
 }
 
