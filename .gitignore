@@ -2,3 +2,5 @@
 .idea
 build
 modules/cmocka
+legion/
+.build/

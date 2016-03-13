@@ -1,0 +1,6 @@
+{
+  "clang": false,
+  "args": {
+    "cmake": ["-DDSLINK_BUILD_BROKER=ON"]
+  }
+}
