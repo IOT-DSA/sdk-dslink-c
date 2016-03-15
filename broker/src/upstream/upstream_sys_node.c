@@ -114,6 +114,28 @@ int load_upstreams(BrokerNode *parentNode){
 
 
 static
+void delete_upstream_invoke(RemoteDSLink *link,
+                         BrokerNode *node,
+                         json_t *req) {
+    broker_utils_send_closed_resp(link, req, NULL);
+
+    char* escname = dslink_str_escape(node->name);
+    char tmp[256];
+    int len = snprintf(tmp, sizeof(tmp) - 1, "upstream/%s", escname);
+    tmp[len] = '\0';
+    dslink_free(escname);
+
+    uv_fs_t unlink_req;
+    uv_fs_unlink(NULL, &unlink_req, tmp, NULL);
+
+    BrokerNode *parentNode = node->parent;
+    broker_node_free(parentNode);
+
+}
+
+
+
+static
 void add_upstream_invoke(RemoteDSLink *link,
                       BrokerNode *node,
                       json_t *req) {
@@ -185,7 +207,12 @@ void add_upstream_invoke(RemoteDSLink *link,
 
     // TODO detect enabled change and start/stop upstream
 
+    BrokerNode *deleteAction = broker_node_create("delete", "node");
+    json_object_set_new(deleteAction->meta, "$invokable", json_string_nocheck("config"));
+    broker_node_update_value(deleteAction, json_true(), 0);
+    broker_node_add(upstreamNode, deleteAction);
 
+    deleteAction->on_invoke = delete_upstream_invoke;
 
     log_info("Upstream added `%s`\n", name);
     save_upstream_node(upstreamNode);

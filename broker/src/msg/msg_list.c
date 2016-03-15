@@ -62,7 +62,9 @@ int broker_list_req_closed(void *s, RemoteDSLink *link) {
     if (ref) {
         dslink_decref(ref);
     }
-    if (stream->requester_links.size == 0) {
+    // TODO node should never be null
+    // need to handle list on node that doesn't exist
+    if (stream->requester_links.size == 0 && stream->node) {
         if (stream->node->type == DOWNSTREAM_NODE) {
             DownstreamNode *node = (DownstreamNode *)stream->node;
             if (node->link) {
