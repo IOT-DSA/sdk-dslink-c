@@ -95,6 +95,11 @@ int dslink_response_list(DSLink *link, json_t *req, DSNode *node) {
         if (node->meta_data) {
             dslink_map_foreach(node->meta_data) {
                 const char *key = entry->key->data;
+
+                if (strncmp(key, "$$", 2)) {
+                    continue;
+                }
+
                 json_t *val = entry->value->data;
                 dslink_response_list_append_update(updates, key, val, 0);
             }
@@ -165,6 +170,7 @@ int dslink_response_list(DSLink *link, json_t *req, DSNode *node) {
             json_delete(top);
             return 1;
         }
+
         if (node->on_list_open) {
             node->on_list_open(link, node);
         }
