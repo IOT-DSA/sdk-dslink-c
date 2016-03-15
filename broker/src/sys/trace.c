@@ -1,7 +1,6 @@
 #include <broker/node.h>
 #include <broker/utils.h>
 
-
 static
 void trace_requester(RemoteDSLink *link,
                       BrokerNode *node,
@@ -9,6 +8,7 @@ void trace_requester(RemoteDSLink *link,
     (void)node;
     broker_utils_send_closed_resp(link, req, NULL);
 }
+
 int init_trace_node(BrokerNode *sysNode) {
     BrokerNode *traceNode = broker_node_create("trace", "node");
     if (!traceNode) {

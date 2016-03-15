@@ -31,6 +31,7 @@ typedef struct Broker {
 
 int broker_start();
 void broker_close_link(RemoteDSLink *link);
+void broker_stop(Broker* broker);
 
 #ifdef __cplusplus
 }

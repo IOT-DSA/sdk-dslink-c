@@ -107,7 +107,7 @@ int start_http_server(Server *server, const char *host,
 }
 
 static
-void stop_server(uv_signal_t* handle, int signum) {
+void stop_server_handler(uv_signal_t* handle, int signum) {
     const char *sig;
     if (signum == SIGINT) {
         sig = "SIGINT";
@@ -119,26 +119,8 @@ void stop_server(uv_signal_t* handle, int signum) {
     }
     log_warn("Received %s, gracefully terminating broker...\n", sig);
 
-    Broker *broker = handle->loop->data;
-    dslink_map_foreach(broker->downstream->children) {
-        DownstreamNode *node = entry->value->data;
-
-        // Ensure the dsId is freed
-        node->dsId->count = 1;
-        dslink_decref(node->dsId);
-        node->dsId = NULL;
-
-        if (node->link) {
-            RemoteDSLink *link = node->link;
-            dslink_socket_close(link->client->sock);
-            uv_close((uv_handle_t *) link->client->poll,
-                     broker_free_handle);
-            dslink_free(link->client);
-            link->client = NULL;
-            broker_remote_dslink_free(link);
-        }
-    }
-
+    Broker* broker = handle->loop->data;
+    broker_stop(broker);
     uv_stop(handle->loop);
 }
 
@@ -188,11 +170,11 @@ int broker_start_server(json_t *config, void *data,
 
     uv_signal_t sigInt;
     uv_signal_init(&loop, &sigInt);
-    uv_signal_start(&sigInt, stop_server, SIGINT);
+    uv_signal_start(&sigInt, stop_server_handler, SIGINT);
 
     uv_signal_t sigTerm;
     uv_signal_init(&loop, &sigTerm);
-    uv_signal_start(&sigTerm, stop_server, SIGTERM);
+    uv_signal_start(&sigTerm, stop_server_handler, SIGTERM);
 
     if (httpActive) {
         uv_run(&loop, UV_RUN_DEFAULT);

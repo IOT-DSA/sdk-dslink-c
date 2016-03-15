@@ -104,8 +104,8 @@ set(BROKER_SRC
     "${BROKER_SRC_DIR}/utils.c"
     "${BROKER_SRC_DIR}/sys/token.c"
     "${BROKER_SRC_DIR}/sys/trace.c"
-
-        broker/src/upstream/upstream_node.c)
+    "${BROKER_SRC_DIR}/sys/restart.c"
+    "${BROKER_SRC_DIR}/upstream/upstream_node.c")
 
 set(EXAMPLE_RESPONDER_SRC_DIR "${CMAKE_CURRENT_LIST_DIR}/examples/responder/src")
 set(EXAMPLE_RESPONDER_SRC
