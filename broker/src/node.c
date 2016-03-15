@@ -171,6 +171,11 @@ void broker_node_free(BrokerNode *node) {
         dslink_free(node->children);
     }
 
+    if (node->list_stream) {
+        // TODO, assign the stream to a pending node
+        node->list_stream->node = NULL;
+    }
+
     if (node->type == DOWNSTREAM_NODE) {
         dslink_map_free(&((DownstreamNode *)node)->list_streams);
     } else {
@@ -184,8 +189,9 @@ void broker_node_free(BrokerNode *node) {
     if (node->parent) {
         void *tmp = (void *) node->name;
         dslink_map_remove(node->parent->children, tmp);
+        broker_node_update_child(node->parent, node->name);
     }
-
+    json_decref(node->value);
     json_decref(node->meta);
     dslink_free((void *) node->name);
     dslink_free((void *) node->path);

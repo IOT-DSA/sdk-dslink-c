@@ -6,6 +6,10 @@
 #include <dslink/log.h>
 
 
+void add_upstream_invoke(RemoteDSLink *link,
+                         BrokerNode *node,
+                         json_t *req);
+
 static
 void save_upstream_node(BrokerNode *node) {
     char tmp[128];
@@ -42,42 +46,7 @@ void load_upstream_node(BrokerNode *parentNode, const char* nodeName, json_t* da
     if (!upstreamNode) {
         return;
     }
-    broker_node_add(parentNode, upstreamNode);
-
-    BrokerNode *propNode;
-    propNode = broker_node_create("name", "node");
-    json_object_set_new(propNode->meta, "$writable", json_string_nocheck("write"));
-    json_object_set_new(propNode->meta, "$type", json_string_nocheck("string"));
-    broker_node_update_value(propNode, json_object_get(data, "name"), 0);
-    broker_node_add(upstreamNode, propNode);
-
-    propNode = broker_node_create("brokerName", "node");
-    json_object_set_new(propNode->meta, "$writable", json_string_nocheck("write"));
-    json_object_set_new(propNode->meta, "$type", json_string_nocheck("string"));
-    broker_node_update_value(propNode, json_object_get(data, "brokerName"), 0);
-    broker_node_add(upstreamNode, propNode);
-
-
-    propNode = broker_node_create("url", "node");
-    json_object_set_new(propNode->meta, "$writable", json_string_nocheck("write"));
-    json_object_set_new(propNode->meta, "$type", json_string_nocheck("string"));
-    broker_node_update_value(propNode, json_object_get(data, "url"), 0);
-    broker_node_add(upstreamNode, propNode);
-
-    propNode = broker_node_create("token", "node");
-    json_object_set_new(propNode->meta, "$writable", json_string_nocheck("write"));
-    json_object_set_new(propNode->meta, "$type", json_string_nocheck("string"));
-    broker_node_update_value(propNode, json_object_get(data, "token"), 0);
-    broker_node_add(upstreamNode, propNode);
-
-
-    propNode = broker_node_create("enabled", "node");
-    json_object_set_new(propNode->meta, "$writable", json_string_nocheck("write"));
-    json_object_set_new(propNode->meta, "$type", json_string_nocheck("bool"));
-    broker_node_update_value(propNode, json_object_get(data, "enabled"), 0);
-    broker_node_add(upstreamNode, propNode);
-
-
+    add_upstream_invoke(NULL, parentNode, data);
 
 }
 
@@ -114,28 +83,62 @@ int load_upstreams(BrokerNode *parentNode){
 
 
 static
+void delete_upstream_invoke(RemoteDSLink *link,
+                         BrokerNode *node,
+                         json_t *req) {
+    broker_utils_send_closed_resp(link, req, NULL);
+
+    BrokerNode *parentNode = node->parent;
+
+    char* escname = dslink_str_escape(parentNode->name);
+    char tmp[256];
+    int len = snprintf(tmp, sizeof(tmp) - 1, "upstream/%s", escname);
+    tmp[len] = '\0';
+    dslink_free(escname);
+
+    uv_fs_t unlink_req;
+    uv_fs_unlink(NULL, &unlink_req, tmp, NULL);
+
+
+    broker_node_free(parentNode);
+}
+
+
+
+
 void add_upstream_invoke(RemoteDSLink *link,
                       BrokerNode *node,
                       json_t *req) {
     json_t *params = NULL;
-    if (req) {
-        params = json_object_get(req, "params");
-    }
-    if (!json_is_object(params)) {
-        broker_utils_send_closed_resp(link, req, "invalidParameter");
-        return;
+    BrokerNode* parentNode;
+    if (link) {
+        // invoked
+        if (req) {
+            params = json_object_get(req, "params");
+        }
+        if (!json_is_object(params)) {
+            broker_utils_send_closed_resp(link, req, "invalidParameter");
+            return;
+        }
+        parentNode = node->parent;
+    } else {
+        // loaded
+        params = req;
+        parentNode = node;
     }
 
     json_t* namejson = json_object_get(params , "name");
     json_t* brokerNameJson = json_object_get(params , "brokerName");
     json_t* urlJson = json_object_get(params , "url");
     json_t* tokenJson = json_object_get(params , "token");
+    json_t* enabledJson = json_object_get(params , "enabled");
+
     if (!json_is_string(namejson) || !json_is_string(brokerNameJson) || !json_is_string(urlJson)) {
         broker_utils_send_closed_resp(link, req, "invalidParameter");
         return;
     }
     const char *name = json_string_value(namejson);
-    BrokerNode* parentNode = node->parent;
+
     if (!parentNode || dslink_map_contains(parentNode->children, (void*)name)) {
         broker_utils_send_closed_resp(link, req, "invalidParameter");
         return;
@@ -180,15 +183,27 @@ void add_upstream_invoke(RemoteDSLink *link,
     propNode = broker_node_create("enabled", "node");
     json_object_set_new(propNode->meta, "$writable", json_string_nocheck("write"));
     json_object_set_new(propNode->meta, "$type", json_string_nocheck("bool"));
-    broker_node_update_value(propNode, json_true(), 0);
+    if (json_is_false(enabledJson)) {
+        broker_node_update_value(propNode, json_false(), 0);
+    } else {
+        broker_node_update_value(propNode, json_true(), 0);
+    }
     broker_node_add(upstreamNode, propNode);
 
     // TODO detect enabled change and start/stop upstream
 
+    BrokerNode *deleteAction = broker_node_create("delete", "node");
+    json_object_set_new(deleteAction->meta, "$invokable", json_string_nocheck("config"));
+    broker_node_add(upstreamNode, deleteAction);
 
+    deleteAction->on_invoke = delete_upstream_invoke;
 
     log_info("Upstream added `%s`\n", name);
-    save_upstream_node(upstreamNode);
+    if (link) {
+        // only save when it's from an action
+        save_upstream_node(upstreamNode);
+    }
+
 
     return;
 fail:
