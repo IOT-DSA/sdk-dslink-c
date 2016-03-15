@@ -14,7 +14,7 @@ void restart_broker(RemoteDSLink *link,
 }
 
 int init_restart(BrokerNode *sysNode) {
-    BrokerNode *restartNode = broker_node_create("restart", "node");
+    BrokerNode *restartNode = broker_node_create("restart_server", "node");
     if (!restartNode) {
         return 1;
     }
