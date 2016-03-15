@@ -6,6 +6,9 @@ void broker_free_handle(uv_handle_t *handle) {
 }
 
 void broker_utils_send_closed_resp(RemoteDSLink *link, json_t *req, const char* errorType) {
+    if (!link || !req) {
+        return;
+    }
     json_t *top = json_object();
     json_t *resps = json_array();
     json_object_set_new_nocheck(top, "responses", resps);
