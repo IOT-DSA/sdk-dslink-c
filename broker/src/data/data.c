@@ -19,7 +19,7 @@ void broker_data_node_update(BrokerNode *node,
     uv_fs_t dir;
     uv_fs_mkdir(NULL, &dir, "data", 0770, NULL);
 
-    char *replaced = dslink_str_replace_all(node->path, "/", "%2F");
+    char *replaced = dslink_str_escape(node->path);
     if (!replaced) {
         goto exit;
     }
@@ -64,7 +64,7 @@ void on_delete_node_invoked(RemoteDSLink *link,
         broker_ws_send_obj(entry->key->data, top);
     }
 
-    char *replaced = dslink_str_replace_all(node->path, "/", "%2F");
+    char *replaced = dslink_str_escape(node->path);
     if (replaced) {
         char tmp[256];
         int len = snprintf(tmp, sizeof(tmp) - 1, "data/%s", replaced);
@@ -265,7 +265,7 @@ void deserialize_data_nodes(BrokerNode *root) {
             continue;
         }
 
-        char *path = dslink_str_replace_all(d.name, "%2F", "/");
+        char *path = dslink_str_unescape(d.name);
         if (!path) {
             continue;
         }

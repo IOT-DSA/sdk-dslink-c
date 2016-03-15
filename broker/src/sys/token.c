@@ -274,7 +274,7 @@ int init_tokens(BrokerNode *sysNode) {
 
 
     if (broker_node_add(tokenRootNode, addTokenAction) != 0) {
-        broker_node_free(tokenRootNode);
+        broker_node_free(addTokenAction);
         return 1;
     }
 

@@ -100,6 +100,14 @@ char *dslink_str_replace_all(const char *haystack,
     return dslink_str_replace_all_rep(haystack, needle, replacement, 1);
 }
 
+char *dslink_str_escape(const char *data) {
+    //TODO other invalid characters
+    return dslink_str_replace_all_rep(data, "/", "%2F", 1);
+}
+char *dslink_str_unescape(const char *data) {
+    return dslink_str_replace_all_rep(data, "%2F", "/", 1);
+}
+
 int dslink_str_starts_with(const char *a, const char *b) {
     while (*b) {
         if (*a++ != *b++) {

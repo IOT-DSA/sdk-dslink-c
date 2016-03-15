@@ -18,6 +18,8 @@ int dslink_str_starts_with(const char *a, const char *b);
 char *dslink_str_replace_all(const char *haystack,
                              const char *needle,
                              const char *replacement);
+char *dslink_str_escape(const char *data);
+char *dslink_str_unescape(const char *data);
 
 size_t dslink_create_ts(char *buf, size_t bufLen);
 

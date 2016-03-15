@@ -104,6 +104,7 @@ set(BROKER_SRC
     "${BROKER_SRC_DIR}/utils.c"
     "${BROKER_SRC_DIR}/sys/token.c"
     "${BROKER_SRC_DIR}/sys/trace.c"
+    "${BROKER_SRC_DIR}/upstream/upstream_sys_node.c"
     "${BROKER_SRC_DIR}/sys/restart.c"
     "${BROKER_SRC_DIR}/upstream/upstream_node.c")
 
