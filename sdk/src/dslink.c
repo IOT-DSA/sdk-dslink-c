@@ -63,7 +63,13 @@ int dslink_parse_opts(int argc,
         goto exit;
     }
 
-    config->broker_url = broker->sval[0];
+    const char *brokerUrl = broker->sval[0];
+    config->broker_url = dslink_url_parse(brokerUrl);
+    if (!config->broker_url) {
+        log_fatal("Failed to parse broker url\n");
+        ret = 1;
+        goto exit;
+    }
 
     if (log->count > 0) {
         const char *lvl = log->sval[0];
@@ -111,31 +117,26 @@ cleanup:
     return DSLINK_ALLOC_ERR;
 }
 
-int dslink_init(int argc, char **argv,
-                const char *name, uint8_t isRequester,
-                uint8_t isResponder, DSLinkCallbacks *cbs) {
-    mbedtls_ecdh_context ctx;
-    DSLinkConfig config;
-
-    Url *url = NULL;
-    json_t *handshake = NULL;
-    char *dsId = NULL;
-    Socket *sock = NULL;
-
-    DSLink link;
-    memset(&link, 0, sizeof(DSLink));
+static
+int handle_config(DSLinkConfig *config, const char *name, int argc, char **argv) {
+    memset(config, 0, sizeof(DSLinkConfig));
+    config->name = name;
 
     int ret = 0;
-    config.name = name;
-    if ((ret = dslink_parse_opts(argc, argv, &config)) != 0) {
+    if ((ret = dslink_parse_opts(argc, argv, config)) != 0) {
         if (ret == DSLINK_ALLOC_ERR) {
             log_fatal("Failed to allocate memory during argument parsing\n");
         }
-        return 1;
+        return ret;
     }
 
-    // TODO: move .key as a parameter
-    if ((ret = dslink_handshake_key_pair_fs(&ctx, ".key")) != 0) {
+    return ret;
+}
+
+static
+int handle_key(DSLink *link) {
+    int ret;
+    if ((ret = dslink_handshake_key_pair_fs(&link->key, ".key")) != 0) {
         if (ret == DSLINK_CRYPT_KEY_DECODE_ERR) {
             log_fatal("Failed to decode existing key\n");
         } else if (ret == DSLINK_OPEN_FILE_ERR) {
@@ -145,13 +146,25 @@ int dslink_init(int argc, char **argv,
         } else {
             log_fatal("Unknown error occurred during key handling: %d\n", ret);
         }
-        ret = 1;
-        goto exit;
+    }
+    return ret;
+}
+
+int dslink_init(int argc, char **argv,
+                const char *name, uint8_t isRequester,
+                uint8_t isResponder, DSLinkCallbacks *cbs) {
+    DSLink link;
+    memset(&link, 0, sizeof(DSLink));
+    if (handle_config(&link.config, name, argc, argv) != 0) {
+        return 1;
     }
 
-    url = dslink_url_parse(config.broker_url);
-    if (!url) {
-        log_fatal("Failed to parse url: %s\n", config.broker_url);
+    json_t *handshake = NULL;
+    char *dsId = NULL;
+    Socket *sock = NULL;
+
+    int ret = 0;
+    if (handle_key(&link) != 0) {
         ret = 1;
         goto exit;
     }
@@ -173,8 +186,8 @@ int dslink_init(int argc, char **argv,
         cbs->init_cb(&link);
     }
 
-    if ((ret = dslink_handshake_generate(url, &ctx, config.name,
-                                         isRequester, isResponder,
+    if ((ret = dslink_handshake_generate(link.config.broker_url, &link.key,
+                                         link.config.name, isRequester, isResponder,
                                          &handshake, &dsId)) != 0) {
         log_fatal("Handshake failed: %d\n", ret);
         ret = 1;
@@ -192,7 +205,7 @@ int dslink_init(int argc, char **argv,
         goto exit;
     }
 
-    if ((ret = dslink_handshake_connect_ws(url, &ctx, uri,
+    if ((ret = dslink_handshake_connect_ws(link.config.broker_url, &link.key, uri,
                                            tKey, salt, dsId, &sock)) != 0) {
         log_fatal("Failed to connect to the broker: %d\n", ret);
         ret = 1;
@@ -241,10 +254,10 @@ exit:
 
         dslink_free(link.responder);
     }
-    mbedtls_ecdh_free(&ctx);
+    mbedtls_ecdh_free(&link.key);
+    dslink_url_free(link.config.broker_url);
     DSLINK_CHECKED_EXEC(dslink_socket_close, sock);
     DSLINK_CHECKED_EXEC(dslink_free, dsId);
-    DSLINK_CHECKED_EXEC(dslink_url_free, url);
     DSLINK_CHECKED_EXEC(json_delete, handshake);
     return ret;
 }

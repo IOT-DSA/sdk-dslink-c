@@ -5,9 +5,12 @@
 extern "C" {
 #endif
 
+#include <mbedtls/ecdh.h>
 #include <uv.h>
+
 #include "socket.h"
 #include "node.h"
+#include "url.h"
 
 typedef struct DSLinkCallbacks DSLinkCallbacks;
 typedef struct DSLinkConfig DSLinkConfig;
@@ -17,7 +20,7 @@ typedef struct Responder Responder;
 typedef void (*link_callback)(DSLink *link);
 
 struct DSLinkConfig {
-    const char *broker_url;
+    Url *broker_url;
     const char *name;
 };
 
@@ -26,7 +29,9 @@ struct DSLink {
     Socket *_socket; // Socket for the _ws connection
 
     Responder *responder; // Responder, only initialized for responder DSLinks
+    mbedtls_ecdh_context key; // ECDH key
     uv_loop_t loop; // Primary event loop
+    DSLinkConfig config; // Configuration
 };
 
 struct Responder {
