@@ -1,5 +1,5 @@
-#ifndef SDK_DSLINK_C_SYS_H
-#define SDK_DSLINK_C_SYS_H
+#ifndef BROKER_SYS_H
+#define BROKER_SYS_H
 
 
 #ifdef __cplusplus
@@ -15,4 +15,4 @@ int broker_sys_node_populate(BrokerNode *sysNode);
 #endif
 
 
-#endif //SDK_DSLINK_C_SYS_H
+#endif //BROKER_SYS_H
