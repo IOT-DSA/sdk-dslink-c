@@ -8,3 +8,4 @@ legion/
 test/dart/**/packages
 pubspec.lock
 .pub
+dists/

@@ -2,5 +2,8 @@
   "clang": false,
   "args": {
     "cmake": ["-DDSLINK_BUILD_BROKER=ON"]
+  },
+  "dists": {
+    "broker": "{TARGET_UNDERSCORE}_broker"
   }
 }

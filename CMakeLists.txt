@@ -5,6 +5,8 @@ option(DSLINK_BUILD_BROKER "Whether to build the broker" OFF)
 option(DSLINK_BUILD_EXAMPLES "Whether to build the examples" OFF)
 option(DSLINK_TEST "Whether to enable tests" OFF)
 
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${TOOLCHAIN_C_FLAGS}")
+
 ######## Define Macros #######
 
 macro(ADD_C_FLAGS flags)
