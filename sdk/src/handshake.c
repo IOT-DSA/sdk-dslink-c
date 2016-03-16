@@ -408,20 +408,6 @@ int dslink_handshake_generate(Url *url,
         ret = DSLINK_ALLOC_ERR;
         goto exit;
     }
-    const char *id = json_string_value(json_object_get(*handshake, "id"));
-    if (id) {
-        dslink_free(*dsId);
-        size_t size = strlen(id) + 1;
-        *dsId = dslink_malloc(size);
-        if (!(*dsId)) {
-            ret = DSLINK_ALLOC_ERR;
-            json_delete(*handshake);
-            *handshake = NULL;
-            goto exit;
-        }
-        memcpy(*dsId, id, size);
-    }
-
 exit:
     DSLINK_CHECKED_EXEC(free, body);
     DSLINK_CHECKED_EXEC(free, resp);
