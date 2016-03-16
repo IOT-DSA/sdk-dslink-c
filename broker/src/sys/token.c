@@ -46,6 +46,24 @@ unsigned char randomChar() {
 }
 
 static
+void delete_token_invoke(RemoteDSLink *link,
+                         BrokerNode *node,
+                         json_t *req) {
+    broker_utils_send_closed_resp(link, req, NULL);
+
+    BrokerNode *parentNode = node->parent;
+
+    char tmp[256];
+    int len = snprintf(tmp, sizeof(tmp) - 1, "token/%s", parentNode->name);
+    tmp[len] = '\0';
+
+    uv_fs_t unlink_req;
+    uv_fs_unlink(NULL, &unlink_req, tmp, NULL);
+
+    broker_node_free(parentNode);
+}
+
+static
 void save_token_node(BrokerNode *node) {
     char tmp[128];
     sprintf(tmp, "token/%s", node->name);
@@ -64,6 +82,13 @@ void load_token_node(const char* tokenName, json_t* data) {
     }
 
     broker_node_add(tokenRootNode, tokenNode);
+
+    BrokerNode *deleteAction = broker_node_create("delete", "node");
+    json_object_set_new(deleteAction->meta, "$invokable", json_string_nocheck("config"));
+    broker_node_add(tokenNode, deleteAction);
+
+    deleteAction->on_invoke = delete_token_invoke;
+
 }
 
 static
@@ -123,6 +148,12 @@ void add_token_invoke(RemoteDSLink *link,
     if (broker_node_add(tokenRootNode, tokenNode) != 0) {
         goto fail;
     }
+
+    BrokerNode *deleteAction = broker_node_create("delete", "node");
+    json_object_set_new(deleteAction->meta, "$invokable", json_string_nocheck("config"));
+    broker_node_add(tokenNode, deleteAction);
+
+    deleteAction->on_invoke = delete_token_invoke;
 
     log_info("Token added `%s`\n", tokenName);
     save_token_node(tokenNode);

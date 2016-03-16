@@ -4,3 +4,7 @@ build
 modules/cmocka
 legion/
 .build/
+.packages
+test/dart/**/packages
+pubspec.lock
+.pub
