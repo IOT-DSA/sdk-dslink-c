@@ -74,7 +74,7 @@ BrokerNode *broker_node_createl(const char *name, size_t nameLen,
         dslink_free(node);
         return NULL;
     }
-
+    node->permissionList = NULL;
     node->children = dslink_malloc(sizeof(Map));
     if (dslink_map_init(node->children, dslink_map_str_cmp,
                         dslink_map_str_key_len_cal, dslink_map_hash_key) != 0) {
@@ -178,6 +178,7 @@ void broker_node_free(BrokerNode *node) {
 
     if (node->type == DOWNSTREAM_NODE) {
         dslink_map_free(&((DownstreamNode *)node)->list_streams);
+        virtual_permission_free_map(&((DownstreamNode *)node)->children_permissions);
     } else {
         // TODO: add a new type for these listeners
         // they shouldn't be part of base node type
@@ -260,6 +261,9 @@ void broker_dslink_disconnect(DownstreamNode *node) {
     dslink_map_clear(&node->sub_sids);
 
     node->link = NULL;
+    char disconnectedTs[32];
+    dslink_create_ts(disconnectedTs, 32);
+    json_object_set(node->meta, "$disconnectedTs", json_string(disconnectedTs));
 }
 
 void broker_dslink_connect(DownstreamNode *dsn, RemoteDSLink *link) {
@@ -288,4 +292,6 @@ void broker_dslink_connect(DownstreamNode *dsn, RemoteDSLink *link) {
 
         dslink_decref(ref);
     }
+
+    json_object_del(dsn->meta, "$disconnectedTs");
 }

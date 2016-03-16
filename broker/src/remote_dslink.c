@@ -1,5 +1,6 @@
 #include <string.h>
 #include <dslink/utils.h>
+#include <broker/permission/permission.h>
 #include "broker/stream.h"
 
 int broker_remote_dslink_init(RemoteDSLink *link) {
@@ -14,6 +15,7 @@ int broker_remote_dslink_init(RemoteDSLink *link) {
         dslink_map_free(&link->responder_streams);
         return ret;
     }
+    permission_groups_init(&link->permission_groups);
     return ret;
 }
 
@@ -38,6 +40,7 @@ void broker_remote_dslink_free(RemoteDSLink *link) {
         entry->value->data = NULL;
     }
     dslink_map_free(&link->responder_streams);
+    permission_groups_free(&link->permission_groups);
     dslink_free((void *) link->path);
     json_decref(link->linkData);
     wslay_event_context_free(link->ws);

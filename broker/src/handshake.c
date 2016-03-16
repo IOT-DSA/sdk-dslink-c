@@ -53,7 +53,9 @@ DownstreamNode *broker_init_downstream_node(Broker *broker, const char *name) {
         || dslink_map_init(&node->local_subs, dslink_map_str_cmp,
                            dslink_map_str_key_len_cal, dslink_map_hash_key) != 0
         || dslink_map_init(&node->list_streams, dslink_map_str_cmp,
-                           dslink_map_str_key_len_cal, dslink_map_hash_key) != 0) {
+                           dslink_map_str_key_len_cal, dslink_map_hash_key) != 0
+        || dslink_map_init(&node->children_permissions, dslink_map_str_cmp,
+                              dslink_map_str_key_len_cal, dslink_map_hash_key) != 0) {
         goto fail;
     }
 
@@ -65,6 +67,7 @@ DownstreamNode *broker_init_downstream_node(Broker *broker, const char *name) {
                                          json_string_nocheck("node")) == 0)) {
         goto fail;
     }
+    node->permissionList = NULL;
 
     char *tmpKey = dslink_strdup(name);
     if (!tmpKey) {

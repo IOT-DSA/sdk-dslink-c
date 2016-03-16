@@ -15,6 +15,7 @@ extern "C" {
 #include <dslink/socket.h>
 
 #include "broker/net/server.h"
+#include "broker/permission/permission.h"
 
 typedef struct RemoteAuth {
 
@@ -52,6 +53,8 @@ typedef struct RemoteDSLink {
     // connect to responder
     // broker send requests and receive responses
     Map responder_streams;
+
+    PermissionGroups permission_groups;
 } RemoteDSLink;
 
 int broker_remote_dslink_init(RemoteDSLink *link);

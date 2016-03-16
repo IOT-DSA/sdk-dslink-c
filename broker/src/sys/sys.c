@@ -1,11 +1,12 @@
-#include <broker/upstream/upstream_node.h>
-#include <dslink/utils.h>
-
+#include "broker/global.h"
+#include "broker/query/query.h"
 #include "broker/sys/sys.h"
 #include "broker/sys/token.h"
 #include "broker/sys/restart.h"
-#include "broker/query/query.h"
-#include "broker/global.h"
+#include "broker/sys/clear_conns.h"
+#include "broker/upstream/upstream_node.h"
+
+#include "dslink/utils.h"
 
 int init_sys_static(BrokerNode *sysNode) {
     BrokerNode *buildNode = broker_node_create("build_number", "node");
@@ -83,5 +84,6 @@ int broker_sys_node_populate(BrokerNode *sysNode) {
     init_restart(sysNode);
     init_sys_upstream_node(sysNode);
     init_sys_static(sysNode);
+    init_clear_conns(sysNode);
     return 0;
 }

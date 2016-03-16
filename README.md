@@ -9,9 +9,13 @@ and is feature incomplete!
 
 # Building
 
+- CMake >=2.8
+
 ## For *nix
 
-* mkdir build
-* cd build
-* cmake -DDSLINK_BUILD_EXAMPLES=ON -DDSLINK_BUILD_BROKER=ON ..
-* make
+```bash
+mkdir build
+cd build
+cmake -DDSLINK_BUILD_EXAMPLES=ON -DDSLINK_BUILD_BROKER=ON ..
+make
+```

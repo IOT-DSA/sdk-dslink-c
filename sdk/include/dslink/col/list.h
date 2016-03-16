@@ -28,16 +28,16 @@ typedef struct List {
 
 static inline
 uint8_t list_is_empty(List *list) {
-    return !list || ((List*)list)->head.next == &((List*)list)->head;
+    return (uint8_t)(!list || ((List*)list)->head.next == &((List*)list)->head);
 }
 
 static inline
 uint8_t list_is_not_empty(List *list) {
-    return list && list->head.next != &list->head;
+    return (uint8_t)(list && list->head.next != &list->head);
 }
 static inline
 uint8_t list_node_in_list(void *node) {
-    return  node && ((ListNodeBase*)node)->list;
+    return  (uint8_t)(node && ((ListNodeBase*)node)->list);
 }
 
 

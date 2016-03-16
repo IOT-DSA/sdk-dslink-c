@@ -5,6 +5,8 @@ option(DSLINK_BUILD_BROKER "Whether to build the broker" OFF)
 option(DSLINK_BUILD_EXAMPLES "Whether to build the examples" OFF)
 option(DSLINK_TEST "Whether to enable tests" OFF)
 
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${TOOLCHAIN_C_FLAGS}")
+
 ######## Define Macros #######
 
 macro(ADD_C_FLAGS flags)
@@ -106,7 +108,9 @@ set(BROKER_SRC
     "${BROKER_SRC_DIR}/sys/trace.c"
     "${BROKER_SRC_DIR}/upstream/upstream_sys_node.c"
     "${BROKER_SRC_DIR}/sys/restart.c"
-    "${BROKER_SRC_DIR}/upstream/upstream_node.c")
+    "${BROKER_SRC_DIR}/upstream/upstream_node.c"
+    "${BROKER_SRC_DIR}/permission/permission.c"
+    "${BROKER_SRC_DIR}/sys/clear_conns.c")
 
 set(EXAMPLE_RESPONDER_SRC_DIR "${CMAKE_CURRENT_LIST_DIR}/examples/responder/src")
 set(EXAMPLE_RESPONDER_SRC

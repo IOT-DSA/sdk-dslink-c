@@ -7,11 +7,13 @@ extern "C" {
 
 #include "broker/remote_dslink.h"
 
+struct RemoteDSLink;
 struct BrokerNode;
+struct json_t;
 
 typedef void (*on_invocation_cb)(struct RemoteDSLink *link,
                                  struct BrokerNode *node,
-                                 json_t *request);
+                                 struct json_t *request);
 
 typedef enum BrokerNodeType {
 
@@ -26,6 +28,7 @@ typedef enum BrokerNodeType {
     const char *name; \
     struct BrokerNode *parent; \
     Map *children; \
+    List *permissionList; \
     json_t *meta
 
 typedef struct BrokerNodeBase {
@@ -67,6 +70,8 @@ typedef struct DownstreamNode {
     uint32_t rid;
     uint32_t sid;
 
+    // Map<char *, VirtualPermissionNode *>
+    Map children_permissions;
 } DownstreamNode;
 
 BrokerNode *broker_node_get(BrokerNode *root,
@@ -86,7 +91,7 @@ uint32_t broker_node_incr_rid(DownstreamNode *node);
 uint32_t broker_node_incr_sid(DownstreamNode *node);
 
 void broker_dslink_disconnect(DownstreamNode *node);
-void broker_dslink_connect(DownstreamNode *node, RemoteDSLink *link);
+void broker_dslink_connect(DownstreamNode *node, struct RemoteDSLink *link);
 
 #ifdef __cplusplus
 }
