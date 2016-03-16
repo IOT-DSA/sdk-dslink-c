@@ -96,7 +96,7 @@ int dslink_response_list(DSLink *link, json_t *req, DSNode *node) {
             dslink_map_foreach(node->meta_data) {
                 const char *key = entry->key->data;
 
-                if (strncmp(key, "$$", 2)) {
+                if (strncmp(key, "$$$", 3)) {
                     continue;
                 }
 
