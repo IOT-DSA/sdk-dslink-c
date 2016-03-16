@@ -1,10 +1,9 @@
 #define LOG_TAG "dslink"
+#include "dslink/log.h"
 
 #include <argtable3.h>
 #include <string.h>
-#include "dslink/mem/mem.h"
 #include "dslink/handshake.h"
-#include "dslink/log.h"
 #include "dslink/utils.h"
 #include "dslink/ws.h"
 
@@ -155,6 +154,8 @@ int dslink_init(int argc, char **argv,
                 uint8_t isResponder, DSLinkCallbacks *cbs) {
     DSLink link;
     memset(&link, 0, sizeof(DSLink));
+    link.is_responder = isResponder;
+    link.is_requester = isRequester;
     if (handle_config(&link.config, name, argc, argv) != 0) {
         return 1;
     }
@@ -186,9 +187,7 @@ int dslink_init(int argc, char **argv,
         cbs->init_cb(&link);
     }
 
-    if ((ret = dslink_handshake_generate(link.config.broker_url, &link.key,
-                                         link.config.name, isRequester, isResponder,
-                                         &handshake, &dsId)) != 0) {
+    if ((ret = dslink_handshake_generate(&link, &handshake, &dsId)) != 0) {
         log_fatal("Handshake failed: %d\n", ret);
         ret = 1;
         goto exit;

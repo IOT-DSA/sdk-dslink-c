@@ -5,7 +5,6 @@
 #include <mbedtls/ecdh.h>
 #include <mbedtls/entropy.h>
 
-#include "dslink/mem/mem.h"
 #include "dslink/base64_url.h"
 #include "dslink/handshake.h"
 #include "dslink/err.h"
@@ -248,41 +247,34 @@ exit:
     return ret;
 }
 
-int dslink_handshake_generate(Url *url,
-                              mbedtls_ecdh_context *key,
-                              const char *name,
-                              uint8_t isRequester,
-                              uint8_t isResponder,
-                              json_t **handshake,
-                              char **dsId) {
-    *handshake = NULL;
-    Socket *sock = NULL;
-    char *resp = NULL;
+char *dslink_handshake_generate_req(DSLink *link, char **dsId) {
+    const size_t reqSize = 512;
+    json_t *obj = json_object();
+    char *req = dslink_malloc(reqSize);
+    if (!(obj && req)) {
+        json_decref(obj);
+        DSLINK_CHECKED_EXEC(dslink_free, req);
+        return NULL;
+    }
+
+    *dsId = NULL;
     char *body = NULL;
-    int ret = 0;
 
     unsigned char pubKeyBin[65];
     size_t pubKeyBinLen = 0;
 
     unsigned char pubKey[90];
     size_t pubKeyLen = 0;
-
-    if ((errno = mbedtls_ecp_point_write_binary(&key->grp,
-                                                &key->Q,
-                                                MBEDTLS_ECP_PF_UNCOMPRESSED,
-                                                &pubKeyBinLen, pubKeyBin,
-                                                sizeof(pubKeyBin))) != 0) {
-        ret = DSLINK_CRYPT_KEY_ENCODE_ERR;
-        goto exit;
-    }
-
-    if ((errno = dslink_base64_url_encode(pubKey,
-                                          sizeof(pubKey),
-                                          &pubKeyLen,
-                                          pubKeyBin,
-                                          pubKeyBinLen)) != 0) {
-        ret = DSLINK_CRYPT_BASE64_URL_ENCODE_ERR;
-        goto exit;
+    if (!(mbedtls_ecp_point_write_binary(&link->key.grp, &link->key.Q,
+                                       MBEDTLS_ECP_PF_UNCOMPRESSED,
+                                       &pubKeyBinLen, pubKeyBin,
+                                       sizeof(pubKeyBin)) == 0
+        && dslink_base64_url_encode(pubKey,
+                                    sizeof(pubKey),
+                                    &pubKeyLen,
+                                    pubKeyBin,
+                                    pubKeyBinLen) == 0)) {
+        goto fail;
     }
 
     { // Generate dsId
@@ -296,87 +288,56 @@ int dslink_handshake_generate(Url *url,
                                               &tmpLen,
                                               sha,
                                               sizeof(sha))) != 0) {
-            ret = DSLINK_CRYPT_BASE64_URL_ENCODE_ERR;
-            goto exit;
+            goto fail;
         }
 
-        size_t nameLen = strlen(name);
+        size_t nameLen = strlen(link->config.name);
         *dsId = dslink_malloc(nameLen + tmpLen + 2);
         if (!(*dsId)) {
-            ret = DSLINK_ALLOC_ERR;
-            goto exit;
+            goto fail;
         }
-        memcpy(*dsId, name, nameLen);
+        memcpy(*dsId, link->config.name, nameLen);
         *(*dsId + nameLen) = '-';
         memcpy((*dsId + nameLen + 1), (char *) tmp, tmpLen);
         *(*dsId + nameLen + tmpLen + 1) = '\0';
     }
 
     { // Create the request body
-        json_t *obj = json_object();
-        if (!obj) {
-            ret = DSLINK_ALLOC_ERR;
-            goto exit;
-        }
-
         json_object_set_new(obj, "publicKey", json_string((char *) pubKey));
-        json_object_set_new(obj, "isRequester", json_boolean(isRequester));
-        json_object_set_new(obj, "isResponder", json_boolean(isResponder));
+        json_object_set_new(obj, "isRequester", json_boolean(link->is_requester));
+        json_object_set_new(obj, "isResponder", json_boolean(link->is_responder));
         json_object_set_new(obj, "version", json_string("1.1.2"));
         body = json_dumps(obj, JSON_INDENT(2));
-        json_delete(obj);
         if (!body) {
-            ret = DSLINK_ALLOC_ERR;
-            goto exit;
+            goto fail;
         }
     }
-
-    char req[512];
-    size_t reqLen;
     {
         char uri[128];
-        snprintf(uri, sizeof(uri), "%s?dsId=%s", url->uri, *dsId);
-        reqLen = snprintf(req, sizeof(req), DSLINK_POST_REQ, uri, url->host,
-                          url->port, (int) strlen(body), body);
+        int reqLen = snprintf(uri, sizeof(uri) - 1, "%s?dsId=%s",
+                              link->config.broker_url->uri, *dsId);
+        uri[reqLen] = '\0';
+        reqLen = snprintf(req, reqSize - 1, DSLINK_POST_REQ, uri,
+                          link->config.broker_url->host,
+                          link->config.broker_url->port,
+                          (int) strlen(body), body);
+        req[reqLen] = '\0';
     }
 
-    if ((ret = dslink_socket_connect(&sock, url->host,
-                                     url->port, url->secure)) != 0) {
-        goto exit;
-    }
+exit:
+    DSLINK_CHECKED_EXEC(dslink_free, body);
+    json_decref(obj);
+    return req;
+fail:
+    DSLINK_CHECKED_EXEC(dslink_free, *dsId);
+    DSLINK_CHECKED_EXEC(dslink_free, req);
+    req = NULL;
+    *dsId = NULL;
+    goto exit;
+}
 
-    dslink_socket_write(sock, req, reqLen);
-
-    int respLen = 0;
-    while (1) {
-        char buf[1024];
-        int read = dslink_socket_read(sock, buf, sizeof(buf) - 1);
-        if (read <= 0) {
-            break;
-        }
-        if (resp == NULL) {
-            resp = dslink_malloc((size_t) read + 1);
-            if (!resp) {
-                ret = DSLINK_ALLOC_ERR;
-                goto exit;
-            }
-            respLen = read;
-            memcpy(resp, buf, (size_t) read);
-            *(resp + respLen) = '\0';
-        } else {
-            char *tmp = realloc(resp, (size_t) respLen + read + 1);
-            if (!tmp) {
-                dslink_free(resp);
-                ret = DSLINK_ALLOC_ERR;
-                goto exit;
-            }
-            resp = tmp;
-            memcpy(resp + respLen, buf, (size_t) read);
-            respLen += read;
-            *(resp + respLen) = '\0';
-        }
-    }
-
+int dslink_parse_handshake_response(const char *resp, json_t **handshake) {
+    int ret = 0;
     if (!resp) {
         ret = DSLINK_HANDSHAKE_NO_RESPONSE;
         goto exit;
@@ -408,9 +369,66 @@ int dslink_handshake_generate(Url *url,
         ret = DSLINK_ALLOC_ERR;
         goto exit;
     }
+
 exit:
-    DSLINK_CHECKED_EXEC(free, body);
-    DSLINK_CHECKED_EXEC(free, resp);
+    return ret;
+}
+
+int dslink_handshake_generate(DSLink *link,
+                              json_t **handshake,
+                              char **dsId) {
+    *handshake = NULL;
+    Socket *sock = NULL;
+    char *resp = NULL;
+    int ret = 0;
+
+    char *req = dslink_handshake_generate_req(link, dsId);
+    if (!req) {
+        ret = DSLINK_ALLOC_ERR;
+        goto exit;
+    }
+
+    if ((ret = dslink_socket_connect(&sock, link->config.broker_url->host,
+                                     link->config.broker_url->port,
+                                     link->config.broker_url->secure)) != 0) {
+        goto exit;
+    }
+
+    dslink_socket_write(sock, req, strlen(req));
+
+    int respLen = 0;
+    while (1) {
+        char buf[1024];
+        int read = dslink_socket_read(sock, buf, sizeof(buf) - 1);
+        if (read <= 0) {
+            break;
+        }
+        if (resp == NULL) {
+            resp = dslink_malloc((size_t) read + 1);
+            if (!resp) {
+                ret = DSLINK_ALLOC_ERR;
+                goto exit;
+            }
+            respLen = read;
+            memcpy(resp, buf, (size_t) read);
+            *(resp + respLen) = '\0';
+        } else {
+            char *tmp = realloc(resp, (size_t) respLen + read + 1);
+            if (!tmp) {
+                ret = DSLINK_ALLOC_ERR;
+                goto exit;
+            }
+            resp = tmp;
+            memcpy(resp + respLen, buf, (size_t) read);
+            respLen += read;
+            *(resp + respLen) = '\0';
+        }
+    }
+
+    ret = dslink_parse_handshake_response(resp, handshake);
+exit:
+    DSLINK_CHECKED_EXEC(dslink_free, req);
+    DSLINK_CHECKED_EXEC(dslink_free, resp);
     DSLINK_CHECKED_EXEC(dslink_socket_close, sock);
     return ret;
 }
