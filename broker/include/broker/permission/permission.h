@@ -9,8 +9,15 @@
 extern "C" {
 #endif
 
+#include <dslink/col/list.h>
+
+typedef struct PermissionPair {
+    char *group;
+    int permission;
+} PermissionPair;
 
 
+int get_permission(List* permissionList, char **groups);
 
 #ifdef __cplusplus
 }
