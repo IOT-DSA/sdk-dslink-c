@@ -4,10 +4,17 @@ project(sdk_dslink_c C)
 option(DSLINK_BUILD_BROKER "Whether to build the broker" OFF)
 option(DSLINK_BUILD_EXAMPLES "Whether to build the examples" OFF)
 option(DSLINK_TEST "Whether to enable tests" OFF)
+option(TOOLCHAIN_DYNAMIC_LINK_ENABLE "Enable Dynamic Linking for Toolchain" ON)
+
+##### Toolchain Configuration #####
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${TOOLCHAIN_C_FLAGS}")
+if (NOT TOOLCHAIN_DYNAMIC_LINK_ENABLE)
+    set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
+    set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS)
+endif()
 
-######## Define Macros #######
+##### Define Macros #####
 
 macro(ADD_C_FLAGS flags)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${flags}")
