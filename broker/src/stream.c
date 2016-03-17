@@ -92,8 +92,13 @@ void broker_stream_free(BrokerStream *stream, RemoteDSLink *link) {
         json_decref(s->updates_cache);
     } else if (stream->type == INVOCATION_STREAM) {
         BrokerInvokeStream *bis = (BrokerInvokeStream *) stream;
-        dslink_map_remove(&bis->requester->requester_streams, &bis->requester_rid);
-        dslink_map_remove(&bis->responder->responder_streams, &bis->responder_rid);
+        if (bis->requester) {
+            dslink_map_remove(&bis->requester->requester_streams, &bis->requester_rid);
+        }
+        if (bis->responder) {
+            dslink_map_remove(&bis->responder->responder_streams, &bis->responder_rid);
+        }
+
     } else if (stream->type == SUBSCRIPTION_STREAM) {
         BrokerSubStream *bss = (BrokerSubStream *) stream;
         dslink_map_remove(&bss->clients, link);

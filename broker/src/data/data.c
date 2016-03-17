@@ -230,6 +230,7 @@ void on_publish_invoked(RemoteDSLink *link,
     BrokerInvokeStream *s = broker_stream_invoke_init();
     s->continuous_invoke = on_publish_continuous_invoked;
 
+    s->requester = link;
     dslink_map_set(&link->requester_streams, dslink_int_ref(rid),
                    dslink_ref(s, NULL));
 }
