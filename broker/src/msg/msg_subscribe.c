@@ -107,15 +107,15 @@ void broker_handle_local_subscribe(BrokerNode *node,
     dslink_map_set(&link->node->local_subs, key, value);
 }
 
-void broker_subscribe_remote(DownstreamNode *node, RemoteDSLink *link,
+void broker_subscribe_remote(DownstreamNode *respNode, RemoteDSLink *reqLink,
                              uint32_t sid, const char *path,
                              const char *respPath) {
-    ref_t *ref = dslink_map_get(&node->sub_paths, (void *) path);
+    ref_t *ref = dslink_map_get(&respNode->sub_paths, (void *) path);
     if (ref) {
         BrokerSubStream *bss = ref->data;
         ref_t *s = dslink_int_ref(sid);
-        dslink_map_set(&bss->clients, dslink_ref(link, NULL), s);
-        dslink_map_set(&link->node->sub_sids, dslink_incref(s),
+        dslink_map_set(&bss->clients, dslink_ref(reqLink, NULL), s);
+        dslink_map_set(&reqLink->node->sub_sids, dslink_incref(s),
                        dslink_incref(ref));
 
         if (bss->last_value) {
@@ -136,31 +136,31 @@ void broker_subscribe_remote(DownstreamNode *node, RemoteDSLink *link,
                 json_object_set_new(bss->last_value, "sid", json_integer(sid));
             }
 
-            broker_ws_send_obj(link, top);
+            broker_ws_send_obj(reqLink, top);
             json_decref(top);
         }
         return;
     }
 
-    uint32_t respSid = broker_node_incr_sid(node);
-    send_subscribe_request(node, respPath, respSid);
+    uint32_t respSid = broker_node_incr_sid(respNode);
+    send_subscribe_request(respNode, respPath, respSid);
     BrokerSubStream *bss = broker_stream_sub_init();
-    bss->responder = node->link;
+    bss->responder = respNode->link;
     bss->responder_sid = respSid;
     ref_t *bssRef = dslink_ref(bss, NULL);
     {
         ref = dslink_int_ref(sid);
-        dslink_map_set(&bss->clients, dslink_ref(link, NULL), ref);
-        dslink_map_set(&link->node->sub_sids, dslink_incref(ref), bssRef);
-    }
-    {
-        ref = dslink_int_ref(respSid);
-        dslink_map_set(&node->sub_sids, ref,
-                       dslink_incref(bssRef));
+        dslink_map_set(&bss->clients, dslink_ref(reqLink, NULL), ref);
+        dslink_map_set(&reqLink->node->sub_sids, dslink_incref(ref), bssRef);
 
         ref = dslink_ref(dslink_strdup(path), dslink_free);
         bss->remote_path = dslink_incref(ref);
-        dslink_map_set(&node->sub_paths, ref,
+        dslink_map_set(&reqLink->node->sub_paths, ref,
+                       dslink_incref(bssRef));
+    }
+    {
+        ref = dslink_int_ref(respSid);
+        dslink_map_set(&respNode->sub_sids, ref,
                        dslink_incref(bssRef));
     }
 }
