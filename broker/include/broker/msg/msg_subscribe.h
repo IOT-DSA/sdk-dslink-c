@@ -17,6 +17,10 @@ typedef struct PendingSub {
 } PendingSub;
 
 int broker_msg_handle_subscribe(RemoteDSLink *link, json_t *req);
+void broker_handle_local_subscribe(BrokerNode *node,
+                                   RemoteDSLink *link,
+                                   uint32_t sid);
+
 void broker_subscribe_remote(DownstreamNode *node, RemoteDSLink *link,
                              uint32_t sid, const char *path,
                              const char *respPath);

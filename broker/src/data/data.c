@@ -2,6 +2,7 @@
 #include <dslink/utils.h>
 #include <string.h>
 #include <uv.h>
+#include "broker/msg/msg_subscribe.h"
 #include "broker/utils.h"
 #include "broker/msg/msg_list.h"
 #include "broker/broker.h"
@@ -111,8 +112,31 @@ void on_add_node_invoked(RemoteDSLink *link,
 }
 
 static
+void handle_pending_sub(Broker *broker, BrokerNode *n) {
+    if (!broker) {
+        return;
+    }
+    ref_t *ref = dslink_map_remove_get(&broker->local_pending_sub,
+                                       (char *) n->path);
+    if (ref) {
+        List *subs = ref->data;
+
+        dslink_list_foreach(subs) {
+            PendingSub *sub = ((ListNode *) node)->value;
+            if (!sub->req->link) {
+                continue;
+            }
+
+            broker_handle_local_subscribe(n, sub->req->link, sub->reqSid);
+        }
+
+        dslink_decref(ref);
+    }
+}
+
+static
 void on_add_value_invoked(RemoteDSLink *link,
-                         BrokerNode *node, json_t *req) {
+                          BrokerNode *node, json_t *req) {
     broker_utils_send_closed_resp(link, req, NULL);
 
     json_t *params = json_object_get(req, "params");
@@ -141,10 +165,12 @@ void on_add_value_invoked(RemoteDSLink *link,
         broker_node_free(child);
         return;
     }
+    handle_pending_sub(link->broker, child);
 }
 
-void broker_create_dynamic_data_node(BrokerNode *node, const char *path,
-                                     json_t *value, uint8_t serialize) {
+void broker_create_dynamic_data_node(Broker *broker, BrokerNode *node,
+                                     const char *path, json_t *value,
+                                     uint8_t serialize) {
     if (*path == '/') {
         path++;
     }
@@ -159,6 +185,7 @@ void broker_create_dynamic_data_node(BrokerNode *node, const char *path,
         } else {
             broker_node_update_value(node, value, 0);
         }
+        handle_pending_sub(broker, node);
     } else {
         const char *name = strchr(path, '/');
         if (!name) {
@@ -175,7 +202,8 @@ void broker_create_dynamic_data_node(BrokerNode *node, const char *path,
         }
 
         if (child) {
-            broker_create_dynamic_data_node(child, name, value, serialize);
+            broker_create_dynamic_data_node(broker, child, name,
+                                            value, serialize);
             return;
         }
 
@@ -191,7 +219,8 @@ void broker_create_dynamic_data_node(BrokerNode *node, const char *path,
         }
         create_actions(child);
 
-        broker_create_dynamic_data_node(child, name, value, serialize);
+        broker_create_dynamic_data_node(broker, child, name,
+                                        value, serialize);
     }
 }
 
@@ -213,7 +242,8 @@ void on_publish_continuous_invoked(RemoteDSLink *link, json_t *params) {
     if (node && node->type == REGULAR_NODE) {
         broker_node_update_value(node, value, 0);
     } else if (!node && dslink_str_starts_with(path, "/data")) {
-        broker_create_dynamic_data_node(link->broker->root, path, value, 0);
+        broker_create_dynamic_data_node(link->broker, link->broker->root,
+                                        path, value, 0);
     }
 }
 
@@ -278,7 +308,7 @@ void deserialize_data_nodes(BrokerNode *root) {
         json_error_t err;
         json_t *val = json_load_file(tmp, JSON_PRESERVE_ORDER | JSON_DECODE_ANY, &err);
         if (val) {
-            broker_create_dynamic_data_node(root, path, val, 0);
+            broker_create_dynamic_data_node(NULL, root, path, val, 0);
         }
 
         dslink_free(path);

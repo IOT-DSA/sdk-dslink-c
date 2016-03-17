@@ -92,8 +92,9 @@ int handle_data_val_update(Listener *listener, void *data) {
     return 0;
 }
 
-static
-void handle_local_subscribe(BrokerNode *node, RemoteDSLink *link, uint32_t sid) {
+void broker_handle_local_subscribe(BrokerNode *node,
+                                   RemoteDSLink *link,
+                                   uint32_t sid) {
     ref_t *key = dslink_int_ref(sid);
     void **data = malloc(sizeof(void *) * 2);
     data[0] = key->data;
@@ -194,6 +195,29 @@ void broker_subscribe_disconnected_remote(RemoteDSLink *link,
     dslink_list_insert(subs, ps);
 }
 
+void broker_subscribe_local_nonexistent(RemoteDSLink *link,
+                                         const char *path,
+                                         uint32_t sid) {
+    ref_t *ref = dslink_map_get(&link->broker->local_pending_sub,
+                                (char *) path);
+    List *subs;
+    if (ref) {
+        subs = ref->data;
+    } else {
+        subs = dslink_calloc(1, sizeof(List));
+        list_init(subs);
+        dslink_map_set(&link->broker->local_pending_sub,
+                       dslink_str_ref(path),
+                       dslink_ref(subs, subs_list_free));
+    }
+
+    PendingSub *ps = dslink_malloc(sizeof(PendingSub));
+    ps->path = dslink_strdup(path);
+    ps->reqSid = sid;
+    ps->req = link->node;
+    dslink_list_insert(subs, ps);
+}
+
 static
 void handle_subscribe(RemoteDSLink *link, json_t *sub) {
     const char *path = json_string_value(json_object_get(sub, "path"));
@@ -205,19 +229,18 @@ void handle_subscribe(RemoteDSLink *link, json_t *sub) {
     char *out = NULL;
     DownstreamNode *node = (DownstreamNode *) broker_node_get(link->broker->root,
                                                               path, &out);
+    uint32_t sid = (uint32_t) json_integer_value(jSid);
     if (!node) {
         if (dslink_str_starts_with(path, "/downstream/")) {
-            uint32_t s = (uint32_t) json_integer_value(jSid);
-            broker_subscribe_disconnected_remote(link, path, s);
+            broker_subscribe_disconnected_remote(link, path, sid);
         } else {
-            // TODO: add local pending sub to broker instance
+            broker_subscribe_local_nonexistent(link, path, sid);
         }
         return;
     }
 
-    uint32_t sid = (uint32_t) json_integer_value(jSid);
     if (node->type == REGULAR_NODE) {
-        handle_local_subscribe((BrokerNode *) node, link, sid);
+        broker_handle_local_subscribe((BrokerNode *) node, link, sid);
     } else {
         broker_subscribe_remote(node, link, sid, path, out);
     }
