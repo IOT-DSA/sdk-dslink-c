@@ -16,12 +16,16 @@ struct RemoteDSLink;
 struct BrokerNode;
 struct json_t;
 
+// numbers in the PermissionLevel doesn't matter
+// it should always be serialized as string
 typedef enum {PERMISSION_NONE = 0,
-    PERMISSION_LIST = 10,
-    PERMISSION_READ = 20,
-    PERMISSION_WRITE = 30,
-    PERMISSION_CONFIG = 40,
-    PERMISSION_NEVER = 127} PermissionLevel;
+    PERMISSION_LIST = 1,
+    PERMISSION_READ = 2,
+    PERMISSION_WRITE = 3,
+    PERMISSION_CONFIG = 4,
+    PERMISSION_NEVER = 5} PermissionLevel;
+
+extern const char* PERMISSION_NAMES[6];
 
 // a list of requester permission groups
 typedef struct PermissionGroups {

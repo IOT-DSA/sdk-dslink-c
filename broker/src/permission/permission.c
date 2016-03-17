@@ -4,6 +4,8 @@
 #include <broker/remote_dslink.h>
 #include <string.h>
 
+const char* PERMISSION_NAMES[6] = {"none", "list", "read", "write", "config", "never"};
+
 void permission_groups_init(PermissionGroups* groups) {
     groups->groups = NULL;
     groups->groupLen = 0;
