@@ -43,6 +43,10 @@ string(TOUPPER "${CMAKE_BUILD_TYPE}" DSLINK_BUILD_TYPE)
 if (DSLINK_BUILD_TYPE STREQUAL DEBUG AND NOT USE_VALGRIND)
     ADD_C_FLAGS("-fsanitize=address")
     ADD_C_FLAGS("-fstack-protector-all")
+
+    if ("${CMAKE_C_COMPILER_ID}" MATCHES "Clang")
+        ADD_C_FLAGS("-g")
+    endif()
 endif()
 
 ##### Configure Sources #####
