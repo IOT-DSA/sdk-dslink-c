@@ -112,6 +112,10 @@ void list_init(List *list);
 
 ListNode *dslink_list_insert(List *list, void *data);
 
+// frees the list and all nodes
+// doesn't handle node->value
+void dslink_list_free(List *list);
+
 #ifdef __cplusplus
 }
 #endif

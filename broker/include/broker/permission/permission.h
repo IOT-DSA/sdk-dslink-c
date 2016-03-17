@@ -9,6 +9,7 @@
 extern "C" {
 #endif
 
+#include <jansson.h>
 #include <dslink/col/list.h>
 #include <dslink/col/map.h>
 
@@ -50,6 +51,11 @@ void permission_groups_free(PermissionGroups* groups);
 void virtual_permission_init(VirtualPermissionNode* node);
 void virtual_permission_free(VirtualPermissionNode* node);
 void virtual_permission_free_map(Map* map);
+
+// permission list for node or virtual node
+json_t *permission_list_save(List * permissionList);
+List *permission_list_load(json_t *json);
+
 
 PermissionLevel get_permission(const char* path, struct BrokerNode* rootNode, struct RemoteDSLink *reqLink);
 

@@ -18,3 +18,13 @@ ListNode *dslink_list_insert(List *list, void *data) {
     node->value = data;
     return node;
 }
+
+
+void dslink_list_free(List *list) {
+    for (ListNodeBase *node = (list)->head.next; node != &(list)->head;) {
+        ListNodeBase *next = node->next;
+        dslink_free(node);
+        node = next;
+    }
+    dslink_free(list);
+}
