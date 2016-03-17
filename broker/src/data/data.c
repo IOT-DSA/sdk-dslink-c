@@ -209,9 +209,9 @@ void broker_create_dynamic_data_node(Broker *broker, BrokerNode *node,
             return;
         }
 
-        json_object_set_new_nocheck(node->meta, "$type",
+        json_object_set_new_nocheck(child->meta, "$type",
                                     json_string_nocheck("dynamic"));
-        json_object_set_new_nocheck(node->meta, "$writable",
+        json_object_set_new_nocheck(child->meta, "$writable",
                                     json_string_nocheck("write"));
 
         if (broker_node_add(node, child) != 0) {
