@@ -11,7 +11,6 @@ void clear_conns(RemoteDSLink *link,
                  BrokerNode *node,
                  json_t *req) {
     (void)node;
-    (void)req;
     Map* map = calloc(1, sizeof(Map));
 
     dslink_map_init(map, dslink_map_str_cmp,
