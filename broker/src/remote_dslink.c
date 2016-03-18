@@ -26,6 +26,7 @@ void broker_remote_dslink_free(RemoteDSLink *link) {
         dslink_free(link->auth);
     }
 
+    link->requester_streams.locked = 1;
     dslink_map_foreach(&link->requester_streams) {
         BrokerStream *stream = entry->value->data;
         requester_stream_closed(stream, link);
@@ -33,6 +34,7 @@ void broker_remote_dslink_free(RemoteDSLink *link) {
     }
     dslink_map_free(&link->requester_streams);
 
+    link->responder_streams.locked = 1;
     dslink_map_foreach(&link->responder_streams) {
         BrokerStream *stream = entry->value->data;
         responder_stream_closed(stream, link);

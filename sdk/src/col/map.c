@@ -254,6 +254,9 @@ ref_t *dslink_map_remove_get(Map *map, void *key) {
 }
 
 ref_t *dslink_map_removel_get(Map *map, void *key, size_t len) {
+    if (!map || map->locked) {
+        return NULL;
+    }
     size_t index = dslink_map_index_of_key(map, key, len);
     for (MapNode *node = map->table[index]; node != NULL; node = node->next) {
         if (map->cmp(node->entry->key->data, key, len) != 0) {
@@ -289,6 +292,9 @@ void dslink_map_remove(Map *map, void *key) {
 }
 
 void dslink_map_removel(Map *map, void *key, size_t len) {
+    if (!map || map->locked) {
+        return;
+    }
     ref_t *ref = dslink_map_removel_get(map, key, len);
     if (ref) {
         dslink_decref(ref);

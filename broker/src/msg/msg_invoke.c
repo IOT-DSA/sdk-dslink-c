@@ -1,4 +1,5 @@
 #include <jansson.h>
+#include <broker/utils.h>
 
 #include "broker/broker.h"
 #include "broker/net/ws.h"
@@ -27,15 +28,18 @@ int remote_invoke_req_closed(void *s, RemoteDSLink *link) {
     (void) link;
     BrokerInvokeStream *stream = s;
     broker_send_close_request(stream->responder, stream->responder_rid);
-    dslink_map_remove(&stream->responder->responder_streams, &stream->responder_rid);
-    return 0;
+    return 1;
 }
 
 int remote_invoke_resp_disconnected(void *s, RemoteDSLink *link) {
-    (void) s;
     (void) link;
-    // TODO, send a disconnect error to requester, and remove it from request map
-    return 0;
+    BrokerInvokeStream *stream = s;
+
+    json_t *rid = json_integer(stream->requester_rid);
+    broker_utils_send_closed_resp(stream->requester, rid, "disconnected");
+    json_decref(rid);
+
+    return 1;
 }
 
 int broker_msg_handle_invoke(RemoteDSLink *link, json_t *req) {
