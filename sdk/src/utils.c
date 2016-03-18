@@ -61,8 +61,10 @@ char *dslink_strdupl(const char *str, size_t len) {
 static
 char *dslink_str_replace_all_rep(const char *haystack,
                                  const char *needle,
+                                 const size_t needleLen,
                                  const char *replacement,
-                                 int shouldDup) {
+                                 const size_t replacementLen,
+                                 const int shouldDup) {
 
     char *start = strstr(haystack, needle);
     if (!start) {
@@ -74,8 +76,6 @@ char *dslink_str_replace_all_rep(const char *haystack,
     }
 
     const size_t haystackLen = strlen(haystack);
-    const size_t needleLen = strlen(needle);
-    const size_t replacementLen = strlen(replacement);
     char *dup = dslink_malloc(haystackLen - needleLen + replacementLen + 1);
     if (!dup) {
         return NULL;
@@ -93,21 +93,26 @@ char *dslink_str_replace_all_rep(const char *haystack,
     if (!shouldDup) {
         dslink_free((char *) haystack);
     }
-    return dslink_str_replace_all_rep(dup, needle, replacement, 0);
+    return dslink_str_replace_all_rep(dup, needle, needleLen,
+                                      replacement, replacementLen, 0);
 }
 
+inline
 char *dslink_str_replace_all(const char *haystack,
                              const char *needle,
                              const char *replacement) {
-    return dslink_str_replace_all_rep(haystack, needle, replacement, 1);
+    size_t needleLen = strlen(needle);
+    size_t replacementLen = strlen(replacement);
+    return dslink_str_replace_all_rep(haystack, needle, needleLen,
+                                      replacement, replacementLen, 1);
 }
 
 char *dslink_str_escape(const char *data) {
     //TODO other invalid characters
-    return dslink_str_replace_all_rep(data, "/", "%2F", 1);
+    return dslink_str_replace_all(data, "/", "%2F");
 }
 char *dslink_str_unescape(const char *data) {
-    return dslink_str_replace_all_rep(data, "%2F", "/", 1);
+    return dslink_str_replace_all(data, "%2F", "/");
 }
 
 int dslink_str_starts_with(const char *a, const char *b) {
