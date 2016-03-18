@@ -106,7 +106,7 @@ void broker_stream_free(BrokerStream *stream, RemoteDSLink *link) {
             return;
         }
 
-        dslink_map_remove(&link->node->sub_paths, bss->remote_path->data);
+        dslink_map_remove(&bss->responder->node->sub_paths, bss->remote_path->data);
         dslink_map_remove(&bss->responder->node->sub_sids, &bss->responder_sid);
         broker_msg_send_unsubscribe(bss, link);
 
