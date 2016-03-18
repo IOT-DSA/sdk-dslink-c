@@ -175,7 +175,6 @@ json_t *broker_handshake_handle_conn(Broker *broker,
         link->linkData = linkData;
     }
 
-
     {
         char buf[512] = {0};
         snprintf(buf, sizeof(buf), "/downstream/");
@@ -224,8 +223,8 @@ json_t *broker_handshake_handle_conn(Broker *broker,
             }
             BrokerNode* tokenNode = getTokenNode(token, dsId);
             if (tokenNode) {
-                //TODO create downstream node
-                //TODO reduce token count
+                // TODO: create downstream node
+                // TODO: reduce token count
             } else {
                 goto fail;
             }

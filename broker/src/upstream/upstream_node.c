@@ -5,5 +5,3 @@ int broker_upstream_node_populate(BrokerNode *upstreamNode) {
     (void)upstreamNode;
     return 0;
 }
-
-

@@ -37,7 +37,6 @@ int init_trace_node(BrokerNode *sysNode) {
     }
 
 
-
     traceRequester->on_invoke = trace_requester;
 
     return 0;

@@ -66,7 +66,6 @@ json_t *broker_config_get() {
     return config;
 }
 
-
 uint8_t broker_enable_token = 1;
 
 int broker_config_load(json_t* json) {

@@ -103,9 +103,6 @@ void delete_upstream_invoke(RemoteDSLink *link,
     broker_node_free(parentNode);
 }
 
-
-
-
 void add_upstream_invoke(RemoteDSLink *link,
                       BrokerNode *node,
                       json_t *req) {

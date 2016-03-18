@@ -69,6 +69,7 @@ void save_token_node(BrokerNode *node) {
     sprintf(tmp, "token/%s", node->name);
     json_dump_file(node->meta, tmp, 0);
 }
+
 static
 void load_token_node(const char* tokenName, json_t* data) {
     BrokerNode *tokenNode = broker_node_create(tokenName, "node");
@@ -277,7 +278,6 @@ int init_tokens(BrokerNode *sysNode) {
         return 1;
     }
 
-
     BrokerNode *addTokenAction = broker_node_create("add", "node");
     if (!addTokenAction) {
         return 1;
@@ -288,7 +288,6 @@ int init_tokens(BrokerNode *sysNode) {
         broker_node_free(addTokenAction);
         return 1;
     }
-
 
     json_error_t err;
     json_t *paramList = json_loads("[{\"name\":\"TimeRange\",\"type\":\"string\",\"editor\":\"daterange\"},{\"name\":\"Count\",\"type\":\"number\",\"description\":\"how many times this token can be used\"},{\"name\":\"Managed\",\"type\":\"bool\",\"description\":\"when a managed token is deleted, server will delete all the dslinks associated with the token\"}]",
