@@ -95,6 +95,23 @@ int handle_data_val_update(Listener *listener, void *data) {
 void broker_handle_local_subscribe(BrokerNode *node,
                                    RemoteDSLink *link,
                                    uint32_t sid) {
+    ref_t * exist = dslink_map_get(&link->local_subs, &sid);
+    if (exist) {
+        Listener *existListener = exist->data;
+        if (existListener->list == &node->on_value_update.list) {
+            // if it's same as previous, reuse, and don't send new value
+            return;
+        }
+
+        dslink_map_remove(&link->local_subs, &sid);
+
+        listener_remove(existListener);
+
+        dslink_free(existListener->data);
+        dslink_free(existListener);
+        dslink_decref(exist);
+    }
+
     ref_t *key = dslink_int_ref(sid);
     void **data = malloc(sizeof(void *) * 2);
     data[0] = key->data;
