@@ -7,11 +7,13 @@ extern "C" {
 
 #include "broker/node.h"
 
+struct Broker;
+
 int broker_data_node_populate(BrokerNode *dataNode);
 void broker_data_node_update(BrokerNode *node,
                              json_t *value,
                              uint8_t isNewValue);
-void broker_create_dynamic_data_node(BrokerNode *node, const char *path,
+void broker_create_dynamic_data_node(struct Broker *broker, BrokerNode *node, const char *path,
                                      json_t *value, uint8_t serialize);
 
 #ifdef __cplusplus
