@@ -1,7 +1,3 @@
-//
-// Created by Kenneth Endfinger on 3/15/16.
-//
-
 #include "broker/broker.h"
 #include "broker/utils.h"
 #include "broker/sys/clear_conns.h"
@@ -11,7 +7,7 @@ void clear_conns(RemoteDSLink *link,
                  BrokerNode *node,
                  json_t *req) {
     (void)node;
-    Map* map = calloc(1, sizeof(Map));
+    Map* map = dslink_calloc(1, sizeof(Map));
 
     dslink_map_init(map, dslink_map_str_cmp,
                     dslink_map_str_key_len_cal, dslink_map_hash_key);
