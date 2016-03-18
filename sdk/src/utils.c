@@ -97,7 +97,6 @@ char *dslink_str_replace_all_rep(const char *haystack,
                                       replacement, replacementLen, 0);
 }
 
-inline
 char *dslink_str_replace_all(const char *haystack,
                              const char *needle,
                              const char *replacement) {
