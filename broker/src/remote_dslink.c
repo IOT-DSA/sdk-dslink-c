@@ -10,15 +10,18 @@ int broker_remote_dslink_init(RemoteDSLink *link) {
                         dslink_map_uint32_key_len_cal, dslink_map_hash_key) != 0
         || dslink_map_init(&link->requester_streams, dslink_map_uint32_cmp,
                         dslink_map_uint32_key_len_cal, dslink_map_hash_key) != 0
-        || dslink_map_init(&link->sub_sids, dslink_map_uint32_cmp,
+        || dslink_map_init(&link->resp_sub_sids, dslink_map_uint32_cmp,
                         dslink_map_uint32_key_len_cal, dslink_map_hash_key) != 0
+       || dslink_map_init(&link->req_sub_sids, dslink_map_uint32_cmp,
+                          dslink_map_uint32_key_len_cal, dslink_map_hash_key) != 0
         || dslink_map_init(&link->sub_paths, dslink_map_str_cmp,
                            dslink_map_str_key_len_cal, dslink_map_hash_key) != 0
         || dslink_map_init(&link->local_subs, dslink_map_str_cmp,
                            dslink_map_str_key_len_cal, dslink_map_hash_key) != 0) {
         dslink_map_free(&link->responder_streams);
         dslink_map_free(&link->requester_streams);
-        dslink_map_free(&link->sub_sids);
+        dslink_map_free(&link->resp_sub_sids);
+        dslink_map_free(&link->req_sub_sids);
         dslink_map_free(&link->sub_paths);
         dslink_map_free(&link->local_subs);
         return 1;
@@ -56,7 +59,7 @@ void broker_remote_dslink_free(RemoteDSLink *link) {
         dslink_free(l);
     }
 
-    dslink_map_foreach(&link->sub_sids) {
+    dslink_map_foreach(&link->resp_sub_sids) {
         BrokerSubStream *stream = entry->value->data;
         dslink_map_foreach(&stream->clients) {
             RemoteDSLink *l = entry->key->data;
@@ -68,9 +71,15 @@ void broker_remote_dslink_free(RemoteDSLink *link) {
         dslink_map_remove(&stream->clients, link);
     }
 
+    dslink_map_foreach(&link->req_sub_sids) {
+        BrokerSubStream *stream = entry->value->data;
+        broker_stream_free((BrokerStream *) stream, link);
+    }
+
     dslink_map_free(&link->local_subs);
     dslink_map_free(&link->sub_paths);
-    dslink_map_free(&link->sub_sids);
+    dslink_map_free(&link->resp_sub_sids);
+    dslink_map_free(&link->req_sub_sids);
 
     dslink_map_free(&link->requester_streams);
     dslink_map_free(&link->responder_streams);

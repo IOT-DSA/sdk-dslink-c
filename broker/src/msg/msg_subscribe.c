@@ -115,7 +115,7 @@ void broker_subscribe_remote(DownstreamNode *respNode, RemoteDSLink *reqLink,
         BrokerSubStream *bss = ref->data;
         ref_t *s = dslink_int_ref(sid);
         dslink_map_set(&bss->clients, dslink_ref(reqLink, NULL), s);
-        dslink_map_set(&reqLink->sub_sids, dslink_incref(s),
+        dslink_map_set(&reqLink->req_sub_sids, dslink_incref(s),
                        dslink_incref(ref));
 
         if (bss->last_value) {
@@ -151,11 +151,11 @@ void broker_subscribe_remote(DownstreamNode *respNode, RemoteDSLink *reqLink,
     {
         ref = dslink_int_ref(sid);
         dslink_map_set(&bss->clients, dslink_ref(reqLink, NULL), ref);
-        dslink_map_set(&reqLink->sub_sids, dslink_incref(ref), bssRef);
+        dslink_map_set(&reqLink->req_sub_sids, dslink_incref(ref), bssRef);
     }
     {
         ref = dslink_int_ref(respSid);
-        dslink_map_set(&respNode->link->sub_sids, ref,
+        dslink_map_set(&respNode->link->resp_sub_sids, ref,
                        dslink_incref(bssRef));
 
         ref = dslink_ref(dslink_strdup(path), dslink_free);

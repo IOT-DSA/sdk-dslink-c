@@ -48,11 +48,15 @@ typedef struct RemoteDSLink {
     // Map<uint32_t *, Listener *>
     Map local_subs;
 
+    // Subscription paths that are stored in the responder only
     // Map<char *, BrokerSubStream *>
     Map sub_paths;
 
     // Map<uint32_t *, BrokerSubStream *>
-    Map sub_sids;
+    Map resp_sub_sids;
+
+    // Map<uint32_t, BrokerSubStream *>
+    Map req_sub_sids;
 
     // Map<uint32_t *, Stream *>
 
