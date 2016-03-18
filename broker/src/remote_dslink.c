@@ -68,6 +68,7 @@ void broker_remote_dslink_free(RemoteDSLink *link) {
                                                  stream->remote_path->data,
                                                  *sid);
         }
+        stream->responder = NULL;
     }
 
     dslink_map_foreach(&link->req_sub_sids) {
