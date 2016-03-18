@@ -1,6 +1,8 @@
 #include <ctype.h>
 #include <string.h>
 #include <time.h>
+#include <sys/time.h>
+#include <stdio.h>
 #include "dslink/mem/mem.h"
 #include "dslink/utils.h"
 
@@ -118,7 +120,29 @@ int dslink_str_starts_with(const char *a, const char *b) {
 }
 
 size_t dslink_create_ts(char *buf, size_t bufLen) {
-    time_t now = time(NULL);
-    return strftime(buf, bufLen,
-                    "%Y-%m-%dT%H:%M:%S.000%z", localtime(&now));
+    struct timeval now;
+    gettimeofday(&now, NULL);
+    time_t nowtime = now.tv_sec;
+
+    strftime(buf, bufLen,
+                    "%Y-%m-%dT%H:%M:%S.000?%z", localtime(&nowtime));
+    unsigned ms = (unsigned)(now.tv_usec / 1000);
+    char msstr[4];
+
+    if (ms > 99) {
+        snprintf(msstr, 4, "%d", ms);
+        memcpy(buf+20, msstr, 3);
+    } else if (ms > 9) {
+        snprintf(msstr, 4, "0%d", ms);
+        memcpy(buf+20, msstr, 3);
+    } else if (ms > 0) {
+        snprintf(msstr, 4, "00%d", ms);
+        memcpy(buf+20, msstr, 3);
+    }
+    // change timezone format from ?+0000 to +00:00
+    buf[23] = buf[24];
+    buf[24] = buf[25];
+    buf[25] = buf[26];
+    buf[26] = ':';
+    return 29;
 }
