@@ -64,7 +64,7 @@ typedef struct Map {
 
     // prevent concurrent modification
     // right now it's only used during destroying the map
-    uint8_t  locked;
+    uint8_t locked;
 } Map;
 
 /// Default comparator functions

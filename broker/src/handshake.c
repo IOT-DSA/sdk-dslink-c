@@ -7,13 +7,11 @@
 #include <dslink/log.h>
 #include <dslink/handshake.h>
 #include <dslink/utils.h>
-#include <dslink/mem/mem.h>
-#include <broker/config.h>
-#include <broker/sys/token.h>
 
+#include "broker/config.h"
+#include "broker/sys/token.h"
 #include "broker/net/ws_handler.h"
 #include "broker/net/ws.h"
-
 #include "broker/utils.h"
 #include "broker/msg/msg_list.h"
 #include "broker/handshake.h"
@@ -46,13 +44,7 @@ DownstreamNode *broker_init_downstream_node(Broker *broker, const char *name) {
         return NULL;
     }
     node->type = DOWNSTREAM_NODE;
-    if (dslink_map_init(&node->sub_sids, dslink_map_uint32_cmp,
-                        dslink_map_uint32_key_len_cal, dslink_map_hash_key) != 0
-        || dslink_map_init(&node->sub_paths, dslink_map_str_cmp,
-                           dslink_map_str_key_len_cal, dslink_map_hash_key) != 0
-        || dslink_map_init(&node->local_subs, dslink_map_str_cmp,
-                           dslink_map_str_key_len_cal, dslink_map_hash_key) != 0
-        || dslink_map_init(&node->list_streams, dslink_map_str_cmp,
+    if (dslink_map_init(&node->list_streams, dslink_map_str_cmp,
                            dslink_map_str_key_len_cal, dslink_map_hash_key) != 0
         || dslink_map_init(&node->children_permissions, dslink_map_str_cmp,
                               dslink_map_str_key_len_cal, dslink_map_hash_key) != 0) {
@@ -82,11 +74,7 @@ DownstreamNode *broker_init_downstream_node(Broker *broker, const char *name) {
     return node;
 
 fail:
-    dslink_map_free(&node->sub_sids);
-    dslink_map_free(&node->sub_paths);
-    dslink_map_free(&node->local_subs);
     dslink_map_free(&node->list_streams);
-
     DSLINK_CHECKED_EXEC(dslink_free, (char *) node->name);
     json_decref(node->meta);
     dslink_free(node);
