@@ -59,6 +59,7 @@ void broker_remote_dslink_free(RemoteDSLink *link) {
         dslink_free(l);
     }
 
+    link->resp_sub_sids.locked = 1;
     dslink_map_foreach(&link->resp_sub_sids) {
         BrokerSubStream *stream = entry->value->data;
         dslink_map_foreach(&stream->clients) {
@@ -71,6 +72,7 @@ void broker_remote_dslink_free(RemoteDSLink *link) {
         stream->responder = NULL;
     }
 
+    link->req_sub_sids.locked = 1;
     dslink_map_foreach(&link->req_sub_sids) {
         BrokerSubStream *stream = entry->value->data;
         broker_stream_free((BrokerStream *) stream, link);
