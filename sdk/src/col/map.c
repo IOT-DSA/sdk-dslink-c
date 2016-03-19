@@ -7,7 +7,8 @@
 /*************************** Comparators *******************************/
 
 int dslink_map_str_cmp(void *key, void *other, size_t len) {
-    return strncmp((char *) key, (char *) other, len);
+    return !(strncmp((char *) key, (char *) other, len) == 0
+             && strlen(key) == len);
 }
 
 size_t dslink_map_str_key_len_cal(void *key) {
