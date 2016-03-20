@@ -84,6 +84,13 @@ int broker_list_req_closed(void *s, RemoteDSLink *link) {
 void broker_add_requester_list_stream(RemoteDSLink *reqLink,
                                       BrokerListStream *stream,
                                       uint32_t reqRid) {
+    ref_t *ref = dslink_map_remove_get(&stream->requester_links, reqLink);
+    if (ref) {
+        // in case a client error causes same path to be listed twice
+        dslink_map_remove(&reqLink->requester_streams, &reqRid);
+        dslink_decref(ref);
+    }
+
     dslink_map_set(&stream->requester_links, dslink_ref(reqLink, NULL),
                    dslink_int_ref(reqRid));
     dslink_map_set(&reqLink->requester_streams, dslink_int_ref(reqRid),
