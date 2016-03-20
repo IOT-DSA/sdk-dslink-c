@@ -87,7 +87,7 @@ void broker_add_requester_list_stream(RemoteDSLink *reqLink,
     ref_t *ref = dslink_map_remove_get(&stream->requester_links, reqLink);
     if (ref) {
         // in case a client error causes same path to be listed twice
-        dslink_map_remove(&reqLink->requester_streams, &reqRid);
+        dslink_map_remove(&reqLink->requester_streams, ref->data);
         dslink_decref(ref);
     }
 
@@ -213,11 +213,11 @@ int broker_msg_handle_list(RemoteDSLink *link, json_t *req) {
     if (!(path && rid)) {
         return 1;
     }
-    if (*path == '\0') {
-        // empty path;
-        broker_utils_send_closed_resp(link, rid, "invalidPath");
-        return 0;
-    }
+//    if (*path == '\0') {
+//        // empty path;
+//        broker_utils_send_closed_resp(link, rid, "invalidPath");
+//        return 0;
+//    }
 
     char *out = NULL;
     BrokerNode *node = broker_node_get(link->broker->root, path, &out);
