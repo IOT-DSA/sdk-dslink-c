@@ -1,6 +1,7 @@
 #include <string.h>
 #include <dslink/utils.h>
 #include <assert.h>
+#include <broker/utils.h>
 
 #include "broker/net/ws.h"
 #include "broker/broker.h"
@@ -204,6 +205,11 @@ int broker_msg_handle_list(RemoteDSLink *link, json_t *req) {
     json_t *rid = json_object_get(req, "rid");
     if (!(path && rid)) {
         return 1;
+    }
+    if (*path == '\0') {
+        // empty path;
+        broker_utils_send_closed_resp(link, rid, "invalidPath");
+        return 0;
     }
 
     char *out = NULL;
