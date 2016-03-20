@@ -30,7 +30,7 @@ void broker_msg_send_unsubscribe(BrokerSubStream *bss, RemoteDSLink *link) {
 
 static
 void handle_unsubscribe(RemoteDSLink *link, uint32_t sid) {
-    ref_t *ref = dslink_map_remove_get(&link->node->local_subs, &sid);
+    ref_t *ref = dslink_map_remove_get(&link->local_subs, &sid);
     if (ref) {
         Listener *listener = ref->data;
         listener_remove(listener);
@@ -41,7 +41,7 @@ void handle_unsubscribe(RemoteDSLink *link, uint32_t sid) {
         return;
     }
 
-    ref = dslink_map_remove_get(&link->node->sub_sids, &sid);
+    ref = dslink_map_remove_get(&link->req_sub_sids, &sid);
     if (!ref) {
         return;
     }

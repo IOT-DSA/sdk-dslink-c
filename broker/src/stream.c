@@ -90,6 +90,7 @@ void broker_stream_free(BrokerStream *stream, RemoteDSLink *link) {
         dslink_map_free(&s->requester_links);
         dslink_free(s->remote_path);
         json_decref(s->updates_cache);
+        dslink_free(stream);
     } else if (stream->type == INVOCATION_STREAM) {
         BrokerInvokeStream *bis = (BrokerInvokeStream *) stream;
         if (bis->requester) {
@@ -98,23 +99,24 @@ void broker_stream_free(BrokerStream *stream, RemoteDSLink *link) {
         if (bis->responder) {
             dslink_map_remove(&bis->responder->responder_streams, &bis->responder_rid);
         }
-
+        dslink_free(stream);
     } else if (stream->type == SUBSCRIPTION_STREAM) {
         BrokerSubStream *bss = (BrokerSubStream *) stream;
         dslink_map_remove(&bss->clients, link);
         if (bss->clients.size > 0) {
             return;
         }
-
-        dslink_map_remove(&link->node->sub_paths, bss->remote_path->data);
-        dslink_map_remove(&bss->responder->node->sub_sids, &bss->responder_sid);
-        broker_msg_send_unsubscribe(bss, link);
-
+        if (bss->responder) {
+            dslink_map_remove(&bss->responder->sub_paths, bss->remote_path->data);
+            dslink_map_remove(&bss->responder->resp_sub_sids, &bss->responder_sid);
+            broker_msg_send_unsubscribe(bss, link);
+        }
         dslink_map_free(&bss->clients);
         dslink_decref(bss->remote_path);
         json_decref(bss->last_value);
+        dslink_free(stream);
     }
-    dslink_free(stream);
+
 }
 
 void requester_stream_closed(BrokerStream *stream, RemoteDSLink *link) {

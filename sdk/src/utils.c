@@ -1,6 +1,8 @@
 #include <ctype.h>
 #include <string.h>
 #include <time.h>
+#include <sys/time.h>
+#include <stdio.h>
 #include "dslink/mem/mem.h"
 #include "dslink/utils.h"
 
@@ -59,8 +61,10 @@ char *dslink_strdupl(const char *str, size_t len) {
 static
 char *dslink_str_replace_all_rep(const char *haystack,
                                  const char *needle,
+                                 const size_t needleLen,
                                  const char *replacement,
-                                 int shouldDup) {
+                                 const size_t replacementLen,
+                                 const int shouldDup) {
 
     char *start = strstr(haystack, needle);
     if (!start) {
@@ -72,8 +76,6 @@ char *dslink_str_replace_all_rep(const char *haystack,
     }
 
     const size_t haystackLen = strlen(haystack);
-    const size_t needleLen = strlen(needle);
-    const size_t replacementLen = strlen(replacement);
     char *dup = dslink_malloc(haystackLen - needleLen + replacementLen + 1);
     if (!dup) {
         return NULL;
@@ -91,21 +93,25 @@ char *dslink_str_replace_all_rep(const char *haystack,
     if (!shouldDup) {
         dslink_free((char *) haystack);
     }
-    return dslink_str_replace_all_rep(dup, needle, replacement, 0);
+    return dslink_str_replace_all_rep(dup, needle, needleLen,
+                                      replacement, replacementLen, 0);
 }
 
 char *dslink_str_replace_all(const char *haystack,
                              const char *needle,
                              const char *replacement) {
-    return dslink_str_replace_all_rep(haystack, needle, replacement, 1);
+    size_t needleLen = strlen(needle);
+    size_t replacementLen = strlen(replacement);
+    return dslink_str_replace_all_rep(haystack, needle, needleLen,
+                                      replacement, replacementLen, 1);
 }
 
 char *dslink_str_escape(const char *data) {
     //TODO other invalid characters
-    return dslink_str_replace_all_rep(data, "/", "%2F", 1);
+    return dslink_str_replace_all(data, "/", "%2F");
 }
 char *dslink_str_unescape(const char *data) {
-    return dslink_str_replace_all_rep(data, "%2F", "/", 1);
+    return dslink_str_replace_all(data, "%2F", "/");
 }
 
 int dslink_str_starts_with(const char *a, const char *b) {
@@ -118,7 +124,29 @@ int dslink_str_starts_with(const char *a, const char *b) {
 }
 
 size_t dslink_create_ts(char *buf, size_t bufLen) {
-    time_t now = time(NULL);
-    return strftime(buf, bufLen,
-                    "%Y-%m-%dT%H:%M:%S.000%z", localtime(&now));
+    struct timeval now;
+    gettimeofday(&now, NULL);
+    time_t nowtime = now.tv_sec;
+
+    strftime(buf, bufLen,
+                    "%Y-%m-%dT%H:%M:%S.000?%z", localtime(&nowtime));
+    unsigned ms = (unsigned)(now.tv_usec / 1000);
+    char msstr[4];
+
+    if (ms > 99) {
+        snprintf(msstr, 4, "%d", ms);
+        memcpy(buf+20, msstr, 3);
+    } else if (ms > 9) {
+        snprintf(msstr, 4, "0%d", ms);
+        memcpy(buf+20, msstr, 3);
+    } else if (ms > 0) {
+        snprintf(msstr, 4, "00%d", ms);
+        memcpy(buf+20, msstr, 3);
+    }
+    // change timezone format from ?+0000 to +00:00
+    buf[23] = buf[24];
+    buf[24] = buf[25];
+    buf[25] = buf[26];
+    buf[26] = ':';
+    return 29;
 }

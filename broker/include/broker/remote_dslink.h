@@ -45,6 +45,19 @@ typedef struct RemoteDSLink {
 
     json_t *linkData;
 
+    // Map<uint32_t *, Listener *>
+    Map local_subs;
+
+    // Subscription paths that are stored in the responder only
+    // Map<char *, BrokerSubStream *>
+    Map sub_paths;
+
+    // Map<uint32_t *, BrokerSubStream *>
+    Map resp_sub_sids;
+
+    // Map<uint32_t, BrokerSubStream *>
+    Map req_sub_sids;
+
     // Map<uint32_t *, Stream *>
 
     // connect to requester

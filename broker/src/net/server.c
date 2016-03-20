@@ -129,7 +129,8 @@ int broker_start_server(json_t *config, void *data,
     json_incref(config);
 
     const char *httpHost = NULL;
-    const char *httpPort = NULL;
+    char httpPort[8];
+    memset(httpPort, 0, sizeof(httpPort));
     {
         json_t *http = json_object_get(config, "http");
         if (http) {
@@ -143,12 +144,9 @@ int broker_start_server(json_t *config, void *data,
             json_t *jsonPort = json_object_get(http, "port");
             if (jsonPort) {
                 json_int_t p = json_integer_value(jsonPort);
-
-                char buf[8];
-                int len = snprintf(buf, sizeof(buf) - 1,
+                int len = snprintf(httpPort, sizeof(httpPort) - 1,
                                    "%" JSON_INTEGER_FORMAT, p);
-                buf[len] = '\0';
-                httpPort = buf;
+                httpPort[len] = '\0';
             }
         }
     }
@@ -160,7 +158,7 @@ int broker_start_server(json_t *config, void *data,
     int httpActive = 0;
     Server httpServer;
     uv_poll_t httpPoll;
-    if (httpHost && httpPort) {
+    if (httpHost && httpPort[0] != '\0') {
         mbedtls_net_init(&httpServer.srv);
         httpServer.data_ready = cb;
 

@@ -38,10 +38,10 @@ static
 void col_map_set_simple_string_test(void **state) {
     (void) state;
     char *inputs[][2] = {
-            {"A", "Hello World"},
-            {"B", "Goodbye World"},
-            {"C", "World Hello"},
-            {"D", "World Goodbye"},
+            {"aa/bb", "Hello World"},
+            {"bb/bb", "Goodbye World"},
+            {"cc/bb", "World Hello"},
+            {"dd/bb", "World Goodbye"},
             {NULL, NULL}
     };
 
@@ -64,6 +64,7 @@ void col_map_set_simple_string_test(void **state) {
         i++;
     }
 
+    assert_false(dslink_map_contains(&map, "a"));
     dslink_map_free(&map);
 }
 

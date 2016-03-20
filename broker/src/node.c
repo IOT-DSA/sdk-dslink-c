@@ -177,11 +177,7 @@ void broker_node_free(BrokerNode *node) {
     }
 
     if (node->type == DOWNSTREAM_NODE) {
-        dslink_map_free(&((DownstreamNode *)node)->sub_sids);
-        dslink_map_free(&((DownstreamNode *)node)->sub_paths);
-        dslink_map_free(&((DownstreamNode *)node)->local_subs);
         dslink_map_free(&((DownstreamNode *)node)->list_streams);
-
         virtual_permission_free_map(&((DownstreamNode *)node)->children_permissions);
     } else {
         // TODO: add a new type for these listeners
@@ -235,34 +231,6 @@ void broker_dslink_disconnect(DownstreamNode *node) {
         BrokerListStream *stream = entry->value->data;
         broker_stream_list_disconnect(stream);
     }
-
-    dslink_map_foreach(&node->local_subs) {
-        Listener *l = entry->value->data;
-        listener_remove(l);
-        dslink_free(l->data);
-        dslink_free(l);
-    }
-
-    dslink_map_foreach(&node->sub_sids) {
-        BrokerSubStream *stream = entry->value->data;
-
-        if (stream->responder == node->link) {
-            // This link is the responder that's being disconnected
-            dslink_map_foreach(&stream->clients) {
-                RemoteDSLink *link = entry->key->data;
-                uint32_t *sid = entry->value->data;
-                broker_subscribe_disconnected_remote(link,
-                                                     stream->remote_path->data,
-                                                     *sid);
-            }
-        }
-
-        dslink_map_remove(&stream->clients, node->link);
-    }
-
-    dslink_map_clear(&node->local_subs);
-    dslink_map_clear(&node->sub_paths);
-    dslink_map_clear(&node->sub_sids);
 
     node->link = NULL;
     char disconnectedTs[32];

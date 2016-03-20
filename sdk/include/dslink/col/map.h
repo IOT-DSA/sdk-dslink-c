@@ -61,6 +61,10 @@ typedef struct Map {
     dslink_map_key_hash_func hash_key;
 
     List list;
+
+    // prevent concurrent modification
+    // right now it's only used during destroying the map
+    uint8_t locked;
 } Map;
 
 /// Default comparator functions
