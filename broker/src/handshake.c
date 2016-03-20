@@ -209,7 +209,7 @@ json_t *broker_handshake_handle_conn(Broker *broker,
             if (!token) {
                 goto fail;
             }
-            BrokerNode* tokenNode = getTokenNode(token, dsId);
+            BrokerNode* tokenNode = get_token_node(token, dsId);
             if (tokenNode) {
                 // TODO: create downstream node
                 // TODO: reduce token count

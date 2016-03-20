@@ -9,7 +9,7 @@ extern "C" {
 
 int init_tokens(BrokerNode *sysNode);
 
-BrokerNode *getTokenNode(const char *hashedToken, const char *dsId);
+BrokerNode *get_token_node(const char *hashedToken, const char *dsId);
 
 #ifdef __cplusplus
 }

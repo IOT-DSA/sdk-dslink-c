@@ -14,7 +14,7 @@ static
 BrokerNode *tokenRootNode;
 
 static
-unsigned char randomByte() {
+unsigned char get_random_byte() {
     // reuse the entropy
     static mbedtls_entropy_context ent;
     static unsigned char buffer[32];
@@ -34,9 +34,9 @@ unsigned char randomByte() {
 }
 
 static
-unsigned char randomChar() {
+unsigned char get_random_char() {
     while(1) {
-        unsigned char n = (unsigned char)(randomByte() & 0x7F);
+        unsigned char n = (unsigned char)(get_random_byte() & 0x7F);
         if ((n >= '0' && n <= '9') ||
             (n >= 'A' && n <= 'Z') ||
             (n >= 'a' && n <= 'z')) {
@@ -111,7 +111,7 @@ void add_token_invoke(RemoteDSLink *link,
     do {
         // find a token name that's not in the parent node's children
         for (size_t i = 0; i < 16; ++i) {
-            tokenName[i] = randomChar();
+            tokenName[i] = get_random_char();
         }
     } while (dslink_map_contains(tokenRootNode->children, tokenName));
 
@@ -122,7 +122,7 @@ void add_token_invoke(RemoteDSLink *link,
 
     // generate full token
     for (size_t i = 16; i < 48; ++i) {
-        tokenName[i] = randomChar();
+        tokenName[i] = get_random_char();
     }
 
     if (json_object_set_new_nocheck(tokenNode->meta, "$$token", json_string_nocheck(tokenName)) != 0) {
@@ -186,7 +186,7 @@ fail:
     broker_node_free(tokenNode);
 }
 
-BrokerNode *getTokenNode(const char *hashedToken, const char *dsId) {
+BrokerNode *get_token_node(const char *hashedToken, const char *dsId) {
     char tokenId[17] = {0};
     char tokenHash[64] = {0};
     memcpy(tokenId, hashedToken, 16);
@@ -223,12 +223,11 @@ BrokerNode *getTokenNode(const char *hashedToken, const char *dsId) {
         return node;
     }
 
-
     return NULL;
 }
 
 static
-int load_tokens(){
+int load_tokens() {
     uv_fs_t dir;
 
     uv_fs_mkdir(NULL, &dir, "token", 0770, NULL);
