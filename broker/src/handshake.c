@@ -380,8 +380,10 @@ exit:
         dslink_free((char *)link->path);
         dslink_free(link);
 
-        uv_timer_stop(ping_timer);
-        uv_close((uv_handle_t *) ping_timer, broker_free_handle);
+        if (ping_timer) {
+            uv_timer_stop(ping_timer);
+            uv_close((uv_handle_t *) ping_timer, broker_free_handle);
+        }
     }
 
     return ret;
