@@ -34,12 +34,12 @@ void delete_nodes(DSLink *link, DSNode *node,
     json_delete(top);
 
     node = node->parent;
-    for (int i = 0; i < NODE_COUNT; ++i) {
+    for (int i = 0; i <= NODE_COUNT; ++i) {
         char buf[4];
         snprintf(buf, sizeof(buf), "%d", i);
 
         void *key = &buf;
-        ref_t *n = dslink_map_remove_get(node->children, &key);
+        ref_t *n = dslink_map_remove_get(node->children, key);
         if (n) {
             dslink_node_tree_free(link, n->data);
             dslink_decref(n);
