@@ -15,8 +15,8 @@ void gen_number(uv_timer_t *timer) {
         return;
     }
 
-    int x = rand();
-    dslink_node_set_value(link, node, json_integer(x));
+    double x = rand() / 1000000.0;
+    dslink_node_set_value(link, node, json_real(x));
 }
 
 static
