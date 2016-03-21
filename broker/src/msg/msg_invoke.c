@@ -69,6 +69,11 @@ int broker_msg_handle_invoke(RemoteDSLink *link, json_t *req) {
     DownstreamNode *ds = (DownstreamNode *) node;
     uint32_t rid = broker_node_incr_rid(ds);
 
+    if (!ds->link) {
+        broker_utils_send_closed_resp(link, req, "disconnected");
+        return 1;
+    }
+
     BrokerInvokeStream *s = broker_stream_invoke_init();
 
     s->responder_rid = rid;
