@@ -379,7 +379,9 @@ exit:
         dslink_map_free(&link->responder_streams);
         dslink_free((char *)link->path);
         dslink_free(link);
-        dslink_free(ping_timer);
+
+        uv_timer_stop(ping_timer);
+        uv_close((uv_handle_t *) ping_timer, broker_free_handle);
     }
 
     return ret;
