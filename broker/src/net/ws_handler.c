@@ -4,6 +4,7 @@
 #define LOG_TAG "ws_handler"
 #include <dslink/log.h>
 #include <dslink/err.h>
+#include <sys/time.h>
 
 #include "broker/msg/msg_handler.h"
 #include "broker/net/ws.h"
@@ -52,6 +53,18 @@ ssize_t want_write_cb(wslay_event_context_ptr ctx,
             wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
         }
         return -1;
+    }
+
+    struct timeval *time = dslink_malloc(sizeof(struct timeval*));
+    int ret = gettimeofday(time, NULL);
+
+    if (ret == 0) {
+        if (link->lastWriteTime) {
+            dslink_free(link->lastWriteTime);
+        }
+        link->lastWriteTime = time;
+    } else {
+        dslink_free(time);
     }
 
     return written;

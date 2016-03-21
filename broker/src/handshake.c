@@ -7,6 +7,8 @@
 #include <dslink/log.h>
 #include <dslink/handshake.h>
 #include <dslink/utils.h>
+#include <wslay_event.h>
+#include <sys/time.h>
 
 #include "broker/config.h"
 #include "broker/sys/token.h"
@@ -258,6 +260,19 @@ fail:
     return NULL;
 }
 
+static
+void dslink_handle_ping(uv_timer_t* handle) {
+    RemoteDSLink *link = handle->data;
+    if (link->lastWriteTime) {
+        struct timeval current_time;
+        gettimeofday(&current_time, NULL);
+        long time_diff = current_time.tv_sec - link->lastWriteTime->tv_sec;
+        if (time_diff >= 60) {
+            broker_ws_send(link, "{}");
+        }
+    }
+}
+
 int broker_handshake_handle_ws(Broker *broker,
                                Client *client,
                                const char *dsId,
@@ -345,6 +360,12 @@ int broker_handshake_handle_ws(Broker *broker,
     link->ws = ws;
     broker_ws_send_init(client->sock, wsAccept);
 
+    uv_timer_t *ping_timer = dslink_malloc(sizeof(uv_timer_t));
+    ping_timer->data = link;
+    uv_timer_init(link->client->poll->loop, ping_timer);
+    uv_timer_start(ping_timer, dslink_handle_ping, 1000, 30000);
+    link->pingTimerHandle = ping_timer;
+
     // set the ->link and update all existing stream
     broker_dslink_connect(node, link);
     log_info("DSLink `%s` has connected\n", dsId);
@@ -358,6 +379,8 @@ exit:
         dslink_map_free(&link->responder_streams);
         dslink_free((char *)link->path);
         dslink_free(link);
+        dslink_free(&ping_timer);
     }
+
     return ret;
 }
