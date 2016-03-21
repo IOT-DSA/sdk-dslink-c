@@ -105,7 +105,7 @@ int query_child_removed(Listener *listener, void *node) {
     BrokerInvokeStream *stream = listener->data;
     ParsedQuery *pQuery = stream->data;
     if (pQuery && node) {
-
+        //TODO ?
     }
     return 0;
 }
@@ -169,9 +169,22 @@ int query_destroy(void *s, RemoteDSLink *link) {
     (void) link;
     BrokerInvokeStream *stream = s;
     ParsedQuery *pQuery = stream->data;
+
+    dslink_map_foreach(&pQuery->child_add_listeners) {
+        Listener *listener = entry->value->data;
+        listener_remove(listener);
+        dslink_free(listener);
+    }
     dslink_map_free(&pQuery->child_add_listeners);
+
+    dslink_map_foreach(&pQuery->value_update_listeners) {
+        Listener *listener = entry->value->data;
+        listener_remove(listener);
+        dslink_free(listener);
+    }
     dslink_map_free(&pQuery->value_update_listeners);
-    return 0;
+
+    return 1;
 }
 
 static
