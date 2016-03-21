@@ -204,6 +204,7 @@ void broker_msg_handle(RemoteDSLink *link,
             if (obj) {
                 json_object_set_nocheck(obj, "ack", msg);
                 broker_ws_send_obj(link, obj);
+                json_decref(obj);
             }
         }
     }
