@@ -5,4 +5,5 @@ set(EXAMPLE_SRC
     "${EXAMPLE_SRC_DIR}/main.c"
     "${EXAMPLE_SRC_DIR}/replicator.c"
     "${EXAMPLE_SRC_DIR}/rng.c"
+    "${EXAMPLE_SRC_DIR}/invoke.c"
 )

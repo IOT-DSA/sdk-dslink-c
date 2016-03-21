@@ -38,25 +38,6 @@ int dslink_request_handle(DSLink *link, json_t *req) {
         uint32_t rid = (uint32_t) json_integer_value(
                                     json_object_get(req, "rid"));
         dslink_map_remove(link->responder->open_streams, &rid);
-        /*if (s) {
-            dslink_free(p);
-            switch (s->type) {
-                case LIST_STREAM:
-                    p = (void *) s->path;
-                    dslink_map_remove(link->responder->list_subs, &p);
-                    break;
-                case INVALID_STREAM: default:
-                    break;
-            }
-            if (s->on_close) {
-                DSNode *node = link->responder->super_root;
-                node = dslink_node_get_path(node, s->path);
-                if (node) {
-                    s->on_close(link, node);
-                }
-            }
-            dslink_free(s);
-        }*/
     } else {
         log_warn("Unrecognized method: %s\n", method);
     }
