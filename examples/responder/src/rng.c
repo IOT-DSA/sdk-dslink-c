@@ -30,7 +30,7 @@ void responder_rng_subbed(DSLink *link, DSNode *node) {
     uv_timer_t *timer = malloc(sizeof(uv_timer_t));
     uv_timer_init(&link->loop, timer);
     timer->data = a;
-    uv_timer_start(timer, gen_number, 0, 100);
+    uv_timer_start(timer, gen_number, 0, 1);
 }
 
 static
