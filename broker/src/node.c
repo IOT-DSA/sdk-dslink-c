@@ -200,9 +200,9 @@ void broker_node_free(BrokerNode *node) {
 }
 
 uint32_t broker_node_incr_rid(DownstreamNode *node) {
-    if (node->rid > (UINT32_MAX - 1)) {
+    if (node->rid >= (UINT32_MAX - 1)) {
         // Loop it around
-        node->rid = 0;
+        node->rid = 1;
     }
     return ++node->rid;
 }
