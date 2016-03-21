@@ -259,7 +259,12 @@ void handle_subscribe(RemoteDSLink *link, json_t *sub) {
     if (node->type == REGULAR_NODE) {
         broker_handle_local_subscribe((BrokerNode *) node, link, sid);
     } else {
-        broker_subscribe_remote(node, link, sid, path, out);
+        if (node->link) {
+            broker_subscribe_remote(node, link, sid, path, out);
+        } else {
+            broker_subscribe_disconnected_remote(link, path, sid);
+        }
+
     }
 }
 
