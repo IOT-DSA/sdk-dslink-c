@@ -22,6 +22,13 @@ typedef struct ListNodeBase {
     struct List *list;
 } ListNodeBase;
 
+typedef struct ListNode {
+    struct ListNode *prev;
+    struct ListNode *next;
+    struct List *list;
+    void *value;
+} ListNode;
+
 typedef struct List {
     ListNodeBase head;
 } List;
@@ -97,16 +104,6 @@ void list_free_node(void *node) {
         dslink_free(node);
     }
 }
-
-
-typedef struct ListNode {
-    struct ListNode *prev;
-    struct ListNode *next;
-
-    void *value;
-} ListNode;
-
-
 
 void list_init(List *list);
 
