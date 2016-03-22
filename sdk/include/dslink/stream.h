@@ -17,7 +17,7 @@ typedef enum StreamType {
 typedef struct Stream {
     StreamType type;
     const char *path;
-    stream_close_cb on_close;
+    dslink_stream_close_cb on_close;
     int unused;
     void *data;
 } Stream;
