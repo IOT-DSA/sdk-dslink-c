@@ -295,6 +295,7 @@ int broker_handshake_handle_ws(Broker *broker,
         return 1;
     }
 
+    uv_timer_t *ping_timer = NULL;
     int ret = 0;
     { // Perform auth check
         char expectedAuth[90];
@@ -360,7 +361,7 @@ int broker_handshake_handle_ws(Broker *broker,
     link->ws = ws;
     broker_ws_send_init(client->sock, wsAccept);
 
-    uv_timer_t *ping_timer = dslink_malloc(sizeof(uv_timer_t));
+    ping_timer = dslink_malloc(sizeof(uv_timer_t));
     ping_timer->data = link;
     uv_timer_init(link->client->poll->loop, ping_timer);
     uv_timer_start(ping_timer, dslink_handle_ping, 1000, 30000);
