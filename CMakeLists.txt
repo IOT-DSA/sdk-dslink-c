@@ -73,6 +73,7 @@ set(DSLINK_SRC
 
     "${DSLINK_SRC_DIR}/msg/list_response.c"
     "${DSLINK_SRC_DIR}/msg/request_handler.c"
+    "${DSLINK_SRC_DIR}/msg/response_handler.c"
     "${DSLINK_SRC_DIR}/msg/sub_response.c"
 
     "${DSLINK_SRC_DIR}/base64_url.c"
@@ -84,7 +85,8 @@ set(DSLINK_SRC
     "${DSLINK_SRC_DIR}/url.c"
     "${DSLINK_SRC_DIR}/utils.c"
     "${DSLINK_SRC_DIR}/ws.c"
-)
+    "${DSLINK_SRC_DIR}/requester.c"
+    )
 
 set(LIBRARY_SRC
     "${ARGTABLE_SRC}"

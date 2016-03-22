@@ -16,6 +16,7 @@ typedef struct DSLinkCallbacks DSLinkCallbacks;
 typedef struct DSLinkConfig DSLinkConfig;
 typedef struct DSLink DSLink;
 typedef struct Responder Responder;
+typedef struct Requester Requester;
 
 typedef void (*link_callback)(DSLink *link);
 
@@ -31,6 +32,7 @@ struct DSLink {
     struct wslay_event_context *_ws; // Event context for WSLay
     Socket *_socket; // Socket for the _ws connection
 
+    Requester *requester;
     Responder *responder; // Responder, only initialized for responder DSLinks
     mbedtls_ecdh_context key; // ECDH key
     uv_loop_t loop; // Primary event loop
@@ -56,10 +58,18 @@ struct Responder {
     Map *value_sid_subs;
 };
 
+struct Requester {
+    uint32_t *rid;
+    Map *request_handlers;
+    Map *list_subs;
+    Map *open_streams;
+};
+
 struct DSLinkCallbacks {
     link_callback init_cb;
     link_callback on_connected_cb;
     link_callback on_disconnected_cb;
+    link_callback on_requester_ready_cb;
 };
 
 int dslink_init(int argc, char **argv,

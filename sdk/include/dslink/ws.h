@@ -20,7 +20,7 @@ int dslink_handshake_connect_ws(Url *url,
                                 const char *salt,
                                 const char *dsId,
                                 Socket **sock);
-void dslink_handshake_handle_ws(DSLink *link);
+void dslink_handshake_handle_ws(DSLink *link, DSLinkCallbacks *cbs);
 
 int dslink_ws_send_obj(struct wslay_event_context *ctx, json_t *obj);
 int dslink_ws_send(struct wslay_event_context *ctx,

@@ -10,6 +10,7 @@
 #include <dslink/socket_private.h>
 
 #include "dslink/msg/request_handler.h"
+#include "dslink/msg/response_handler.h"
 #include "dslink/handshake.h"
 #include "dslink/ws.h"
 
@@ -223,6 +224,18 @@ void recv_frame_cb(wslay_event_context_ptr ctx,
         }
     }
 
+    json_t *resps = json_object_get(obj, "responses");
+
+    if (resps) {
+        size_t index;
+        json_t *value;
+        json_array_foreach(resps, index, value) {
+            if (dslink_response_handle(link, value) != 0) {
+                log_err("Failed to handle response\n");
+            }
+        }
+    }
+
     json_delete(obj);
 exit:
     return;
@@ -248,7 +261,7 @@ void ping_handler(uv_timer_t *timer) {
     dslink_ws_send(link->_ws, "{}");
 }
 
-void dslink_handshake_handle_ws(DSLink *link) {
+void dslink_handshake_handle_ws(DSLink *link, DSLinkCallbacks *cbs) {
     struct wslay_event_callbacks callbacks = {
         want_read_cb,
         want_write_cb,
@@ -280,6 +293,10 @@ void dslink_handshake_handle_ws(DSLink *link) {
         uv_timer_init(&link->loop, &ping);
         ping.data = link;
         uv_timer_start(&ping, ping_handler, 0, 30000);
+    }
+
+    if (cbs->on_requester_ready_cb) {
+        cbs->on_requester_ready_cb(link);
     }
 
     uv_run(&link->loop, UV_RUN_DEFAULT);

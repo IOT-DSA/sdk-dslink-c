@@ -1,9 +1,15 @@
 #define LOG_TAG "main"
 
 #include <dslink/log.h>
+#include <dslink/requester.h>
 #include "replicator.h"
 #include "rng.h"
 #include "invoke.h"
+
+void on_req_new_val(struct DSLink *link, json_t *resp) {
+    (void) link;
+    printf("Got response %s\n", json_dumps(resp, JSON_INDENT(2)));
+}
 
 void init(DSLink *link) {
     DSNode *superRoot = link->responder->super_root;
@@ -25,12 +31,17 @@ void disconnected(DSLink *link) {
     log_info("Disconnected!\n");
 }
 
+void requester_ready(DSLink *link) {
+    dslink_requester_subscribe(link, "/downstream", on_req_new_val);
+}
+
 int main(int argc, char **argv) {
     DSLinkCallbacks cbs = {
         init,
         connected,
-        disconnected
+        disconnected,
+        requester_ready
     };
 
-    return dslink_init(argc, argv, "C-Resp", 0, 1, &cbs);
+    return dslink_init(argc, argv, "C-Resp", 1, 1, &cbs);
 }

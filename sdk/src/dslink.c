@@ -21,6 +21,20 @@
         goto cleanup; \
     }
 
+#define DSLINK_REQUESTER_MAP_INIT(var, type) \
+    requester->var = dslink_calloc(1, sizeof(Map)); \
+    if (!requester->var) { \
+        goto cleanup; \
+    } \
+    if (dslink_map_init(requester->var, \
+            dslink_map_##type##_cmp, \
+            dslink_map_##type##_key_len_cal, \
+            dslink_map_hash_key) != 0) { \
+        dslink_free(requester->var); \
+        requester->var = NULL; \
+        goto cleanup; \
+    }
+
 static inline
 void dslink_print_help() {
     printf("See --help for usage\n");
@@ -117,6 +131,28 @@ cleanup:
 }
 
 static
+int dslink_init_requester(Requester *requester) {
+    DSLINK_REQUESTER_MAP_INIT(open_streams, uint32)
+    DSLINK_REQUESTER_MAP_INIT(list_subs, str)
+    DSLINK_REQUESTER_MAP_INIT(request_handlers, uint32)
+
+    requester->rid = dslink_malloc(sizeof(uint32_t));
+    *requester->rid = 0;
+
+    return 0;
+    cleanup:
+    if (requester->open_streams) {
+        dslink_map_free(requester->open_streams);
+    }
+
+    if (requester->list_subs) {
+        dslink_map_free(requester->list_subs);
+    }
+
+    return DSLINK_ALLOC_ERR;
+}
+
+static
 int handle_config(DSLinkConfig *config, const char *name, int argc, char **argv) {
     memset(config, 0, sizeof(DSLinkConfig));
     config->name = name;
@@ -183,6 +219,19 @@ int dslink_init(int argc, char **argv,
         }
     }
 
+    if (isRequester) {
+        link.requester = dslink_calloc(1, sizeof(Requester));
+        if (!link.requester) {
+            log_fatal("Failed to create requester\n");
+            goto exit;
+        }
+
+        if (dslink_init_requester(link.requester) != 0) {
+            log_fatal("Failed to initialize requester\n");
+            goto exit;
+        }
+    }
+
     if (cbs->init_cb) {
         cbs->init_cb(&link);
     }
@@ -213,12 +262,9 @@ int dslink_init(int argc, char **argv,
         log_info("Successfully connected to the broker\n");
     }
 
-    if (cbs->on_connected_cb) {
-        cbs->on_connected_cb(&link);
-    }
-
     link._socket = sock;
-    dslink_handshake_handle_ws(&link);
+
+    dslink_handshake_handle_ws(&link, cbs);
 
     // TODO: automatic reconnecting
     log_warn("Disconnected from the broker\n")
@@ -253,6 +299,21 @@ exit:
 
         dslink_free(link.responder);
     }
+
+    if (link.requester) {
+        if (link.requester->list_subs) {
+            dslink_map_free(link.requester->list_subs);
+            dslink_free(link.requester->list_subs);
+        }
+
+        if (link.requester->open_streams) {
+            dslink_map_free(link.requester->open_streams);
+            dslink_free(link.requester->open_streams);
+        }
+
+        dslink_free(link.requester);
+    }
+
     mbedtls_ecdh_free(&link.key);
     dslink_url_free(link.config.broker_url);
     DSLINK_CHECKED_EXEC(dslink_socket_close, sock);
