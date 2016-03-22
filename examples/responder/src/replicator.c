@@ -4,7 +4,7 @@
 #include <dslink/ws.h>
 #include "replicator.h"
 
-#define NODE_COUNT 5
+#define NODE_COUNT 500
 
 static
 void delete_nodes(DSLink *link, DSNode *node,
@@ -102,7 +102,7 @@ void list_opened(DSLink *link, DSNode *node) {
     uv_timer_t *timer = malloc(sizeof(uv_timer_t));
     uv_timer_init(&link->loop, timer);
     timer->data = a;
-    uv_timer_start(timer, create_node, 0, 1000);
+    uv_timer_start(timer, create_node, 0, 100);
 }
 
 static
