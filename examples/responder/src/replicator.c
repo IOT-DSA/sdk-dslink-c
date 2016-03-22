@@ -4,12 +4,13 @@
 #include <dslink/ws.h>
 #include "replicator.h"
 
-#define NODE_COUNT 500
+#define NODE_COUNT 5
 
 static
 void delete_nodes(DSLink *link, DSNode *node,
-                  json_t *rid, json_t *params) {
+                  json_t *rid, json_t *params, ref_t *stream) {
     (void) params;
+    (void) stream;
     json_t *top = json_object();
     if (!top) {
         return;
@@ -106,8 +107,9 @@ void list_opened(DSLink *link, DSNode *node) {
 }
 
 static
-void list_closed(DSLink *link, DSNode *node) {
+void list_closed(DSLink *link, DSNode *node, void *stream) {
     (void) link;
+    (void) stream;
     log_info("List closed for: %s\n", node->path);
 }
 

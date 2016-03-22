@@ -146,6 +146,7 @@ int dslink_response_list(DSLink *link, json_t *req, DSNode *node) {
             json_delete(top);
             return 1;
         }
+        
         {
             uint32_t r = (uint32_t) json_integer_value(jsonRid);
             *((uint32_t *) rid->data) = r;

@@ -1,5 +1,5 @@
-#ifndef SDK_DSLINK_C_SUB_H
-#define SDK_DSLINK_C_SUB_H
+#ifndef SDK_DSLINK_C_STREAM_H
+#define SDK_DSLINK_C_STREAM_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -17,11 +17,13 @@ typedef enum StreamType {
 typedef struct Stream {
     StreamType type;
     const char *path;
-    node_event_cb on_close;
+    stream_close_cb on_close;
+    int unused;
+    void *data;
 } Stream;
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // SDK_DSLINK_C_SUB_H
+#endif // SDK_DSLINK_C_STREAM_H

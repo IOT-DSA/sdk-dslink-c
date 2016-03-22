@@ -15,7 +15,9 @@ typedef struct DSNode DSNode;
 
 typedef void (*node_event_cb)(struct DSLink *link, DSNode *node);
 typedef void (*node_action_cb)(struct DSLink *link, DSNode *node,
-                               json_t *rid, json_t *params);
+                               json_t *rid, json_t *params, ref_t *stream);
+
+typedef void (*stream_close_cb)(struct DSLink *link, DSNode *node, void *stream);
 
 struct DSNode {
     const char *path;
@@ -45,7 +47,7 @@ struct DSNode {
     node_event_cb on_list_open;
 
     // Notification callback when the node is closed.
-    node_event_cb on_list_close;
+    stream_close_cb on_list_close;
 
     // Notification callback when the node is subscribed.
     node_event_cb on_subscribe;
