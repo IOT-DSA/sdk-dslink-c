@@ -1,24 +1,34 @@
 cmake_minimum_required(VERSION 2.8)
 project(sdk_dslink_c C)
 
+option(USE_CCACHE "Enable CCache Support" ON)
 option(DSLINK_BUILD_BROKER "Whether to build the broker" OFF)
 option(DSLINK_BUILD_EXAMPLES "Whether to build the examples" OFF)
 option(DSLINK_TEST "Whether to enable tests" OFF)
 option(TOOLCHAIN_DYNAMIC_LINK_ENABLE "Enable Dynamic Linking for Toolchain" ON)
-
-##### Toolchain Configuration #####
-
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${TOOLCHAIN_C_FLAGS}")
-if (NOT TOOLCHAIN_DYNAMIC_LINK_ENABLE)
-    set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
-    set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS)
-endif()
 
 ##### Define Macros #####
 
 macro(ADD_C_FLAGS flags)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${flags}")
 endmacro()
+
+##### Toolchain Configuration #####
+
+ADD_C_FLAGS("${TOOLCHAIN_C_FLAGS}")
+
+if (NOT TOOLCHAIN_DYNAMIC_LINK_ENABLE)
+    set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
+    set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS)
+endif()
+
+##### Configure CCache Support ####
+
+find_program(CCACHE_FOUND ccache)
+if (CCACHE_FOUND AND USE_CCACHE)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
+endif()
 
 ##### Configure Dependencies #####
 
@@ -44,10 +54,6 @@ string(TOUPPER "${CMAKE_BUILD_TYPE}" DSLINK_BUILD_TYPE)
 if (DSLINK_BUILD_TYPE STREQUAL DEBUG AND NOT USE_VALGRIND)
     ADD_C_FLAGS("-fsanitize=address")
     ADD_C_FLAGS("-fstack-protector-all")
-
-    if ("${CMAKE_C_COMPILER_ID}" MATCHES "Clang")
-        ADD_C_FLAGS("-g")
-    endif()
 endif()
 
 ##### Configure Sources #####
