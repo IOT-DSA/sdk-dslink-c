@@ -88,8 +88,12 @@ void broker_remote_dslink_free(RemoteDSLink *link) {
     dslink_map_free(&link->responder_streams);
 
     permission_groups_free(&link->permission_groups);
-    uv_timer_stop(link->pingTimerHandle);
-    uv_close((uv_handle_t *) link->pingTimerHandle, broker_free_handle);
+
+    if (link->pingTimerHandle) {
+        uv_timer_stop(link->pingTimerHandle);
+        uv_close((uv_handle_t *) link->pingTimerHandle, broker_free_handle);
+    }
+
     dslink_free((void *) link->path);
     dslink_free(link->lastWriteTime);
     json_decref(link->linkData);
