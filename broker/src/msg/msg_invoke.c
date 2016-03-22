@@ -88,6 +88,15 @@ int broker_msg_handle_invoke(RemoteDSLink *link, json_t *req) {
     dslink_map_set(&ds->link->responder_streams, dslink_int_ref(rid),
                    refStream);
 
+    ref_t *findref = dslink_map_remove_get(&link->requester_streams, &s->requester_rid);
+    if (findref) {
+        BrokerStream *oldstream = findref->data;
+        if (oldstream->req_close_cb) {
+            oldstream->req_close_cb(oldstream, link);
+        }
+        broker_stream_free(oldstream, link);
+        dslink_decref(findref);
+    }
     dslink_map_set(&link->requester_streams,
                    dslink_int_ref(s->requester_rid),
                    dslink_incref(refStream));
