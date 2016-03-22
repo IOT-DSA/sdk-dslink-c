@@ -9,5 +9,12 @@ then
 fi
 
 cd build
-cmake -DDSLINK_BUILD_EXAMPLES=ON -DDSLINK_BUILD_BROKER=ON -DCMAKE_BUILD_TYPE=Debug -DDSLINK_COVERAGE=ON -DDSLINK_TEST=ON ..
-make "${@}"
+cmake -DDSLINK_BUILD_EXAMPLES=ON -DDSLINK_BUILD_BROKER=ON -DCMAKE_BUILD_TYPE=Release -DDSLINK_TEST=ON ..
+
+if [ -f Makefile ]
+then
+  make "${@}"
+else
+  ninja "${@}"
+fi
+
