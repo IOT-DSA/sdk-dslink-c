@@ -1,13 +1,13 @@
 #ifndef SDK_DSLINK_C_LIST_H
 #define SDK_DSLINK_C_LIST_H
 
-#include <stdlib.h>
-#include <stdint.h>
-#include "dslink/mem/mem.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#include <stdlib.h>
+#include <stdint.h>
+#include "dslink/mem/mem.h"
 
 #define dslink_list_foreach(list) \
     for (ListNodeBase *node = (list)->head.next; node != &(list)->head; node = node->next)

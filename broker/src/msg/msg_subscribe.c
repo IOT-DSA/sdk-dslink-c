@@ -10,24 +10,6 @@
 #include "broker/msg/msg_subscribe.h"
 
 static
-void subs_list_free(void *p) {
-    List *subs = p;
-    dslink_list_foreach_nonext(subs) {
-        ListNode *entry = (ListNode *) node;
-        PendingSub *sub = entry->value;
-        dslink_free((char *) sub->path);
-        dslink_free(sub);
-        ListNodeBase *tmp = node->next;
-        if ((intptr_t) node != (intptr_t) subs) {
-            dslink_free(node);
-        }
-        node = tmp;
-    }
-
-    dslink_free(subs);
-}
-
-static
 void send_subscribe_request(DownstreamNode *node,
                             const char *path,
                             uint32_t sid) {
@@ -130,6 +112,14 @@ void broker_subscribe_remote(DownstreamNode *respNode, RemoteDSLink *reqLink,
     ref_t *ref = dslink_map_get(&respNode->link->sub_paths, (void *) path);
     if (ref) {
         BrokerSubStream *bss = ref->data;
+
+        ref_t* existingSub = dslink_map_remove_get(&bss->clients, reqLink);
+        if (existingSub) {
+            uint32_t * existSid = existingSub->data;
+            dslink_map_remove(&reqLink->req_sub_sids, existSid);
+            dslink_decref(existingSub);
+        }
+
         ref_t *s = dslink_int_ref(sid);
         dslink_map_set(&bss->clients, dslink_ref(reqLink, NULL), s);
         dslink_map_set(&reqLink->req_sub_sids, dslink_incref(s),
@@ -182,6 +172,48 @@ void broker_subscribe_remote(DownstreamNode *respNode, RemoteDSLink *reqLink,
     }
 }
 
+static
+void add_pending_sub(List *subs, const char* path, uint32_t sid, RemoteDSLink *reqLink) {
+    PendingSub *ps = dslink_malloc(sizeof(PendingSub));
+    ps->path = dslink_strdup(path);
+    ps->requester = reqLink;
+    ps->reqSid = sid;
+    ps->req = reqLink->node;
+    ListNode *listNode = dslink_list_insert(subs, ps);
+    ps->listNode = listNode;
+
+    dslink_map_set(&reqLink->req_pending_sub_sids, dslink_int_ref(sid),
+                   dslink_ref(ps, NULL));
+}
+
+void broker_free_pending_sub(PendingSub* sub, uint8_t freeNode) {
+    if (freeNode) {
+        list_remove_node(sub->listNode);
+        dslink_free(sub->listNode);
+    }
+    dslink_map_remove(&sub->requester->req_pending_sub_sids, &sub->reqSid);
+    dslink_free((char*)sub->path);
+    dslink_free(sub);
+}
+
+static
+void subs_list_free(void *p) {
+    List *subs = p;
+    dslink_list_foreach_nonext(subs) {
+        ListNode *entry = (ListNode *) node;
+        entry->list = NULL; //avoid list_remove_node
+        PendingSub *sub = entry->value;
+        broker_free_pending_sub(sub, 0);
+        ListNodeBase *tmp = node->next;
+        if ((intptr_t) node != (intptr_t) subs) {
+            dslink_free(node);
+        }
+        node = tmp;
+    }
+
+    dslink_free(subs);
+}
+
 void broker_subscribe_disconnected_remote(RemoteDSLink *link,
                                           const char *path,
                                           uint32_t sid) {
@@ -205,11 +237,8 @@ void broker_subscribe_disconnected_remote(RemoteDSLink *link,
                        dslink_ref(subs, subs_list_free));
     }
 
-    PendingSub *ps = dslink_malloc(sizeof(PendingSub));
-    ps->path = dslink_strdup(path);
-    ps->reqSid = sid;
-    ps->req = link->node;
-    dslink_list_insert(subs, ps);
+    add_pending_sub(subs, path, sid, link);
+
 }
 
 void broker_subscribe_local_nonexistent(RemoteDSLink *link,
@@ -228,12 +257,10 @@ void broker_subscribe_local_nonexistent(RemoteDSLink *link,
                        dslink_ref(subs, subs_list_free));
     }
 
-    PendingSub *ps = dslink_malloc(sizeof(PendingSub));
-    ps->path = dslink_strdup(path);
-    ps->reqSid = sid;
-    ps->req = link->node;
-    dslink_list_insert(subs, ps);
+    add_pending_sub(subs, path, sid, link);
 }
+
+
 
 static
 void handle_subscribe(RemoteDSLink *link, json_t *sub) {

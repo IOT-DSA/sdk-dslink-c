@@ -5,9 +5,9 @@
 extern "C" {
 #endif
 
+#include <dslink/stream.h>
 #include <dslink/col/list.h>
 #include <dslink/col/map.h>
-#include <dslink/stream.h>
 
 #include "broker/remote_dslink.h"
 
