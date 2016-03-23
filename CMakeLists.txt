@@ -45,9 +45,12 @@ ADD_C_FLAGS("-std=gnu99")
 ADD_C_FLAGS("-Wall -Wextra -Werror")
 ADD_C_FLAGS("-Wno-overlength-strings")
 ADD_C_FLAGS("-pedantic")
-ADD_C_FLAGS("-Qunused-arguments")
 
-if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+if (${CMAKE_C_COMPILER_ID} STREQUAL "Clang")
+    ADD_C_FLAGS("-Qunused-arguments")
+endif()
+
+if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     ADD_C_FLAGS("-pthread")
 endif()
 
