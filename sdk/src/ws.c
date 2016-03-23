@@ -57,9 +57,19 @@ int gen_ws_key(char *buf, size_t bufLen) {
     return 0;
 }
 
+static
+uint32_t dslink_incr_msg(DSLink *link) {
+    if (*link->msg >= INT32_MAX) {
+        // Loop it around
+        (*link->msg) = 0;
+    }
+    return ++(*link->msg);
+}
+
 int dslink_ws_send_obj(wslay_event_context_ptr ctx, json_t *obj) {
     DSLink *link = ctx->user_data;
-    json_object_set(obj, "msg", json_integer(++(*link->msg)));
+    uint32_t msg = dslink_incr_msg(link);
+    json_object_set(obj, "msg", json_integer(msg));
 
     char *data = json_dumps(obj, JSON_PRESERVE_ORDER);
     if (!data) {

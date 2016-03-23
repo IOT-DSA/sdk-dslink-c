@@ -2,11 +2,28 @@
 #include "dslink/requester.h"
 #include "dslink/ws.h"
 
+
 json_t* dslink_requester_create_request(DSLink *link, const char *method) {
     (void) link;
     json_t *json = json_object();
     json_object_set_new(json, "method", json_string(method));
     return json;
+}
+
+uint32_t dslink_requester_incr_rid(Requester *requester) {
+    if (*requester->rid >= INT32_MAX) {
+        // Loop it around
+        (*requester->rid) = 0;
+    }
+    return ++(*requester->rid);
+}
+
+uint32_t dslink_requester_incr_sid(Requester *requester) {
+    if (*requester->sid >= INT32_MAX) {
+        // Loop it around
+        (*requester->sid) = 0;
+    }
+    return ++(*requester->sid);
 }
 
 ref_t* dslink_requester_send_request_with_rid(DSLink *link, json_t *req, request_handler_cb cb, uint32_t rid) {
@@ -29,7 +46,7 @@ ref_t* dslink_requester_send_request_with_rid(DSLink *link, json_t *req, request
 }
 
 ref_t* dslink_requester_send_request(DSLink *link, json_t *req, request_handler_cb cb) {
-    uint32_t rid = ++*link->requester->rid;
+    uint32_t rid = dslink_requester_incr_rid(link->requester);
     return dslink_requester_send_request_with_rid(link, req, cb, rid);
 }
 
@@ -48,7 +65,7 @@ void dslink_requester_ignore_response(DSLink *link, json_t *resp) {
 }
 
 ref_t* dslink_requester_subscribe(DSLink* link, const char* path, value_sub_cb cb) {
-    uint32_t sid = ++(*link->requester->sid);
+    uint32_t sid = dslink_requester_incr_sid(link->requester);
 
     json_t *json = dslink_requester_create_request(link, "subscribe");
     json_t *paths = json_array();
