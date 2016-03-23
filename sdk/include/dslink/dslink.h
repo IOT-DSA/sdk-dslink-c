@@ -61,9 +61,11 @@ struct Responder {
 
 struct Requester {
     uint32_t *rid;
+    uint32_t *sid;
     Map *request_handlers;
     Map *list_subs;
     Map *open_streams;
+    Map *value_handlers;
 };
 
 struct DSLinkCallbacks {

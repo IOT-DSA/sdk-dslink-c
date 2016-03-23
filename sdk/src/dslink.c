@@ -135,9 +135,12 @@ int dslink_init_requester(Requester *requester) {
     DSLINK_REQUESTER_MAP_INIT(open_streams, uint32)
     DSLINK_REQUESTER_MAP_INIT(list_subs, str)
     DSLINK_REQUESTER_MAP_INIT(request_handlers, uint32)
+    DSLINK_REQUESTER_MAP_INIT(value_handlers, uint32)
 
     requester->rid = dslink_malloc(sizeof(uint32_t));
     *requester->rid = 0;
+    requester->sid = dslink_malloc(sizeof(uint32_t));
+    *requester->sid = 0;
 
     return 0;
     cleanup:
@@ -147,6 +150,18 @@ int dslink_init_requester(Requester *requester) {
 
     if (requester->list_subs) {
         dslink_map_free(requester->list_subs);
+    }
+
+    if (requester->value_handlers) {
+        dslink_map_free(requester->value_handlers);
+    }
+
+    if (requester->rid) {
+        dslink_free(requester->rid);
+    }
+
+    if (requester->sid) {
+        dslink_free(requester->sid);
     }
 
     return DSLINK_ALLOC_ERR;
@@ -279,6 +294,7 @@ exit:
         if (link.responder->super_root) {
             dslink_node_tree_free(NULL, link.responder->super_root);
         }
+
         if (link.responder->open_streams) {
             dslink_map_free(link.responder->open_streams);
             dslink_free(link.responder->open_streams);
@@ -311,6 +327,19 @@ exit:
         if (link.requester->open_streams) {
             dslink_map_free(link.requester->open_streams);
             dslink_free(link.requester->open_streams);
+        }
+
+        if (link.requester->value_handlers) {
+            dslink_map_free(link.requester->value_handlers);
+            dslink_free(link.requester->value_handlers);
+        }
+
+        if (link.requester->rid) {
+            dslink_free(link.requester->rid);
+        }
+
+        if (link.requester->sid) {
+            dslink_free(link.requester->sid);
         }
 
         dslink_free(link.requester);

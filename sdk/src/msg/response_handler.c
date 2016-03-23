@@ -14,6 +14,27 @@ int dslink_response_handle(DSLink *link, json_t *resp) {
     json_t *jsonRid = json_object_get(resp, "rid");
     uint32_t rid = (uint32_t) json_integer_value(jsonRid);
 
+    if (rid == 0) {
+        json_t *updates = json_object_get(resp, "updates");
+        size_t index;
+        json_t *entry;
+        json_array_foreach(updates, index, entry) {
+            uint32_t sid = (uint32_t) json_integer_value(json_array_get(entry, 0));
+            json_t *val = json_array_get(entry, 1);
+            json_t *ts = json_array_get(entry, 2);
+            ref_t *cbref = dslink_map_get(link->requester->value_handlers, &sid);
+
+            if (cbref) {
+                SubscribeCallbackHolder *holder = cbref->data;
+                value_sub_cb cb = holder->cb;
+                if (cb) {
+                    cb(link, val, ts);
+                }
+            }
+        }
+        return 0;
+    }
+
     ref_t *holder_ref = dslink_map_get(link->requester->request_handlers, &rid);
 
     if (holder_ref && holder_ref->data) {
