@@ -39,23 +39,14 @@ void disconnected(DSLink *link) {
     log_info("Disconnected!\n");
 }
 
-void requester_ready(DSLink *link) {
-    ref_t *refa = dslink_requester_list(link, "/downstream", on_req_new_val);
-    ref_t *refb = dslink_requester_subscribe(link, "/downstream/System/CPU_Usage", on_val_sub);
-
-    {
-        RequestHolder *req = refa->data;
-        req->close_cb = on_req_close;
-    }
-
-    {
-        RequestHolder *req = refb->data;
-        req->close_cb = on_req_close;
-    }
-}
-
 void configure_request(ref_t *ref) {
     RequestHolder *req = ref->data;
+    req->close_cb = on_req_close;
+}
+
+void requester_ready(DSLink *link) {
+    configure_request(dslink_requester_list(link, "/downstream", on_req_new_val));
+    configure_request(dslink_requester_subscribe(link, "/downstream/System/CPU_Usage", on_val_sub));
 }
 
 int main(int argc, char **argv) {
