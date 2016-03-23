@@ -281,6 +281,10 @@ int dslink_init(int argc, char **argv,
 
     link._socket = sock;
 
+    if (cbs->on_connected_cb) {
+        cbs->on_connected_cb(&link);
+    }
+
     dslink_handshake_handle_ws(&link, cbs);
 
     // TODO: automatic reconnecting
