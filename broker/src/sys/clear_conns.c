@@ -1,3 +1,5 @@
+#include "broker/stream.h"
+#include "broker/net/ws.h"
 #include "broker/broker.h"
 #include "broker/utils.h"
 #include "broker/sys/clear_conns.h"
@@ -12,14 +14,38 @@ void clear_conns(RemoteDSLink *link,
     dslink_map_init(map, dslink_map_str_cmp,
                     dslink_map_str_key_len_cal, dslink_map_hash_key);
 
+    json_t *top = json_object();
+    json_t *resps = json_array();
+    json_object_set_new_nocheck(top, "responses", resps);
+    json_t *resp = json_object();
+    json_array_append_new(resps, resp);
+    json_object_set_new_nocheck(resp, "stream", json_string_nocheck("open"));
+    json_t *updates = json_array();
+
     dslink_map_foreach(link->broker->downstream->children) {
         BrokerNode *dsn = (BrokerNode *) entry->value->data;
         if (!json_object_get(dsn->meta, "$disconnectedTs")) {
             dslink_map_set(
                     map,
                     dslink_str_ref(dsn->name), dslink_ref(dsn, NULL));
+        } else {
+            json_t *update = json_object();
+            json_object_set_new_nocheck(update, "name", json_string(dsn->name));
+            json_object_set_new_nocheck(update, "change",
+                                        json_string_nocheck("remove"));
+            json_array_append_new(updates, update);
         }
     }
+
+    json_object_set_new_nocheck(resp, "updates", updates);
+
+    dslink_map_foreach(&link->broker->downstream->list_stream->requester_links) {
+        uint32_t *rid = entry->value->data;
+        json_object_set_new_nocheck(resp, "rid", json_integer(*rid));
+        broker_ws_send_obj(entry->key->data, top);
+    }
+
+    json_decref(top);
 
     dslink_map_clear(link->broker->downstream->children);
     Map* omap = link->broker->downstream->children;
