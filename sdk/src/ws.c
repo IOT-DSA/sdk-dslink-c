@@ -299,7 +299,6 @@ void dslink_handshake_handle_ws(DSLink *link, DSLinkCallbacks *cbs) {
     }
     link->_ws = ptr;
 
-    uv_loop_init(&link->loop);
     mbedtls_net_set_nonblock(&link->_socket->socket_fd);
 
     uv_poll_t poll;
