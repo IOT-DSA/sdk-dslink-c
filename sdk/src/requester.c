@@ -124,6 +124,15 @@ ref_t* dslink_requester_unsubscribe(DSLink* link, uint32_t sid) {
     return ref;
 }
 
+ref_t* dslink_requester_invoke(DSLink *link, const char *path, json_t *params, request_handler_cb cb) {
+    json_t *json = dslink_requester_create_request(link, "invoke");
+    json_object_set_new(json, "path", json_string(path));
+    json_object_set_new(json, "params", params);
+
+    ref_t *ref = dslink_requester_send_request(link, json, cb);
+    return ref;
+}
+
 int dslink_requester_close(DSLink *link, uint32_t rid) {
     json_t *json = dslink_requester_create_request(link, "close");
     json_object_set(json, "rid", json_integer(rid));

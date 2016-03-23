@@ -18,6 +18,12 @@ void on_val_sub(struct DSLink *link, uint32_t sid, json_t *val, json_t *ts) {
     dslink_requester_unsubscribe(link, sid);
 }
 
+void on_invoke_updates(struct DSLink *link, ref_t *req_ref, json_t *resp) {
+    (void) link;
+    (void) req_ref;
+    printf("Got invoke %s\n", json_dumps(resp, JSON_INDENT(2)));
+}
+
 void on_req_close(struct DSLink *link, ref_t *req_ref, json_t *resp) {
     (void) link;
     (void) resp;
@@ -50,6 +56,17 @@ void requester_ready(DSLink *link) {
     configure_request(dslink_requester_list(link, "/downstream", on_req_new_val));
     configure_request(dslink_requester_subscribe(link, "/downstream/System/CPU_Usage", on_val_sub));
     configure_request(dslink_requester_set(link, "/downstream/Weather/@test", json_integer(4)));
+
+    json_t *params = json_object();
+
+    json_object_set_new(params, "command", json_string("ls"));
+
+    configure_request(dslink_requester_invoke(
+        link,
+        "/downstream/System/Execute_Command",
+        params,
+        on_invoke_updates
+    ));
 }
 
 int main(int argc, char **argv) {
