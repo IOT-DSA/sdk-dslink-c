@@ -84,6 +84,8 @@ int dslink_init(int argc, char **argv,
                 const char *name, uint8_t isRequester,
                 uint8_t isResponder, DSLinkCallbacks *cbs);
 
+int dslink_handle_key(DSLink *link);
+
 #ifdef __cplusplus
 }
 #endif

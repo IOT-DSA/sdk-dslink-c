@@ -98,6 +98,7 @@ int dslink_socket_connect(Socket **sock,
                           unsigned short port,
                           uint_fast8_t secure) {
     *sock = dslink_socket_init(secure);
+    mbedtls_net_set_nonblock(&(*sock)->socket_fd);
     if (!(*sock)) {
         return DSLINK_ALLOC_ERR;
     }

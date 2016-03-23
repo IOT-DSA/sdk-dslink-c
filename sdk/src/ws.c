@@ -282,7 +282,7 @@ void ping_handler(uv_timer_t *timer) {
     dslink_ws_send_obj(link->_ws, json_object());
 }
 
-void dslink_handshake_handle_ws(DSLink *link, DSLinkCallbacks *cbs) {
+void dslink_handshake_handle_ws(DSLink *link, link_callback on_requester_ready_cb) {
     struct wslay_event_callbacks callbacks = {
         want_read_cb,
         want_write_cb,
@@ -315,8 +315,8 @@ void dslink_handshake_handle_ws(DSLink *link, DSLinkCallbacks *cbs) {
         uv_timer_start(&ping, ping_handler, 0, 30000);
     }
 
-    if (cbs->on_requester_ready_cb) {
-        cbs->on_requester_ready_cb(link);
+    if (on_requester_ready_cb) {
+        on_requester_ready_cb(link);
     }
 
     uv_run(&link->loop, UV_RUN_DEFAULT);

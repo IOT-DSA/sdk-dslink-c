@@ -183,8 +183,7 @@ int handle_config(DSLinkConfig *config, const char *name, int argc, char **argv)
     return ret;
 }
 
-static
-int handle_key(DSLink *link) {
+int dslink_handle_key(DSLink *link) {
     int ret;
     if ((ret = dslink_handshake_key_pair_fs(&link->key, ".key")) != 0) {
         if (ret == DSLINK_CRYPT_KEY_DECODE_ERR) {
@@ -248,7 +247,7 @@ int dslink_init(int argc, char **argv,
     Socket *sock = NULL;
 
     int ret = 0;
-    if (handle_key(link) != 0) {
+    if (dslink_handle_key(link) != 0) {
         ret = 1;
         goto exit;
     }
@@ -316,8 +315,10 @@ int dslink_init(int argc, char **argv,
         cbs->on_connected_cb(link);
     }
 
-    dslink_handshake_handle_ws(link, cbs);
+    dslink_handshake_handle_ws(&link, cbs->on_requester_ready_cb);
 
+
+    // TODO: automatic reconnecting
     log_warn("Disconnected from the broker\n")
     if (cbs->on_disconnected_cb) {
         cbs->on_disconnected_cb(link);
