@@ -53,6 +53,7 @@ int broker_msg_handle_invoke(RemoteDSLink *link, json_t *req) {
     char *out = NULL;
     BrokerNode *node = broker_node_get(link->broker->root, path, &out);
     if (!node) {
+        broker_utils_send_closed_resp(link, req, "disconnected");
         return 1;
     }
 
@@ -63,6 +64,7 @@ int broker_msg_handle_invoke(RemoteDSLink *link, json_t *req) {
         return 0;
     } else if (node->type != DOWNSTREAM_NODE) {
         // Unknown node type
+        broker_utils_send_closed_resp(link, req, "disconnected");
         return 1;
     }
 
