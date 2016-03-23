@@ -12,10 +12,12 @@ void on_req_new_val(struct DSLink *link, json_t *resp) {
     dslink_requester_close(link, (uint32_t) json_integer_value(json_object_get(resp, "rid")));
 }
 
-void on_val_sub(struct DSLink *link, json_t *val, json_t *ts) {
+void on_val_sub(struct DSLink *link, uint32_t sid, json_t *val, json_t *ts) {
     (void) link;
     (void) ts;
+    (void) sid;
     printf("Got value %f\n", json_real_value(val));
+    dslink_requester_unsubscribe(link, sid);
 }
 
 void on_req_close(struct DSLink *link, json_t *resp) {

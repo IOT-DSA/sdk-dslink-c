@@ -28,7 +28,7 @@ int dslink_response_handle(DSLink *link, json_t *resp) {
                 SubscribeCallbackHolder *holder = cbref->data;
                 value_sub_cb cb = holder->cb;
                 if (cb) {
-                    cb(link, val, ts);
+                    cb(link, sid, val, ts);
                 }
             }
         }

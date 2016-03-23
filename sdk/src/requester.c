@@ -2,6 +2,11 @@
 #include "dslink/requester.h"
 #include "dslink/ws.h"
 
+static
+void dslink_requester_ignore_response(DSLink *link, json_t *resp) {
+    (void) link;
+    (void) resp;
+}
 
 json_t* dslink_requester_create_request(DSLink *link, const char *method) {
     (void) link;
@@ -30,6 +35,7 @@ ref_t* dslink_requester_send_request_with_rid(DSLink *link, json_t *req, request
     RequestHolder *holder = dslink_malloc(sizeof(RequestHolder));
     holder->rid = rid;
     holder->cb = cb;
+    holder->close_cb = dslink_requester_ignore_response;
     ref_t *ridf = dslink_int_ref(rid);
     ref_t *cbref = dslink_ref(holder, dslink_free);
     dslink_incref(cbref);
@@ -56,12 +62,6 @@ ref_t* dslink_requester_list(DSLink* link, const char* path, request_handler_cb 
     json_object_set_new(json, "path", json_string(path));
 
     return dslink_requester_send_request(link, json, cb);
-}
-
-static
-void dslink_requester_ignore_response(DSLink *link, json_t *resp) {
-    (void) link;
-    (void) resp;
 }
 
 ref_t* dslink_requester_subscribe(DSLink* link, const char* path, value_sub_cb cb) {
@@ -92,6 +92,15 @@ ref_t* dslink_requester_subscribe(DSLink* link, const char* path, value_sub_cb c
     );
 
     return ref;
+}
+
+ref_t* dslink_requester_unsubscribe(DSLink* link, uint32_t sid) {
+    json_t *json = dslink_requester_create_request(link, "unsubscribe");
+    json_t *sids = json_array();
+    json_array_append_new(sids, json_integer(sid));
+    json_object_set_new(json, "sids", sids);
+
+    return dslink_requester_send_request(link, json, dslink_requester_ignore_response);
 }
 
 int dslink_requester_close(DSLink *link, uint32_t rid) {
