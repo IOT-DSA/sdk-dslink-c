@@ -210,7 +210,7 @@ endif()
 ###### Configure Examples ######
 
 if (DSLINK_BUILD_EXAMPLES)
-    foreach(example "responder")
+    foreach(example "responder" "requester")
         include("${CMAKE_CURRENT_SOURCE_DIR}/examples/${example}/CMakeLists.txt")
         add_executable(${example} ${EXAMPLE_SRC})
         target_link_libraries(${example} sdk_dslink_c)
