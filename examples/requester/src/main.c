@@ -47,6 +47,7 @@ void configure_request(ref_t *ref) {
 void requester_ready(DSLink *link) {
     configure_request(dslink_requester_list(link, "/downstream", on_req_new_val));
     configure_request(dslink_requester_subscribe(link, "/downstream/System/CPU_Usage", on_val_sub));
+    configure_request(dslink_requester_set(link, "/downstream/Weather/@test", json_integer(4)));
 }
 
 int main(int argc, char **argv) {
