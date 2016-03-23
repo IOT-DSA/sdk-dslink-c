@@ -38,6 +38,7 @@ ref_t* dslink_requester_send_request_with_rid(DSLink *link, json_t *req, request
     holder->cb = cb;
     holder->close_cb = dslink_requester_ignore_response;
     holder->method = json_string_value(json_object_get(req, "method"));
+    holder->path = json_string_value(json_object_get(req, "path"));
 
     ref_t *ridf = dslink_int_ref(rid);
     ref_t *cbref = dslink_ref(holder, dslink_free);

@@ -8,6 +8,8 @@ typedef void (*value_sub_cb)(struct DSLink *link, uint32_t sid, json_t *val, jso
 
 typedef struct RequestHolder {
     const char *method;
+    const char *path;
+
     uint32_t rid;
     uint32_t sid;
     request_handler_cb cb;
