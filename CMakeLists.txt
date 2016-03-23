@@ -174,11 +174,17 @@ install(DIRECTORY "sdk/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COM
 ####### Configure Broker #######
 
 if (DSLINK_BUILD_BROKER)
-    add_library(sdk_broker_c SHARED ${BROKER_SRC})
+    add_library(sdk_broker_c-object OBJECT ${BROKER_SRC})
+    target_include_directories(sdk_broker_c-object PUBLIC "broker/include")
+
+    add_library(sdk_broker_c SHARED $<TARGET_OBJECTS:sdk_broker_c-object>)
     target_link_libraries(sdk_broker_c sdk_dslink_c)
 
+    add_library(sdk_broker_c-static STATIC $<TARGET_OBJECTS:sdk_broker_c-object>)
+    target_link_libraries(sdk_broker_c-static sdk_dslink_c-static)
+
     add_executable(broker "${BROKER_SRC_DIR}/main.c")
-    target_link_libraries(broker sdk_broker_c sdk_dslink_c)
+    target_link_libraries(broker sdk_broker_c sdk_dslink_c-static)
     target_include_directories(sdk_broker_c PUBLIC "broker/include")
 endif()
 
