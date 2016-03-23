@@ -94,6 +94,21 @@ ref_t* dslink_requester_subscribe(DSLink* link, const char* path, value_sub_cb c
     return ref;
 }
 
+ref_t* dslink_requester_set(DSLink* link, const char* path, json_t *value) {
+    json_t *json = dslink_requester_create_request(link, "set");
+    json_object_set_new(json, "path", json_string(path));
+    json_object_set_new(json, "value", value);
+
+    return dslink_requester_send_request(link, json, dslink_requester_ignore_response);
+}
+
+ref_t* dslink_requester_remove(DSLink* link, const char* path) {
+    json_t *json = dslink_requester_create_request(link, "remove");
+    json_object_set_new(json, "path", json_string(path));
+
+    return dslink_requester_send_request(link, json, dslink_requester_ignore_response);
+}
+
 ref_t* dslink_requester_unsubscribe(DSLink* link, uint32_t sid) {
     json_t *json = dslink_requester_create_request(link, "unsubscribe");
     json_t *sids = json_array();
