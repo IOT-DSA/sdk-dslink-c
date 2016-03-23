@@ -24,7 +24,7 @@ typedef struct SubscribeCallbackHolder {
  * List a node. Returns a ref_t of the RequestHolder for this request.
  */
 ref_t* dslink_requester_list(DSLink *link, const char *path, request_handler_cb cb);
-ref_t* dslink_requester_subscribe(DSLink *link, const char *path, value_sub_cb cbs);
+ref_t* dslink_requester_subscribe(DSLink *link, const char *path, value_sub_cb cbs, int qos);
 ref_t* dslink_requester_unsubscribe(DSLink *link, uint32_t sid);
 ref_t* dslink_requester_set(DSLink *link, const char *path, json_t *value);
 ref_t* dslink_requester_remove(DSLink *link, const char *path);

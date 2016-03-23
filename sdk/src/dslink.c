@@ -287,7 +287,6 @@ int dslink_init(int argc, char **argv,
 
     dslink_handshake_handle_ws(&link, cbs);
 
-    // TODO: automatic reconnecting
     log_warn("Disconnected from the broker\n")
     if (cbs->on_disconnected_cb) {
         cbs->on_disconnected_cb(&link);
