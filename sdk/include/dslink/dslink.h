@@ -37,6 +37,7 @@ struct DSLink {
     mbedtls_ecdh_context key; // ECDH key
     uv_loop_t loop; // Primary event loop
     DSLinkConfig config; // Configuration
+    uint32_t *msg;
 };
 
 struct Responder {

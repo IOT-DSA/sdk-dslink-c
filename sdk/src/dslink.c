@@ -192,6 +192,8 @@ int dslink_init(int argc, char **argv,
     memset(&link, 0, sizeof(DSLink));
     link.is_responder = isResponder;
     link.is_requester = isRequester;
+    link.msg = dslink_malloc(sizeof(uint32_t));
+    *link.msg = 0;
     if (handle_config(&link.config, name, argc, argv) != 0) {
         return 1;
     }

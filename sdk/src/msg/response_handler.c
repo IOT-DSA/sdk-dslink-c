@@ -8,6 +8,7 @@
 #define LOG_TAG "response_handler"
 #include "dslink/log.h"
 #include "dslink/requester.h"
+#include "dslink/ws.h"
 
 int dslink_response_handle(DSLink *link, json_t *resp) {
     json_t *jsonRid = json_object_get(resp, "rid");
@@ -18,8 +19,17 @@ int dslink_response_handle(DSLink *link, json_t *resp) {
     if (holder_ref && holder_ref->data) {
         RequestHolder *holder = holder_ref->data;
         request_handler_cb cb = holder->cb;
+        request_handler_cb close_cb = holder->close_cb;
 
-        if (cb) {
+        json_t *status = json_object_get(resp, "stream");
+
+        if (status && strcmp(json_string_value(status), "closed") == 0) {
+            if (close_cb) {
+                close_cb(link, resp);
+            }
+            dslink_map_remove(link->requester->request_handlers, &rid);
+            dslink_decref(holder_ref);
+        } else if (cb) {
             cb(link, resp);
         }
     }

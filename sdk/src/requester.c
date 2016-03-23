@@ -9,7 +9,7 @@ json_t* dslink_requester_create_request(DSLink *link, const char *method) {
     return json;
 }
 
-int dslink_requester_send_request_with_rid(DSLink *link, json_t *req, request_handler_cb cb, uint32_t rid) {
+ref_t* dslink_requester_send_request_with_rid(DSLink *link, json_t *req, request_handler_cb cb, uint32_t rid) {
     RequestHolder *holder = dslink_malloc(sizeof(RequestHolder));
     holder->rid = rid;
     holder->cb = cb;
@@ -24,30 +24,24 @@ int dslink_requester_send_request_with_rid(DSLink *link, json_t *req, request_ha
     json_array_append_new(requests, req);
     json_object_set_new(top, "requests", requests);
 
-    return dslink_ws_send_obj(link->_ws, top);
+    dslink_ws_send_obj(link->_ws, top);
+    return cbref;
 }
 
-int dslink_requester_send_request(DSLink *link, json_t *req, request_handler_cb cb) {
+ref_t* dslink_requester_send_request(DSLink *link, json_t *req, request_handler_cb cb) {
     uint32_t rid = ++*link->requester->rid;
     return dslink_requester_send_request_with_rid(link, req, cb, rid);
 }
 
-int dslink_requester_list(DSLink* link, const char* path, request_handler_cb cb) {
+ref_t* dslink_requester_list(DSLink* link, const char* path, request_handler_cb cb) {
     json_t *json = dslink_requester_create_request(link, "list");
 
     json_object_set_new(json, "path", json_string(path));
 
-    int ret = dslink_requester_send_request(link, json, cb);
-
-    if (ret != 0) {
-        json_decref(json);
-        return ret;
-    }
-
-    return ret;
+    return dslink_requester_send_request(link, json, cb);
 }
 
-int dslink_requester_subscribe(DSLink* link, const char* path, request_handler_cb cb) {
+ref_t* dslink_requester_subscribe(DSLink* link, const char* path, request_handler_cb cb) {
     json_t *json = dslink_requester_create_request(link, "subscribe");
     json_t *paths = json_array();
     json_t *obj = json_object();
@@ -57,12 +51,18 @@ int dslink_requester_subscribe(DSLink* link, const char* path, request_handler_c
 
     json_object_set_new(json, "paths", paths);
 
-    int ret = dslink_requester_send_request(link, json, cb);
+    return dslink_requester_send_request(link, json, cb);
+}
 
-    if (ret != 0) {
-        json_decref(json);
-        return ret;
-    }
+int dslink_requester_close(DSLink *link, uint32_t rid) {
+    json_t *json = dslink_requester_create_request(link, "close");
+    json_object_set(json, "rid", json_integer(rid));
 
-    return ret;
+    json_t *top = json_object();
+    json_t *requests = json_array();
+    json_array_append_new(requests, json);
+    json_object_set_new(top, "requests", requests);
+
+    dslink_ws_send_obj(link->_ws, top);
+    return 0;
 }

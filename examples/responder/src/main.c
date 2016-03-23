@@ -9,6 +9,13 @@
 void on_req_new_val(struct DSLink *link, json_t *resp) {
     (void) link;
     printf("Got response %s\n", json_dumps(resp, JSON_INDENT(2)));
+    dslink_requester_close(link, json_integer_value(json_object_get(resp, "rid")));
+}
+
+void on_req_close(struct DSLink *link, json_t *resp) {
+    (void) link;
+    (void) resp;
+    printf("Request closed.\n");
 }
 
 void init(DSLink *link) {
@@ -32,7 +39,9 @@ void disconnected(DSLink *link) {
 }
 
 void requester_ready(DSLink *link) {
-    dslink_requester_subscribe(link, "/downstream", on_req_new_val);
+    ref_t *ref = dslink_requester_list(link, "/downstream", on_req_new_val);
+    RequestHolder *req = ref->data;
+    req->close_cb = on_req_close;
 }
 
 int main(int argc, char **argv) {

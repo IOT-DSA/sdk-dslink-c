@@ -58,6 +58,9 @@ int gen_ws_key(char *buf, size_t bufLen) {
 }
 
 int dslink_ws_send_obj(wslay_event_context_ptr ctx, json_t *obj) {
+    DSLink *link = ctx->user_data;
+    json_object_set(obj, "msg", json_integer(++(*link->msg)));
+
     char *data = json_dumps(obj, JSON_PRESERVE_ORDER);
     if (!data) {
         return DSLINK_ALLOC_ERR;
@@ -236,6 +239,14 @@ void recv_frame_cb(wslay_event_context_ptr ctx,
         }
     }
 
+    json_t *msg = json_object_get(obj, "msg");
+
+    if ((resps || reqs) && msg) {
+        json_t *top = json_object();
+        json_object_set_new(top, "ack", msg);
+        dslink_ws_send_obj(link->_ws, top);
+    }
+
     json_delete(obj);
 exit:
     return;
@@ -258,7 +269,7 @@ void io_handler(uv_poll_t *poll, int status, int events) {
 static
 void ping_handler(uv_timer_t *timer) {
     DSLink *link = timer->data;
-    dslink_ws_send(link->_ws, "{}");
+    dslink_ws_send_obj(link->_ws, json_object());
 }
 
 void dslink_handshake_handle_ws(DSLink *link, DSLinkCallbacks *cbs) {
