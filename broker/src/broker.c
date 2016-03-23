@@ -21,6 +21,10 @@
                     "Content-Length: %d\r\n" \
                     "\r\n%s\r\n"
 
+#ifndef GIT_COMMIT_HASH
+#define GIT_COMMIT_HASH "unknown"
+#endif
+
 static
 void handle_conn(Broker *broker, HttpRequest *req, Socket *sock) {
     json_error_t err;
@@ -259,6 +263,8 @@ void broker_stop(Broker* broker) {
 }
 
 int broker_start() {
+    log_info("Git Commit: %s\n", GIT_COMMIT_HASH);
+
     int ret = 0;
     json_t *config = broker_config_get();
     if (!config) {

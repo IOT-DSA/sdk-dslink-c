@@ -13,6 +13,21 @@ macro(ADD_C_FLAGS flags)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${flags}")
 endmacro()
 
+##### Git Version Info ####
+
+set(GIT_DIR "${CMAKE_SOURCE_DIR}/.git")
+if (EXISTS "${GIT_DIR}" AND IS_DIRECTORY "${GIT_DIR}" AND "${CMAKE_BUILD_TYPE}" STREQUAL RELEASE)
+    message("-- Passing in Git Version")
+    execute_process(
+        COMMAND git log -1 --format=%H
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+        OUTPUT_VARIABLE GIT_COMMIT_HASH
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+
+    ADD_DEFINITIONS(-DGIT_COMMIT_HASH="${GIT_COMMIT_HASH}")
+endif()
+
 ##### Toolchain Configuration #####
 
 ADD_C_FLAGS("${TOOLCHAIN_C_FLAGS}")
