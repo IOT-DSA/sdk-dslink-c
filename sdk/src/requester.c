@@ -3,9 +3,10 @@
 #include "dslink/ws.h"
 
 static
-void dslink_requester_ignore_response(DSLink *link, json_t *resp) {
+void dslink_requester_ignore_response(DSLink *link, ref_t *req, json_t *resp) {
     (void) link;
     (void) resp;
+    (void) req;
 }
 
 json_t* dslink_requester_create_request(DSLink *link, const char *method) {
@@ -36,6 +37,8 @@ ref_t* dslink_requester_send_request_with_rid(DSLink *link, json_t *req, request
     holder->rid = rid;
     holder->cb = cb;
     holder->close_cb = dslink_requester_ignore_response;
+    holder->method = json_string_value(json_object_get(req, "method"));
+
     ref_t *ridf = dslink_int_ref(rid);
     ref_t *cbref = dslink_ref(holder, dslink_free);
     dslink_incref(cbref);
@@ -115,7 +118,10 @@ ref_t* dslink_requester_unsubscribe(DSLink* link, uint32_t sid) {
     json_array_append_new(sids, json_integer(sid));
     json_object_set_new(json, "sids", sids);
 
-    return dslink_requester_send_request(link, json, dslink_requester_ignore_response);
+    ref_t *ref = dslink_requester_send_request(link, json, dslink_requester_ignore_response);
+    RequestHolder *holder = ref->data;
+    holder->sid = sid;
+    return ref;
 }
 
 int dslink_requester_close(DSLink *link, uint32_t rid) {

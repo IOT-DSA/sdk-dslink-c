@@ -46,12 +46,17 @@ int dslink_response_handle(DSLink *link, json_t *resp) {
 
         if (status && strcmp(json_string_value(status), "closed") == 0) {
             if (close_cb) {
-                close_cb(link, resp);
+                close_cb(link, holder_ref, resp);
             }
+
+            if (strcmp(holder->method, "unsubscribe") == 0 && holder->sid) {
+                dslink_map_remove(link->requester->value_handlers, &holder->sid);
+            }
+
             dslink_map_remove(link->requester->request_handlers, &rid);
             dslink_decref(holder_ref);
         } else if (cb) {
-            cb(link, resp);
+            cb(link, holder_ref, resp);
         }
     }
 

@@ -3,8 +3,9 @@
 #include <dslink/log.h>
 #include <dslink/requester.h>
 
-void on_req_new_val(struct DSLink *link, json_t *resp) {
+void on_req_new_val(struct DSLink *link, ref_t *req_ref, json_t *resp) {
     (void) link;
+    (void) req_ref;
     printf("Got response %s\n", json_dumps(resp, JSON_INDENT(2)));
     dslink_requester_close(link, (uint32_t) json_integer_value(json_object_get(resp, "rid")));
 }
@@ -17,9 +18,10 @@ void on_val_sub(struct DSLink *link, uint32_t sid, json_t *val, json_t *ts) {
     dslink_requester_unsubscribe(link, sid);
 }
 
-void on_req_close(struct DSLink *link, json_t *resp) {
+void on_req_close(struct DSLink *link, ref_t *req_ref, json_t *resp) {
     (void) link;
     (void) resp;
+    (void) req_ref;
     json_t *rid = json_object_get(resp, "rid");
     printf("Request %i closed.\n", (int) json_integer_value(rid));
 }

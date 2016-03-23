@@ -3,10 +3,11 @@
 
 #include "dslink/dslink.h"
 
-typedef void (*request_handler_cb)(struct DSLink *link, json_t *resp);
+typedef void (*request_handler_cb)(struct DSLink *link, ref_t *req, json_t *resp);
 typedef void (*value_sub_cb)(struct DSLink *link, uint32_t sid, json_t *val, json_t *ts);
 
 typedef struct RequestHolder {
+    const char *method;
     uint32_t rid;
     uint32_t sid;
     request_handler_cb cb;
