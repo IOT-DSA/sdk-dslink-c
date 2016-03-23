@@ -1,7 +1,7 @@
 {
   "clang": false,
   "args": {
-    "cmake": ["-DDSLINK_BUILD_BROKER=ON"]
+    "cmake": ["-DDSLINK_BUILD_BROKER=ON", "-DCMAKE_BUILD_TYPE=RELEASE"]
   },
   "dists": {
     "broker": "{TARGET_UNDERSCORE}_broker"
