@@ -77,6 +77,7 @@ int dslink_ws_send_obj(wslay_event_context_ptr ctx, json_t *obj) {
     }
     dslink_ws_send(ctx, data);
     dslink_free(data);
+
     return 0;
 }
 
@@ -258,7 +259,8 @@ void recv_frame_cb(wslay_event_context_ptr ctx,
     }
 
     json_delete(obj);
-exit:
+
+    exit:
     return;
 }
 
@@ -268,6 +270,7 @@ void io_handler(uv_poll_t *poll, int status, int events) {
     if (status < 0) {
         return;
     }
+
     DSLink *link = poll->data;
     int stat = wslay_event_recv(link->_ws);
     if (stat == 0 && (link->_ws->error == WSLAY_ERR_NO_MORE_MSG
@@ -279,7 +282,9 @@ void io_handler(uv_poll_t *poll, int status, int events) {
 static
 void ping_handler(uv_timer_t *timer) {
     DSLink *link = timer->data;
-    dslink_ws_send_obj(link->_ws, json_object());
+    json_t *obj = json_object();
+    dslink_ws_send_obj(link->_ws, obj);
+    json_delete(obj);
 }
 
 void dslink_handshake_handle_ws(DSLink *link, link_callback on_requester_ready_cb) {

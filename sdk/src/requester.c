@@ -52,6 +52,7 @@ ref_t* dslink_requester_send_request_with_rid(DSLink *link, json_t *req, request
     json_object_set_new(top, "requests", requests);
 
     dslink_ws_send_obj(link->_ws, top);
+    json_delete(top);
     return cbref;
 }
 
@@ -145,5 +146,6 @@ int dslink_requester_close(DSLink *link, uint32_t rid) {
     json_object_set_new(top, "requests", requests);
 
     dslink_ws_send_obj(link->_ws, top);
+    json_delete(top);
     return 0;
 }

@@ -76,6 +76,7 @@ void dslink_response_send_val(DSLink *link,
     json_array_append(update, node->value_timestamp);
 
     dslink_ws_send_obj(link->_ws, top);
+
     json_delete(top);
 }
 
