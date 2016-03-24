@@ -6,6 +6,7 @@
 #include <dslink/socket_private.h>
 #include <dslink/mem/mem.h>
 #include <uv-common.h>
+#include <broker/upstream/upstream_handshake.h>
 
 #include "broker/utils.h"
 #include "broker/broker.h"
@@ -124,8 +125,7 @@ void stop_server_handler(uv_signal_t* handle, int signum) {
     uv_stop(handle->loop);
 }
 
-int broker_start_server(json_t *config, void *data,
-                        DataReadyCallback cb) {
+int broker_start_server(json_t *config, void *data) {
     json_incref(config);
 
     const char *httpHost = NULL;
@@ -160,7 +160,7 @@ int broker_start_server(json_t *config, void *data,
     uv_poll_t httpPoll;
     if (httpHost && httpPort[0] != '\0') {
         mbedtls_net_init(&httpServer.srv);
-        httpServer.data_ready = cb;
+        httpServer.data_ready = broker_on_data_callback;
 
         httpActive = start_http_server(&httpServer, httpHost, httpPort,
                                        &loop, &httpPoll);

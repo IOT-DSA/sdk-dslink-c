@@ -19,7 +19,6 @@ typedef enum BrokerNodeType {
 
     REGULAR_NODE = 0,
     DOWNSTREAM_NODE
-
 } BrokerNodeType;
 
 #define BROKER_NODE_FIELDS \

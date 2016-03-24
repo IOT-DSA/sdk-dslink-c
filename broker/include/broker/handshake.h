@@ -18,6 +18,10 @@ int broker_handshake_handle_ws(Broker *broker,
                                const char *auth,
                                const char *wsAccept);
 
+DownstreamNode *broker_init_downstream_node(BrokerNode *parentNode, const char *name);
+
+void dslink_handle_ping(uv_timer_t* handle);
+
 #ifdef __cplusplus
 }
 #endif

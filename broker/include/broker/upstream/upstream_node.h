@@ -7,9 +7,15 @@ extern "C" {
 
 #include "broker/node.h"
 
+struct UpstreamPoll;
+struct Broker;
+
 int broker_upstream_node_populate(BrokerNode *upstreamNode);
 
 int init_sys_upstream_node(BrokerNode *sysNode);
+
+
+void init_upstream_node(struct Broker *broker, struct UpstreamPoll *upstreamPoll);
 
 #ifdef __cplusplus
 }

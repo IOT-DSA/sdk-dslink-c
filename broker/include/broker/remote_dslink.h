@@ -26,7 +26,7 @@ typedef struct RemoteAuth {
 } RemoteAuth;
 
 typedef struct RemoteDSLink {
-
+    uint8_t isUpstream;
     uint8_t isRequester;
     uint8_t isResponder;
     uint8_t pendingClose;

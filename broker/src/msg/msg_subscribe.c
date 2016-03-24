@@ -217,7 +217,13 @@ void subs_list_free(void *p) {
 void broker_subscribe_disconnected_remote(RemoteDSLink *link,
                                           const char *path,
                                           uint32_t sid) {
-    const char *name = path + sizeof("/downstream");
+    const char *name;
+    if (path[1] == 'd') {
+        name = path + sizeof("/downstream");
+    } else {
+        name = path + sizeof("/upstream");
+    }
+    
     const char *end = strchr(name, '/');
     if (!end) {
         return;
@@ -275,7 +281,7 @@ void handle_subscribe(RemoteDSLink *link, json_t *sub) {
                                                               path, &out);
     uint32_t sid = (uint32_t) json_integer_value(jSid);
     if (!node) {
-        if (dslink_str_starts_with(path, "/downstream/")) {
+        if (dslink_str_starts_with(path, "/downstream/") || dslink_str_starts_with(path, "/upstream/")) {
             broker_subscribe_disconnected_remote(link, path, sid);
         } else {
             broker_subscribe_local_nonexistent(link, path, sid);

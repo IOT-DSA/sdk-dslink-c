@@ -9,8 +9,7 @@
 #include "broker/msg/msg_handler.h"
 #include "broker/net/ws.h"
 
-static
-ssize_t want_read_cb(wslay_event_context_ptr ctx,
+ssize_t broker_want_read_cb(wslay_event_context_ptr ctx,
                      uint8_t *buf, size_t len,
                      int flags, void *user_data) {
     (void) flags;
@@ -33,8 +32,7 @@ ssize_t want_read_cb(wslay_event_context_ptr ctx,
     return ret;
 }
 
-static
-ssize_t want_write_cb(wslay_event_context_ptr ctx,
+ssize_t broker_want_write_cb(wslay_event_context_ptr ctx,
                       const uint8_t *data, size_t len,
                       int flags, void *user_data) {
     (void) flags;
@@ -70,8 +68,7 @@ ssize_t want_write_cb(wslay_event_context_ptr ctx,
     return written;
 }
 
-static
-void on_ws_data(wslay_event_context_ptr ctx,
+void broker_on_ws_data(wslay_event_context_ptr ctx,
                 const struct wslay_event_on_msg_recv_arg *arg,
                 void *user_data) {
     (void) ctx;
@@ -102,13 +99,13 @@ void on_ws_data(wslay_event_context_ptr ctx,
 
 const struct wslay_event_callbacks *broker_ws_callbacks() {
     static const struct wslay_event_callbacks cb = {
-        want_read_cb,  // wslay_event_recv_callback
-        want_write_cb, // wslay_event_send_callback
+        broker_want_read_cb,  // wslay_event_recv_callback
+        broker_want_write_cb, // wslay_event_send_callback
         NULL,          // wslay_event_genmask_callback
         NULL,          // wslay_event_on_frame_recv_start_callback
         NULL,          // wslay_event_on_frame_recv_chunk_callback
         NULL,          // wslay_event_on_frame_recv_end_callback
-        on_ws_data     // wslay_event_on_msg_recv_callback
+        broker_on_ws_data     // wslay_event_on_msg_recv_callback
     };
     return &cb;
 }

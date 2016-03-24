@@ -104,8 +104,7 @@ fail:
     return 1;
 }
 
-static
-void on_data_callback(Client *client, void *data) {
+void broker_on_data_callback(Client *client, void *data) {
     Broker *broker = data;
     RemoteDSLink *link = client->sock_data;
     if (link) {
@@ -279,8 +278,7 @@ int broker_start() {
     }
 
     broker_config_load(config);
-    ret = broker_start_server(config, &broker,
-                              on_data_callback);
+    ret = broker_start_server(config, &broker);
 exit:
     json_decref(config);
     broker_free(&broker);

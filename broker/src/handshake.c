@@ -39,8 +39,8 @@ int generate_salt(unsigned char *salt, size_t len) {
     return 0;
 }
 
-static
-DownstreamNode *broker_init_downstream_node(Broker *broker, const char *name) {
+
+DownstreamNode *broker_init_downstream_node(BrokerNode *parentNode, const char *name) {
     DownstreamNode *node = dslink_calloc(1, sizeof(DownstreamNode));
     if (!node) {
         return NULL;
@@ -67,7 +67,7 @@ DownstreamNode *broker_init_downstream_node(Broker *broker, const char *name) {
     if (!tmpKey) {
         goto fail;
     }
-    if (dslink_map_set(broker->downstream->children,
+    if (dslink_map_set(parentNode->children,
                        dslink_ref(tmpKey, dslink_free),
                        dslink_ref(node, NULL)) != 0) {
         dslink_free(tmpKey);
@@ -260,7 +260,7 @@ fail:
     return NULL;
 }
 
-static
+
 void dslink_handle_ping(uv_timer_t* handle) {
     RemoteDSLink *link = handle->data;
     if (link->lastWriteTime) {
@@ -319,7 +319,7 @@ int broker_handshake_handle_ws(Broker *broker,
         ref = dslink_map_get(broker->downstream->children,
                                     (char *) link->name);
         if (!ref) {
-            node = broker_init_downstream_node(broker, link->name);
+            node = broker_init_downstream_node(broker->downstream, link->name);
             if (!node) {
                 ret = 1;
                 goto exit;

@@ -149,7 +149,8 @@ set(BROKER_SRC
     "${BROKER_SRC_DIR}/sys/restart.c"
     "${BROKER_SRC_DIR}/upstream/upstream_node.c"
     "${BROKER_SRC_DIR}/permission/permission.c"
-    "${BROKER_SRC_DIR}/sys/clear_conns.c")
+    "${BROKER_SRC_DIR}/sys/clear_conns.c"
+    "${BROKER_SRC_DIR}/upstream/upstream_handshake.c")
 
 set(EXAMPLE_RESPONDER_SRC_DIR "${CMAKE_CURRENT_LIST_DIR}/examples/responder/src")
 set(EXAMPLE_RESPONDER_SRC

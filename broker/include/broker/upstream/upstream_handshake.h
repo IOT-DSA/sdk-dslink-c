@@ -1,0 +1,45 @@
+#ifndef BROKER_UPSTREAM_HANDSHAKE_H
+#define BROKER_UPSTREAM_HANDSHAKE_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <stdint.h>
+#include <uv.h>
+#include <wslay/wslay.h>
+#include <wslay_event.h>
+
+struct DSLink;
+struct Socket;
+struct Broker;
+struct wslay_event_context;
+
+
+typedef struct UpstreamPoll {
+    uv_loop_t *loop;
+    uv_poll_t connPoll;
+    uv_poll_t wsPoll;
+    char *dsId;
+    char *name;
+    struct RemoteDSLink * remoteDSLink;
+    struct DSLink *clientDslink;
+    struct Socket *sock;
+    struct wslay_event_context *ws; // Event context for WSLay
+} UpstreamPoll;
+
+void upstream_connect_conn(uv_loop_t *loop, const char *brokerUrl, const char *name);
+
+void upstream_connect_ws();
+
+// disconnected from network
+void upstream_disconnected();
+
+// disconnect upstream when it's no longer needed
+void upstream_disconnect();
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif //BROKER_UPSTREAM_HANDSHAKE_H
