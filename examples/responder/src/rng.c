@@ -17,6 +17,12 @@ void gen_number(uv_timer_t *timer) {
 
     double x = rand() / 1000000.0;
     dslink_node_set_value(link, node, json_real(x));
+
+    if (x > 1000.0) {
+        dslink_node_set_meta(link, node, "@number", json_real(x));
+    } else {
+        dslink_node_set_meta(link, node, "@number", NULL);
+    }
 }
 
 static
@@ -30,7 +36,7 @@ void responder_rng_subbed(DSLink *link, DSNode *node) {
     uv_timer_t *timer = malloc(sizeof(uv_timer_t));
     uv_timer_init(&link->loop, timer);
     timer->data = a;
-    uv_timer_start(timer, gen_number, 0, 1);
+    uv_timer_start(timer, gen_number, 0, 50);
 }
 
 static
