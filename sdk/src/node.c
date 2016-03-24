@@ -333,9 +333,9 @@ int dslink_node_set_meta(DSLink *link, DSNode *node,
         if (!update) {
             goto cleanup;
         }
-        json_array_append_new(updates, update);
         json_array_append_new(update, json_string(name));
         json_array_append_new(update, value);
+        json_array_append_new(updates, update);
     }
 
     dslink_ws_send_obj(link->_ws, top);
@@ -357,16 +357,10 @@ int dslink_node_set_value(struct DSLink *link, DSNode *node, json_t *value) {
 
     if (node->value_timestamp) {
         json_decref(node->value_timestamp);
-        if (node->value_timestamp) {
-            node->value_timestamp = NULL;
-        }
     }
 
     if (node->value) {
         json_decref(node->value);
-        if (node->value) {
-            node->value = NULL;
-        }
     }
 
     node->value_timestamp = jsonTs;
