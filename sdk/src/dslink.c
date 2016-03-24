@@ -315,7 +315,7 @@ int dslink_init(int argc, char **argv,
         cbs->on_connected_cb(link);
     }
 
-    dslink_handshake_handle_ws(&link, cbs->on_requester_ready_cb);
+    dslink_handshake_handle_ws(link, cbs->on_requester_ready_cb);
 
 
     // TODO: automatic reconnecting
