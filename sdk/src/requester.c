@@ -32,16 +32,25 @@ uint32_t dslink_requester_incr_sid(Requester *requester) {
     return ++(*requester->sid);
 }
 
+static
+void dslink_requester_holder_free(void *obj) {
+    RequestHolder *holder = obj;
+    if (holder->req) {
+        dslink_free(holder->req);
+    }
+
+    dslink_free(holder);
+}
+
 ref_t* dslink_requester_send_request_with_rid(DSLink *link, json_t *req, request_handler_cb cb, uint32_t rid) {
     RequestHolder *holder = dslink_malloc(sizeof(RequestHolder));
     holder->rid = rid;
     holder->cb = cb;
     holder->close_cb = dslink_requester_ignore_response;
-    holder->method = json_string_value(json_object_get(req, "method"));
-    holder->path = json_string_value(json_object_get(req, "path"));
+    holder->req = json_incref(req);
 
     ref_t *ridf = dslink_int_ref(rid);
-    ref_t *cbref = dslink_ref(holder, dslink_free);
+    ref_t *cbref = dslink_ref(holder, dslink_requester_holder_free);
     dslink_incref(cbref);
     dslink_map_set(link->requester->request_handlers, ridf, cbref);
     json_object_set(req, "rid", json_integer(rid));
@@ -52,7 +61,7 @@ ref_t* dslink_requester_send_request_with_rid(DSLink *link, json_t *req, request
     json_object_set_new(top, "requests", requests);
 
     dslink_ws_send_obj(link->_ws, top);
-    json_delete(top);
+    json_decref(top);
     return cbref;
 }
 

@@ -11,7 +11,9 @@ void on_list_update(struct DSLink *link, ref_t *req_ref, json_t *resp) {
     size_t index;
     json_t *value;
 
-    printf("======= List %s =======\n", holder->path);
+    const char* path = json_string_value(json_object_get(holder->req, "path"));
+
+    printf("======= List %s =======\n", path);
     json_array_foreach(updates, index, value) {
         json_t *name = json_array_get(value, 0);
         json_t *val = json_array_get(value, 1);

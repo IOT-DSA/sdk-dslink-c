@@ -49,11 +49,14 @@ int dslink_response_handle(DSLink *link, json_t *resp) {
                 close_cb(link, holder_ref, resp);
             }
 
-            if (strcmp(holder->method, "unsubscribe") == 0 && holder->sid) {
+            json_t *req = holder->req;
+            const char *method = json_string_value(json_object_get(req, "method"));
+
+            if (strcmp(method, "unsubscribe") == 0 && holder->sid) {
                 dslink_map_remove(link->requester->value_handlers, &holder->sid);
             }
 
-            if (strcmp(holder->method, "invoke") == 0) {
+            if (strcmp(method, "invoke") == 0) {
                 cb(link, holder_ref, resp);
             }
 

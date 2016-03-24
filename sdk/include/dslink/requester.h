@@ -7,9 +7,7 @@ typedef void (*request_handler_cb)(struct DSLink *link, ref_t *req, json_t *resp
 typedef void (*value_sub_cb)(struct DSLink *link, uint32_t sid, json_t *val, json_t *ts);
 
 typedef struct RequestHolder {
-    const char *method;
-    const char *path;
-
+    json_t *req;
     uint32_t rid;
     uint32_t sid;
     request_handler_cb cb;
