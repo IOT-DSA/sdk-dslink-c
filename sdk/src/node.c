@@ -247,7 +247,7 @@ cleanup:
     dslink_node_tree_free_basic(root);
 }
 
-int dslink_node_set_meta(DSNode *node,
+int dslink_node_set_meta(DSLink *link, DSNode *node,
                          const char *name, json_t *value) {
     assert(node);
     assert(name);
@@ -285,7 +285,52 @@ int dslink_node_set_meta(DSNode *node,
                        dslink_ref(value, (free_callback) json_decref)) != 0) {
         dslink_free((void *) name);
     }
-    return 0;
+
+    int ret = 0;
+
+    if (!link->_ws) {
+        return ret;
+    }
+
+    ref_t *refId = dslink_map_get(link->responder->list_subs,
+                                  (void *) node->parent->path);
+    if (!refId) {
+        return ret;
+    }
+    uint32_t *id = refId->data;
+    json_t *top = json_object();
+    if (!top) {
+        return ret;
+    }
+    json_t *resps = json_array();
+    if (!resps) {
+        goto cleanup;
+    }
+    json_object_set_new_nocheck(top, "responses", resps);
+    json_t *resp = json_object();
+    if (!resp) {
+        goto cleanup;
+    }
+    json_array_append_new(resps, resp);
+    json_object_set_new_nocheck(resp, "stream",
+                                json_string("open"));
+    json_object_set_new_nocheck(resp, "rid", json_integer(*id));
+    json_t *updates = json_array();
+    if (!updates) {
+        goto cleanup;
+    }
+    json_object_set_new_nocheck(resp, "updates", updates);
+    json_t *update = json_array();
+    if (!update) {
+        goto cleanup;
+    }
+    json_array_append_new(updates, update);
+    dslink_response_list_append_meta(update, node->meta_data, name);
+    dslink_ws_send_obj(link->_ws, top);
+    cleanup:
+        json_delete(top);
+
+    return ret;
 }
 
 int dslink_node_set_value(struct DSLink *link, DSNode *node, json_t *value) {

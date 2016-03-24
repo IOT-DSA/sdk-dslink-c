@@ -136,8 +136,8 @@ void responder_init_replicator(DSLink *link, DSNode *root) {
     }
 
     reset->on_invocation = delete_nodes;
-    dslink_node_set_meta(reset, "$name", json_string("Reset"));
-    dslink_node_set_meta(reset, "$invokable", json_string("read"));
+    dslink_node_set_meta(link, reset, "$name", json_string("Reset"));
+    dslink_node_set_meta(link, reset, "$invokable", json_string("read"));
 
     if (dslink_node_add_child(link, reset) != 0) {
         log_warn("Failed to add reset action to the replicator node\n");

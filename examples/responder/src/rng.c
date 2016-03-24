@@ -48,7 +48,7 @@ void responder_init_rng(DSLink *link, DSNode *root) {
 
     num->on_subscribe = responder_rng_subbed;
     num->on_unsubscribe = responder_rng_unsubbed;
-    if (dslink_node_set_meta(num, "$type", json_string("number")) != 0) {
+    if (dslink_node_set_meta(link, num, "$type", json_string("number")) != 0) {
         log_warn("Failed to set the type on the rng\n");
         dslink_node_tree_free(link, num);
         return;

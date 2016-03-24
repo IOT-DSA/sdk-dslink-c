@@ -5,8 +5,7 @@
 #include "dslink/stream.h"
 #include "dslink/ws.h"
 
-static
-void dslink_response_list_child_append_meta(json_t *obj,
+void dslink_response_list_append_meta(json_t *obj,
                                             Map *meta,
                                             const char *name) {
     ref_t *val = dslink_map_get(meta, (void *) name);
@@ -50,10 +49,10 @@ int dslink_response_list_append_child(json_t *update, DSNode *child) {
     json_object_set_new(obj, "$is", json_string(child->profile));
     if (child->meta_data) {
         Map *meta = child->meta_data;
-        dslink_response_list_child_append_meta(obj, meta, "$name");
-        dslink_response_list_child_append_meta(obj, meta, "$permission");
-        dslink_response_list_child_append_meta(obj, meta, "$invokable");
-        dslink_response_list_child_append_meta(obj, meta, "$type");
+        dslink_response_list_append_meta(obj, meta, "$name");
+        dslink_response_list_append_meta(obj, meta, "$permission");
+        dslink_response_list_append_meta(obj, meta, "$invokable");
+        dslink_response_list_append_meta(obj, meta, "$type");
     }
     return 0;
 }

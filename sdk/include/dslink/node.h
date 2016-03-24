@@ -66,7 +66,7 @@ int dslink_node_add_child(struct DSLink *link, DSNode *node);
 DSNode *dslink_node_get_path(DSNode *root, const char *path);
 void dslink_node_tree_free(struct DSLink *link, DSNode *root);
 
-int dslink_node_set_meta(DSNode *node, const char *name, json_t *value);
+int dslink_node_set_meta(struct DSLink *link, DSNode *node, const char *name, json_t *value);
 int dslink_node_set_value(struct DSLink *link, DSNode *node, json_t *value);
 
 #ifdef __cplusplus

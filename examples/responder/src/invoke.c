@@ -218,15 +218,15 @@ void responder_init_invoke(DSLink *link, DSNode *root) {
         }
 
         getOneRow->on_invocation = invoke_send_one_row;
-        dslink_node_set_meta(getOneRow, "$name", json_string("Get One Row"));
-        dslink_node_set_meta(getOneRow, "$invokable", json_string("read"));
+        dslink_node_set_meta(link, getOneRow, "$name", json_string("Get One Row"));
+        dslink_node_set_meta(link, getOneRow, "$invokable", json_string("read"));
 
         json_t *columns = json_array();
         json_t *message_row = json_object();
         json_object_set_new(message_row, "name", json_string("message"));
         json_object_set_new(message_row, "type", json_string("string"));
         json_array_append_new(columns, message_row);
-        dslink_node_set_meta(getOneRow, "$columns", columns);
+        dslink_node_set_meta(link, getOneRow, "$columns", columns);
 
         if (dslink_node_add_child(link, getOneRow) != 0) {
             log_warn("Failed to add get one row action to the root node\n");
@@ -243,17 +243,17 @@ void responder_init_invoke(DSLink *link, DSNode *root) {
         }
 
         getMultipleRows->on_invocation = invoke_send_multiple_rows;
-        dslink_node_set_meta(getMultipleRows, "$name", json_string("Get Multiple Rows"));
-        dslink_node_set_meta(getMultipleRows, "$invokable", json_string("read"));
+        dslink_node_set_meta(link, getMultipleRows, "$name", json_string("Get Multiple Rows"));
+        dslink_node_set_meta(link, getMultipleRows, "$invokable", json_string("read"));
 
         json_t *columns = json_array();
         json_t *message_row = json_object();
         json_object_set_new(message_row, "name", json_string("message"));
         json_object_set_new(message_row, "type", json_string("string"));
         json_array_append_new(columns, message_row);
-        dslink_node_set_meta(getMultipleRows, "$columns", columns);
+        dslink_node_set_meta(link, getMultipleRows, "$columns", columns);
 
-        dslink_node_set_meta(getMultipleRows, "$result", json_string("table"));
+        dslink_node_set_meta(link, getMultipleRows, "$result", json_string("table"));
 
         if (dslink_node_add_child(link, getMultipleRows) != 0) {
             log_warn("Failed to add get multiple rows action to the root node\n");
@@ -270,17 +270,17 @@ void responder_init_invoke(DSLink *link, DSNode *root) {
         }
 
         getMultipleRowsUpdates->on_invocation = invoke_send_multiple_rows_multiple_updates;
-        dslink_node_set_meta(getMultipleRowsUpdates, "$name", json_string("Get Multiple Rows and Updates"));
-        dslink_node_set_meta(getMultipleRowsUpdates, "$invokable", json_string("read"));
+        dslink_node_set_meta(link, getMultipleRowsUpdates, "$name", json_string("Get Multiple Rows and Updates"));
+        dslink_node_set_meta(link, getMultipleRowsUpdates, "$invokable", json_string("read"));
 
         json_t *columns = json_array();
         json_t *message_row = json_object();
         json_object_set_new(message_row, "name", json_string("message"));
         json_object_set_new(message_row, "type", json_string("string"));
         json_array_append_new(columns, message_row);
-        dslink_node_set_meta(getMultipleRowsUpdates, "$columns", columns);
+        dslink_node_set_meta(link, getMultipleRowsUpdates, "$columns", columns);
 
-        dslink_node_set_meta(getMultipleRowsUpdates, "$result", json_string("table"));
+        dslink_node_set_meta(link, getMultipleRowsUpdates, "$result", json_string("table"));
 
         if (dslink_node_add_child(link, getMultipleRowsUpdates) != 0) {
             log_warn("Failed to add get multiple rows action to the root node\n");
@@ -297,17 +297,17 @@ void responder_init_invoke(DSLink *link, DSNode *root) {
         }
 
         getStreamNow->on_invocation = invoke_send_streaming_numbers;
-        dslink_node_set_meta(getStreamNow, "$name", json_string("Get Stream"));
-        dslink_node_set_meta(getStreamNow, "$invokable", json_string("read"));
+        dslink_node_set_meta(link, getStreamNow, "$name", json_string("Get Stream"));
+        dslink_node_set_meta(link, getStreamNow, "$invokable", json_string("read"));
 
         json_t *columns = json_array();
         json_t *message_row = json_object();
         json_object_set_new(message_row, "name", json_string("value"));
         json_object_set_new(message_row, "type", json_string("number"));
         json_array_append_new(columns, message_row);
-        dslink_node_set_meta(getStreamNow, "$columns", columns);
+        dslink_node_set_meta(link, getStreamNow, "$columns", columns);
 
-        dslink_node_set_meta(getStreamNow, "$result", json_string("stream"));
+        dslink_node_set_meta(link, getStreamNow, "$result", json_string("stream"));
 
         if (dslink_node_add_child(link, getStreamNow) != 0) {
             log_warn("Failed to add get multiple rows action to the root node\n");
