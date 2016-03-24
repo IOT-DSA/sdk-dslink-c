@@ -257,9 +257,11 @@ void recv_frame_cb(wslay_event_context_ptr ctx,
         json_object_set_new(top, "ack", msg);
         dslink_ws_send_obj(link->_ws, top);
         json_delete(top);
+    } else {
+        json_decref(msg);
     }
 
-    json_delete(obj);
+    json_decref(obj);
 
     exit:
     return;
