@@ -5,14 +5,7 @@
 #include <broker/handshake.h>
 #include <broker/msg/msg_list.h>
 #include <dslink/utils.h>
-
-int broker_upstream_node_populate(BrokerNode *upstreamNode) {
-    (void)upstreamNode;
-    return 0;
-}
-
-
-
+#include <string.h>
 
 
 void init_upstream_node(Broker *broker, UpstreamPoll *upstreamPoll) {
@@ -22,7 +15,10 @@ void init_upstream_node(Broker *broker, UpstreamPoll *upstreamPoll) {
                                 (char *) upstreamPoll->name);
     if (!ref) {
         node = broker_init_downstream_node(broker->upstream, upstreamPoll->name);
-
+        char buff[1024];
+        strcpy(buff, "/upstream/");
+        strcpy(buff + sizeof("/upstream/") -1 , upstreamPoll->name);
+        node->path = dslink_strdup(buff);
         if (broker->upstream->list_stream) {
             update_list_child(broker->upstream,
                               broker->upstream->list_stream,
@@ -31,6 +27,8 @@ void init_upstream_node(Broker *broker, UpstreamPoll *upstreamPoll) {
     } else {
         node = ref->data;
     }
+
+    node->upstreamPoll = upstreamPoll;
 
     RemoteDSLink *link = upstreamPoll->remoteDSLink;
 //    if (node->link) {

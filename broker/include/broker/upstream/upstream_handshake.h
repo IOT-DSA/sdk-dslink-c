@@ -22,13 +22,14 @@ typedef struct UpstreamPoll {
     uv_poll_t wsPoll;
     char *dsId;
     char *name;
+    char *idPrefix;
     struct RemoteDSLink * remoteDSLink;
     struct DSLink *clientDslink;
     struct Socket *sock;
     struct wslay_event_context *ws; // Event context for WSLay
 } UpstreamPoll;
 
-void upstream_connect_conn(uv_loop_t *loop, const char *brokerUrl, const char *name);
+void upstream_connect_conn(uv_loop_t *loop, const char *brokerUrl, const char *name, const char *idPrefix);
 
 void upstream_connect_ws();
 
@@ -37,6 +38,8 @@ void upstream_disconnected();
 
 // disconnect upstream when it's no longer needed
 void upstream_disconnect();
+
+void init_upstream_link(struct Broker *broker, UpstreamPoll *upstreamPoll);
 
 #ifdef __cplusplus
 }

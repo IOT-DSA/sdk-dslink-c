@@ -125,7 +125,7 @@ void stop_server_handler(uv_signal_t* handle, int signum) {
     uv_stop(handle->loop);
 }
 
-int broker_start_server(json_t *config, void *data) {
+int broker_start_server(json_t *config) {
     json_incref(config);
 
     const char *httpHost = NULL;
@@ -151,10 +151,6 @@ int broker_start_server(json_t *config, void *data) {
         }
     }
 
-    uv_loop_t loop;
-    uv_loop_init(&loop);
-    loop.data = data;
-
     int httpActive = 0;
     Server httpServer;
     uv_poll_t httpPoll;
@@ -163,19 +159,21 @@ int broker_start_server(json_t *config, void *data) {
         httpServer.data_ready = broker_on_data_callback;
 
         httpActive = start_http_server(&httpServer, httpHost, httpPort,
-                                       &loop, &httpPoll);
+                                       mainLoop, &httpPoll);
     }
 
     uv_signal_t sigInt;
-    uv_signal_init(&loop, &sigInt);
+    uv_signal_init(mainLoop, &sigInt);
     uv_signal_start(&sigInt, stop_server_handler, SIGINT);
 
     uv_signal_t sigTerm;
-    uv_signal_init(&loop, &sigTerm);
+    uv_signal_init(mainLoop, &sigTerm);
     uv_signal_start(&sigTerm, stop_server_handler, SIGTERM);
 
+//    upstream_connect_conn(&loop, "http://10.0.1.158:8080/conn", "dartbroker", "cbroker");
+
     if (httpActive) {
-        uv_run(&loop, UV_RUN_DEFAULT);
+        uv_run(mainLoop, UV_RUN_DEFAULT);
     }
 
     uv_signal_stop(&sigInt);
@@ -184,9 +182,9 @@ int broker_start_server(json_t *config, void *data) {
     if (httpActive) {
         uv_poll_stop(&httpPoll);
     }
-    uv_loop_close(&loop);
+    uv_loop_close(mainLoop);
 #if defined(__unix__) || defined(__APPLE__)
-    uv__free(loop.watchers);
+    uv__free(mainLoop->watchers);
 #endif
 
     json_decref(config);

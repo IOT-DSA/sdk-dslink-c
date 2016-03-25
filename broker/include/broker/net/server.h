@@ -25,7 +25,7 @@ typedef void (*DataReadyCallback)(Client *client,
 
 typedef void (*ClientErrorCallback)(void *socketData);
 
-int broker_start_server(json_t *config, void *data);
+int broker_start_server(json_t *config);
 
 #ifdef __cplusplus
 }

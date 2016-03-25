@@ -25,6 +25,8 @@
 #define GIT_COMMIT_HASH "unknown"
 #endif
 
+uv_loop_t *mainLoop = NULL;
+
 static
 void handle_conn(Broker *broker, HttpRequest *req, Socket *sock) {
     json_error_t err;
@@ -178,20 +180,19 @@ int broker_init(Broker *broker) {
     if (!broker->root) {
         goto fail;
     }
+
     broker->root->path = dslink_strdup("/");
     json_object_set_new(broker->root->meta, "$downstream",
                         json_string_nocheck("/downstream"));
 
     broker->sys = broker_node_create("sys", "static");
-    if (!(broker->sys && broker_node_add(broker->root, broker->sys) == 0
-          && broker_sys_node_populate(broker->sys) == 0)) {
+    if (!(broker->sys && broker_node_add(broker->root, broker->sys) == 0)) {
         broker_node_free(broker->sys);
         goto fail;
     }
 
     broker->upstream = broker_node_create("upstream", "static");
-    if (!(broker->upstream && broker_node_add(broker->root, broker->upstream) == 0
-          && broker_upstream_node_populate(broker->sys) == 0)) {
+    if (!(broker->upstream && broker_node_add(broker->root, broker->upstream) == 0)) {
         broker_node_free(broker->upstream);
         goto fail;
     }
@@ -209,6 +210,13 @@ int broker_init(Broker *broker) {
         broker_node_free(broker->downstream);
         goto fail;
     }
+
+    if (broker_sys_node_populate(broker->sys)) {
+        goto fail;
+    }
+
+
+
 
     BrokerNode *node = broker_node_create("defs", "static");
     if (!(node && json_object_set_new_nocheck(node->meta,
@@ -272,15 +280,21 @@ int broker_start() {
     }
 
     Broker broker;
+
+    mainLoop = dslink_calloc(1, sizeof(uv_loop_t));
+    uv_loop_init(mainLoop);
+    mainLoop->data = &broker;
+
     if (broker_init(&broker) != 0) {
         ret = 1;
         goto exit;
     }
 
     broker_config_load(config);
-    ret = broker_start_server(config, &broker);
+    ret = broker_start_server(config);
 exit:
     json_decref(config);
     broker_free(&broker);
+    dslink_free(mainLoop);
     return ret;
 }

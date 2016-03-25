@@ -9,6 +9,7 @@ extern "C" {
 
 struct RemoteDSLink;
 struct BrokerNode;
+struct UpstreamPoll;
 struct json_t;
 
 typedef void (*on_invocation_cb)(struct RemoteDSLink *link,
@@ -62,6 +63,8 @@ typedef struct DownstreamNode {
 
     // Map<char *, VirtualPermissionNode *>
     Map children_permissions;
+
+    struct UpstreamPoll *upstreamPoll;
 } DownstreamNode;
 
 BrokerNode *broker_node_get(BrokerNode *root,

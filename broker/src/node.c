@@ -185,6 +185,7 @@ void broker_node_free(BrokerNode *node) {
         listener_remove_all(&node->on_value_update);
         listener_remove_all(&node->on_child_added);
         listener_remove_all(&node->on_child_removed);
+        json_decref(node->value);
     }
 
     if (node->parent) {
@@ -192,7 +193,7 @@ void broker_node_free(BrokerNode *node) {
         dslink_map_remove(node->parent->children, tmp);
         broker_node_update_child(node->parent, node->name);
     }
-    json_decref(node->value);
+
     json_decref(node->meta);
     dslink_free((void *) node->name);
     dslink_free((void *) node->path);

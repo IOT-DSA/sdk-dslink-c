@@ -231,6 +231,8 @@ int broker_msg_handle_list(RemoteDSLink *link, json_t *req) {
             }
             broker_list_dslink(link, (DownstreamNode *) node, out, reqRid);
         }
+    } else if (dslink_str_starts_with(path, "/defs/")) {
+        broker_utils_send_static_list_resp(link, req);
     }
 
     return 0;

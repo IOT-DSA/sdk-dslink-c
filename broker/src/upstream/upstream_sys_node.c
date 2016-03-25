@@ -4,6 +4,8 @@
 
 #define LOG_TAG "upstream"
 #include <dslink/log.h>
+#include <broker/upstream/upstream_handshake.h>
+#include <broker/broker.h>
 
 
 void add_upstream_invoke(RemoteDSLink *link,
@@ -200,6 +202,13 @@ void add_upstream_invoke(RemoteDSLink *link,
         // only save when it's from an action
         save_upstream_node(upstreamNode);
     }
+   // (uv_loop_t *loop, const char *brokerUrl, const char *name, const char *idPrefix) {
+    if (json_is_string(namejson) && json_is_string(brokerNameJson)
+        && json_is_string(urlJson) && !json_is_false(enabledJson)) {
+        upstream_connect_conn(mainLoop, json_string_value(urlJson),
+                              json_string_value(namejson), json_string_value(brokerNameJson));
+    }
+
 
 
     return;

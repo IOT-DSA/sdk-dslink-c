@@ -9,6 +9,8 @@ extern "C" {
 #include <dslink/socket.h>
 #include "broker/node.h"
 
+struct uv_loop_t;
+
 typedef struct Broker {
 
     BrokerNode *root;
@@ -29,8 +31,9 @@ typedef struct Broker {
 
     // Map<char *path, List<PendingSub *> *>
     Map local_pending_sub;
-
 } Broker;
+
+extern uv_loop_t *mainLoop;
 
 int broker_start();
 void broker_close_link(RemoteDSLink *link);

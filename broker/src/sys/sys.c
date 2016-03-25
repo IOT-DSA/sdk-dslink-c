@@ -78,7 +78,6 @@ int broker_sys_node_populate(BrokerNode *sysNode) {
     if (!sysNode) {
         return 1;
     }
-
     broker_query_create_action(sysNode);
     init_tokens(sysNode);
     init_restart(sysNode);
