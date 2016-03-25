@@ -81,12 +81,9 @@ void upstream_io_handler(uv_poll_t *poll, int status, int events) {
     if ((stat == 0 && (upstreamPoll->ws->error == WSLAY_ERR_NO_MORE_MSG
                       || upstreamPoll->ws->error == 0))) {
         upstream_reconnect(upstreamPoll);
+    } else if (upstreamPoll->remoteDSLink->pendingClose) {
+        upstream_reconnect(upstreamPoll);
     }
-//     else if (upstreamPoll->remoteDSLink->pendingClose) {
-//        broker_close_link(upstreamPoll->remoteDSLink);
-//    }
-
-
 }
 
 static
@@ -201,6 +198,7 @@ void connect_conn_callback(uv_poll_t *handle, int status, int events) {
 
         upstream_handshake_handle_ws(upstreamPoll);
         upstreamPoll->status = UPSTREAM_WS;
+        upstreamPoll->reconnectInterval = 0;
     } else {
         upstreamPoll->status = UPSTREAM_NONE;
         //TODO reconnect?
