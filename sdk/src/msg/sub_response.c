@@ -119,6 +119,8 @@ int dslink_response_sub(DSLink *link, json_t *paths, json_t *rid) {
         if (node->on_subscribe) {
             node->on_subscribe(link, node);
         }
+
+        dslink_free(sid);
     }
     return 0;
 }

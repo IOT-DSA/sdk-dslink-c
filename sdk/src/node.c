@@ -189,6 +189,7 @@ void dslink_node_tree_free_basic(DSNode *root) {
         dslink_free(root->children->table);
         dslink_free(root->children);
     }
+
     if (root->meta_data) {
         dslink_map_free(root->meta_data);
         dslink_free(root->meta_data);
@@ -318,7 +319,6 @@ int dslink_node_set_meta(DSLink *link, DSNode *node,
         goto cleanup;
     }
     json_object_set_new_nocheck(resp, "updates", updates);
-
 
     if (rem == 1) {
         json_t *update = json_object();

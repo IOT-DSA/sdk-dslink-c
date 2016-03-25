@@ -8,6 +8,7 @@ void gen_number(uv_timer_t *timer) {
     void **data = timer->data;
     DSLink *link = data[0];
     DSNode *node = data[1];
+
     if (!dslink_map_contains(link->responder->value_path_subs,
                              (void *) node->path)) {
         dslink_free(data);
