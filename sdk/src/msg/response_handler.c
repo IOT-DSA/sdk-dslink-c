@@ -61,7 +61,6 @@ int dslink_response_handle(DSLink *link, json_t *resp) {
             }
 
             dslink_map_remove(link->requester->request_handlers, &rid);
-            dslink_decref(holder_ref);
         } else if (cb) {
             cb(link, holder_ref, resp);
         }

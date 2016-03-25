@@ -356,6 +356,11 @@ int dslink_init(int argc, char **argv,
             dslink_free(link->requester->list_subs);
         }
 
+        if (link->requester->request_handlers) {
+            dslink_map_free(link->requester->request_handlers);
+            dslink_free(link->requester->request_handlers);
+        }
+
         if (link->requester->open_streams) {
             dslink_map_free(link->requester->open_streams);
             dslink_free(link->requester->open_streams);

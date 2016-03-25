@@ -69,7 +69,9 @@ uint32_t dslink_incr_msg(DSLink *link) {
 int dslink_ws_send_obj(wslay_event_context_ptr ctx, json_t *obj) {
     DSLink *link = ctx->user_data;
     uint32_t msg = dslink_incr_msg(link);
-    json_object_set(obj, "msg", json_integer(msg));
+
+    json_t *jsonMsg = json_integer(msg);
+    json_object_set(obj, "msg", jsonMsg);
 
     char *data = json_dumps(obj, JSON_PRESERVE_ORDER);
     if (!data) {
@@ -78,6 +80,9 @@ int dslink_ws_send_obj(wslay_event_context_ptr ctx, json_t *obj) {
 
     dslink_ws_send(ctx, data);
     dslink_free(data);
+
+    json_object_del(obj, "msg");
+    json_delete(jsonMsg);
 
     return 0;
 }
@@ -291,6 +296,11 @@ void ping_handler(uv_timer_t *timer) {
     json_delete(obj);
 }
 
+static
+void ping_timer_on_close(uv_handle_t *handle) {
+    dslink_free(handle);
+}
+
 void dslink_handshake_handle_ws(DSLink *link, link_callback on_requester_ready_cb) {
     struct wslay_event_callbacks callbacks = {
         want_read_cb,
@@ -321,6 +331,7 @@ void dslink_handshake_handle_ws(DSLink *link, link_callback on_requester_ready_c
     {
         uv_timer_init(&link->loop, &ping);
         ping.data = link;
+        ping.close_cb = ping_timer_on_close;
         uv_timer_start(&ping, ping_handler, 0, 30000);
     }
 
@@ -329,8 +340,9 @@ void dslink_handshake_handle_ws(DSLink *link, link_callback on_requester_ready_c
     }
 
     uv_run(&link->loop, UV_RUN_DEFAULT);
-    uv_loop_close(&link->loop);
     uv_timer_stop(&ping);
+    uv_close((uv_handle_t *) &ping, ping_timer_on_close);
+    uv_loop_close(&link->loop);
 
     wslay_event_context_free(ptr);
     link->_ws = NULL;

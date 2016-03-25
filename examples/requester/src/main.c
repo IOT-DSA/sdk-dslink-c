@@ -32,13 +32,12 @@ void on_invoke_timer_fire(uv_timer_t *timer) {
     if (count == 3) {
         printf("We are done.\n");
         uv_timer_stop(timer);
-        uv_close((uv_handle_t *) timer, NULL);
+        uv_close((uv_handle_t *) timer, (uv_close_cb) dslink_free);
         dslink_close(link);
         return;
     }
 
     json_t *params = json_object();
-
     json_object_set_new(params, "command", json_string("ls"));
 
     configure_request(dslink_requester_invoke(
@@ -47,8 +46,6 @@ void on_invoke_timer_fire(uv_timer_t *timer) {
         params,
         on_invoke_updates
     ));
-
-    json_delete(params);
 
     configure_request(dslink_requester_set(
         link,
@@ -133,7 +130,6 @@ void requester_ready(DSLink *link) {
 
     uv_timer_t *timer = malloc(sizeof(uv_timer_t));
     timer->data = link;
-    timer->close_cb = (uv_close_cb) dslink_free;
     uv_timer_init(&link->loop, timer);
     uv_timer_start(timer, on_invoke_timer_fire, 0, 2000);
 }
