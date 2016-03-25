@@ -201,30 +201,6 @@ int dslink_handle_key(DSLink *link) {
     return ret;
 }
 
-static
-void dslink_timer_close(uv_handle_t *handle) {
-    dslink_free(handle);
-}
-
-static
-void dslink_reconnect_timer(uv_timer_t *timer) {
-    log_info("Attempting to reconnect...\n");
-
-    DSLink *link = timer->data;
-    dslink_init(
-        link->argc,
-        link->argv,
-        link->name,
-        link->is_requester,
-        link->is_responder,
-        link->callbacks
-    );
-
-    dslink_free(link);
-    uv_timer_stop(timer);
-    uv_close((uv_handle_t *) timer, dslink_timer_close);
-}
-
 void dslink_close(DSLink *link) {
     link->closing = 1;
     wslay_event_queue_close(link->_ws, WSLAY_CODE_NORMAL_CLOSURE, NULL, 0);
@@ -250,10 +226,7 @@ int dslink_init(int argc, char **argv,
     link->closing = 0;
     link->is_responder = isResponder;
     link->is_requester = isRequester;
-    link->argc = argc;
-    link->argv = argv;
-    link->name = name;
-    link->callbacks = cbs;
+    link->_ws = NULL;
 
     uv_loop_init(&link->loop);
 
@@ -317,14 +290,14 @@ int dslink_init(int argc, char **argv,
     if (!(uri && tKey && salt)) {
         log_fatal("Handshake didn't return the "
                       "necessary parameters to complete\n");
-        ret = 1;
+        ret = 2;
         goto exit;
     }
 
     if ((ret = dslink_handshake_connect_ws(link->config.broker_url, &link->key, uri,
                                            tKey, salt, dsId, &sock)) != 0) {
         log_fatal("Failed to connect to the broker: %d\n", ret);
-        ret = 1;
+        ret = 2;
         goto exit;
     } else {
         log_info("Successfully connected to the broker\n");
@@ -411,11 +384,18 @@ int dslink_init(int argc, char **argv,
     DSLINK_CHECKED_EXEC(json_delete, handshake);
 
     if (ret == 2) {
-        uv_timer_t *timer = dslink_malloc(sizeof(uv_timer_t));
-        uv_timer_init(&link->loop, timer);
-        timer->data = link;
-        uv_timer_start(timer, dslink_reconnect_timer, 5000, 1000);
-        uv_run(timer->loop, UV_RUN_DEFAULT);
+        dslink_link_free(link);
+
+        struct timespec spec = {
+            5,
+            0
+        };
+
+        nanosleep(&spec, NULL);
+
+        log_info("Attempting to reconnect...\n");
+
+        return dslink_init(argc, argv, name, isRequester, isResponder, cbs);
     } else {
         dslink_link_free(link);
     }

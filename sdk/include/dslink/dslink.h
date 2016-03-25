@@ -29,11 +29,6 @@ struct DSLink {
     uint8_t is_requester;
     uint8_t is_responder;
 
-    DSLinkCallbacks *callbacks;
-    int argc;
-    char **argv;
-    const char *name;
-
     int closing;
 
     struct wslay_event_context *_ws; // Event context for WSLay
