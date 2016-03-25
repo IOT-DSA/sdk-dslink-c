@@ -1,6 +1,6 @@
 # sdk-dslink-c
 
-[![Build Status](https://travis-ci.org/IOT-DSA/sdk-dslink-c.svg?branch=feature_broker)](https://travis-ci.org/IOT-DSA/sdk-dslink-c)
+[![Build Status](https://travis-ci.org/IOT-DSA/sdk-dslink-c.svg?branch=master)](https://travis-ci.org/IOT-DSA/sdk-dslink-c)
 
 C binding for the DSA API.
 
