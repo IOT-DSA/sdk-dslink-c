@@ -73,6 +73,7 @@ DownstreamNode *broker_init_downstream_node(BrokerNode *parentNode, const char *
         dslink_free(tmpKey);
         goto fail;
     }
+    node->parent = parentNode;
     return node;
 
 fail:

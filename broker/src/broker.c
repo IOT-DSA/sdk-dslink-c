@@ -150,6 +150,9 @@ exit:
 }
 
 void broker_close_link(RemoteDSLink *link) {
+    if (!link) {
+        return;
+    }
     if (link->client) {
         dslink_socket_close_nofree(link->client->sock);
     }

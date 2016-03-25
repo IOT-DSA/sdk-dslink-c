@@ -19,6 +19,9 @@
 
 static
 void upstream_free_dslink(DSLink *link) {
+    if (!link) {
+        return;
+    }
     mbedtls_ecdh_free(&link->key);
     dslink_url_free(link->config.broker_url);
     dslink_free((char *) link->config.name);
@@ -257,14 +260,12 @@ void upstream_connect_conn(UpstreamPoll *upstreamPoll) {
     exit:
     dslink_free(dsId);
 }
-void upstream_create_poll(uv_loop_t *loop, const char *brokerUrl, const char *name, const char *idPrefix) {
-    Broker *broker = loop->data;
-    ref_t *ref = dslink_map_get(broker->upstream->children, (void*)name);
-    if (ref) {
-        DownstreamNode *node = ref->data;
-        if (node->upstreamPoll) {
-            return;
-        }
+void upstream_create_poll(const char *brokerUrl, const char *name, const char *idPrefix) {
+    Broker *broker = mainLoop->data;
+
+    DownstreamNode *node = create_upstream_node(broker, name);
+    if (node ->upstreamPoll) {
+        return;
     }
 
     UpstreamPoll *upstreamPoll = dslink_calloc(1, sizeof(UpstreamPoll));
@@ -272,10 +273,7 @@ void upstream_create_poll(uv_loop_t *loop, const char *brokerUrl, const char *na
     upstreamPoll->name = dslink_strdup(name);
     upstreamPoll->idPrefix = dslink_strdup(idPrefix);
 
-    if (ref) {
-        DownstreamNode *node = ref->data;
-        node->upstreamPoll = upstreamPoll;
-    }
+    node->upstreamPoll = upstreamPoll;
 
     upstream_connect_conn(upstreamPoll);
 }

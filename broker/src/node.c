@@ -5,6 +5,7 @@
 
 #include <dslink/mem/mem.h>
 #include <dslink/utils.h>
+#include <broker/upstream/upstream_handshake.h>
 
 #include "broker/broker.h"
 #include "broker/msg/msg_subscribe.h"
@@ -179,6 +180,10 @@ void broker_node_free(BrokerNode *node) {
     if (node->type == DOWNSTREAM_NODE) {
         dslink_map_free(&((DownstreamNode *)node)->list_streams);
         virtual_permission_free_map(&((DownstreamNode *)node)->children_permissions);
+        if (((DownstreamNode *)node)->upstreamPoll) {
+            upstream_clear_poll(((DownstreamNode *)node)->upstreamPoll);
+            dslink_free(((DownstreamNode *)node)->upstreamPoll);
+        }
     } else {
         // TODO: add a new type for these listeners
         // they shouldn't be part of base node type

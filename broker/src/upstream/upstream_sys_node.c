@@ -101,8 +101,40 @@ void delete_upstream_invoke(RemoteDSLink *link,
     uv_fs_t unlink_req;
     uv_fs_unlink(NULL, &unlink_req, tmp, NULL);
 
+    Broker *broker = mainLoop->data;
+    ref_t *ref = dslink_map_get(broker->upstream->children, (void*)parentNode->name);
+    if (ref) {
+        broker_node_free(ref->data);
+    }
 
     broker_node_free(parentNode);
+}
+
+int upstream_enable_changed(Listener * listener, void * node) {
+    (void)listener;
+    BrokerNode *enabledNode = node;
+    BrokerNode *parentNode = enabledNode->parent;
+    if (json_is_false(enabledNode->value)) {
+        Broker *broker = mainLoop->data;
+
+        ref_t *ref = dslink_map_get(broker->upstream->children, (void*)parentNode->name);
+        if (ref) {
+            broker_node_free(ref->data);
+        }
+    } else {
+        // start upstream poll
+        json_t* namejson = ((BrokerNode *)dslink_map_get(parentNode->children, "name")->data)->value;
+        json_t* brokerNameJson = ((BrokerNode *)dslink_map_get(parentNode->children, "brokerName")->data)->value;
+        json_t* urlJson = ((BrokerNode *)dslink_map_get(parentNode->children, "url")->data)->value;
+
+        if (json_is_string(namejson) && json_is_string(brokerNameJson)
+            && json_is_string(urlJson)) {
+            upstream_create_poll(json_string_value(urlJson),
+                                 json_string_value(namejson), json_string_value(brokerNameJson));
+        }
+        save_upstream_node(parentNode);
+    }
+    return 0;
 }
 
 void add_upstream_invoke(RemoteDSLink *link,
@@ -187,6 +219,8 @@ void add_upstream_invoke(RemoteDSLink *link,
     } else {
         broker_node_update_value(propNode, json_true(), 0);
     }
+    listener_add(&propNode->on_value_update, upstream_enable_changed, propNode);
+
     broker_node_add(upstreamNode, propNode);
 
     // TODO detect enabled change and start/stop upstream
@@ -197,6 +231,8 @@ void add_upstream_invoke(RemoteDSLink *link,
 
     deleteAction->on_invoke = delete_upstream_invoke;
 
+    create_upstream_node(mainLoop->data, name);
+
     log_info("Upstream added `%s`\n", name);
     if (link) {
         // only save when it's from an action
@@ -205,11 +241,9 @@ void add_upstream_invoke(RemoteDSLink *link,
    // (uv_loop_t *loop, const char *brokerUrl, const char *name, const char *idPrefix) {
     if (json_is_string(namejson) && json_is_string(brokerNameJson)
         && json_is_string(urlJson) && !json_is_false(enabledJson)) {
-        upstream_create_poll(mainLoop, json_string_value(urlJson),
+        upstream_create_poll(json_string_value(urlJson),
                               json_string_value(namejson), json_string_value(brokerNameJson));
     }
-
-
 
     return;
 fail:

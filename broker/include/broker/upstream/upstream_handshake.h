@@ -38,9 +38,11 @@ typedef struct UpstreamPoll {
     struct wslay_event_context *ws; // Event context for WSLay
 } UpstreamPoll;
 
-void upstream_create_poll(uv_loop_t *loop, const char *brokerUrl, const char *name, const char *idPrefix);
+void upstream_create_poll(const char *brokerUrl, const char *name, const char *idPrefix);
 
 void upstream_connect_conn(UpstreamPoll *upstreamPoll);
+
+void upstream_clear_poll(UpstreamPoll *upstreamPoll);
 
 void upstream_connect_ws();
 

@@ -15,7 +15,11 @@ int broker_upstream_node_populate(BrokerNode *upstreamNode);
 int init_sys_upstream_node(BrokerNode *sysNode);
 
 
+DownstreamNode *create_upstream_node(struct Broker *broker, const char *name);
+
 void init_upstream_node(struct Broker *broker, struct UpstreamPoll *upstreamPoll);
+
+
 
 #ifdef __cplusplus
 }

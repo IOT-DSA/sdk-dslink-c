@@ -31,7 +31,11 @@ int broker_msg_handle_set(RemoteDSLink *link, json_t *req) {
         json_decref(top);
     } else if (node) {
         json_t *value = json_object_get(req, "value");
-        broker_data_node_update(node, value, 0);
+        if (dslink_str_starts_with(path, "/data")) {
+            broker_data_node_update(node, value, 0);
+        } else {
+            broker_node_update_value(node, value, 0);
+        }
     } else if (dslink_str_starts_with(path, "/data")) {
         json_t *value = json_object_get(req, "value");
         broker_create_dynamic_data_node(link->broker, link->broker->root, path, value, 1);
