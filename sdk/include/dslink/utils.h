@@ -23,6 +23,8 @@ char *dslink_str_unescape(const char *data);
 
 size_t dslink_create_ts(char *buf, size_t bufLen);
 
+int dslink_sleep(long ms);
+
 #ifdef __cplusplus
 }
 #endif

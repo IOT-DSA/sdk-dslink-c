@@ -3,6 +3,7 @@
 #include <time.h>
 #include <sys/time.h>
 #include <stdio.h>
+
 #include "dslink/mem/mem.h"
 #include "dslink/utils.h"
 
@@ -149,4 +150,18 @@ size_t dslink_create_ts(char *buf, size_t bufLen) {
     buf[25] = buf[26];
     buf[26] = ':';
     return 29;
+}
+
+int dslink_sleep(long ms) {
+    struct timespec req;
+
+    if (ms > 999) {
+        req.tv_sec = ms / 1000;
+        req.tv_nsec = (ms - (req.tv_sec * 1000)) * 1000000;
+    } else {
+        req.tv_sec = 0;
+        req.tv_nsec = ms * 1000000;
+    }
+
+    return nanosleep(&req, NULL);
 }

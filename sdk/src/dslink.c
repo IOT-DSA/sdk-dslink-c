@@ -9,6 +9,8 @@
 #include "dslink/utils.h"
 #include "dslink/ws.h"
 
+#define SECONDS_TO_MILLIS(count) count * 1000
+
 #define DSLINK_RESPONDER_MAP_INIT(var, type) \
     responder->var = dslink_calloc(1, sizeof(Map)); \
     if (!responder->var) { \
@@ -391,12 +393,7 @@ int dslink_init(int argc, char **argv,
     if (ret == 2) {
         dslink_link_free(link);
 
-        struct timespec spec = {
-            5,
-            0
-        };
-
-        nanosleep(&spec, NULL);
+        dslink_sleep(SECONDS_TO_MILLIS(5));
 
         log_info("Attempting to reconnect...\n");
 
