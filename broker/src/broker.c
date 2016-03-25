@@ -150,8 +150,15 @@ exit:
 }
 
 void broker_close_link(RemoteDSLink *link) {
-    dslink_socket_close_nofree(link->client->sock);
-    log_info("DSLink `%s` has disconnected\n", (char *) link->dsId->data);
+    if (link->client) {
+        dslink_socket_close_nofree(link->client->sock);
+    }
+    if (link->dsId) {
+        log_info("DSLink `%s` has disconnected\n", (char *) link->dsId->data);
+    } else {
+        log_info("DSLink `%s` has disconnected\n", (char *) link->name);
+    }
+
     ref_t *ref = dslink_map_get(link->broker->downstream->children, (void *) link->name);
     broker_remote_dslink_free(link);
     // it's possible that free link still rely on node->link to close related streams

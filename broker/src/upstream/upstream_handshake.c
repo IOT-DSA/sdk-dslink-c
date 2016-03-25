@@ -14,6 +14,8 @@
 #include <broker/remote_dslink.h>
 #include <broker/upstream/upstream_node.h>
 #include <broker/handshake.h>
+#include <broker/utils.h>
+
 
 static
 void upstream_free_dslink(DSLink *link) {
@@ -25,12 +27,19 @@ void upstream_free_dslink(DSLink *link) {
 
 void upstream_clear_poll(UpstreamPoll *upstreamPoll) {
     if (upstreamPoll->status == UPSTREAM_CONN) {
-        uv_poll_stop(&upstreamPoll->connPoll);
+        uv_poll_stop(upstreamPoll->connPoll);
+        uv_close((uv_handle_t *)upstreamPoll->connPoll, broker_free_handle);
         dslink_socket_close_nofree(upstreamPoll->sock);
         dslink_socket_free(upstreamPoll->sock);
         upstreamPoll->sock = NULL;
     } else if (upstreamPoll->status == UPSTREAM_WS) {
-
+        uv_poll_stop(upstreamPoll->wsPoll);
+        uv_close((uv_handle_t *)upstreamPoll->wsPoll, broker_free_handle);
+    }
+    if (upstreamPoll->reconnectTimer) {
+        uv_timer_stop(upstreamPoll->reconnectTimer);
+        uv_close((uv_handle_t *)upstreamPoll->reconnectTimer, broker_free_handle);
+        upstreamPoll->reconnectTimer = NULL;
     }
     broker_close_link(upstreamPoll->remoteDSLink);
     upstream_free_dslink(upstreamPoll->clientDslink);
@@ -44,8 +53,22 @@ void upstream_clear_poll(UpstreamPoll *upstreamPoll) {
 void upstream_free_poll(UpstreamPoll *upstreamPoll) {
     upstream_clear_poll(upstreamPoll);
 }
+void upstrem_handle_reconnect(uv_timer_t* handle) {
+    UpstreamPoll *upstreamPoll = handle->data;
+    upstream_connect_conn(upstreamPoll);
+}
 void upstream_reconnect(UpstreamPoll *upstreamPoll) {
     upstream_clear_poll(upstreamPoll);
+    if (upstreamPoll->reconnectInterval < 60) {
+        upstreamPoll->reconnectInterval++;
+    }
+    log_info("reconnect in %d seconds\n", upstreamPoll->reconnectInterval);
+
+    upstreamPoll->reconnectTimer = dslink_calloc(1, sizeof(uv_timer_t));
+    upstreamPoll->reconnectTimer->data = upstreamPoll;
+    uv_timer_init(mainLoop, upstreamPoll->reconnectTimer);
+    uv_timer_start(upstreamPoll->reconnectTimer, upstrem_handle_reconnect, upstreamPoll->reconnectInterval*1000, 0);
+
 }
 static
 void upstream_io_handler(uv_poll_t *poll, int status, int events) {
@@ -95,7 +118,8 @@ void upstream_handshake_handle_ws(UpstreamPoll *upstreamPoll) {
     Client * client = dslink_calloc(1, sizeof(Client));
     link->client = client;
     client->sock = upstreamPoll->sock;
-    client->poll = &upstreamPoll->wsPoll;
+    upstreamPoll->wsPoll = dslink_calloc(1, sizeof(uv_poll_t));
+    client->poll = upstreamPoll->wsPoll;
     client->sock_data = link;
 
     upstreamPoll->remoteDSLink = link;
@@ -111,9 +135,9 @@ void upstream_handshake_handle_ws(UpstreamPoll *upstreamPoll) {
 
     mbedtls_net_set_nonblock(&upstreamPoll->clientDslink->_socket->socket_fd);
 
-    uv_poll_init(mainLoop, &upstreamPoll->wsPoll, upstreamPoll->clientDslink->_socket->socket_fd.fd);
-    upstreamPoll->wsPoll.data = upstreamPoll;
-    uv_poll_start(&upstreamPoll->wsPoll, UV_READABLE, upstream_io_handler);
+    uv_poll_init(mainLoop, upstreamPoll->wsPoll, upstreamPoll->clientDslink->_socket->socket_fd.fd);
+    upstreamPoll->wsPoll->data = upstreamPoll;
+    uv_poll_start(upstreamPoll->wsPoll, UV_READABLE, upstream_io_handler);
 
     init_upstream_node(mainLoop->data, upstreamPoll);
 }
@@ -186,7 +210,7 @@ void connect_conn_callback(uv_poll_t *handle, int status, int events) {
 
 }
 
-void upstream_connect_conn(UpstreamPoll *upstreamPoll,  const char *brokerUrl) {
+void upstream_connect_conn(UpstreamPoll *upstreamPoll) {
 
     RemoteDSLink *link = dslink_calloc(1, sizeof(RemoteDSLink));
     broker_remote_dslink_init(link);
@@ -203,7 +227,9 @@ void upstream_connect_conn(UpstreamPoll *upstreamPoll,  const char *brokerUrl) {
     dslink_handle_key(clientDslink);
 
     clientDslink->config.name = dslink_strdup(upstreamPoll->idPrefix);
-    clientDslink->config.broker_url = dslink_url_parse(brokerUrl);
+    clientDslink->config.broker_url = dslink_url_parse(upstreamPoll->brokerUrl);
+
+    upstreamPoll->clientDslink = clientDslink;
 
     char *dsId;
     Socket *sock;
@@ -213,21 +239,22 @@ void upstream_connect_conn(UpstreamPoll *upstreamPoll,  const char *brokerUrl) {
     if (dslink_socket_connect(&sock, clientDslink->config.broker_url->host,
                               clientDslink->config.broker_url->port,
                               clientDslink->config.broker_url->secure) != 0) {
+        upstream_reconnect(upstreamPoll);
         goto exit;
     }
     dslink_socket_write(sock, conndata, strlen(conndata));
 
 
-
-    uv_poll_init(mainLoop, &upstreamPoll->connPoll, sock->socket_fd.fd);
+    upstreamPoll->connPoll = dslink_calloc(1, sizeof(uv_poll_t));
+    uv_poll_init(mainLoop, upstreamPoll->connPoll, sock->socket_fd.fd);
 
     upstreamPoll->dsId = dslink_strdup(dsId);
-    upstreamPoll->connPoll.data = upstreamPoll;
-    upstreamPoll->clientDslink = clientDslink;
+    upstreamPoll->connPoll->data = upstreamPoll;
+
     upstreamPoll->sock = sock;
     upstreamPoll->status = UPSTREAM_CONN;
 
-    uv_poll_start(&upstreamPoll->connPoll, UV_READABLE, connect_conn_callback);
+    uv_poll_start(upstreamPoll->connPoll, UV_READABLE, connect_conn_callback);
 
     exit:
     dslink_free(dsId);
@@ -243,6 +270,7 @@ void upstream_create_poll(uv_loop_t *loop, const char *brokerUrl, const char *na
     }
 
     UpstreamPoll *upstreamPoll = dslink_calloc(1, sizeof(UpstreamPoll));
+    upstreamPoll->brokerUrl = dslink_strdup(brokerUrl);
     upstreamPoll->name = dslink_strdup(name);
     upstreamPoll->idPrefix = dslink_strdup(idPrefix);
 
@@ -251,5 +279,5 @@ void upstream_create_poll(uv_loop_t *loop, const char *brokerUrl, const char *na
         node->upstreamPoll = upstreamPoll;
     }
 
-    upstream_connect_conn(upstreamPoll, brokerUrl);
+    upstream_connect_conn(upstreamPoll);
 }

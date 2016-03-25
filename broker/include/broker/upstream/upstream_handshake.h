@@ -24,11 +24,14 @@ typedef enum UpstreamPollStatus {
 
 typedef struct UpstreamPoll {
     UpstreamPollStatus status;
-    uv_poll_t connPoll;
-    uv_poll_t wsPoll;
+    uv_poll_t *connPoll;
+    uv_poll_t *wsPoll;
+    char *brokerUrl;
     char *dsId;
     char *name;
     char *idPrefix;
+    uint32_t reconnectInterval;
+    uv_timer_t * reconnectTimer;
     struct RemoteDSLink * remoteDSLink;
     struct DSLink *clientDslink;
     struct Socket *sock;
@@ -37,7 +40,7 @@ typedef struct UpstreamPoll {
 
 void upstream_create_poll(uv_loop_t *loop, const char *brokerUrl, const char *name, const char *idPrefix);
 
-void upstream_connect_conn(UpstreamPoll *upstreamPoll,  const char *brokerUrl);
+void upstream_connect_conn(UpstreamPoll *upstreamPoll);
 
 void upstream_connect_ws();
 
