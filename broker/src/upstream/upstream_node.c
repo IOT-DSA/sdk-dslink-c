@@ -42,7 +42,7 @@ void init_upstream_node(Broker *broker, UpstreamPoll *upstreamPoll) {
     uv_timer_t *ping_timer = NULL;
     ping_timer = dslink_malloc(sizeof(uv_timer_t));
     ping_timer->data = link;
-    uv_timer_init(upstreamPoll->loop, ping_timer);
+    uv_timer_init(mainLoop, ping_timer);
     uv_timer_start(ping_timer, dslink_handle_ping, 1000, 30000);
     link->pingTimerHandle = ping_timer;
 

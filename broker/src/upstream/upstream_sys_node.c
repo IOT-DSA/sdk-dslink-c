@@ -205,7 +205,7 @@ void add_upstream_invoke(RemoteDSLink *link,
    // (uv_loop_t *loop, const char *brokerUrl, const char *name, const char *idPrefix) {
     if (json_is_string(namejson) && json_is_string(brokerNameJson)
         && json_is_string(urlJson) && !json_is_false(enabledJson)) {
-        upstream_connect_conn(mainLoop, json_string_value(urlJson),
+        upstream_create_poll(mainLoop, json_string_value(urlJson),
                               json_string_value(namejson), json_string_value(brokerNameJson));
     }
 

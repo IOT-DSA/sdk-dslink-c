@@ -16,8 +16,14 @@ struct Broker;
 struct wslay_event_context;
 
 
+typedef enum UpstreamPollStatus {
+    UPSTREAM_NONE = 0,
+    UPSTREAM_CONN,
+    UPSTREAM_WS
+} UpstreamPollStatus;
+
 typedef struct UpstreamPoll {
-    uv_loop_t *loop;
+    UpstreamPollStatus status;
     uv_poll_t connPoll;
     uv_poll_t wsPoll;
     char *dsId;
@@ -29,7 +35,9 @@ typedef struct UpstreamPoll {
     struct wslay_event_context *ws; // Event context for WSLay
 } UpstreamPoll;
 
-void upstream_connect_conn(uv_loop_t *loop, const char *brokerUrl, const char *name, const char *idPrefix);
+void upstream_create_poll(uv_loop_t *loop, const char *brokerUrl, const char *name, const char *idPrefix);
+
+void upstream_connect_conn(UpstreamPoll *upstreamPoll,  const char *brokerUrl);
 
 void upstream_connect_ws();
 
