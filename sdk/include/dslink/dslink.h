@@ -34,6 +34,8 @@ struct DSLink {
     char **argv;
     const char *name;
 
+    int closing;
+
     struct wslay_event_context *_ws; // Event context for WSLay
     Socket *_socket; // Socket for the _ws connection
 
@@ -83,6 +85,8 @@ struct DSLinkCallbacks {
 int dslink_init(int argc, char **argv,
                 const char *name, uint8_t isRequester,
                 uint8_t isResponder, DSLinkCallbacks *cbs);
+
+void dslink_close(DSLink *link);
 
 int dslink_handle_key(DSLink *link);
 

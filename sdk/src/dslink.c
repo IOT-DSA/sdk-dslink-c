@@ -3,6 +3,8 @@
 
 #include <argtable3.h>
 #include <string.h>
+#include <wslay/wslay.h>
+
 #include "dslink/handshake.h"
 #include "dslink/utils.h"
 #include "dslink/ws.h"
@@ -223,10 +225,16 @@ void dslink_reconnect_timer(uv_timer_t *timer) {
     uv_close((uv_handle_t *) timer, dslink_timer_close);
 }
 
+void dslink_close(DSLink *link) {
+    link->closing = 1;
+    wslay_event_queue_close(link->_ws, WSLAY_CODE_NORMAL_CLOSURE, NULL, 0);
+}
+
 int dslink_init(int argc, char **argv,
                 const char *name, uint8_t isRequester,
                 uint8_t isResponder, DSLinkCallbacks *cbs) {
     DSLink *link = dslink_malloc(sizeof(DSLink));
+    link->closing = 0;
     link->is_responder = isResponder;
     link->is_requester = isRequester;
     link->argc = argc;
@@ -317,15 +325,17 @@ int dslink_init(int argc, char **argv,
 
     dslink_handshake_handle_ws(link, cbs->on_requester_ready_cb);
 
-
     // TODO: automatic reconnecting
     log_warn("Disconnected from the broker\n")
     if (cbs->on_disconnected_cb) {
         cbs->on_disconnected_cb(link);
+    }
+
+    if (link->closing != 1) {
         ret = 2;
     }
 
-exit:
+    exit:
     if (isResponder) {
         if (link->responder->super_root) {
             dslink_node_tree_free(link, link->responder->super_root);

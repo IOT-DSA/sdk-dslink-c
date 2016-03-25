@@ -3,6 +3,8 @@
 #include <dslink/log.h>
 #include <dslink/requester.h>
 
+int i = 0;
+
 void on_req_close(struct DSLink *link, ref_t *req_ref, json_t *resp) {
     (void) link;
     (void) resp;
@@ -25,20 +27,34 @@ void on_invoke_updates(struct DSLink *link, ref_t *req_ref, json_t *resp) {
 }
 
 void on_invoke_timer_fire(uv_timer_t *timer) {
-    (void) timer;
+    DSLink *link = timer->data;
 
     json_t *params = json_object();
 
     json_object_set_new(params, "command", json_string("ls"));
 
     configure_request(dslink_requester_invoke(
-        timer->data,
+        link,
         "/downstream/System/Execute_Command",
         params,
         on_invoke_updates
     ));
 
     json_delete(params);
+
+    configure_request(dslink_requester_set(
+        link,
+        "/data/c-sdk/requester/testNumber",
+        json_real(rand())
+    ));
+
+    i++;
+
+    if (i == 3) {
+        printf("Did 3 invokes.\n");
+        uv_timer_stop(timer);
+        dslink_close(link);
+    }
 }
 
 void on_list_update(struct DSLink *link, ref_t *req_ref, json_t *resp) {
@@ -110,6 +126,7 @@ void requester_ready(DSLink *link) {
         0
     ));
     configure_request(dslink_requester_set(link, "/downstream/Weather/@test", json_integer(4)));
+
     uv_timer_t *timer = malloc(sizeof(uv_timer_t));
     timer->data = link;
     uv_timer_init(&link->loop, timer);
