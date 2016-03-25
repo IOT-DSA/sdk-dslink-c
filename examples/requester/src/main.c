@@ -3,6 +3,44 @@
 #include <dslink/log.h>
 #include <dslink/requester.h>
 
+void on_req_close(struct DSLink *link, ref_t *req_ref, json_t *resp) {
+    (void) link;
+    (void) resp;
+    (void) req_ref;
+    json_t *rid = json_object_get(resp, "rid");
+    printf("Request %i closed.\n", (int) json_integer_value(rid));
+}
+
+void configure_request(ref_t *ref) {
+    RequestHolder *req = ref->data;
+    req->close_cb = on_req_close;
+}
+
+void on_invoke_updates(struct DSLink *link, ref_t *req_ref, json_t *resp) {
+    (void) link;
+    (void) req_ref;
+    char *data = json_dumps(resp, JSON_INDENT(2));
+    printf("Got invoke %s\n", data);
+    dslink_free(data);
+}
+
+void on_invoke_timer_fire(uv_timer_t *timer) {
+    (void) timer;
+
+    json_t *params = json_object();
+
+    json_object_set_new(params, "command", json_string("ls"));
+
+    configure_request(dslink_requester_invoke(
+        timer->data,
+        "/downstream/System/Execute_Command",
+        params,
+        on_invoke_updates
+    ));
+
+    json_delete(params);
+}
+
 void on_list_update(struct DSLink *link, ref_t *req_ref, json_t *resp) {
     (void) link;
     RequestHolder *holder = req_ref->data;
@@ -48,20 +86,6 @@ void on_value_update(struct DSLink *link, uint32_t sid, json_t *val, json_t *ts)
     dslink_requester_unsubscribe(link, sid);
 }
 
-void on_invoke_updates(struct DSLink *link, ref_t *req_ref, json_t *resp) {
-    (void) link;
-    (void) req_ref;
-    printf("Got invoke %s\n", json_dumps(resp, JSON_INDENT(2)));
-}
-
-void on_req_close(struct DSLink *link, ref_t *req_ref, json_t *resp) {
-    (void) link;
-    (void) resp;
-    (void) req_ref;
-    json_t *rid = json_object_get(resp, "rid");
-    printf("Request %i closed.\n", (int) json_integer_value(rid));
-}
-
 void init(DSLink *link) {
     (void) link;
     log_info("Initialized!\n");
@@ -77,11 +101,6 @@ void disconnected(DSLink *link) {
     log_info("Disconnected!\n");
 }
 
-void configure_request(ref_t *ref) {
-    RequestHolder *req = ref->data;
-    req->close_cb = on_req_close;
-}
-
 void requester_ready(DSLink *link) {
     configure_request(dslink_requester_list(link, "/downstream", on_list_update));
     configure_request(dslink_requester_subscribe(
@@ -91,17 +110,10 @@ void requester_ready(DSLink *link) {
         0
     ));
     configure_request(dslink_requester_set(link, "/downstream/Weather/@test", json_integer(4)));
-
-    json_t *params = json_object();
-
-    json_object_set_new(params, "command", json_string("ls"));
-
-    configure_request(dslink_requester_invoke(
-        link,
-        "/downstream/System/Execute_Command",
-        params,
-        on_invoke_updates
-    ));
+    uv_timer_t *timer = malloc(sizeof(uv_timer_t));
+    timer->data = link;
+    uv_timer_init(&link->loop, timer);
+    uv_timer_start(timer, on_invoke_timer_fire, 0, 2000);
 }
 
 int main(int argc, char **argv) {
