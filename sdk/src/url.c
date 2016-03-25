@@ -88,7 +88,6 @@ Url *dslink_url_parse(const char *address) {
             URL_ADDRESS_SUBSTRING_COPY(url->uri, len)
         }
     }
-    url->secure = 0;
     return url;
 
 exit:
