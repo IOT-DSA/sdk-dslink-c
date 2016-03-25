@@ -42,11 +42,12 @@ Url *dslink_url_parse(const char *address) {
             URL_ADDRESS_SUBSTRING_COPY(url->host, len)
             if (c == ':') {
                 state = 2;
+                address += 1;
             } else {
                 dslink_url_handle_scheme(url->scheme, &url->port, &url->secure);
                 state = 3;
             }
-            address += len + 1;
+            address += len;
             len = 0;
         } else if (c == '/' && state == 2) {
             // Parse the port
