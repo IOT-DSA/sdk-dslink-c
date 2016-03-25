@@ -16,16 +16,13 @@ endmacro()
 ##### Git Version Info ####
 
 set(GIT_DIR "${CMAKE_SOURCE_DIR}/.git")
-if (EXISTS "${GIT_DIR}" AND IS_DIRECTORY "${GIT_DIR}" AND "${CMAKE_BUILD_TYPE}" STREQUAL RELEASE)
-    message("-- Passing in Git Version")
+if (EXISTS "${GIT_DIR}" AND IS_DIRECTORY "${GIT_DIR}" AND NOT "${GIT_COMMIT_HASH}")
     execute_process(
         COMMAND git log -1 --format=%H
         WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
         OUTPUT_VARIABLE GIT_COMMIT_HASH
         OUTPUT_STRIP_TRAILING_WHITESPACE
     )
-
-    ADD_DEFINITIONS(-DGIT_COMMIT_HASH="${GIT_COMMIT_HASH}")
 endif()
 
 ##### Toolchain Configuration #####
@@ -194,6 +191,14 @@ install(DIRECTORY "sdk/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COM
 ####### Configure Broker #######
 
 if (DSLINK_BUILD_BROKER)
+    if (GIT_COMMIT_HASH)
+        set_source_files_properties(
+            "broker/src/broker.c"
+            PROPERTIES
+            COMPILE_DEFINITIONS GIT_COMMIT_HASH="${GIT_COMMIT_HASH}"
+        )
+    endif()
+
     add_library(sdk_broker_c-object OBJECT ${BROKER_SRC})
     target_include_directories(sdk_broker_c-object PUBLIC "broker/include")
 
