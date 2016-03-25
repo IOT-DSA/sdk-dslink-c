@@ -58,7 +58,7 @@ ref_t* dslink_requester_send_request_with_rid(DSLink *link, json_t *req, request
     json_t *top = json_object();
     json_t *requests = json_array();
     json_array_append_new(requests, req);
-    json_object_set_new(top, "requests", requests);
+    json_object_set(top, "requests", requests);
 
     dslink_ws_send_obj(link->_ws, top);
     json_decref(top);
@@ -95,6 +95,7 @@ ref_t* dslink_requester_subscribe(DSLink* link, const char* path, value_sub_cb c
     ref_t *ref = dslink_requester_send_request(link, json, dslink_requester_ignore_response);
     RequestHolder *holder = ref->data;
     holder->sid = sid;
+    holder->req = json;
 
     SubscribeCallbackHolder *subhold = dslink_malloc(sizeof(SubscribeCallbackHolder));
     subhold->cb = cb;

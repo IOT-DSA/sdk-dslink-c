@@ -3,7 +3,7 @@
 #include <dslink/log.h>
 #include <dslink/requester.h>
 
-int i = 0;
+int count = 1;
 
 void on_req_close(struct DSLink *link, ref_t *req_ref, json_t *resp) {
     (void) link;
@@ -29,6 +29,14 @@ void on_invoke_updates(struct DSLink *link, ref_t *req_ref, json_t *resp) {
 void on_invoke_timer_fire(uv_timer_t *timer) {
     DSLink *link = timer->data;
 
+    if (count == 3) {
+        printf("We are done.\n");
+        uv_timer_stop(timer);
+        uv_close((uv_handle_t *) timer, NULL);
+        dslink_close(link);
+        return;
+    }
+
     json_t *params = json_object();
 
     json_object_set_new(params, "command", json_string("ls"));
@@ -48,13 +56,7 @@ void on_invoke_timer_fire(uv_timer_t *timer) {
         json_real(rand())
     ));
 
-    i++;
-
-    if (i == 3) {
-        printf("Did 3 invokes.\n");
-        uv_timer_stop(timer);
-        dslink_close(link);
-    }
+    count++;
 }
 
 void on_list_update(struct DSLink *link, ref_t *req_ref, json_t *resp) {
@@ -73,7 +75,9 @@ void on_list_update(struct DSLink *link, ref_t *req_ref, json_t *resp) {
         json_t *val = json_array_get(value, 1);
 
         if (val->type == JSON_ARRAY || val->type == JSON_OBJECT) {
-            printf("%s = %s\n", json_string_value(name), json_dumps(val, JSON_INDENT(0)));
+            char *data = json_dumps(val, JSON_INDENT(0));
+            printf("%s = %s\n", json_string_value(name), data);
+            dslink_free(data);
         } else if (val->type == JSON_STRING) {
             printf("%s = %s\n", json_string_value(name), json_string_value(val));
         } else if (val->type == JSON_INTEGER) {
@@ -129,6 +133,7 @@ void requester_ready(DSLink *link) {
 
     uv_timer_t *timer = malloc(sizeof(uv_timer_t));
     timer->data = link;
+    timer->close_cb = (uv_close_cb) dslink_free;
     uv_timer_init(&link->loop, timer);
     uv_timer_start(timer, on_invoke_timer_fire, 0, 2000);
 }

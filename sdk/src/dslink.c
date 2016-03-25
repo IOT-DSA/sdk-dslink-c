@@ -228,6 +228,19 @@ void dslink_reconnect_timer(uv_timer_t *timer) {
 void dslink_close(DSLink *link) {
     link->closing = 1;
     wslay_event_queue_close(link->_ws, WSLAY_CODE_NORMAL_CLOSURE, NULL, 0);
+    uv_stop(&link->loop);
+}
+
+void dslink_link_free(DSLink *link) {
+    if (link->_ws) {
+        wslay_event_context_free(link->_ws);
+    }
+
+    if (link->msg) {
+        dslink_free(link->msg);
+    }
+
+    dslink_free(link);
 }
 
 int dslink_init(int argc, char **argv,
@@ -404,7 +417,7 @@ int dslink_init(int argc, char **argv,
         uv_timer_start(timer, dslink_reconnect_timer, 5000, 1000);
         uv_run(timer->loop, UV_RUN_DEFAULT);
     } else {
-        dslink_free(link);
+        dslink_link_free(link);
     }
 
     return ret;
