@@ -15,7 +15,7 @@
 #include <broker/upstream/upstream_node.h>
 #include <broker/handshake.h>
 
-
+static
 void upstream_free_dslink(DSLink *link) {
     mbedtls_ecdh_free(&link->key);
     dslink_url_free(link->config.broker_url);
@@ -23,6 +23,30 @@ void upstream_free_dslink(DSLink *link) {
     dslink_free(link);
 }
 
+void upstream_clear_poll(UpstreamPoll *upstreamPoll) {
+    if (upstreamPoll->status == UPSTREAM_CONN) {
+        uv_poll_stop(&upstreamPoll->connPoll);
+        dslink_socket_close_nofree(upstreamPoll->sock);
+        dslink_socket_free(upstreamPoll->sock);
+        upstreamPoll->sock = NULL;
+    } else if (upstreamPoll->status == UPSTREAM_WS) {
+
+    }
+    broker_close_link(upstreamPoll->remoteDSLink);
+    upstream_free_dslink(upstreamPoll->clientDslink);
+    upstreamPoll->clientDslink = NULL;
+    upstreamPoll->remoteDSLink = NULL;
+    upstreamPoll->sock = NULL;
+    upstreamPoll->ws = NULL;
+    upstreamPoll->status = UPSTREAM_NONE;
+}
+
+void upstream_free_poll(UpstreamPoll *upstreamPoll) {
+    upstream_clear_poll(upstreamPoll);
+}
+void upstream_reconnect(UpstreamPoll *upstreamPoll) {
+    upstream_clear_poll(upstreamPoll);
+}
 static
 void upstream_io_handler(uv_poll_t *poll, int status, int events) {
     (void) events;
@@ -31,10 +55,15 @@ void upstream_io_handler(uv_poll_t *poll, int status, int events) {
     }
     UpstreamPoll *upstreamPoll = poll->data;
     int stat = wslay_event_recv(upstreamPoll->ws);
-    if (stat == 0 && (upstreamPoll->ws->error == WSLAY_ERR_NO_MORE_MSG
-                      || upstreamPoll->ws->error == 0)) {
-        uv_stop(upstreamPoll->loop);
+    if ((stat == 0 && (upstreamPoll->ws->error == WSLAY_ERR_NO_MORE_MSG
+                      || upstreamPoll->ws->error == 0))) {
+        upstream_reconnect(upstreamPoll);
     }
+//     else if (upstreamPoll->remoteDSLink->pendingClose) {
+//        broker_close_link(upstreamPoll->remoteDSLink);
+//    }
+
+
 }
 
 static
@@ -74,6 +103,7 @@ void upstream_handshake_handle_ws(UpstreamPoll *upstreamPoll) {
 
     wslay_event_context_ptr ptr;
     if (wslay_event_context_client_init(&ptr, &callbacks, link) != 0) {
+        upstreamPoll->status = UPSTREAM_NONE;
         return;
     }
     upstreamPoll->ws = ptr;
@@ -81,11 +111,11 @@ void upstream_handshake_handle_ws(UpstreamPoll *upstreamPoll) {
 
     mbedtls_net_set_nonblock(&upstreamPoll->clientDslink->_socket->socket_fd);
 
-    uv_poll_init(upstreamPoll->loop, &upstreamPoll->wsPoll, upstreamPoll->clientDslink->_socket->socket_fd.fd);
+    uv_poll_init(mainLoop, &upstreamPoll->wsPoll, upstreamPoll->clientDslink->_socket->socket_fd.fd);
     upstreamPoll->wsPoll.data = upstreamPoll;
     uv_poll_start(&upstreamPoll->wsPoll, UV_READABLE, upstream_io_handler);
 
-    init_upstream_node(upstreamPoll->loop->data, upstreamPoll);
+    init_upstream_node(mainLoop->data, upstreamPoll);
 }
 
 static
@@ -146,14 +176,63 @@ void connect_conn_callback(uv_poll_t *handle, int status, int events) {
         upstreamPoll->clientDslink->_socket = upstreamPoll->sock;
 
         upstream_handshake_handle_ws(upstreamPoll);
-
+        upstreamPoll->status = UPSTREAM_WS;
+    } else {
+        upstreamPoll->status = UPSTREAM_NONE;
+        //TODO reconnect?
     }
     exit:
     json_decref(handshake);
 
 }
 
-void upstream_connect_conn(uv_loop_t *loop, const char *brokerUrl, const char *name, const char *idPrefix) {
+void upstream_connect_conn(UpstreamPoll *upstreamPoll,  const char *brokerUrl) {
+
+    RemoteDSLink *link = dslink_calloc(1, sizeof(RemoteDSLink));
+    broker_remote_dslink_init(link);
+    link->isUpstream = 1;
+    link->isRequester = 1;
+    link->isResponder = 1;
+    link->broker = mainLoop->data;
+    link->name = dslink_strdup(upstreamPoll->name);
+    upstreamPoll->remoteDSLink = link;
+
+    DSLink *clientDslink = dslink_calloc(1, sizeof(DSLink));
+    clientDslink->is_requester = 1;
+    clientDslink->is_responder = 1;
+    dslink_handle_key(clientDslink);
+
+    clientDslink->config.name = dslink_strdup(upstreamPoll->idPrefix);
+    clientDslink->config.broker_url = dslink_url_parse(brokerUrl);
+
+    char *dsId;
+    Socket *sock;
+
+    char *conndata = dslink_handshake_generate_req(clientDslink, &dsId);
+
+    if (dslink_socket_connect(&sock, clientDslink->config.broker_url->host,
+                              clientDslink->config.broker_url->port,
+                              clientDslink->config.broker_url->secure) != 0) {
+        goto exit;
+    }
+    dslink_socket_write(sock, conndata, strlen(conndata));
+
+
+
+    uv_poll_init(mainLoop, &upstreamPoll->connPoll, sock->socket_fd.fd);
+
+    upstreamPoll->dsId = dslink_strdup(dsId);
+    upstreamPoll->connPoll.data = upstreamPoll;
+    upstreamPoll->clientDslink = clientDslink;
+    upstreamPoll->sock = sock;
+    upstreamPoll->status = UPSTREAM_CONN;
+
+    uv_poll_start(&upstreamPoll->connPoll, UV_READABLE, connect_conn_callback);
+
+    exit:
+    dslink_free(dsId);
+}
+void upstream_create_poll(uv_loop_t *loop, const char *brokerUrl, const char *name, const char *idPrefix) {
     Broker *broker = loop->data;
     ref_t *ref = dslink_map_get(broker->upstream->children, (void*)name);
     if (ref) {
@@ -172,47 +251,5 @@ void upstream_connect_conn(uv_loop_t *loop, const char *brokerUrl, const char *n
         node->upstreamPoll = upstreamPoll;
     }
 
-    RemoteDSLink *link = dslink_calloc(1, sizeof(RemoteDSLink));
-    broker_remote_dslink_init(link);
-    link->isUpstream = 1;
-    link->isRequester = 1;
-    link->isResponder = 1;
-    link->broker = loop->data;
-    link->name = dslink_strdup(name);
-    upstreamPoll->remoteDSLink = link;
-
-    DSLink *clientDslink = dslink_calloc(1, sizeof(DSLink));
-    clientDslink->is_requester = 1;
-    clientDslink->is_responder = 1;
-    dslink_handle_key(clientDslink);
-
-    clientDslink->config.name = dslink_strdup(idPrefix);
-    clientDslink->config.broker_url = dslink_url_parse(brokerUrl);
-
-    char *dsId;
-    Socket *sock;
-
-    char *conndata = dslink_handshake_generate_req(clientDslink, &dsId);
-
-    if (dslink_socket_connect(&sock, clientDslink->config.broker_url->host,
-                              clientDslink->config.broker_url->port,
-                              clientDslink->config.broker_url->secure) != 0) {
-        goto exit;
-    }
-    dslink_socket_write(sock, conndata, strlen(conndata));
-
-
-
-    uv_poll_init(loop, &upstreamPoll->connPoll, sock->socket_fd.fd);
-
-    upstreamPoll->dsId = dslink_strdup(dsId);
-    upstreamPoll->connPoll.data = upstreamPoll;
-    upstreamPoll->loop = loop;
-    upstreamPoll->clientDslink = clientDslink;
-    upstreamPoll->sock = sock;
-
-    uv_poll_start(&upstreamPoll->connPoll, UV_READABLE, connect_conn_callback);
-
-    exit:
-    dslink_free(dsId);
+    upstream_connect_conn(upstreamPoll, brokerUrl);
 }
