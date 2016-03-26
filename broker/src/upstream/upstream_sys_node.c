@@ -142,8 +142,8 @@ int upstream_enable_changed(Listener * listener, void * node) {
             upstream_create_poll(json_string_value(urlJson),
                                  json_string_value(namejson), json_string_value(brokerNameJson));
         }
-        save_upstream_node(parentNode);
     }
+    save_upstream_node(parentNode);
     return 0;
 }
 
