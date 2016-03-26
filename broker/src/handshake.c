@@ -186,7 +186,7 @@ json_t *broker_handshake_handle_conn(Broker *broker,
             ref_t *ref = dslink_map_get(&broker->client_connecting, name);
             if (ref) {
                 RemoteDSLink *l = ref->data;
-                if (strcmp(l->dsId->data, dsId) == 0) {
+                if (l && l->dsId && strcmp(l->dsId->data, dsId) == 0) {
                     dslink_map_remove(&broker->client_connecting, name);
                     broker_remote_dslink_free(l);
                     break;
