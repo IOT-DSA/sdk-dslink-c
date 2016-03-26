@@ -1,21 +1,22 @@
-# sdk-dslink-c
+# DSA C SDK
 
 [![Build Status](https://travis-ci.org/IOT-DSA/sdk-dslink-c.svg?branch=master)](https://travis-ci.org/IOT-DSA/sdk-dslink-c)
 
-C binding for the DSA API.
-
-This binding is currently under heavy development. This means APIs can change at any time
-and is feature incomplete!
+An implementation of a DSA SDK and Broker written in C.
 
 # Building
 
-- CMake >=2.8
+## Requirements
 
-## For *nix
+- CMake v3.0+
 
+## Unix
+
+Execute the following command:
 ```bash
-mkdir build
-cd build
-cmake -DDSLINK_BUILD_EXAMPLES=ON -DDSLINK_BUILD_BROKER=ON ..
-make
+./tools/build.sh
 ```
+
+## Windows
+
+**Coming Soon**
