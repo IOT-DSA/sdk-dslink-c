@@ -119,7 +119,12 @@ int upstream_enable_changed(Listener * listener, void * node) {
 
         ref_t *ref = dslink_map_get(broker->upstream->children, (void*)parentNode->name);
         if (ref) {
-            broker_node_free(ref->data);
+            DownstreamNode *upstreamNode = ref->data;
+            if (upstreamNode->upstreamPoll) {
+                upstream_clear_poll(upstreamNode->upstreamPoll);
+                dslink_free(upstreamNode->upstreamPoll);
+                upstreamNode->upstreamPoll = NULL;
+            }
         }
     } else {
         // start upstream poll

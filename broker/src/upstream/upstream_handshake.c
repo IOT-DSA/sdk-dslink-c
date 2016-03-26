@@ -53,9 +53,6 @@ void upstream_clear_poll(UpstreamPoll *upstreamPoll) {
     upstreamPoll->status = UPSTREAM_NONE;
 }
 
-void upstream_free_poll(UpstreamPoll *upstreamPoll) {
-    upstream_clear_poll(upstreamPoll);
-}
 void upstrem_handle_reconnect(uv_timer_t* handle) {
     UpstreamPoll *upstreamPoll = handle->data;
     upstream_connect_conn(upstreamPoll);
@@ -147,6 +144,11 @@ void connect_conn_callback(uv_poll_t *handle, int status, int events) {
     (void) status;
     (void) events;
     UpstreamPoll *upstreamPoll = handle->data;
+
+    uv_poll_stop(handle);
+    uv_close((uv_handle_t*)handle, broker_free_handle);
+    upstreamPoll->connPoll = NULL;
+
     char *resp = NULL;
 
     int respLen = 0;
@@ -174,7 +176,7 @@ void connect_conn_callback(uv_poll_t *handle, int status, int events) {
     dslink_parse_handshake_response(resp, &handshake);
 
     dslink_free(resp);
-    uv_poll_stop(handle);
+
     dslink_socket_close_nofree(upstreamPoll->sock);
     dslink_socket_free(upstreamPoll->sock);
     upstreamPoll->sock = NULL;
