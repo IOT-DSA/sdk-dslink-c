@@ -204,13 +204,14 @@ if (DSLINK_BUILD_BROKER)
 
     add_library(sdk_broker_c SHARED $<TARGET_OBJECTS:sdk_broker_c-object>)
     target_link_libraries(sdk_broker_c sdk_dslink_c)
+    target_include_directories(sdk_broker_c PUBLIC "broker/include")
 
     add_library(sdk_broker_c-static STATIC $<TARGET_OBJECTS:sdk_broker_c-object>)
     target_link_libraries(sdk_broker_c-static sdk_dslink_c-static)
+    target_include_directories(sdk_broker_c-static PUBLIC "broker/include")
 
     add_executable(broker "${BROKER_SRC_DIR}/main.c")
-    target_link_libraries(broker sdk_broker_c sdk_dslink_c-static)
-    target_include_directories(sdk_broker_c PUBLIC "broker/include")
+    target_link_libraries(broker sdk_broker_c-static)
 endif()
 
 ###### Configure Examples ######
@@ -219,6 +220,6 @@ if (DSLINK_BUILD_EXAMPLES)
     foreach(example "responder" "requester")
         include("${CMAKE_CURRENT_SOURCE_DIR}/examples/${example}/CMakeLists.txt")
         add_executable(${example} ${EXAMPLE_SRC})
-        target_link_libraries(${example} sdk_dslink_c)
+        target_link_libraries(${example} sdk_dslink_c-static)
     endforeach()
 endif()
