@@ -5,6 +5,7 @@
 #include "rng.h"
 #include "invoke.h"
 
+// Called to initialize your node structure.
 void init(DSLink *link) {
     DSNode *superRoot = link->responder->super_root;
 
@@ -15,23 +16,31 @@ void init(DSLink *link) {
     log_info("Initialized!\n");
 }
 
+// Called when the DSLink is connected.
 void connected(DSLink *link) {
     (void) link;
     log_info("Connected!\n");
 }
 
+// Called when the DSLink is disconnected.
+// If this was not initiated by dslink_close,
+// then a reconnection attempt is made.
 void disconnected(DSLink *link) {
     (void) link;
     log_info("Disconnected!\n");
 }
 
+// The main function.
 int main(int argc, char **argv) {
-    DSLinkCallbacks cbs = {
-        init,
-        connected,
-        disconnected,
-        NULL
+    DSLinkCallbacks cbs = { // Create our callback struct.
+        init, // init_cb
+        connected, //on_connected_cb
+        disconnected, // on_disconnected_cb
+        NULL // on_requester_ready_cb
     };
 
-    return dslink_init(argc, argv, "C-Resp", 0, 1, &cbs);
+    // Initializes a DSLink and handles reconnection.
+    // Pass command line arguments, our dsId,
+    // are we a requester?, are we a responder?, and a reference to our callbacks.
+    return dslink_init(argc, argv, "C-Responder", 0, 1, &cbs);
 }
