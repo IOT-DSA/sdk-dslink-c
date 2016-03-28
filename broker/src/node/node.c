@@ -1,3 +1,5 @@
+#include "broker/node.h"
+
 #include <stdlib.h>
 #include <string.h>
 

@@ -226,6 +226,8 @@ int broker_init(Broker *broker) {
         broker_node_free(broker->downstream);
         goto fail;
     }
+    broker_load_downstream_nodes(broker);
+
 
     if (broker_sys_node_populate(broker->sys)) {
         goto fail;

@@ -31,6 +31,10 @@ typedef struct Broker {
 
     // Map<char *path, List<PendingSub *> *>
     Map local_pending_sub;
+
+    uv_timer_t *saveConnsHandler;
+
+    uv_timer_t *saveDataHandler;
 } Broker;
 
 extern uv_loop_t *mainLoop;

@@ -50,6 +50,7 @@ void permission_groups_free(PermissionGroups* groups);
 
 void virtual_permission_init(VirtualPermissionNode* node);
 void virtual_permission_free(VirtualPermissionNode* node);
+// free a children map of virtual permissions
 void virtual_permission_free_map(Map* map);
 
 // permission list for node or virtual node
