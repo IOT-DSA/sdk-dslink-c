@@ -1,4 +1,7 @@
 name: dsa_c_broker_testcase
 description: 
 dependencies:
-  dslink: any
+  dslink:
+    git: https://github.com/IOT-DSA/sdk-dslink-dart.git
+  test: "^0.12.13"
+  uuid: "^0.5.0"

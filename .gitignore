@@ -9,3 +9,7 @@ test/dart/**/packages
 pubspec.lock
 .pub
 dists/
+.dslink.key
+.key
+nodes.json
+
