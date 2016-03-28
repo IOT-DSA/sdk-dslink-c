@@ -12,6 +12,7 @@ option(TOOLCHAIN_DYNAMIC_LINK_ENABLE "Enable Dynamic Linking for Toolchain" ON)
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/tools/cmake)
 
 include(MacroEnsureOutOfSourceBuild)
+ensure_out_of_source_build("Please do not build the C SDK inside the source directory.")
 
 ##### Check Configuration #####
 
