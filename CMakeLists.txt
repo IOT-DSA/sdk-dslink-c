@@ -7,6 +7,19 @@ option(DSLINK_BUILD_EXAMPLES "Whether to build the examples" OFF)
 option(DSLINK_TEST "Whether to enable tests" OFF)
 option(TOOLCHAIN_DYNAMIC_LINK_ENABLE "Enable Dynamic Linking for Toolchain" ON)
 
+##### Configure CMake Modules #####
+
+set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/tools/cmake)
+
+include(MacroEnsureOutOfSourceBuild)
+
+##### Check Configuration #####
+
+if ("${CMAKE_GENERATOR}" STREQUAL "Ninja" AND DSLINK_TEST)
+    message(WARNING "C SDK Unit Tests are currently not supported under Ninja.")
+    set(DSLINK_TEST OFF)
+endif()
+
 ##### Define Macros #####
 
 macro(ADD_C_FLAGS flags)
