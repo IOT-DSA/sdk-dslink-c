@@ -6,6 +6,20 @@
 #include "broker/stream.h"
 #include "broker/msg/msg_list.h"
 
+
+static
+BrokerListStream *init_remote_list_stream(DownstreamNode *node, const char *path,
+                                         RemoteDSLink *reqLink, uint32_t reqRid, uint32_t respRid) {
+    BrokerListStream *stream = broker_stream_list_init(node);
+    stream->remote_path = dslink_strdup(path);
+    stream->responder_rid = respRid;
+
+    dslink_map_set(&node->list_streams, dslink_str_ref(path),
+                   dslink_ref(stream, NULL));
+    broker_add_requester_list_stream(reqLink, stream, reqRid);
+    return stream;
+}
+
 static
 void send_list_request(BrokerListStream *stream,
                        DownstreamNode *node,
@@ -36,13 +50,7 @@ void send_list_request(BrokerListStream *stream,
     json_decref(top);
 
     if (stream == NULL) {
-        stream = broker_stream_list_init(node);
-        stream->remote_path = dslink_strdup(path);
-        stream->responder_rid = rid;
-
-        dslink_map_set(&node->list_streams, dslink_str_ref(path),
-                       dslink_ref(stream, NULL));
-        broker_add_requester_list_stream(reqLink, stream, reqRid);
+        stream = init_remote_list_stream(node, path, reqLink, reqRid, rid);
     }
     // can be first time list
     // can also happen after link disconnect and reconnect
@@ -66,6 +74,12 @@ void broker_list_dslink(RemoteDSLink *reqLink,
     }
     if (node->link) {
         send_list_request(NULL, node, reqLink, path, reqRid);
+    } else {
+        // initialize a disconnected stream
+        BrokerListStream *stream = init_remote_list_stream(node, path, reqLink, reqRid, 0);
+        // reset cache to disconnected state
+        broker_stream_list_reset_remote_cache(stream, NULL);
+        send_list_updates(reqLink, stream, reqRid);
     }
 }
 
