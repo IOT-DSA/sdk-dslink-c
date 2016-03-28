@@ -150,7 +150,7 @@ set(BROKER_SRC
     "${BROKER_SRC_DIR}/broker.c"
     "${BROKER_SRC_DIR}/config.c"
     "${BROKER_SRC_DIR}/handshake.c"
-    "${BROKER_SRC_DIR}/node.c"
+    "${BROKER_SRC_DIR}/node/node.c"
     "${BROKER_SRC_DIR}/remote_dslink.c"
     "${BROKER_SRC_DIR}/stream.c"
     "${BROKER_SRC_DIR}/utils.c"
