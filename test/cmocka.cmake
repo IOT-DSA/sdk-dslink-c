@@ -22,3 +22,5 @@ ExternalProject_Add(cmocka_bundle
         BUILD_COMMAND make cmocka_static
         INSTALL_COMMAND ""
 )
+
+set(CMOCKA_INCLUDE_DIR ${source_dir}/include GLOBAL)
