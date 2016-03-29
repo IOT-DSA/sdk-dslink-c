@@ -1,3 +1,4 @@
+#include <broker/sys/permission_action.h>
 #include "broker/global.h"
 #include "broker/query/query.h"
 #include "broker/sys/sys.h"
@@ -84,5 +85,6 @@ int broker_sys_node_populate(BrokerNode *sysNode) {
     init_sys_upstream_node(sysNode);
     init_sys_static(sysNode);
     init_clear_conns(sysNode);
+    init_update_permissions_action(sysNode);
     return 0;
 }

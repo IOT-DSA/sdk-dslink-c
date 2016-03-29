@@ -48,17 +48,22 @@ typedef struct VirtualPermissionNode {
 void permission_groups_init(PermissionGroups* groups);
 void permission_groups_free(PermissionGroups* groups);
 
+
+
 void virtual_permission_init(VirtualPermissionNode* node);
 void virtual_permission_free(VirtualPermissionNode* node);
 // free a children map of virtual permissions
 void virtual_permission_free_map(Map* map);
 
 // permission list for node or virtual node
+void permission_list_free(List* list);
 json_t *permission_list_save(List * permissionList);
 List *permission_list_load(json_t *json);
 
 
 PermissionLevel get_permission(const char* path, struct BrokerNode* rootNode, struct RemoteDSLink *reqLink);
+
+uint8_t set_permission(const char* path, struct BrokerNode* rootNode, struct RemoteDSLink *reqLink, json_t *json);
 
 #ifdef __cplusplus
 }

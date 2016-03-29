@@ -29,13 +29,8 @@ void virtual_permission_init(VirtualPermissionNode* node) {
 
 void virtual_permission_free(VirtualPermissionNode* pnode) {
     virtual_permission_free_map(&pnode->childrenNode);
-    dslink_map_free(&pnode->childrenNode);
-    dslink_list_foreach(pnode->permissionList) {
-        PermissionPair * pair = ((ListNode*)node)->value;
-        dslink_free(pair->group);
-        dslink_free(pair);
-    }
-    dslink_list_free(pnode->permissionList);
+    permission_list_free(pnode->permissionList);
+    dslink_free(pnode);
 }
 
 void virtual_permission_free_map(Map* map) {
@@ -139,7 +134,6 @@ void get_node_permission(const char* path, BrokerNode* node,
         }
     }
 
-
     if (name != path) {
         dslink_free(name);
     }
@@ -165,7 +159,101 @@ PermissionLevel get_permission(const char* path, BrokerNode* rootNode, RemoteDSL
     return maxLevel;
 }
 
+
+static
+uint8_t set_virtual_permission(const char* path, VirtualPermissionNode* node, json_t *json) {
+    if (!path || *path == 0) {
+        List *permissions = permission_list_load(json);
+        permission_list_free(node->permissionList);
+        node->permissionList = permissions;
+        return 0;
+    } else {
+        const char* next = strstr(path, "/");
+        char* name;
+        if (next) {
+            name = dslink_calloc(next - path + 1, 1);
+            memcpy(name, path, next-path);
+            next ++; // remove '/'
+        } else {
+            name = (char*)path;
+        }
+        ref_t *ref = dslink_map_get(&node->childrenNode, name);
+        VirtualPermissionNode *child;
+        if (ref && ref->data) {
+            child = ref->data;
+        } else {
+            child = dslink_calloc(1, sizeof(VirtualPermissionNode));
+            virtual_permission_init(child);
+            dslink_map_set(&node->childrenNode, dslink_str_ref(name), dslink_ref(child, NULL));
+        }
+        return set_virtual_permission(next, child, json);
+    }
+}
+
+static
+uint8_t set_node_permission(const char* path, BrokerNode* node, json_t *json) {
+    if (!path || *path == 0) {
+        List *permissions = permission_list_load(json);
+        permission_list_free(node->permissionList);
+        node->permissionList = permissions;
+        return 0;
+    } else {
+        const char* next = strstr(path, "/");
+        char* name;
+        if (next) {
+            name = dslink_calloc(next - path + 1, 1);
+            memcpy(name, path, next-path);
+            next ++; // remove '/'
+        } else {
+            name = (char*)path;
+        }
+        if (node->type == DOWNSTREAM_NODE) {
+            ref_t *ref = dslink_map_get(&((DownstreamNode *)node)->children_permissions, name);
+            VirtualPermissionNode *child;
+            if (ref && ref->data) {
+                child = ref->data;
+            } else {
+                child = dslink_calloc(1, sizeof(VirtualPermissionNode));
+                virtual_permission_init(child);
+                dslink_map_set(&((DownstreamNode *)node)->children_permissions, dslink_str_ref(name), dslink_ref(child, NULL));
+            }
+            return set_virtual_permission(next, child, json);
+        } else {
+            ref_t *ref = dslink_map_get(node->children, name);
+            if (ref && ref->data) {
+                BrokerNode *child = ref->data;
+                return set_node_permission(next, child, json);
+            } else {
+                return 1;
+            }
+        }
+    }
+}
+uint8_t set_permission(const char* path, struct BrokerNode* rootNode, struct RemoteDSLink *reqLink, json_t *json) {
+    if (!json_is_array(json)) {
+        return 1;
+    }
+    PermissionLevel level = get_permission(path, rootNode, reqLink);
+    if (level != PERMISSION_CONFIG) {
+        return 1;
+    }
+    return set_node_permission(path+1, rootNode, json);
+}
+
+
 // permission list for node or virtual node
+void permission_list_free(List* list) {
+    if (!list) {
+        return;
+    }
+    dslink_list_foreach(list) {
+        PermissionPair * pair = ((ListNode*)node)->value;
+        dslink_free(pair->group);
+        dslink_free(pair);
+    }
+    dslink_list_free(list);
+}
+
 json_t *permission_list_save(List * permissionList) {
     if (permissionList || list_is_empty(permissionList)) {
         return NULL;
@@ -185,7 +273,7 @@ json_t *permission_list_save(List * permissionList) {
 }
 
 List *permission_list_load(json_t *json) {
-    if (!json_is_array(json)) {
+    if (!json_is_array(json) || json_array_size(json) == 0) {
         return NULL;
     }
     List *rslt = dslink_calloc(1, sizeof(List));

@@ -161,7 +161,7 @@ set(BROKER_SRC
     "${BROKER_SRC_DIR}/upstream/upstream_node.c"
     "${BROKER_SRC_DIR}/permission/permission.c"
     "${BROKER_SRC_DIR}/sys/clear_conns.c"
-    "${BROKER_SRC_DIR}/upstream/upstream_handshake.c" broker/src/node/node_serialization.c)
+    "${BROKER_SRC_DIR}/upstream/upstream_handshake.c" broker/src/node/node_serialization.c broker/src/sys/permission_action.c)
 
 set(EXAMPLE_RESPONDER_SRC_DIR "${CMAKE_CURRENT_LIST_DIR}/examples/responder/src")
 set(EXAMPLE_RESPONDER_SRC
