@@ -215,6 +215,7 @@ int broker_init(Broker *broker) {
 
     broker->data = broker_node_create("data", "node");
     if (!(broker->data && broker_node_add(broker->root, broker->data) == 0
+          && broker_load_data_nodes(broker) == 0
           && broker_data_node_populate(broker->data) == 0)) {
         broker_node_free(broker->data);
         goto fail;

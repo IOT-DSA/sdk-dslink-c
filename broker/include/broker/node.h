@@ -90,12 +90,12 @@ void broker_dslink_connect(DownstreamNode *node, struct RemoteDSLink *link);
 // add a timer to save downstream nodes
 void broker_downstream_nodes_changed(struct Broker *broker);
 void broker_save_downstream_nodes(uv_timer_t* handle);
-void broker_load_downstream_nodes(struct Broker *broker);
+int broker_load_downstream_nodes(struct Broker *broker);
 
 // add a timer to save data nodes
 void broker_data_nodes_changed(struct Broker *broker);
 void broker_save_data_nodes(uv_timer_t* handle);
-void broker_load_data_nodes(struct Broker *broker);
+int broker_load_data_nodes(struct Broker *broker);
 
 #ifdef __cplusplus
 }

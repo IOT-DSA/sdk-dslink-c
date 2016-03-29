@@ -87,7 +87,7 @@ void broker_load_downstream_virtual_nodes(Map *map, const char *name, json_t *da
     }
 }
 
-void broker_load_downstream_nodes(Broker *broker) {
+int broker_load_downstream_nodes(Broker *broker) {
     BrokerNode *downstream = broker->downstream;
 
     char path[512];
@@ -121,16 +121,52 @@ void broker_load_downstream_nodes(Broker *broker) {
         }
         json_decref(top);
     }
+    return 0;
 }
 
 void broker_data_nodes_changed(Broker *broker) {
+    if (!broker) {
+        // broker == NULL, during deserialization
+        return;
+    }
     if (!broker->saveDataHandler) {
         broker->saveDataHandler = dslink_calloc(1, sizeof(uv_timer_t));
         uv_timer_init(mainLoop, broker->saveDataHandler);
-        uv_timer_start(broker->saveDataHandler, broker_save_downstream_nodes, 100, 0);
+        uv_timer_start(broker->saveDataHandler, broker_save_data_nodes, 100, 0);
     }
 }
 
+static
+json_t *broker_save_data_node(BrokerNode *node) {
+    json_t *data = json_object();
+
+    // save metadata
+    const char *key;
+    json_t *value;
+    json_object_foreach(data, key, value) {
+
+        json_object_set_nocheck(data, key, value);
+    }
+
+    // save permission list
+    json_t *plist = permission_list_save(node->permissionList);
+    if (plist) {
+        json_object_set_new_nocheck(data, "?permissions", plist);
+    }
+
+    // save children
+    dslink_map_foreach(node->children) {
+        BrokerNode *childNode = entry->value->data;
+        // don't serialize actions
+        if (!json_object_get(childNode->meta, "$invokable")) {
+            json_t *childData = broker_save_data_node(childNode);
+            json_object_set_new(data, entry->key->data, childData);
+        }
+
+    }
+
+    return data;
+}
 void broker_save_data_nodes(uv_timer_t* handle) {
     Broker *broker = mainLoop->data;
     if (handle) {
@@ -138,8 +174,21 @@ void broker_save_data_nodes(uv_timer_t* handle) {
         uv_close((uv_handle_t *)handle, broker_free_handle);
         broker->saveDataHandler = NULL;
     }
+
+    json_t *top = broker_save_data_node(broker->data);
+
+
+    char path[512];
+
+    int len = snprintf(path, sizeof(path) - 1, "data.json");
+    path[len] = '\0';
+
+    json_dump_file(top, path, JSON_PRESERVE_ORDER | JSON_ENCODE_ANY | JSON_INDENT(2));
+    json_decref(top);
 }
 
-void broker_load_data_nodes(Broker *broker) {
+int broker_load_data_nodes(Broker *broker) {
     (void)broker;
+
+    return 0;
 }

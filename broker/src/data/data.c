@@ -109,6 +109,7 @@ void on_add_node_invoked(RemoteDSLink *link,
         broker_node_free(child);
         return;
     }
+    broker_data_nodes_changed(link->broker);
 }
 
 static
@@ -166,6 +167,7 @@ void on_add_value_invoked(RemoteDSLink *link,
         return;
     }
     handle_pending_sub(link->broker, child);
+    broker_data_nodes_changed(link->broker);
 }
 
 void broker_create_dynamic_data_node(Broker *broker, BrokerNode *node,
@@ -222,6 +224,7 @@ void broker_create_dynamic_data_node(Broker *broker, BrokerNode *node,
 
         broker_create_dynamic_data_node(broker, child, name,
                                         value, serialize);
+        broker_data_nodes_changed(broker);
     }
 }
 
@@ -286,7 +289,7 @@ int create_actions(BrokerNode *node) {
 }
 
 static
-void deserialize_data_nodes(BrokerNode *root) {
+void deserialize_data_node_values(BrokerNode *root) {
     uv_fs_t dir;
     if (uv_fs_scandir(NULL, &dir, "data", 0, NULL) < 0) {
         return;
@@ -333,7 +336,7 @@ int broker_data_node_populate(BrokerNode *dataNode) {
     addNode->on_invoke = on_add_node_invoked;
     addValue->on_invoke = on_add_value_invoked;
     publish->on_invoke = on_publish_invoked;
-    deserialize_data_nodes(dataNode->parent);
+    deserialize_data_node_values(dataNode->parent);
 
     return 0;
 }
