@@ -13,6 +13,7 @@
 #include <broker/upstream/upstream_node.h>
 #include <broker/handshake.h>
 #include <broker/utils.h>
+#include <string.h>
 
 static
 void upstream_free_dslink(DSLink *link) {
