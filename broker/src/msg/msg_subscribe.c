@@ -12,7 +12,8 @@
 static
 void send_subscribe_request(DownstreamNode *node,
                             const char *path,
-                            uint32_t sid) {
+                            uint32_t sid,
+                            uint8_t qos) {
     json_t *top = json_object();
     json_t *reqs = json_array();
     json_object_set_new_nocheck(top, "requests", reqs);
@@ -29,6 +30,7 @@ void send_subscribe_request(DownstreamNode *node,
     json_array_append_new(paths, p);
     json_object_set_new_nocheck(p, "path", json_string(path));
     json_object_set_new_nocheck(p, "sid", json_integer(sid));
+    json_object_set_new_nocheck(p, "qos", json_integer(qos));
 
     broker_ws_send_obj(node->link, top);
     json_decref(top);
@@ -77,7 +79,7 @@ int handle_data_val_update(Listener *listener, void *data) {
 void broker_handle_local_subscribe(BrokerNode *node,
                                    RemoteDSLink *link,
                                    uint32_t sid) {
-    ref_t * exist = dslink_map_get(&link->local_subs, &sid);
+    ref_t *exist = dslink_map_get(&link->local_subs, &sid);
     if (exist) {
         Listener *existListener = exist->data;
         if (existListener->list == &node->on_value_update.list) {
@@ -107,15 +109,15 @@ void broker_handle_local_subscribe(BrokerNode *node,
 }
 
 void broker_subscribe_remote(DownstreamNode *respNode, RemoteDSLink *reqLink,
-                             uint32_t sid, const char *path,
+                             uint32_t sid, uint8_t qos, const char *path,
                              const char *respPath) {
     ref_t *ref = dslink_map_get(&respNode->link->sub_paths, (void *) path);
     if (ref) {
         BrokerSubStream *bss = ref->data;
 
-        ref_t* existingSub = dslink_map_remove_get(&bss->clients, reqLink);
+        ref_t *existingSub = dslink_map_remove_get(&bss->clients, reqLink);
         if (existingSub) {
-            uint32_t * existSid = existingSub->data;
+            uint32_t *existSid = existingSub->data;
             dslink_map_remove(&reqLink->req_sub_sids, existSid);
             dslink_decref(existingSub);
         }
@@ -150,7 +152,7 @@ void broker_subscribe_remote(DownstreamNode *respNode, RemoteDSLink *reqLink,
     }
 
     uint32_t respSid = broker_node_incr_sid(respNode);
-    send_subscribe_request(respNode, respPath, respSid);
+    send_subscribe_request(respNode, respPath, respSid, qos);
     BrokerSubStream *bss = broker_stream_sub_init();
     bss->responder = respNode->link;
     bss->responder_sid = respSid;
@@ -173,11 +175,12 @@ void broker_subscribe_remote(DownstreamNode *respNode, RemoteDSLink *reqLink,
 }
 
 static
-void add_pending_sub(List *subs, const char* path, uint32_t sid, RemoteDSLink *reqLink) {
+void add_pending_sub(List *subs, const char *path, uint32_t sid, uint8_t qos, RemoteDSLink *reqLink) {
     PendingSub *ps = dslink_malloc(sizeof(PendingSub));
     ps->path = dslink_strdup(path);
     ps->requester = reqLink;
     ps->reqSid = sid;
+    ps->qos = qos;
     ps->req = reqLink->node;
     ListNode *listNode = dslink_list_insert(subs, ps);
     ps->listNode = listNode;
@@ -186,7 +189,7 @@ void add_pending_sub(List *subs, const char* path, uint32_t sid, RemoteDSLink *r
                    dslink_ref(ps, NULL));
 }
 
-void broker_free_pending_sub(PendingSub* sub, uint8_t freeNode) {
+void broker_free_pending_sub(PendingSub *sub, uint8_t freeNode) {
     if (freeNode) {
         list_remove_node(sub->listNode);
         dslink_free(sub->listNode);
@@ -216,7 +219,8 @@ void subs_list_free(void *p) {
 
 void broker_subscribe_disconnected_remote(RemoteDSLink *link,
                                           const char *path,
-                                          uint32_t sid) {
+                                          uint32_t sid,
+                                          uint8_t qos) {
     const char *name;
     if (path[1] == 'd') {
         name = path + sizeof("/downstream");
@@ -243,13 +247,12 @@ void broker_subscribe_disconnected_remote(RemoteDSLink *link,
                        dslink_ref(subs, subs_list_free));
     }
 
-    add_pending_sub(subs, path, sid, link);
-
+    add_pending_sub(subs, path, sid, qos, link);
 }
 
 void broker_subscribe_local_nonexistent(RemoteDSLink *link,
                                          const char *path,
-                                         uint32_t sid) {
+                                         uint32_t sid, uint8_t qos) {
     ref_t *ref = dslink_map_get(&link->broker->local_pending_sub,
                                 (char *) path);
     List *subs;
@@ -263,10 +266,8 @@ void broker_subscribe_local_nonexistent(RemoteDSLink *link,
                        dslink_ref(subs, subs_list_free));
     }
 
-    add_pending_sub(subs, path, sid, link);
+    add_pending_sub(subs, path, sid, qos, link);
 }
-
-
 
 static
 void handle_subscribe(RemoteDSLink *link, json_t *sub) {
@@ -280,11 +281,19 @@ void handle_subscribe(RemoteDSLink *link, json_t *sub) {
     DownstreamNode *node = (DownstreamNode *) broker_node_get(link->broker->root,
                                                               path, &out);
     uint32_t sid = (uint32_t) json_integer_value(jSid);
+
+    json_t *jQos = json_object_get(sub, "qos");
+    uint8_t qos = 0;
+
+    if (json_is_integer(jQos)) {
+        qos = (uint8_t) json_integer_value(jQos);
+    }
+
     if (!node) {
         if (dslink_str_starts_with(path, "/downstream/") || dslink_str_starts_with(path, "/upstream/")) {
-            broker_subscribe_disconnected_remote(link, path, sid);
+            broker_subscribe_disconnected_remote(link, path, sid, qos);
         } else {
-            broker_subscribe_local_nonexistent(link, path, sid);
+            broker_subscribe_local_nonexistent(link, path, sid, qos);
         }
         return;
     }
@@ -293,11 +302,10 @@ void handle_subscribe(RemoteDSLink *link, json_t *sub) {
         broker_handle_local_subscribe((BrokerNode *) node, link, sid);
     } else {
         if (node->link) {
-            broker_subscribe_remote(node, link, sid, path, out);
+            broker_subscribe_remote(node, link, sid, qos, path, out);
         } else {
-            broker_subscribe_disconnected_remote(link, path, sid);
+            broker_subscribe_disconnected_remote(link, path, sid, qos);
         }
-
     }
 }
 

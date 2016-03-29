@@ -71,7 +71,7 @@ void broker_remote_dslink_free(RemoteDSLink *link) {
             uint32_t *sid = entry->value->data;
             broker_subscribe_disconnected_remote(l,
                                                  stream->remote_path->data,
-                                                 *sid);
+                                                 *sid, 0);
         }
         stream->responder = NULL;
     }

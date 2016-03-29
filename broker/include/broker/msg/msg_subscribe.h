@@ -13,6 +13,7 @@ typedef struct PendingSub {
     const char *path;
     RemoteDSLink * requester;
     uint32_t reqSid;
+    uint8_t qos;
     DownstreamNode *req;
     ListNode *listNode;
 } PendingSub;
@@ -23,11 +24,11 @@ void broker_handle_local_subscribe(BrokerNode *node,
                                    uint32_t sid);
 
 void broker_subscribe_remote(DownstreamNode *node, RemoteDSLink *link,
-                             uint32_t sid, const char *path,
+                             uint32_t sid, uint8_t qos, const char *path,
                              const char *respPath);
 void broker_subscribe_disconnected_remote(RemoteDSLink *link,
                                           const char *path,
-                                          uint32_t sid);
+                                          uint32_t sid, uint8_t qos);
 
 void broker_free_pending_sub(PendingSub* sub, uint8_t freeNode);
 
