@@ -106,7 +106,15 @@ int broker_load_downstream_nodes(Broker *broker) {
             if (*nodename == '$' || *nodename == '@') {
                 // skip meta for root node
             } else if (json_is_object(nodemap)){
+                if (!json_is_object(nodemap)) {
+                    continue;
+                }
+                json_t *dsIdJson = json_object_get(nodemap, "$$dsId");
+                if (!json_is_string(dsIdJson)) {
+                    continue;
+                }
                 DownstreamNode *node = broker_init_downstream_node(downstream, nodename);
+                node->dsId = dslink_str_ref(json_string_value(dsIdJson));
 
                 const char *key;
                 json_t *value;
@@ -118,6 +126,7 @@ int broker_load_downstream_nodes(Broker *broker) {
                         broker_load_downstream_virtual_nodes(&node->children_permissions, key, value);
                     }
                 }
+
             }
         }
         json_decref(top);

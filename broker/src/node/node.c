@@ -194,6 +194,7 @@ void broker_node_free(BrokerNode *node) {
         listener_remove_all(&node->on_child_removed);
         json_decref(node->value);
     }
+    permission_list_free(node->permissionList);
 
     if (node->parent) {
         void *tmp = (void *) node->name;
