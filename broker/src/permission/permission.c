@@ -266,7 +266,7 @@ void permission_list_free(List* list) {
 }
 
 json_t *permission_list_save(List * permissionList) {
-    if (permissionList || list_is_empty(permissionList)) {
+    if (!permissionList || list_is_empty(permissionList)) {
         return NULL;
     }
     json_t *rslt = json_array();
@@ -288,6 +288,8 @@ List *permission_list_load(json_t *json) {
         return NULL;
     }
     List *rslt = dslink_calloc(1, sizeof(List));
+    list_init(rslt);
+
     size_t idx;
     json_t *value;
     json_array_foreach(json, idx, value) {
@@ -299,7 +301,7 @@ List *permission_list_load(json_t *json) {
                 const char* vc1 = json_string_value(v1);
                 PermissionLevel p = PERMISSION_NONE;
                 for (; p <= PERMISSION_CONFIG; ++p) {
-                    if (strcmp(vc1, PERMISSION_NAMES[0]) == 0) {
+                    if (strcmp(vc1, PERMISSION_NAMES[p]) == 0) {
                         break;
                     }
                 }
