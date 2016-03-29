@@ -116,7 +116,7 @@ set(DSLINK_SRC
     "${DSLINK_SRC_DIR}/utils.c"
     "${DSLINK_SRC_DIR}/ws.c"
     "${DSLINK_SRC_DIR}/requester.c"
-    )
+)
 
 set(LIBRARY_SRC
     "${ARGTABLE_SRC}"
@@ -161,7 +161,10 @@ set(BROKER_SRC
     "${BROKER_SRC_DIR}/upstream/upstream_node.c"
     "${BROKER_SRC_DIR}/permission/permission.c"
     "${BROKER_SRC_DIR}/sys/clear_conns.c"
-    "${BROKER_SRC_DIR}/upstream/upstream_handshake.c" broker/src/node/node_serialization.c broker/src/sys/permission_action.c)
+    "${BROKER_SRC_DIR}/upstream/upstream_handshake.c"
+    "${BROKER_SRC_DIR}/node/node_serialization.c"
+    "${BROKER_SRC_DIR}/sys/permission_action.c"
+)
 
 set(EXAMPLE_RESPONDER_SRC_DIR "${CMAKE_CURRENT_LIST_DIR}/examples/responder/src")
 set(EXAMPLE_RESPONDER_SRC

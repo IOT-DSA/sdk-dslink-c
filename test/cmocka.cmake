@@ -22,7 +22,7 @@ ExternalProject_Add(cmocka_bundle
     CMAKE_GENERATOR "Unix Makefiles"
     BUILD_COMMAND make cmocka_static
     INSTALL_COMMAND ""
-    )
+)
 
 add_library(cmocka STATIC IMPORTED GLOBAL)
 ExternalProject_Get_Property(cmocka_bundle binary_dir)
