@@ -200,7 +200,7 @@ json_t *broker_handshake_handle_conn(Broker *broker,
             if (ref == NULL) {
                 break;
             }
-            if (strcmp(dsId, ((DownstreamNode *) ref->data)->dsId->data) == 0) {
+            if (!((DownstreamNode *) ref->data)->dsId || strcmp(dsId, ((DownstreamNode *) ref->data)->dsId->data) == 0) {
                 nodeExists = 1;
                 break;
             }
