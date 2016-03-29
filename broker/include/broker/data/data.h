@@ -16,6 +16,8 @@ void broker_data_node_update(BrokerNode *node,
 void broker_create_dynamic_data_node(struct Broker *broker, BrokerNode *node, const char *path,
                                      json_t *value, uint8_t serialize);
 
+int broker_create_data_actions(BrokerNode *node);
+
 #ifdef __cplusplus
 }
 #endif

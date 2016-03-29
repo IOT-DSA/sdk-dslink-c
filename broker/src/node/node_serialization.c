@@ -5,6 +5,7 @@
 #include <broker/handshake.h>
 #include <string.h>
 #include <broker/utils.h>
+#include <broker/data/data.h>
 
 static
 void broker_save_downstream_virtual_nodes(VirtualPermissionNode *node, const char *name, json_t *pdata) {
@@ -74,7 +75,7 @@ void broker_load_downstream_virtual_nodes(Map *map, const char *name, json_t *da
         json_t *value;
         json_object_foreach(data, key, value) {
             if (*key == '?') {
-                if (strcmp(key, "?permissions")) {
+                if (strcmp(key, "?permissions") == 0) {
                     // when loading fails, permissionList will be NULL.
                     node->permissionList = permission_list_load(value);
                 }
@@ -187,8 +188,46 @@ void broker_save_data_nodes(uv_timer_t* handle) {
     json_decref(top);
 }
 
-int broker_load_data_nodes(Broker *broker) {
-    (void)broker;
+static
+void broker_load_data_node(BrokerNode *node, json_t *data) {
 
+    // save metadata
+    const char *key;
+    json_t *value;
+    json_object_foreach(data, key, value) {
+        if (*key == '?') {
+            if (strcmp(key, "?permissions") == 0) {
+                // when loading fails, permissionList will be NULL.
+                node->permissionList = permission_list_load(value);
+            }
+        } if (*key == '$' || *key == '@') {
+            json_object_set_nocheck(node->meta, key, value);
+        } else {
+            BrokerNode *child = broker_node_create(key, "node");
+            json_object_set_new_nocheck(child->meta, "$type",
+                                        json_string_nocheck("dynamic"));
+            json_object_set_new_nocheck(child->meta, "$writable",
+                                        json_string_nocheck("write"));
+
+            broker_node_add(node, child);
+            broker_create_data_actions(child);
+            broker_load_data_node(child, value);
+        }
+    }
+}
+
+int broker_load_data_nodes(Broker *broker) {
+    char path[512];
+
+    int len = snprintf(path, sizeof(path) - 1, "data.json");
+    path[len] = '\0';
+
+    json_error_t err;
+    json_t *top = json_load_file(path, 0, &err);
+
+    if (top) {
+        broker_load_data_node(broker->data, top);
+        json_decref(top);
+    }
     return 0;
 }

@@ -1,3 +1,5 @@
+#include "broker/data/data.h"
+
 #include <stdlib.h>
 #include <dslink/utils.h>
 #include <string.h>
@@ -8,9 +10,6 @@
 #include "broker/broker.h"
 #include "broker/data/data_actions.h"
 #include "broker/net/ws.h"
-
-static
-int create_actions(BrokerNode *node);
 
 void broker_data_node_update(BrokerNode *node,
                              json_t *value,
@@ -109,6 +108,7 @@ void on_add_node_invoked(RemoteDSLink *link,
         broker_node_free(child);
         return;
     }
+    broker_create_data_actions(child);
     broker_data_nodes_changed(link->broker);
 }
 
@@ -162,7 +162,7 @@ void on_add_value_invoked(RemoteDSLink *link,
         return;
     }
 
-    if (create_actions(child) != 0) {
+    if (broker_create_data_actions(child) != 0) {
         broker_node_free(child);
         return;
     }
@@ -205,8 +205,8 @@ void broker_create_dynamic_data_node(Broker *broker, BrokerNode *node,
             return;
         }
 
-         child = broker_node_createl(path, name - path,
-                                     "node", sizeof("node") - 1);
+        child = broker_node_createl(path, name - path,
+                                    "node", sizeof("node") - 1);
         if (!child) {
             return;
         }
@@ -220,7 +220,7 @@ void broker_create_dynamic_data_node(Broker *broker, BrokerNode *node,
             broker_node_free(child);
             return;
         }
-        create_actions(child);
+        broker_create_data_actions(child);
 
         broker_create_dynamic_data_node(broker, child, name,
                                         value, serialize);
@@ -270,8 +270,7 @@ void on_publish_invoked(RemoteDSLink *link,
                    dslink_ref(s, NULL));
 }
 
-static
-int create_actions(BrokerNode *node) {
+int broker_create_data_actions(BrokerNode *node) {
     BrokerNode *addNode = broker_data_create_add_node_action(node);
     BrokerNode *addValue = broker_data_create_add_value_action(node);
     BrokerNode *deleteNode = broker_data_create_delete_action(node);
