@@ -34,7 +34,6 @@ void update_permissions(RemoteDSLink *link,
     }
 }
 
-
 int init_update_permissions_action(BrokerNode *sysNode) {
     BrokerNode *updatePermissionsAction = broker_node_create("updatePermissions", "node");
     if (!updatePermissionsAction) {

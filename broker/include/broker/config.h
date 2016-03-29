@@ -12,6 +12,7 @@ json_t *broker_config_get();
 extern uint8_t broker_enable_token;
 
 int broker_config_load(json_t *json);
+const char *broker_get_storage_path(char *path);
 
 #ifdef __cplusplus
 }

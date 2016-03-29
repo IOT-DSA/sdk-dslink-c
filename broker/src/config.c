@@ -2,24 +2,29 @@
 
 #define LOG_TAG "config"
 #include <dslink/log.h>
+#include <dslink/mem/mem.h>
+
+#include <uv.h>
+
+#include <sys/param.h>
 
 #include "broker/config.h"
 #define BROKER_CONF_LOC "broker.json"
 
 static
 json_t *broker_config_gen() {
-    json_t *server = json_object();
-    if (!server) {
+    json_t *broker = json_object();
+    if (!broker) {
         goto exit;
     }
 
     json_t *http = json_object();
     {
         if (!http) {
-            goto del_server;
+            goto del_broker;
         }
 
-        if (json_object_set_new_nocheck(server, "http", http) != 0) {
+        if (json_object_set_new_nocheck(broker, "http", http) != 0) {
             goto del_http;
         }
 
@@ -30,13 +35,27 @@ json_t *broker_config_gen() {
         }
     }
 
-    json_object_set_new_nocheck(server, "log_level", json_string("info"));
-    json_object_set_new_nocheck(server, "allowAllLinks", json_true());
+    json_object_set_new_nocheck(broker, "log_level", json_string("info"));
+    json_object_set_new_nocheck(broker, "allowAllLinks", json_true());
 
-    if (json_dump_file(server, BROKER_CONF_LOC,
+    json_t *storage = json_object();
+
+    {
+        char cwd[MAXPATHLEN];
+
+        size_t *size = dslink_malloc(sizeof(size_t));
+        uv_cwd(cwd, size);
+        dslink_free(size);
+
+        json_object_set_new_nocheck(storage, "path", json_string(cwd));
+    }
+
+    json_object_set_new_nocheck(broker, "storage", storage);
+
+    if (json_dump_file(broker, BROKER_CONF_LOC,
                        JSON_PRESERVE_ORDER | JSON_INDENT(2)) != 0) {
         log_fatal("Failed to save broker configuration\n");
-        goto del_server;
+        goto del_broker;
     } else {
         log_info("Created and saved the default broker configuration\n");
     }
@@ -44,11 +63,11 @@ json_t *broker_config_gen() {
     goto exit;
 del_http:
     json_delete(http);
-del_server:
-    json_delete(server);
+del_broker:
+    json_delete(broker);
     return NULL;
 exit:
-    return server;
+    return broker;
 }
 
 json_t *broker_config_get() {
@@ -67,6 +86,7 @@ json_t *broker_config_get() {
 }
 
 uint8_t broker_enable_token = 1;
+char *broker_storage_path = ".";
 
 int broker_config_load(json_t* json) {
     // load log level
@@ -89,5 +109,27 @@ int broker_config_load(json_t* json) {
         broker_enable_token = 0;
     }
 
+    json_t *storage = json_object_get(json, "storage");
+
+    if (json_is_object(storage)) {
+        json_t *storagePath = json_object_get(storage, "path");
+
+        if (json_is_string(storagePath)) {
+            broker_storage_path = (char *) json_string_value(storagePath);
+        }
+    }
+
     return 0;
+}
+
+static
+const char *pathcat(const char *parent, const char *child) {
+    size_t size = strlen(parent) + strlen(child) + 2;
+    char *path = dslink_malloc(size);
+    snprintf(path, size, "%s/%s", parent, child);
+    return path;
+}
+
+const char *broker_get_storage_path(char *child) {
+    return pathcat(broker_storage_path, child);
 }

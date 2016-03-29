@@ -9,6 +9,7 @@
 
 #define LOG_TAG "token"
 #include <dslink/log.h>
+#include <broker/config.h>
 
 static
 BrokerNode *tokenRootNode;
@@ -66,7 +67,9 @@ void delete_token_invoke(RemoteDSLink *link,
 static
 void save_token_node(BrokerNode *node) {
     char tmp[128];
-    sprintf(tmp, "token/%s", node->name);
+    const char *base = broker_get_storage_path("token");
+
+    sprintf(tmp, "%s/%s", base, node->name);
     json_dump_file(node->meta, tmp, 0);
 }
 
@@ -89,7 +92,6 @@ void load_token_node(const char* tokenName, json_t* data) {
     broker_node_add(tokenNode, deleteAction);
 
     deleteAction->on_invoke = delete_token_invoke;
-
 }
 
 static
@@ -230,9 +232,11 @@ static
 int load_tokens() {
     uv_fs_t dir;
 
-    uv_fs_mkdir(NULL, &dir, "token", 0770, NULL);
+    const char *base = broker_get_storage_path("token");
 
-    if (uv_fs_scandir(NULL, &dir, "token", 0, NULL) < 0) {
+    uv_fs_mkdir(NULL, &dir, base, 0770, NULL);
+
+    if (uv_fs_scandir(NULL, &dir, base, 0, NULL) < 0) {
         return 0;
     }
 
@@ -243,7 +247,7 @@ int load_tokens() {
         }
 
         char tmp[256];
-        int len = snprintf(tmp, sizeof(tmp) - 1, "token/%s", d.name);
+        int len = snprintf(tmp, sizeof(tmp) - 1, "%s/%s", base, d.name);
         tmp[len] = '\0';
 
         json_error_t err;

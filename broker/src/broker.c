@@ -304,12 +304,13 @@ int broker_start() {
     uv_loop_init(mainLoop);
     mainLoop->data = &broker;
 
+    broker_config_load(config);
+
     if (broker_init(&broker) != 0) {
         ret = 1;
         goto exit;
     }
 
-    broker_config_load(config);
     ret = broker_start_server(config);
 exit:
     json_decref(config);

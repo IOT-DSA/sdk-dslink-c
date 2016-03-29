@@ -1,11 +1,9 @@
-#include "broker/node.h"
-
-
+#include <broker/node.h>
 #include <broker/broker.h>
 #include <broker/handshake.h>
-#include <string.h>
 #include <broker/utils.h>
 #include <broker/data/data.h>
+#include <broker/config.h>
 
 static
 void broker_save_downstream_virtual_nodes(VirtualPermissionNode *node, const char *name, json_t *pdata) {
@@ -55,15 +53,11 @@ void broker_save_downstream_nodes(uv_timer_t *handle) {
         json_object_set_new_nocheck(top, node->name, data);
     }
 
-    char path[512];
-
-    int len = snprintf(path, sizeof(path) - 1, "conns.json");
-    path[len] = '\0';
+    const char *path = broker_get_storage_path("conns.json");
 
     json_dump_file(top, path, JSON_PRESERVE_ORDER | JSON_ENCODE_ANY | JSON_INDENT(2));
     json_decref(top);
 }
-
 
 static
 void broker_load_downstream_virtual_nodes(Map *map, const char *name, json_t *data) {
@@ -80,7 +74,7 @@ void broker_load_downstream_virtual_nodes(Map *map, const char *name, json_t *da
                     node->permissionList = permission_list_load(value);
                 }
             } if (*key == '$' || *key == '@') {
-                // TODO copy attributes?
+                // TODO: copy attributes?
             } else {
                 broker_load_downstream_virtual_nodes(&node->childrenNode, key, value);
             }
@@ -91,10 +85,7 @@ void broker_load_downstream_virtual_nodes(Map *map, const char *name, json_t *da
 int broker_load_downstream_nodes(Broker *broker) {
     BrokerNode *downstream = broker->downstream;
 
-    char path[512];
-
-    int len = snprintf(path, sizeof(path) - 1, "conns.json");
-    path[len] = '\0';
+    const char *path = broker_get_storage_path("conns.json");
 
     json_error_t err;
     json_t *top = json_load_file(path, 0, &err);
@@ -168,6 +159,7 @@ json_t *broker_save_data_node(BrokerNode *node) {
 
     return data;
 }
+
 void broker_save_data_nodes(uv_timer_t* handle) {
     Broker *broker = mainLoop->data;
     if (handle) {
@@ -178,11 +170,7 @@ void broker_save_data_nodes(uv_timer_t* handle) {
 
     json_t *top = broker_save_data_node(broker->data);
 
-
-    char path[512];
-
-    int len = snprintf(path, sizeof(path) - 1, "data.json");
-    path[len] = '\0';
+    const char *path = broker_get_storage_path("data.json");
 
     json_dump_file(top, path, JSON_PRESERVE_ORDER | JSON_ENCODE_ANY | JSON_INDENT(2));
     json_decref(top);
@@ -217,10 +205,7 @@ void broker_load_data_node(BrokerNode *node, json_t *data) {
 }
 
 int broker_load_data_nodes(Broker *broker) {
-    char path[512];
-
-    int len = snprintf(path, sizeof(path) - 1, "data.json");
-    path[len] = '\0';
+    const char *path = broker_get_storage_path("data.json");
 
     json_error_t err;
     json_t *top = json_load_file(path, 0, &err);

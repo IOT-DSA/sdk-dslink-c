@@ -2,9 +2,7 @@
 #include <dslink/dslink.h>
 #include <dslink/handshake.h>
 #include <dslink/utils.h>
-#include <string.h>
 #include <dslink/socket_private.h>
-#include <mbedtls/net.h>
 #include <dslink/ws.h>
 
 #define LOG_TAG "upstream"
@@ -15,7 +13,6 @@
 #include <broker/upstream/upstream_node.h>
 #include <broker/handshake.h>
 #include <broker/utils.h>
-
 
 static
 void upstream_free_dslink(DSLink *link) {
@@ -57,6 +54,7 @@ void upstrem_handle_reconnect(uv_timer_t* handle) {
     UpstreamPoll *upstreamPoll = handle->data;
     upstream_connect_conn(upstreamPoll);
 }
+
 void upstream_reconnect(UpstreamPoll *upstreamPoll) {
     upstream_clear_poll(upstreamPoll);
     if (upstreamPoll->reconnectInterval < 60) {
@@ -206,7 +204,7 @@ void connect_conn_callback(uv_poll_t *handle, int status, int events) {
         upstreamPoll->reconnectInterval = 0;
     } else {
         upstreamPoll->status = UPSTREAM_NONE;
-        //TODO reconnect?
+        // TODO: reconnect?
     }
     exit:
     json_decref(handshake);
@@ -214,7 +212,6 @@ void connect_conn_callback(uv_poll_t *handle, int status, int events) {
 }
 
 void upstream_connect_conn(UpstreamPoll *upstreamPoll) {
-
     RemoteDSLink *link = dslink_calloc(1, sizeof(RemoteDSLink));
     broker_remote_dslink_init(link);
     link->isUpstream = 1;
@@ -262,6 +259,7 @@ void upstream_connect_conn(UpstreamPoll *upstreamPoll) {
     exit:
     dslink_free(dsId);
 }
+
 void upstream_create_poll(const char *brokerUrl, const char *name, const char *idPrefix) {
     Broker *broker = mainLoop->data;
 

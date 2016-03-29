@@ -1,13 +1,9 @@
 #include <broker/upstream/upstream_node.h>
-#include <broker/msg/msg_invoke.h>
 #include <broker/broker.h>
 #include <broker/upstream/upstream_handshake.h>
 #include <broker/handshake.h>
 #include <broker/msg/msg_list.h>
 #include <dslink/utils.h>
-#include <string.h>
-
-
 
 DownstreamNode *create_upstream_node(Broker *broker, const char *name) {
     ref_t *ref = dslink_map_get(broker->upstream->children,
@@ -31,7 +27,6 @@ DownstreamNode *create_upstream_node(Broker *broker, const char *name) {
 }
 
 void init_upstream_node(Broker *broker, UpstreamPoll *upstreamPoll) {
-
     DownstreamNode *node = create_upstream_node(broker, upstreamPoll->name);
 
     node->upstreamPoll = upstreamPoll;

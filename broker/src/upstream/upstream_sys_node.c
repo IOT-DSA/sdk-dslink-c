@@ -1,12 +1,13 @@
-#include <broker/upstream/upstream_node.h>
-#include <broker/utils.h>
-#include <dslink/utils.h>
-
 #define LOG_TAG "upstream"
 #include <dslink/log.h>
+
+#include <dslink/utils.h>
+
+#include <broker/upstream/upstream_node.h>
+#include <broker/utils.h>
 #include <broker/upstream/upstream_handshake.h>
 #include <broker/broker.h>
-
+#include <broker/config.h>
 
 void add_upstream_invoke(RemoteDSLink *link,
                          BrokerNode *node,
@@ -15,8 +16,9 @@ void add_upstream_invoke(RemoteDSLink *link,
 static
 void save_upstream_node(BrokerNode *node) {
     char tmp[128];
-    char* escname = dslink_str_escape(node->name);
-    sprintf(tmp, "upstream/%s", escname);
+    const char *base = broker_get_storage_path("upstream");
+    char *escname = dslink_str_escape(node->name);
+    sprintf(tmp, "%s/upstream/%s", base, escname);
     json_t *output = json_object();
 
     BrokerNode* propNode;
@@ -57,9 +59,11 @@ static
 int load_upstreams(BrokerNode *parentNode){
     uv_fs_t dir;
 
-    uv_fs_mkdir(NULL, &dir, "upstream", 0770, NULL);
+    const char *base = broker_get_storage_path("upstream");
 
-    if (uv_fs_scandir(NULL, &dir, "upstream", 0, NULL) < 0) {
+    uv_fs_mkdir(NULL, &dir, base, 0770, NULL);
+
+    if (uv_fs_scandir(NULL, &dir, base, 0, NULL) < 0) {
         return 0;
     }
 
@@ -70,7 +74,7 @@ int load_upstreams(BrokerNode *parentNode){
         }
 
         char tmp[256];
-        int len = snprintf(tmp, sizeof(tmp) - 1, "upstream/%s", d.name);
+        int len = snprintf(tmp, sizeof(tmp) - 1, "%s/%s", base, d.name);
         tmp[len] = '\0';
 
         json_error_t err;
@@ -92,9 +96,11 @@ void delete_upstream_invoke(RemoteDSLink *link,
 
     BrokerNode *parentNode = node->parent;
 
+    const char *base = broker_get_storage_path("upstream");
+
     char* escname = dslink_str_escape(parentNode->name);
     char tmp[256];
-    int len = snprintf(tmp, sizeof(tmp) - 1, "upstream/%s", escname);
+    int len = snprintf(tmp, sizeof(tmp) - 1, "%s/%s", base, escname);
     tmp[len] = '\0';
     dslink_free(escname);
 
@@ -233,7 +239,7 @@ void add_upstream_invoke(RemoteDSLink *link,
 
     broker_node_add(upstreamNode, propNode);
 
-    // TODO detect enabled change and start/stop upstream
+    // TODO: detect enabled change and start/stop upstream
 
     BrokerNode *deleteAction = broker_node_create("delete", "node");
     json_object_set_new(deleteAction->meta, "$invokable", json_string_nocheck("config"));
@@ -261,7 +267,6 @@ fail:
 }
 
 int init_sys_upstream_node(BrokerNode *sysNode) {
-
     BrokerNode *upstreamNode = broker_node_create("upstream", "node");
     if (!upstreamNode) {
         return 1;
