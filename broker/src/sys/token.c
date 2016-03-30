@@ -49,7 +49,8 @@ unsigned char get_random_char() {
 static
 void delete_token_invoke(RemoteDSLink *link,
                          BrokerNode *node,
-                         json_t *req) {
+                         json_t *req, PermissionLevel maxPermission) {
+    (void)maxPermission;
     broker_utils_send_closed_resp(link, req, NULL);
 
     BrokerNode *parentNode = node->parent;
@@ -97,7 +98,8 @@ void load_token_node(const char* tokenName, json_t* data) {
 static
 void add_token_invoke(RemoteDSLink *link,
                   BrokerNode *node,
-                  json_t *req) {
+                  json_t *req, PermissionLevel maxPermission) {
+    (void)maxPermission;
     (void) node;
 
     json_t *params = NULL;

@@ -4,6 +4,7 @@
 #include <broker/utils.h>
 #include <broker/data/data.h>
 #include <broker/config.h>
+#include <string.h>
 
 static
 void broker_save_downstream_virtual_nodes(VirtualPermissionNode *node, const char *name, json_t *pdata) {

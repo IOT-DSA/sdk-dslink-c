@@ -11,7 +11,8 @@ static
 void send_invoke_request(DownstreamNode *node,
                          json_t *req,
                          uint32_t rid,
-                         const char *path) {
+                         const char *path,
+                         PermissionLevel maxPermission) {
     json_t *top = json_object();
     json_t *reqs = json_array();
     json_object_set_new_nocheck(top, "requests", reqs);
@@ -19,6 +20,10 @@ void send_invoke_request(DownstreamNode *node,
 
     json_object_set_new_nocheck(req, "rid", json_integer(rid));
     json_object_set_new_nocheck(req, "path", json_string(path));
+    if (maxPermission < PERMISSION_CONFIG) {
+        json_object_set_new_nocheck(req, "path",
+                                    json_string(permission_level_str(maxPermission)));
+    }
 
     broker_ws_send_obj(node->link, top);
     json_decref(top);
@@ -48,24 +53,45 @@ int broker_msg_handle_invoke(RemoteDSLink *link, json_t *req) {
     if (!(reqRid && reqPath)) {
         return 1;
     }
+    json_t *maxPermitJson = json_object_get(req, "permit");
+    PermissionLevel maxPermit = PERMISSION_CONFIG;
+    if (json_is_string(maxPermitJson)) {
+        maxPermit = permission_str_level(json_string_value(maxPermitJson));
+    }
 
     const char *path = json_string_value(reqPath);
     char *out = NULL;
     BrokerNode *node = broker_node_get(link->broker->root, path, &out);
     if (!node) {
         broker_utils_send_closed_resp(link, req, "disconnected");
-        return 1;
+        return 0;
     }
 
+    Broker *broker = mainLoop->data;
+
+    PermissionLevel permissionOnPath = get_permission(path, broker->root, link);
+    if (permissionOnPath > maxPermit) {
+        permissionOnPath = maxPermit;
+    }
+
+    if (permissionOnPath == PERMISSION_NONE) {
+        broker_utils_send_closed_resp(link, req, "permissionDenied");
+        return 0;
+    }
     if (node->type == REGULAR_NODE) {
-        if (node->on_invoke) {
-            node->on_invoke(link, node, req);
+        json_t *invokableJson = json_object_get(node->meta, "$invokable");
+
+        PermissionLevel level = permission_str_level(json_string_value(invokableJson));
+        if (level > permissionOnPath) {
+            broker_utils_send_closed_resp(link, req, "permissionDenied");
+        } else if (node->on_invoke) {
+            node->on_invoke(link, node, req, maxPermit);
         }
         return 0;
     } else if (node->type != DOWNSTREAM_NODE) {
         // Unknown node type
         broker_utils_send_closed_resp(link, req, "disconnected");
-        return 1;
+        return 0;
     }
 
     DownstreamNode *ds = (DownstreamNode *) node;
@@ -73,7 +99,7 @@ int broker_msg_handle_invoke(RemoteDSLink *link, json_t *req) {
 
     if (!ds->link) {
         broker_utils_send_closed_resp(link, req, "disconnected");
-        return 1;
+        return 0;
     }
 
     BrokerInvokeStream *s = broker_stream_invoke_init();
@@ -103,7 +129,7 @@ int broker_msg_handle_invoke(RemoteDSLink *link, json_t *req) {
                    dslink_int_ref(s->requester_rid),
                    dslink_incref(refStream));
 
-    send_invoke_request(ds, req, rid, out);
+    send_invoke_request(ds, req, rid, out, permissionOnPath);
     return 0;
 }
 

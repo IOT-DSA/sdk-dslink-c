@@ -4,6 +4,7 @@
 #include <broker/handshake.h>
 #include <broker/msg/msg_list.h>
 #include <dslink/utils.h>
+#include <string.h>
 
 DownstreamNode *create_upstream_node(Broker *broker, const char *name) {
     ref_t *ref = dslink_map_get(broker->upstream->children,

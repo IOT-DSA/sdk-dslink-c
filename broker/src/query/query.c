@@ -190,7 +190,8 @@ int query_destroy(void *s, RemoteDSLink *link) {
 static
 void query_invoke(struct RemoteDSLink *link,
                          struct BrokerNode *node,
-                         json_t *request) {
+                         json_t *request, PermissionLevel maxPermission) {
+    (void)maxPermission;
     if (link && node && request) {
         json_t *params = json_object_get(request, "params");
         if (!json_is_object(params)) {

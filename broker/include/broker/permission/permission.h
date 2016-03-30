@@ -28,6 +28,9 @@ typedef enum {PERMISSION_NONE = 0,
 
 extern const char* PERMISSION_NAMES[6];
 
+const char *permission_level_str(PermissionLevel level);
+PermissionLevel permission_str_level(const char *str);
+
 // a list of requester permission groups
 typedef struct PermissionGroups {
     const char **groups;

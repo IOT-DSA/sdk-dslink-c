@@ -4,7 +4,8 @@
 static
 void trace_requester(RemoteDSLink *link,
                       BrokerNode *node,
-                      json_t *req) {
+                      json_t *req, PermissionLevel maxPermission) {
+    (void)maxPermission;
     (void)node;
     broker_utils_send_closed_resp(link, req, NULL);
 }

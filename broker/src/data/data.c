@@ -35,7 +35,8 @@ exit:
 
 static
 void on_delete_node_invoked(RemoteDSLink *link,
-                            BrokerNode *node, json_t *req) {
+                            BrokerNode *node, json_t *req, PermissionLevel maxPermission) {
+    (void)maxPermission;
     broker_utils_send_closed_resp(link, req, NULL);
     node = node->parent;
     if (node->list_stream->updates_cache) {
@@ -80,7 +81,8 @@ void on_delete_node_invoked(RemoteDSLink *link,
 
 static
 void on_add_node_invoked(RemoteDSLink *link,
-                         BrokerNode *node, json_t *req) {
+                         BrokerNode *node, json_t *req, PermissionLevel maxPermission) {
+    (void)maxPermission;
     broker_utils_send_closed_resp(link, req, NULL);
 
     json_t *params = json_object_get(req, "params");
@@ -137,7 +139,8 @@ void handle_pending_sub(Broker *broker, BrokerNode *n) {
 
 static
 void on_add_value_invoked(RemoteDSLink *link,
-                          BrokerNode *node, json_t *req) {
+                          BrokerNode *node, json_t *req, PermissionLevel maxPermission) {
+    (void)maxPermission;
     broker_utils_send_closed_resp(link, req, NULL);
 
     json_t *params = json_object_get(req, "params");
@@ -253,7 +256,8 @@ void on_publish_continuous_invoked(RemoteDSLink *link, json_t *params) {
 
 static
 void on_publish_invoked(RemoteDSLink *link,
-                        BrokerNode *node, json_t *req) {
+                        BrokerNode *node, json_t *req, PermissionLevel maxPermission) {
+    (void)maxPermission;
     (void) node;
     json_t *params = json_object_get(req, "params");
     if (!json_is_object(params)) {

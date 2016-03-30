@@ -6,8 +6,12 @@
 static
 void update_permissions(RemoteDSLink *link,
                  BrokerNode *node,
-                 json_t *req) {
+                 json_t *req, PermissionLevel maxPermission) {
     (void)node;
+    if (maxPermission < PERMISSION_CONFIG) {
+        broker_utils_send_closed_resp(link, req, "permissionDenied");
+        return;
+    }
     if (link && req) {
         json_t *params = json_object_get(req, "params");
         if (!json_is_object(params)) {

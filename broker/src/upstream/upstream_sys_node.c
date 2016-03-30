@@ -11,7 +11,7 @@
 
 void add_upstream_invoke(RemoteDSLink *link,
                          BrokerNode *node,
-                         json_t *req);
+                         json_t *req, PermissionLevel maxPermission);
 
 static
 void save_upstream_node(BrokerNode *node) {
@@ -50,7 +50,7 @@ void load_upstream_node(BrokerNode *parentNode, const char* nodeName, json_t* da
     if (!upstreamNode) {
         return;
     }
-    add_upstream_invoke(NULL, parentNode, data);
+    add_upstream_invoke(NULL, parentNode, data, PERMISSION_CONFIG);
 
 }
 
@@ -91,7 +91,8 @@ int load_upstreams(BrokerNode *parentNode){
 static
 void delete_upstream_invoke(RemoteDSLink *link,
                          BrokerNode *node,
-                         json_t *req) {
+                         json_t *req, PermissionLevel maxPermission) {
+    (void)maxPermission;
     broker_utils_send_closed_resp(link, req, NULL);
 
     BrokerNode *parentNode = node->parent;
@@ -155,7 +156,8 @@ int upstream_enable_changed(Listener * listener, void * node) {
 
 void add_upstream_invoke(RemoteDSLink *link,
                       BrokerNode *node,
-                      json_t *req) {
+                      json_t *req, PermissionLevel maxPermission) {
+    (void)maxPermission;
     json_t *params = NULL;
     BrokerNode* parentNode;
     if (link) {
