@@ -15,6 +15,9 @@ const char *permission_level_str(PermissionLevel level) {
     return "none";
 }
 PermissionLevel permission_str_level(const char *str) {
+    if (!str) {
+        return PERMISSION_NEVER;
+    }
     PermissionLevel p = PERMISSION_NONE;
     for (; p <= PERMISSION_CONFIG; ++p) {
         if (strcmp(str, PERMISSION_NAMES[p]) == 0) {
