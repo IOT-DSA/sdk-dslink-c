@@ -276,6 +276,11 @@ void handle_subscribe(RemoteDSLink *link, json_t *sub) {
         return;
     }
 
+    PermissionLevel permissionOnPath = get_permission(path, link->broker->root, link);
+    if (permissionOnPath < PERMISSION_READ) {
+        return;
+    }
+
     char *out = NULL;
     DownstreamNode *node = (DownstreamNode *) broker_node_get(link->broker->root,
                                                               path, &out);
@@ -307,6 +312,17 @@ int broker_msg_handle_subscribe(RemoteDSLink *link, json_t *req) {
     json_t *paths = json_object_get(req, "paths");
     if (!json_is_array(paths)) {
         return 1;
+    }
+
+
+    json_t *maxPermitJson = json_object_get(req, "permit");
+    PermissionLevel maxPermit = PERMISSION_CONFIG;
+    if (json_is_string(maxPermitJson)) {
+        maxPermit = permission_str_level(json_string_value(maxPermitJson));
+    }
+
+    if (maxPermit < PERMISSION_READ) {
+        return 0;
     }
 
     size_t index;
