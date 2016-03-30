@@ -10,6 +10,7 @@
 #define LOG_TAG "token"
 #include <dslink/log.h>
 #include <broker/config.h>
+#include <math.h>
 
 static
 BrokerNode *tokenRootNode;
@@ -138,18 +139,30 @@ void add_token_invoke(RemoteDSLink *link,
 
     if (params) {
         json_t* timeRange = json_object_get(params , "TimeRange");
-        if (json_is_string(timeRange)) {
+        if (json_is_string(timeRange) && *json_string_value(timeRange) != '\0') {
             json_object_set_nocheck(tokenNode->meta, "$$timeRange", timeRange);
         }
 
         json_t* count = json_object_get(params , "Count");
-        if (json_is_string(timeRange)) {
-            json_object_set_nocheck(tokenNode->meta, "$$count", count);
+        if (json_is_number(count)) {
+            if (json_is_integer(count)) {
+                json_object_set_nocheck(tokenNode->meta, "$$count", count);
+            } else {
+                double vd = json_number_value(count);
+                uint64_t vi = (uint64_t)floor(vd);
+                json_object_set_new_nocheck(tokenNode->meta, "$$count", json_integer_value(vi));
+            }
+
         }
 
         json_t* mamaged = json_object_get(params , "Managed");
-        if (json_is_string(timeRange)) {
+        if (json_is_boolean(mamaged)) {
             json_object_set_nocheck(tokenNode->meta, "$$mamaged", mamaged);
+        }
+
+        json_t* group = json_object_get(params , "Group");
+        if (json_is_string(group) && *json_string_value(group) != '\0') {
+            json_object_set_nocheck(tokenNode->meta, "$$group", group);
         }
     }
 
@@ -204,6 +217,12 @@ BrokerNode *get_token_node(const char *hashedToken, const char *dsId) {
         return NULL;
     }
     BrokerNode* node = ref->data;
+
+    json_t *countJson = json_object_get(node->meta, "$$count");
+    if (json_is_integer(countJson) && json_integer_value(countJson) <= 0) {
+        return NULL;
+    }
+
     json_t* tokenJson = json_object_get(node->meta, "$$token");
     if (!json_is_string(tokenJson)) {
         return NULL;
@@ -231,6 +250,18 @@ BrokerNode *get_token_node(const char *hashedToken, const char *dsId) {
     }
 
     return NULL;
+}
+
+void token_used(BrokerNode *tokenNode) {
+    json_t *countJson = json_object_get(tokenNode->meta, "$$count");
+    if (json_is_integer(countJson)) {
+        int64_t count = json_integer_value(countJson);
+        if (count > 0) {
+            count--;
+            json_object_set_new_nocheck(tokenNode->meta, "$$count", json_integer(count));
+            save_token_node(tokenNode);
+        }
+    }
 }
 
 static
@@ -301,7 +332,7 @@ int init_tokens(BrokerNode *sysNode) {
     }
 
     json_error_t err;
-    json_t *paramList = json_loads("[{\"name\":\"TimeRange\",\"type\":\"string\",\"editor\":\"daterange\"},{\"name\":\"Count\",\"type\":\"number\",\"description\":\"how many times this token can be used\"},{\"name\":\"Managed\",\"type\":\"bool\",\"description\":\"when a managed token is deleted, server will delete all the dslinks associated with the token\"}]",
+    json_t *paramList = json_loads("[{\"name\":\"TimeRange\",\"type\":\"string\",\"editor\":\"daterange\"},{\"name\":\"Count\",\"type\":\"number\",\"description\":\"how many times this token can be used\"},{\"name\":\"Managed\",\"type\":\"bool\",\"description\":\"when a managed token is deleted, server will delete all the dslinks associated with the token\"},{\"name\":\"Group\",\"type\":\"string\",\"description\":\"default permission group\"}]",
         0, &err);
     if (!paramList || json_object_set_new(addTokenAction->meta, "$params", paramList) != 0) {
         return 1;
