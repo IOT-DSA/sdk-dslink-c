@@ -48,6 +48,11 @@ int broker_msg_handle_invoke(RemoteDSLink *link, json_t *req) {
     if (!(reqRid && reqPath)) {
         return 1;
     }
+    json_t *maxPermitJson = json_object_get(req, "permit");
+    PermissionLevel maxPermit = PERMISSION_CONFIG;
+    if (json_is_string(maxPermitJson)) {
+        maxPermit = permission_str_level(json_string_value(maxPermitJson));
+    }
 
     const char *path = json_string_value(reqPath);
     char *out = NULL;
@@ -59,7 +64,7 @@ int broker_msg_handle_invoke(RemoteDSLink *link, json_t *req) {
 
     if (node->type == REGULAR_NODE) {
         if (node->on_invoke) {
-            node->on_invoke(link, node, req);
+            node->on_invoke(link, node, req, maxPermit);
         }
         return 0;
     } else if (node->type != DOWNSTREAM_NODE) {

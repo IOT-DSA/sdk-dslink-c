@@ -7,7 +7,8 @@
 static
 void clear_conns(RemoteDSLink *link,
                  BrokerNode *node,
-                 json_t *req) {
+                 json_t *req, PermissionLevel maxPermission) {
+    (void)maxPermission;
     (void)node;
     Map* map = dslink_calloc(1, sizeof(Map));
 

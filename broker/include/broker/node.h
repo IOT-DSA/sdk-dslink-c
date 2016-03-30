@@ -15,7 +15,8 @@ struct Broker;
 
 typedef void (*on_invocation_cb)(struct RemoteDSLink *link,
                                  struct BrokerNode *node,
-                                 struct json_t *request);
+                                 struct json_t *request,
+                                 PermissionLevel maxPermission);
 
 typedef enum BrokerNodeType {
 

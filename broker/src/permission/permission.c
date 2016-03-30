@@ -8,6 +8,23 @@
 
 const char* PERMISSION_NAMES[6] = {"none", "list", "read", "write", "config", "never"};
 
+const char *permission_level_str(PermissionLevel level) {
+    if (level >= PERMISSION_NONE && level <= PERMISSION_NEVER) {
+        return PERMISSION_NAMES[level];
+    }
+    return "none";
+}
+PermissionLevel permission_str_level(const char *str) {
+    PermissionLevel p = PERMISSION_NONE;
+    for (; p <= PERMISSION_CONFIG; ++p) {
+        if (strcmp(str, PERMISSION_NAMES[p]) == 0) {
+            break;
+        }
+    }
+    return p;
+}
+
+
 void permission_groups_init(PermissionGroups* groups) {
     groups->groups = NULL;
     groups->groupLen = 0;
@@ -299,12 +316,7 @@ List *permission_list_load(json_t *json) {
             if (json_is_string(v0) && json_is_string(v1)) {
                 const char* vc0 = json_string_value(v0);
                 const char* vc1 = json_string_value(v1);
-                PermissionLevel p = PERMISSION_NONE;
-                for (; p <= PERMISSION_CONFIG; ++p) {
-                    if (strcmp(vc1, PERMISSION_NAMES[p]) == 0) {
-                        break;
-                    }
-                }
+                PermissionLevel p = permission_str_level(vc1);
                 if (p <= PERMISSION_CONFIG) {
                     PermissionPair * pair = dslink_malloc(sizeof(PermissionPair));
                     pair->group = dslink_strdup(vc0);
