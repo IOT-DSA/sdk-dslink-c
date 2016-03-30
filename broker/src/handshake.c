@@ -215,7 +215,10 @@ json_t *broker_handshake_handle_conn(Broker *broker,
             BrokerNode* tokenNode = get_token_node(token, dsId);
             if (tokenNode) {
                 DownstreamNode *node = broker_init_downstream_node(broker->downstream, name);
-                json_object_set_new_nocheck(node->meta, "$$token", json_string(tokenNode->name));
+
+                if (json_is_true(json_object_get(node->meta, "$$managed"))) {
+                    json_object_set_new_nocheck(node->meta, "$$token", json_string(tokenNode->name));
+                }
 
                 node->dsId = dslink_str_ref(dsId);
                 if (broker->downstream->list_stream) {
@@ -232,7 +235,6 @@ json_t *broker_handshake_handle_conn(Broker *broker,
                 token_used(tokenNode);
 
                 broker_downstream_nodes_changed(broker);
-                // TODO: reduce token count
             } else {
                 goto fail;
             }
@@ -364,6 +366,9 @@ int broker_handshake_handle_ws(Broker *broker,
         uv_close((uv_handle_t *) poll, broker_free_handle);
     }
 
+    // add permission group to link
+    json_t *group = json_object_get(node->meta, "$$group");
+    permission_groups_load(&link->permission_groups, dsId, json_string_value(group));
 
     link->client = client;
     link->dsId = oldDsId;

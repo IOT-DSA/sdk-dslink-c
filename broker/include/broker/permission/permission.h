@@ -15,7 +15,6 @@ extern "C" {
 
 struct RemoteDSLink;
 struct BrokerNode;
-struct json_t;
 
 // numbers in the PermissionLevel doesn't matter
 // it should always be serialized as string
@@ -50,7 +49,7 @@ typedef struct VirtualPermissionNode {
 
 void permission_groups_init(PermissionGroups* groups);
 void permission_groups_free(PermissionGroups* groups);
-
+void permission_groups_load(PermissionGroups* groups, const char *dsId, const char* str);
 
 
 void virtual_permission_init(VirtualPermissionNode* node);
