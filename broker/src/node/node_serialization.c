@@ -58,6 +58,7 @@ void broker_save_downstream_nodes(uv_timer_t *handle) {
 
     json_dump_file(top, path, JSON_PRESERVE_ORDER | JSON_ENCODE_ANY | JSON_INDENT(2));
     json_decref(top);
+    dslink_free((void *) path);
 }
 
 static
@@ -123,6 +124,9 @@ int broker_load_downstream_nodes(Broker *broker) {
         }
         json_decref(top);
     }
+
+    dslink_free((void *) path);
+
     return 0;
 }
 
@@ -184,6 +188,8 @@ void broker_save_data_nodes(uv_timer_t* handle) {
 
     json_dump_file(top, path, JSON_PRESERVE_ORDER | JSON_ENCODE_ANY | JSON_INDENT(2));
     json_decref(top);
+
+    dslink_free((void *) path);
 }
 
 static
