@@ -214,7 +214,24 @@ json_t *broker_handshake_handle_conn(Broker *broker,
             }
             BrokerNode* tokenNode = get_token_node(token, dsId);
             if (tokenNode) {
-                // TODO: create downstream node
+                DownstreamNode *node = broker_init_downstream_node(broker->downstream, name);
+                json_object_set_new_nocheck(node->meta, "$$token", json_string(tokenNode->name));
+
+                node->dsId = dslink_str_ref(dsId);
+                if (broker->downstream->list_stream) {
+                    update_list_child(broker->downstream,
+                                      broker->downstream->list_stream,
+                                      link->name);
+                }
+
+                json_t *group = json_object_get(tokenNode->meta, "$$group");
+                if (json_is_string(group)) {
+                    json_object_set_nocheck(node->meta, "$$group", group);
+                }
+
+                token_used(tokenNode);
+
+                broker_downstream_nodes_changed(broker);
                 // TODO: reduce token count
             } else {
                 goto fail;

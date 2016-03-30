@@ -11,6 +11,8 @@ int init_tokens(BrokerNode *sysNode);
 
 BrokerNode *get_token_node(const char *hashedToken, const char *dsId);
 
+void token_used(BrokerNode *tokenNode);
+
 #ifdef __cplusplus
 }
 #endif
