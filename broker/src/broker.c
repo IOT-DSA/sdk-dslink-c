@@ -190,12 +190,13 @@ void broker_free(Broker *broker) {
 }
 
 static
-int broker_init(Broker *broker) {
+int broker_init(Broker *broker, json_t *defaultPermission) {
     memset(broker, 0, sizeof(Broker));
     broker->root = broker_node_create("", "node");
     if (!broker->root) {
         goto fail;
     }
+    broker->root->permissionList = permission_list_load(defaultPermission);
 
     broker->root->path = dslink_strdup("/");
     json_object_set_new(broker->root->meta, "$downstream",
@@ -304,9 +305,11 @@ int broker_start() {
     uv_loop_init(mainLoop);
     mainLoop->data = &broker;
 
+    json_t *defaultPermission = json_object_get(config, "defaultPermission");
+
     broker_config_load(config);
 
-    if (broker_init(&broker) != 0) {
+    if (broker_init(&broker, defaultPermission) != 0) {
         ret = 1;
         goto exit;
     }
