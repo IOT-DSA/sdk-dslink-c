@@ -221,6 +221,23 @@ int broker_msg_handle_list(RemoteDSLink *link, json_t *req) {
 
     char *out = NULL;
     BrokerNode *node = broker_node_get(link->broker->root, path, &out);
+
+    json_t *maxPermitJson = json_object_get(req, "permit");
+    PermissionLevel maxPermit = PERMISSION_CONFIG;
+    if (json_is_string(maxPermitJson)) {
+        maxPermit = permission_str_level(json_string_value(maxPermitJson));
+    }
+
+    PermissionLevel permissionOnPath = get_permission(path, link->broker->root, link);
+    if (permissionOnPath > maxPermit) {
+        permissionOnPath = maxPermit;
+    }
+
+    if (permissionOnPath < PERMISSION_LIST) {
+        broker_utils_send_closed_resp(link, req, "permissionDenied");
+        return 0;
+    }
+
     if (node) {
         if (node->type == REGULAR_NODE) {
             broker_list_self(link, node, rid);

@@ -19,6 +19,9 @@ void save_upstream_node(BrokerNode *node) {
     const char *base = broker_get_storage_path("upstream");
     char *escname = dslink_str_escape(node->name);
     sprintf(tmp, "%s/upstream/%s", base, escname);
+
+    dslink_free((void *) base);
+
     json_t *output = json_object();
 
     BrokerNode* propNode;
@@ -84,6 +87,9 @@ int load_upstreams(BrokerNode *parentNode){
             json_decref(val);
         }
     }
+
+    dslink_free((void *) base);
+
     return 0;
 }
 
@@ -104,6 +110,7 @@ void delete_upstream_invoke(RemoteDSLink *link,
     int len = snprintf(tmp, sizeof(tmp) - 1, "%s/%s", base, escname);
     tmp[len] = '\0';
     dslink_free(escname);
+    dslink_free((void *) base);
 
     uv_fs_t unlink_req;
     uv_fs_unlink(NULL, &unlink_req, tmp, NULL);

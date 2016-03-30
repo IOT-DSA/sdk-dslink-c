@@ -37,6 +37,7 @@ json_t *broker_config_gen() {
 
     json_object_set_new_nocheck(broker, "log_level", json_string("info"));
     json_object_set_new_nocheck(broker, "allowAllLinks", json_true());
+    json_object_set_new_nocheck(broker, "defaultPermission", json_null());
 
     json_t *storage = json_object();
 

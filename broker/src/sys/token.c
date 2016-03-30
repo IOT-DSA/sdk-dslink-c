@@ -71,6 +71,9 @@ void save_token_node(BrokerNode *node) {
     const char *base = broker_get_storage_path("token");
 
     sprintf(tmp, "%s/%s", base, node->name);
+
+    dslink_free((void *) base);
+
     json_dump_file(node->meta, tmp, 0);
 }
 
@@ -259,6 +262,9 @@ int load_tokens() {
             json_decref(val);
         }
     }
+
+    dslink_free((void *) base);
+
     return 0;
 }
 
