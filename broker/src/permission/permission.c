@@ -42,6 +42,48 @@ void permission_groups_free(PermissionGroups* groups) {
     }
 }
 
+
+
+void permission_groups_load(PermissionGroups* groups, const char *dsId, const char* str) {
+    if (groups->groups) {
+        permission_groups_free(groups);
+    }
+    size_t allocatedLen = 1;
+    size_t len = 0;
+
+    if (str) {
+        allocatedLen = 4;
+        groups->groups = dslink_malloc(sizeof(char*) * allocatedLen);
+
+        const char *start = str;
+        const char *end = str - 1;
+
+        while (*end) {
+            ++end;
+            if (*end == ',' || *end == '\0')  {
+                if (end > start) {
+                    // +1 for current value, +1 for the dsId
+                    if (len + 2 <= allocatedLen) {
+                        allocatedLen *= 2;
+                        groups->groups = dslink_realloc(groups->groups, sizeof(char*) * allocatedLen);
+                    }
+                    groups->groups[len] = dslink_strdupl(start, end - start);
+                    ++len;
+                }
+                start = end + 1;
+            }
+        }
+    } else {
+        groups->groups = dslink_malloc(sizeof(char*));
+    }
+
+    // dsId as a permission group
+    groups->groups[len] = dslink_strdup(dsId);
+    ++len;
+
+    groups->groupLen = len;
+}
+
 void virtual_permission_init(VirtualPermissionNode* node) {
     node->permissionList = NULL;
     dslink_map_init(&node->childrenNode, dslink_map_str_cmp,

@@ -10,7 +10,6 @@
 #define LOG_TAG "token"
 #include <dslink/log.h>
 #include <broker/config.h>
-#include <math.h>
 
 static
 BrokerNode *tokenRootNode;
@@ -149,8 +148,8 @@ void add_token_invoke(RemoteDSLink *link,
                 json_object_set_nocheck(tokenNode->meta, "$$count", count);
             } else {
                 double vd = json_number_value(count);
-                uint64_t vi = (uint64_t)floor(vd);
-                json_object_set_new_nocheck(tokenNode->meta, "$$count", json_integer_value(vi));
+                uint64_t vi = (uint64_t)vd;
+                json_object_set_new_nocheck(tokenNode->meta, "$$count", json_integer(vi));
             }
 
         }

@@ -7,6 +7,7 @@ extern "C" {
 
 extern void *(*dslink_calloc)(size_t, size_t);
 extern void *(*dslink_malloc)(size_t);
+extern void *(*dslink_realloc)(void *ptr, size_t);
 extern void (*dslink_free)(void *);
 
 #ifdef __cplusplus
