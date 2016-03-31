@@ -16,6 +16,11 @@ int broker_map_dslink_cmp(void *key, void *other, size_t len) {
 static
 size_t broker_map_dslink_len(void *key) {
     RemoteDSLink *a = key;
+
+    if (!a->dsId) {
+        return 0;
+    }
+
     return strlen(a->dsId->data);
 }
 

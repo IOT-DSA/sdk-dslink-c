@@ -365,7 +365,7 @@ int broker_handshake_handle_ws(Broker *broker,
         dslink_free(c);
         uv_close((uv_handle_t *) poll, broker_free_handle);
     }
-
+    
     // add permission group to link
     json_t *group = json_object_get(node->meta, "$$group");
     permission_groups_load(&link->permission_groups, dsId, json_string_value(group));
