@@ -6,12 +6,16 @@ extern "C" {
 #endif
 
 #include <wslay/wslay.h>
+
+#include <dslink/storage/storage.h>
 #include <dslink/socket.h>
-#include "broker/node.h"
+
+#include <broker/node.h>
 
 struct uv_loop_t;
 
 typedef struct Broker {
+    StorageProvider *storage;
 
     BrokerNode *root;
 

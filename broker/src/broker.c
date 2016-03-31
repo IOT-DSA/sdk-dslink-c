@@ -10,9 +10,12 @@
 #define LOG_TAG "broker"
 #include <dslink/log.h>
 #include <dslink/utils.h>
+
+#include <dslink/storage/storage.h>
+
 #include <broker/upstream/upstream_node.h>
 #include <broker/utils.h>
-#include "broker/net/ws.h"
+#include <broker/net/ws.h>
 
 #define CONN_RESP "HTTP/1.1 200 OK\r\n" \
                     "Connection: close\r\n" \
@@ -300,6 +303,8 @@ int broker_start() {
     }
 
     Broker broker;
+
+    broker.storage = dslink_storage_init(config);
 
     mainLoop = dslink_calloc(1, sizeof(uv_loop_t));
     uv_loop_init(mainLoop);

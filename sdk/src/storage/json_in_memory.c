@@ -1,5 +1,28 @@
 #include <dslink/storage/storage.h>
 #include <dslink/storage/json_in_memory.h>
+#include <string.h>
+
+static
+char *json_key_join(char *vals[]) {
+    char *str = "";
+
+    for (char **arg = vals; *arg; ++arg) {
+        char *entry = *arg;
+        size_t count = strlen(str) + strlen(entry) + 3;
+        char *tmp = dslink_malloc(count);
+        snprintf(tmp, count, "%s::%s", str, entry);
+        str = tmp;
+    }
+
+    for (size_t i = 0; vals[i] != NULL; i++) {
+        char *entry = vals[i];
+        size_t count = strlen(str) + strlen(entry) + 3;
+        char *tmp = dslink_malloc(count);
+        snprintf(tmp, count, "%s::%s", str, entry);
+        str = tmp;
+    }
+    return str;
+}
 
 static
 void json_storage_init(StorageProvider *provider) {
@@ -7,7 +30,9 @@ void json_storage_init(StorageProvider *provider) {
 }
 
 static
-void json_storage_push(StorageProvider *provider, char *key, json_t *value, storage_push_done_cb cb, void *data) {
+void json_storage_push(StorageProvider *provider, char **rkey, json_t *value, storage_push_done_cb cb, void *data) {
+    char *key = json_key_join(rkey);
+
     json_t *json = provider->data;
     json_t *array = json_object_get(json, key);
     if (!json_is_array(array)) {
@@ -18,11 +43,15 @@ void json_storage_push(StorageProvider *provider, char *key, json_t *value, stor
     json_incref(value);
     json_array_append_new(array, value);
 
-    cb(data);
+    if (cb) {
+        cb(data);
+    }
 }
 
 static
-void json_storage_pull(StorageProvider *provider, char *key, storage_pull_done_cb cb, void *data) {
+void json_storage_pull(StorageProvider *provider, char **rkey, storage_pull_done_cb cb, void *data) {
+    char *key = json_key_join(rkey);
+
     json_t *json = provider->data;
     json_t *array = json_object_get(json, key);
     if (!json_is_array(array)) {
@@ -31,11 +60,16 @@ void json_storage_pull(StorageProvider *provider, char *key, storage_pull_done_c
     }
 
     if (json_array_size(array) <= 0) {
-        cb(NULL, data);
+        if (cb) {
+            cb(NULL, data);
+        }
     } else {
         json_t *m = json_array_get(array, 0);
         json_array_remove(array, 0);
-        cb(m, data);
+
+        if (cb) {
+            cb(m, data);
+        }
     }
 }
 
@@ -45,17 +79,27 @@ json_t *json_storage_traverse(StorageProvider *provider) {
 }
 
 static
-void json_storage_store(StorageProvider *provider, char *key, json_t *value, storage_store_done_cb cb, void *data) {
+void json_storage_store(StorageProvider *provider, char **rkey, json_t *value, storage_store_done_cb cb, void *data) {
+    char *key = json_key_join(rkey);
+
     json_t *json = provider->data;
     json_object_set_new(json, key, value);
-    cb(data);
+
+    if (cb) {
+        cb(data);
+    }
 }
 
 static
-void json_storage_recall(StorageProvider *provider, char *key, storage_recall_done_cb cb, void *data) {
+void json_storage_recall(StorageProvider *provider, char **rkey, storage_recall_done_cb cb, void *data) {
+    char *key = json_key_join(rkey);
+
     json_t *json = provider->data;
     json_t *val = json_object_get(json, key);
-    cb(val, data);
+
+    if (cb) {
+        cb(val, data);
+    }
 }
 
 static

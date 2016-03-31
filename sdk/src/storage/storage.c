@@ -20,19 +20,19 @@ void dslink_storage_destroy(StorageProvider *provider) {
     provider->destroy_cb(provider);
 }
 
-void dslink_storage_push(StorageProvider *provider, char *key, json_t *value, storage_push_done_cb cb, void *data) {
+void dslink_storage_push(StorageProvider *provider, char **key, json_t *value, storage_push_done_cb cb, void *data) {
     provider->push_cb(provider, key, value, cb, data);
 }
 
-void dslink_storage_pull(StorageProvider *provider, char *key, storage_pull_done_cb cb, void *data) {
+void dslink_storage_pull(StorageProvider *provider, char **key, storage_pull_done_cb cb, void *data) {
     provider->pull_cb(provider, key, cb, data);
 }
 
-void dslink_storage_store(StorageProvider *provider, char *key, json_t *value, storage_store_done_cb cb, void *data) {
+void dslink_storage_store(StorageProvider *provider, char **key, json_t *value, storage_store_done_cb cb, void *data) {
     provider->store_cb(provider, key, value, cb, data);
 }
 
-void dslink_storage_recall(StorageProvider *provider, char *key, storage_recall_done_cb cb, void *data) {
+void dslink_storage_recall(StorageProvider *provider, char **key, storage_recall_done_cb cb, void *data) {
     provider->recall_cb(provider, key, cb, data);
 }
 

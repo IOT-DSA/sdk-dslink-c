@@ -111,6 +111,7 @@ char *dslink_str_escape(const char *data) {
     //TODO other invalid characters
     return dslink_str_replace_all(data, "/", "%2F");
 }
+
 char *dslink_str_unescape(const char *data) {
     return dslink_str_replace_all(data, "%2F", "/");
 }
