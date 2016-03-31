@@ -101,6 +101,9 @@ set(DSLINK_SRC
     "${DSLINK_SRC_DIR}/mem/mem.c"
     "${DSLINK_SRC_DIR}/mem/ref.c"
 
+    "${DSLINK_SRC_DIR}/storage/storage.c"
+    "${DSLINK_SRC_DIR}/storage/json_in_memory.c"
+
     "${DSLINK_SRC_DIR}/msg/list_response.c"
     "${DSLINK_SRC_DIR}/msg/request_handler.c"
     "${DSLINK_SRC_DIR}/msg/response_handler.c"

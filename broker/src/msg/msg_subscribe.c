@@ -162,6 +162,7 @@ void broker_subscribe_remote(DownstreamNode *respNode, RemoteDSLink *reqLink,
         dslink_map_set(&bss->clients, dslink_ref(reqLink, NULL), ref);
         dslink_map_set(&reqLink->req_sub_sids, dslink_incref(ref), bssRef);
     }
+
     {
         ref = dslink_int_ref(respSid);
         dslink_map_set(&respNode->link->resp_sub_sids, ref,
