@@ -37,6 +37,10 @@ void save_upstream_node(BrokerNode *node) {
     propNode = dslink_map_get(node->children, "token")->data;
     json_object_set(output, "token", propNode->value);
 
+    propNode = dslink_map_get(node->children, "group")->data;
+    json_object_set(output, "group", propNode->value);
+
+
     propNode = dslink_map_get(node->children, "enabled")->data;
     json_object_set(output, "enabled", propNode->value);
 
@@ -150,11 +154,13 @@ int upstream_enable_changed(Listener * listener, void * node) {
         json_t* namejson = ((BrokerNode *)dslink_map_get(parentNode->children, "name")->data)->value;
         json_t* brokerNameJson = ((BrokerNode *)dslink_map_get(parentNode->children, "brokerName")->data)->value;
         json_t* urlJson = ((BrokerNode *)dslink_map_get(parentNode->children, "url")->data)->value;
+        json_t* groupJson = ((BrokerNode *)dslink_map_get(parentNode->children, "group")->data)->value;
 
         if (json_is_string(namejson) && json_is_string(brokerNameJson)
             && json_is_string(urlJson)) {
             upstream_create_poll(json_string_value(urlJson),
-                                 json_string_value(namejson), json_string_value(brokerNameJson));
+                                 json_string_value(namejson), json_string_value(brokerNameJson)
+                    , json_string_value(groupJson));
         }
     }
     save_upstream_node(parentNode);
@@ -187,6 +193,7 @@ void add_upstream_invoke(RemoteDSLink *link,
     json_t* brokerNameJson = json_object_get(params , "brokerName");
     json_t* urlJson = json_object_get(params , "url");
     json_t* tokenJson = json_object_get(params , "token");
+    json_t* groupJson = json_object_get(params , "group");
     json_t* enabledJson = json_object_get(params , "enabled");
 
     if (!json_is_string(namejson) || !json_is_string(brokerNameJson) || !json_is_string(urlJson)) {
@@ -236,6 +243,12 @@ void add_upstream_invoke(RemoteDSLink *link,
     broker_node_add(upstreamNode, propNode);
 
 
+    propNode = broker_node_create("group", "node");
+    json_object_set_new(propNode->meta, "$writable", json_string_nocheck("write"));
+    json_object_set_new(propNode->meta, "$type", json_string_nocheck("string"));
+    broker_node_update_value(propNode, groupJson, 0);
+    broker_node_add(upstreamNode, propNode);
+
     propNode = broker_node_create("enabled", "node");
     json_object_set_new(propNode->meta, "$writable", json_string_nocheck("write"));
     json_object_set_new(propNode->meta, "$type", json_string_nocheck("bool"));
@@ -267,7 +280,8 @@ void add_upstream_invoke(RemoteDSLink *link,
     if (json_is_string(namejson) && json_is_string(brokerNameJson)
         && json_is_string(urlJson) && !json_is_false(enabledJson)) {
         upstream_create_poll(json_string_value(urlJson),
-                              json_string_value(namejson), json_string_value(brokerNameJson));
+                              json_string_value(namejson), json_string_value(brokerNameJson),
+                             json_string_value(groupJson));
     }
 
     return;
@@ -301,7 +315,7 @@ int init_sys_upstream_node(BrokerNode *sysNode) {
 
     json_error_t err;
     json_t *paramList = json_loads(
-            "[{\"name\":\"name\",\"type\":\"string\",\"description\":\"Upstream Broker Name\",\"placeholder\":\"UpstreamBroker\"},{\"name\":\"url\",\"type\":\"string\",\"description\":\"Url to the Upstream Broker\",\"placeholder\":\"http://upstream.broker.com/conn\"},{\"name\":\"brokerName\",\"type\":\"string\",\"description\":\"The name of the link when connected to the Upstream Broker\",\"placeholder\":\"ThisBroker\"},{\"name\":\"token\",\"type\":\"string\",\"description\":\"Broker Token (if needed)\",\"placeholder\":\"OptionalAuthToken\"}]",
+            "[{\"name\":\"name\",\"type\":\"string\",\"description\":\"Upstream Broker Name\",\"placeholder\":\"UpstreamBroker\"},{\"name\":\"url\",\"type\":\"string\",\"description\":\"Url to the Upstream Broker\",\"placeholder\":\"http://upstream.broker.com/conn\"},{\"name\":\"brokerName\",\"type\":\"string\",\"description\":\"The name of the link when connected to the Upstream Broker\",\"placeholder\":\"ThisBroker\"},{\"name\":\"token\",\"type\":\"string\",\"description\":\"Broker Token (if needed)\",\"placeholder\":\"OptionalAuthToken\"},{\"name\":\"group\",\"type\":\"string\",\"description\":\"default permission group\"}]",
             0, &err);
     if (!paramList || json_object_set_new(addUpstreamAction->meta, "$params", paramList) != 0) {
         return 1;

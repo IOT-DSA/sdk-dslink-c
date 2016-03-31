@@ -148,7 +148,7 @@ void add_token_invoke(RemoteDSLink *link,
                 json_object_set_nocheck(tokenNode->meta, "$$count", count);
             } else {
                 double vd = json_number_value(count);
-                uint64_t vi = (uint64_t)vd;
+                int64_t vi = (int64_t)vd;
                 json_object_set_new_nocheck(tokenNode->meta, "$$count", json_integer(vi));
             }
 
