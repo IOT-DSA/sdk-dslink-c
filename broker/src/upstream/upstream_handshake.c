@@ -215,6 +215,7 @@ void connect_conn_callback(uv_poll_t *handle, int status, int events) {
 void upstream_connect_conn(UpstreamPoll *upstreamPoll) {
     RemoteDSLink *link = dslink_calloc(1, sizeof(RemoteDSLink));
     broker_remote_dslink_init(link);
+    permission_groups_load(&link->permission_groups, "", upstreamPoll->group);
     link->isUpstream = 1;
     link->isRequester = 1;
     link->isResponder = 1;
@@ -261,7 +262,7 @@ void upstream_connect_conn(UpstreamPoll *upstreamPoll) {
     dslink_free(dsId);
 }
 
-void upstream_create_poll(const char *brokerUrl, const char *name, const char *idPrefix) {
+void upstream_create_poll(const char *brokerUrl, const char *name, const char *idPrefix, const char *group) {
     Broker *broker = mainLoop->data;
 
     DownstreamNode *node = create_upstream_node(broker, name);
@@ -273,6 +274,7 @@ void upstream_create_poll(const char *brokerUrl, const char *name, const char *i
     upstreamPoll->brokerUrl = dslink_strdup(brokerUrl);
     upstreamPoll->name = dslink_strdup(name);
     upstreamPoll->idPrefix = dslink_strdup(idPrefix);
+    upstreamPoll->group = dslink_strdup(group);
 
     node->upstreamPoll = upstreamPoll;
 

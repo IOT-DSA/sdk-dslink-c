@@ -39,30 +39,31 @@ void on_delete_node_invoked(RemoteDSLink *link,
     (void)maxPermission;
     broker_utils_send_closed_resp(link, req, NULL);
     node = node->parent;
-    if (node->list_stream->updates_cache) {
-        json_object_del(node->list_stream->updates_cache, node->name);
-    }
-    if (node->list_stream->requester_links.size <= 0) {
-        return;
-    }
-
-    json_t *top = json_object();
-    json_t *resps = json_array();
-    json_object_set_new_nocheck(top, "responses", resps);
-    json_t *resp = json_object();
-    json_array_append_new(resps, resp);
-    json_object_set_new_nocheck(resp, "stream", json_string_nocheck("open"));
-    json_t *updates = json_array();
-    json_t *update = json_object();
-    json_object_set_new_nocheck(update, "name", json_string(node->name));
-    json_object_set_new_nocheck(update, "change",
-                                json_string_nocheck("remove"));
-    json_array_append_new(updates, update);
-    json_object_set_new_nocheck(resp, "updates", updates);
-    dslink_map_foreach(&node->parent->list_stream->requester_links) {
-        uint32_t *rid = entry->value->data;
-        json_object_set_new_nocheck(resp, "rid", json_integer(*rid));
-        broker_ws_send_obj(entry->key->data, top);
+    if (node->list_stream) {
+        if (node->list_stream->updates_cache) {
+            json_object_del(node->list_stream->updates_cache, node->name);
+        }
+        if (node->list_stream->requester_links.size > 0) {
+            json_t *top = json_object();
+            json_t *resps = json_array();
+            json_object_set_new_nocheck(top, "responses", resps);
+            json_t *resp = json_object();
+            json_array_append_new(resps, resp);
+            json_object_set_new_nocheck(resp, "stream", json_string_nocheck("open"));
+            json_t *updates = json_array();
+            json_t *update = json_object();
+            json_object_set_new_nocheck(update, "name", json_string(node->name));
+            json_object_set_new_nocheck(update, "change",
+                                        json_string_nocheck("remove"));
+            json_array_append_new(updates, update);
+            json_object_set_new_nocheck(resp, "updates", updates);
+            dslink_map_foreach(&node->parent->list_stream->requester_links) {
+                uint32_t *rid = entry->value->data;
+                json_object_set_new_nocheck(resp, "rid", json_integer(*rid));
+                broker_ws_send_obj(entry->key->data, top);
+            }
+            json_decref(top);
+        }
     }
 
     char *replaced = dslink_str_escape(node->path);
@@ -75,8 +76,9 @@ void on_delete_node_invoked(RemoteDSLink *link,
         dslink_free(replaced);
     }
 
-    json_decref(top);
+
     broker_node_free(node);
+    broker_data_nodes_changed(link->broker);
 }
 
 static

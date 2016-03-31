@@ -30,6 +30,7 @@ typedef struct UpstreamPoll {
     char *dsId;
     char *name;
     char *idPrefix;
+    char *group;
     uint32_t reconnectInterval;
     uv_timer_t * reconnectTimer;
     struct RemoteDSLink * remoteDSLink;
@@ -38,7 +39,7 @@ typedef struct UpstreamPoll {
     struct wslay_event_context *ws; // Event context for WSLay
 } UpstreamPoll;
 
-void upstream_create_poll(const char *brokerUrl, const char *name, const char *idPrefix);
+void upstream_create_poll(const char *brokerUrl, const char *name, const char *idPrefix, const char *group);
 
 void upstream_connect_conn(UpstreamPoll *upstreamPoll);
 
