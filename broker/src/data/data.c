@@ -39,7 +39,7 @@ void on_delete_node_invoked(RemoteDSLink *link,
     (void)maxPermission;
     broker_utils_send_closed_resp(link, req, NULL);
     node = node->parent;
-    if (node->list_stream->updates_cache) {
+    if (node->list_stream && node->list_stream->updates_cache) {
         json_object_del(node->list_stream->updates_cache, node->name);
     }
     if (node->list_stream->requester_links.size <= 0) {
