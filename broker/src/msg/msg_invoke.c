@@ -21,7 +21,7 @@ void send_invoke_request(DownstreamNode *node,
     json_object_set_new_nocheck(req, "rid", json_integer(rid));
     json_object_set_new_nocheck(req, "path", json_string(path));
     if (maxPermission < PERMISSION_CONFIG) {
-        json_object_set_new_nocheck(req, "path",
+        json_object_set_new_nocheck(req, "permit",
                                     json_string(permission_level_str(maxPermission)));
     }
 
