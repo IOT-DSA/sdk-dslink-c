@@ -18,7 +18,7 @@ void save_upstream_node(BrokerNode *node) {
     char tmp[128];
     const char *base = broker_get_storage_path("upstream");
     char *escname = dslink_str_escape(node->name);
-    sprintf(tmp, "%s/upstream/%s", base, escname);
+    sprintf(tmp, "%s/%s", base, escname);
 
     dslink_free((void *) base);
 

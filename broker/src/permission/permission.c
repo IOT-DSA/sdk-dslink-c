@@ -58,7 +58,7 @@ void permission_groups_load(PermissionGroups* groups, const char *dsId, const ch
         const char *start = str;
         const char *end = str - 1;
 
-        while (*end) {
+        do {
             ++end;
             if (*end == ',' || *end == '\0')  {
                 if (end > start) {
@@ -72,7 +72,7 @@ void permission_groups_load(PermissionGroups* groups, const char *dsId, const ch
                 }
                 start = end + 1;
             }
-        }
+        }while (*end);
     } else {
         groups->groups = dslink_malloc(sizeof(char*));
     }
