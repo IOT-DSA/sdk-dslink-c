@@ -63,7 +63,7 @@ void permission_groups_load(PermissionGroups* groups, const char *dsId, const ch
             if (*end == ',' || *end == '\0')  {
                 if (end > start) {
                     // +1 for current value, +1 for the dsId
-                    if (len + 2 <= allocatedLen) {
+                    if (len + 2 > allocatedLen) {
                         allocatedLen *= 2;
                         groups->groups = dslink_realloc(groups->groups, sizeof(char*) * allocatedLen);
                     }
