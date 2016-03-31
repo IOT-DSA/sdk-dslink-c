@@ -111,10 +111,6 @@ void broker_handle_local_subscribe(BrokerNode *node,
 void broker_subscribe_remote(DownstreamNode *respNode, RemoteDSLink *reqLink,
                              uint32_t sid, uint8_t qos, const char *path,
                              const char *respPath) {
-    if (qos < 0) {
-        qos = 0;
-    }
-
     if (qos > 3) {
         qos = 3;
     }
