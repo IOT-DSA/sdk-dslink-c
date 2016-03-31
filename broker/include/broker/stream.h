@@ -68,6 +68,8 @@ typedef struct BrokerSubStream {
     // char *
     ref_t *remote_path;
 
+    ref_t *virtual_path;
+
     json_t *last_value;
 
     // Map<RemoteDSLink *, uint32_t *>

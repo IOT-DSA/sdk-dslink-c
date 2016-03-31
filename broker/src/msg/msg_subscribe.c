@@ -111,7 +111,20 @@ void broker_handle_local_subscribe(BrokerNode *node,
 void broker_subscribe_remote(DownstreamNode *respNode, RemoteDSLink *reqLink,
                              uint32_t sid, uint8_t qos, const char *path,
                              const char *respPath) {
-    ref_t *ref = dslink_map_get(&respNode->link->sub_paths, (void *) path);
+    if (qos < 0) {
+        qos = 0;
+    }
+
+    if (qos > 3) {
+        qos = 3;
+    }
+
+    size_t vsize = strlen(path) + 2;
+    char *vpath = dslink_malloc(vsize);
+    snprintf(vpath, vsize, "%s%i", path, qos);
+
+    ref_t *ref = dslink_map_get(&respNode->link->sub_paths, vpath);
+
     if (ref) {
         BrokerSubStream *bss = ref->data;
 
@@ -148,6 +161,7 @@ void broker_subscribe_remote(DownstreamNode *respNode, RemoteDSLink *reqLink,
             broker_ws_send_obj(reqLink, top);
             json_decref(top);
         }
+        dslink_free(vpath);
         return;
     }
 
@@ -156,6 +170,8 @@ void broker_subscribe_remote(DownstreamNode *respNode, RemoteDSLink *reqLink,
     BrokerSubStream *bss = broker_stream_sub_init();
     bss->responder = respNode->link;
     bss->responder_sid = respSid;
+    bss->virtual_path = dslink_str_ref(vpath);
+
     ref_t *bssRef = dslink_ref(bss, NULL);
     {
         ref = dslink_int_ref(sid);
@@ -168,7 +184,7 @@ void broker_subscribe_remote(DownstreamNode *respNode, RemoteDSLink *reqLink,
         dslink_map_set(&respNode->link->resp_sub_sids, ref,
                        dslink_incref(bssRef));
 
-        ref = dslink_ref(dslink_strdup(path), dslink_free);
+        ref = dslink_ref(dslink_strdup(vpath), dslink_free);
         bss->remote_path = dslink_incref(ref);
         dslink_map_set(&respNode->link->sub_paths, ref,
                        dslink_incref(bssRef));
@@ -224,9 +240,9 @@ void broker_subscribe_disconnected_remote(RemoteDSLink *link,
                                           uint8_t qos) {
     const char *name;
     if (path[1] == 'd') {
-        name = path + sizeof("/downstream");
+        name = path + sizeof("/downstream") + 1;
     } else {
-        name = path + sizeof("/upstream");
+        name = path + sizeof("/upstream") + 1;
     }
     
     const char *end = strchr(name, '/');
@@ -322,7 +338,6 @@ int broker_msg_handle_subscribe(RemoteDSLink *link, json_t *req) {
     if (!json_is_array(paths)) {
         return 1;
     }
-
 
     json_t *maxPermitJson = json_object_get(req, "permit");
     PermissionLevel maxPermit = PERMISSION_CONFIG;
