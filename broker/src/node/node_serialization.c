@@ -75,7 +75,7 @@ void broker_load_downstream_virtual_nodes(Map *map, const char *name, json_t *da
                     // when loading fails, permissionList will be NULL.
                     node->permissionList = permission_list_load(value);
                 }
-            } if (*key == '$' || *key == '@') {
+            } else if (*key == '$' || *key == '@') {
                 // TODO: copy attributes?
             } else {
                 broker_load_downstream_virtual_nodes(&node->childrenNode, key, value);
@@ -112,7 +112,12 @@ int broker_load_downstream_nodes(Broker *broker) {
                 const char *key;
                 json_t *value;
                 json_object_foreach(nodemap, key, value) {
-                    if (*key == '$' || *key == '@') {
+                    if (*key == '?') {
+                        if (strcmp(key, "?permissions") == 0) {
+                            // when loading fails, permissionList will be NULL.
+                            node->permissionList = permission_list_load(value);
+                        }
+                    } else if (*key == '$' || *key == '@') {
                         // copy metadata
                         json_object_set_nocheck(node->meta, key, value);
                     } else {
