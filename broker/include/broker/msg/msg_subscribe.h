@@ -17,6 +17,13 @@ typedef struct PendingSub {
     ListNode *listNode;
 } PendingSub;
 
+typedef struct SubClient {
+    RemoteDSLink * requester;
+    uint32_t reqSid;
+    uint8_t qos;
+    List qosQueue;
+} SubClient;
+
 int broker_msg_handle_subscribe(RemoteDSLink *link, json_t *req);
 void broker_handle_local_subscribe(BrokerNode *node,
                                    RemoteDSLink *link,
