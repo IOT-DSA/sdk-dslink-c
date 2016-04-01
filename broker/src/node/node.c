@@ -268,7 +268,7 @@ void broker_dslink_connect(DownstreamNode *dsn, RemoteDSLink *link) {
 
             const char *out = sub->path + len;
             broker_subscribe_remote(dsn, sub->req->link,
-                                    sub->reqSid, sub->qos, sub->path, out);
+                                    sub->reqSid, sub->qos, sub->path, out, sub->qosQueue);
         }
 
         dslink_decref(ref);

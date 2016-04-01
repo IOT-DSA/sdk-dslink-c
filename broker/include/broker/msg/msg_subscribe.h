@@ -32,7 +32,7 @@ void broker_handle_local_subscribe(BrokerNode *node,
 
 void broker_subscribe_remote(DownstreamNode *node, RemoteDSLink *link,
                              uint32_t sid, uint8_t qos, const char *path,
-                             const char *respPath);
+                             const char *respPath, List *qosQueue);
 void broker_subscribe_disconnected_remote(RemoteDSLink *link,
                                           const char *path,
                                           uint32_t sid, uint8_t qos, List *qosQueue);
