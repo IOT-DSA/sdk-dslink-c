@@ -66,12 +66,14 @@ void broker_remote_dslink_free(RemoteDSLink *link) {
     link->resp_sub_sids.locked = 1;
     dslink_map_foreach(&link->resp_sub_sids) {
         BrokerSubStream *stream = entry->value->data;
-        dslink_map_foreach(&stream->clients) {
+        dslink_map_foreach(&stream->reqs) {
             RemoteDSLink *l = entry->key->data;
-            uint32_t *sid = entry->value->data;
+            SubRequester *subReq = entry->value->data;
             broker_subscribe_disconnected_remote(l,
                                                  stream->remote_path->data,
-                                                 *sid, 0);
+                                                 subReq->reqSid, subReq->qos, subReq->qosQueue);
+            subReq->qosQueue = NULL;
+            broker_free_sub_requester(subReq);
         }
         stream->responder = NULL;
     }

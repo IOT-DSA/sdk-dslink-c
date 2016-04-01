@@ -73,7 +73,7 @@ typedef struct BrokerSubStream {
     json_t *last_value;
 
     // Map<RemoteDSLink *, SubClient *>
-    Map clients;
+    Map reqs;
 
 } BrokerSubStream;
 

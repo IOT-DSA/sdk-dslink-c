@@ -15,14 +15,15 @@ typedef struct PendingSub {
     uint8_t qos;
     DownstreamNode *req;
     ListNode *listNode;
+    List *qosQueue;
 } PendingSub;
 
-typedef struct SubClient {
+typedef struct SubRequester {
     RemoteDSLink * requester;
     uint32_t reqSid;
     uint8_t qos;
-    List qosQueue;
-} SubClient;
+    List *qosQueue;
+} SubRequester;
 
 int broker_msg_handle_subscribe(RemoteDSLink *link, json_t *req);
 void broker_handle_local_subscribe(BrokerNode *node,
@@ -34,9 +35,13 @@ void broker_subscribe_remote(DownstreamNode *node, RemoteDSLink *link,
                              const char *respPath);
 void broker_subscribe_disconnected_remote(RemoteDSLink *link,
                                           const char *path,
-                                          uint32_t sid, uint8_t qos);
+                                          uint32_t sid, uint8_t qos, List *qosQueue);
 
 void broker_free_pending_sub(PendingSub* sub, uint8_t freeNode);
+
+
+SubRequester *broker_create_sub_requester(RemoteDSLink * requester, uint32_t reqSid, uint8_t qos, List *qosQueue);
+void broker_free_sub_requester(SubRequester *req);
 
 #ifdef __cplusplus
 }

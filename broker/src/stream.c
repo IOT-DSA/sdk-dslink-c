@@ -2,6 +2,7 @@
 #include <string.h>
 #include <dslink/utils.h>
 #include <dslink/mem/mem.h>
+#include <broker/msg/msg_subscribe.h>
 #include "broker/msg/msg_unsubscribe.h"
 #include "broker/msg/msg_list.h"
 
@@ -62,7 +63,7 @@ BrokerSubStream *broker_stream_sub_init() {
 
     stream->type = SUBSCRIPTION_STREAM;
 
-    if (dslink_map_init(&stream->clients, broker_map_dslink_cmp,
+    if (dslink_map_init(&stream->reqs, broker_map_dslink_cmp,
                         broker_map_dslink_len, broker_map_dslink_hash) != 0) {
         dslink_free(stream);
         return NULL;
@@ -107,8 +108,12 @@ void broker_stream_free(BrokerStream *stream, RemoteDSLink *link) {
         dslink_free(stream);
     } else if (stream->type == SUBSCRIPTION_STREAM) {
         BrokerSubStream *bss = (BrokerSubStream *) stream;
-        dslink_map_remove(&bss->clients, link);
-        if (bss->clients.size > 0) {
+        ref_t * ref = dslink_map_remove_get(&bss->reqs, link);
+        SubRequester *subReq = ref->data;
+        broker_free_sub_requester(subReq);
+        dslink_free(ref);
+
+        if (bss->reqs.size > 0) {
             return;
         }
 
@@ -118,7 +123,7 @@ void broker_stream_free(BrokerStream *stream, RemoteDSLink *link) {
             dslink_map_remove(&bss->responder->resp_sub_sids, &bss->responder_sid);
             broker_msg_send_unsubscribe(bss, link);
         }
-        dslink_map_free(&bss->clients);
+        dslink_map_free(&bss->reqs);
         dslink_decref(bss->remote_path);
         dslink_decref(bss->virtual_path);
         json_decref(bss->last_value);
