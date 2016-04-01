@@ -123,16 +123,13 @@ void broker_stream_free(BrokerStream *stream, RemoteDSLink *reqLink) {
         if (bss->reqs.size > 0) {
             return;
         }
-
         if (bss->responder) {
-            dslink_map_remove(&bss->responder->sub_paths, bss->virtual_path->data);
-
+            dslink_map_remove(&bss->responder->sub_paths, bss->remote_path->data);
             dslink_map_remove(&bss->responder->resp_sub_sids, &bss->responder_sid);
             broker_msg_send_unsubscribe(bss, bss->responder);
         }
         dslink_map_free(&bss->reqs);
         dslink_decref(bss->remote_path);
-        dslink_decref(bss->virtual_path);
         json_decref(bss->last_value);
         dslink_free(stream);
     }
