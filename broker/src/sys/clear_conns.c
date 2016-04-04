@@ -40,10 +40,12 @@ void clear_conns(RemoteDSLink *link,
 
     json_object_set_new_nocheck(resp, "updates", updates);
 
-    dslink_map_foreach(&link->broker->downstream->list_stream->requester_links) {
-        uint32_t *rid = entry->value->data;
-        json_object_set_new_nocheck(resp, "rid", json_integer(*rid));
-        broker_ws_send_obj(entry->key->data, top);
+    if (link->broker->downstream->list_stream) {
+        dslink_map_foreach(&link->broker->downstream->list_stream->requester_links) {
+            uint32_t *rid = entry->value->data;
+            json_object_set_new_nocheck(resp, "rid", json_integer(*rid));
+            broker_ws_send_obj(entry->key->data, top);
+        }
     }
 
     json_decref(top);
