@@ -10,47 +10,6 @@
 #include "broker/broker.h"
 #include "broker/msg/msg_subscribe.h"
 
-
-//static
-//int handle_data_val_update(Listener *listener, void *data) {
-//    json_t *top = json_object();
-//    json_t *resps = json_array();
-//    json_object_set_new_nocheck(top, "responses", resps);
-//
-//    json_t *resp = json_object();
-//    json_array_append_new(resps, resp);
-//
-//    json_object_set_new_nocheck(resp, "rid", json_integer(0));
-//
-//    json_t *updates = json_array();
-//    json_object_set_new_nocheck(resp, "updates", updates);
-//
-//    void **arr = listener->data;
-//    uint32_t *sid = arr[0];
-//    RemoteDSLink *link = arr[1];
-//    {
-//        json_t *update = json_array();
-//        json_array_append_new(updates, update);
-//
-//        json_array_append_new(update, json_integer(*sid));
-//        BrokerNode *node = data;
-//        if (node->value) {
-//            json_array_append(update, node->value);
-//        } else {
-//            json_array_append_new(update, NULL);
-//        }
-//        {
-//            char ts[32];
-//            dslink_create_ts(ts, sizeof(ts));
-//            json_t *jsonTs = json_string(ts);
-//            json_array_append_new(update, jsonTs);
-//        }
-//    }
-//    broker_ws_send_obj(link, top);
-//    json_decref(top);
-//    return 0;
-//}
-
 void broker_handle_local_subscribe(BrokerNode *respNode,
                                    SubRequester *subreq) {
     DownstreamNode *reqNode = subreq->reqNode;
@@ -202,8 +161,6 @@ void handle_subscribe(RemoteDSLink *link, json_t *sub) {
     if (idsub) {
         // remove current sub;
         SubRequester *reqsub = idsub->data;
-        dslink_map_remove(&reqNode->req_sub_sids, &reqsub->reqSid);
-        dslink_map_remove(&reqNode->req_sub_paths, &reqsub->path);
         broker_free_sub_requester(reqsub);
     }
     if (pathsub) {
@@ -226,7 +183,10 @@ void handle_subscribe(RemoteDSLink *link, json_t *sub) {
     char *out = NULL;
     BrokerNode *respNode = broker_node_get(link->broker->root, path, &out);
 
-    SubRequester *subreq = broker_create_sub_requester(reqNode, sid, qos, NULL);
+    SubRequester *subreq = broker_create_sub_requester(reqNode, path, sid, qos, NULL);
+
+    dslink_map_set(&reqNode->req_sub_paths, dslink_str_ref(path), dslink_ref(subreq, NULL));
+    dslink_map_set(&reqNode->req_sub_sids, dslink_int_ref(sid), dslink_ref(subreq, NULL));
 
     if (!respNode) {
         if (dslink_str_starts_with(path, "/downstream/") || dslink_str_starts_with(path, "/upstream/")) {

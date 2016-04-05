@@ -3,7 +3,8 @@
 #include <broker/permission/permission.h>
 #include <broker/msg/msg_subscribe.h>
 #include <broker/utils.h>
-#include "broker/stream.h"
+#include <broker/stream.h>
+#include <broker/subscription.h>
 
 int broker_remote_dslink_init(RemoteDSLink *link) {
     memset(link, 0, sizeof(RemoteDSLink));
@@ -42,6 +43,30 @@ void broker_remote_dslink_free(RemoteDSLink *link) {
         // free the node only when resp_close_callback return TRUE
         entry->value->data = NULL;
     }
+
+    List req_sub_to_remove;
+    list_init(&req_sub_to_remove);
+    dslink_map_foreach(&link->node->req_sub_paths) {
+        // find all subscription that doesn't use qos
+        SubRequester *subreq = entry->value->data;
+        if (subreq->qos == 0) {
+            dslink_list_insert(&req_sub_to_remove, subreq);
+        }
+    }
+    dslink_list_foreach(&req_sub_to_remove) {
+        // clear non-qos subscription
+        SubRequester *subreq = ((ListNode *)node)->value;
+        broker_free_sub_requester(subreq);
+    }
+    dslink_list_free_all_nodes(&req_sub_to_remove);
+
+    dslink_map_foreach(&link->node->req_sub_paths) {
+        // find all subscription that doesn't use qos
+        SubRequester *subreq = entry->value->data;
+        subreq->reqSid = 0xFFFFFFFF;
+    }
+
+    dslink_map_clear(&link->node->req_sub_sids);
 
     dslink_map_free(&link->requester_streams);
     dslink_map_free(&link->responder_streams);

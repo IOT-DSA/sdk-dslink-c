@@ -219,6 +219,7 @@ void upstream_connect_conn(UpstreamPoll *upstreamPoll) {
     link->isUpstream = 1;
     link->isRequester = 1;
     link->isResponder = 1;
+    link->node = upstreamPoll->node;
     link->broker = mainLoop->data;
     link->name = dslink_strdup(upstreamPoll->name);
     upstreamPoll->remoteDSLink = link;
@@ -275,6 +276,7 @@ void upstream_create_poll(const char *brokerUrl, const char *name, const char *i
     upstreamPoll->name = dslink_strdup(name);
     upstreamPoll->idPrefix = dslink_strdup(idPrefix);
     upstreamPoll->group = dslink_strdup(group);
+    upstreamPoll->node = node;
 
     node->upstreamPoll = upstreamPoll;
 

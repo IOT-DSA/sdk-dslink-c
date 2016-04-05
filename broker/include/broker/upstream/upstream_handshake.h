@@ -33,6 +33,7 @@ typedef struct UpstreamPoll {
     char *group;
     uint32_t reconnectInterval;
     uv_timer_t * reconnectTimer;
+    struct DownstreamNode *node;
     struct RemoteDSLink * remoteDSLink;
     struct DSLink *clientDslink;
     struct Socket *sock;

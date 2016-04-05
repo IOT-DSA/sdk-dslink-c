@@ -30,7 +30,7 @@ void send_subscribe_request(DownstreamNode *node,
 }
 
 
-SubRequester *broker_create_sub_requester(DownstreamNode * node, uint32_t reqSid, uint8_t qos, List *qosQueue) {
+SubRequester *broker_create_sub_requester(DownstreamNode * node, const char *path, uint32_t reqSid, uint8_t qos, List *qosQueue) {
     SubRequester *req = dslink_calloc(1, sizeof(SubRequester));
     if (qosQueue) {
         req->qosQueue = qosQueue;
@@ -38,6 +38,7 @@ SubRequester *broker_create_sub_requester(DownstreamNode * node, uint32_t reqSid
         req->qosQueue = dslink_malloc(sizeof(List));
         list_init(req->qosQueue);
     }
+    req->path = dslink_strdup(path);
     req->reqNode = node;
     req->reqSid = reqSid;
     req->qos = qos;
@@ -45,6 +46,13 @@ SubRequester *broker_create_sub_requester(DownstreamNode * node, uint32_t reqSid
 }
 
 void broker_free_sub_requester(SubRequester *req) {
+    dslink_map_remove(&req->reqNode->req_sub_paths, (void*)req->path);
+
+    if (req->reqSid != 0xFFFFFFFF) {
+        // while still waiting for qos requester to connect
+        dslink_map_remove(&req->reqNode->req_sub_sids, &req->reqSid);
+    }
+
     if (req->pendingNode) {
         // pending;
         list_remove_node(req->pendingNode);

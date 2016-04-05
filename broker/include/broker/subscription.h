@@ -25,7 +25,7 @@ void send_subscribe_request(DownstreamNode *node,
                             uint32_t sid,
                             uint8_t qos);
 
-SubRequester *broker_create_sub_requester(DownstreamNode * node, uint32_t reqSid, uint8_t qos, List *qosQueue);
+SubRequester *broker_create_sub_requester(DownstreamNode * node, const char *path, uint32_t reqSid, uint8_t qos, List *qosQueue);
 void broker_free_sub_requester(SubRequester *req);
 
 void clear_qos_queue(List *qosQueue);
