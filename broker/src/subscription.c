@@ -125,7 +125,6 @@ void broker_update_sub_stream(BrokerSubStream *stream, json_t *varray) {
     stream->last_value = varray;
     json_incref(varray);
     broker_update_sub_reqs(stream);
-    printf("refcount %ld %p\n", varray->refcount, (void*)varray);
 }
 
 void broker_update_sub_stream_value(BrokerSubStream *stream, json_t *value, json_t *ts) {
