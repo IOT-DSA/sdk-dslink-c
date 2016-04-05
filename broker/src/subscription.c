@@ -60,7 +60,7 @@ void broker_free_sub_requester(SubRequester *req) {
         req->pendingNode = NULL;
     }
     if (req->stream) {
-        dslink_map_remove(&req->stream->reqSubs, &req->reqNode);
+        dslink_map_remove(&req->stream->reqSubs, req->reqNode);
         if (req->stream->reqSubs.size == 0) {
             broker_stream_free((BrokerStream *)req->stream);
         }
