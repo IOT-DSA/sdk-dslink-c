@@ -46,27 +46,30 @@ void broker_remote_dslink_free(RemoteDSLink *link) {
 
     List req_sub_to_remove;
     list_init(&req_sub_to_remove);
-    dslink_map_foreach(&link->node->req_sub_paths) {
-        // find all subscription that doesn't use qos
-        SubRequester *subreq = entry->value->data;
-        if (subreq->qos == 0) {
-            dslink_list_insert(&req_sub_to_remove, subreq);
+
+    if (link->node) {
+        dslink_map_foreach(&link->node->req_sub_paths) {
+            // find all subscription that doesn't use qos
+            SubRequester *subreq = entry->value->data;
+            if (subreq->qos == 0) {
+                dslink_list_insert(&req_sub_to_remove, subreq);
+            }
         }
-    }
-    dslink_list_foreach(&req_sub_to_remove) {
-        // clear non-qos subscription
-        SubRequester *subreq = ((ListNode *)node)->value;
-        broker_free_sub_requester(subreq);
-    }
-    dslink_list_free_all_nodes(&req_sub_to_remove);
+        dslink_list_foreach(&req_sub_to_remove) {
+            // clear non-qos subscription
+            SubRequester *subreq = ((ListNode *)node)->value;
+            broker_free_sub_requester(subreq);
+        }
+        dslink_list_free_all_nodes(&req_sub_to_remove);
 
-    dslink_map_foreach(&link->node->req_sub_paths) {
-        // find all subscription that doesn't use qos
-        SubRequester *subreq = entry->value->data;
-        subreq->reqSid = 0xFFFFFFFF;
-    }
+        dslink_map_foreach(&link->node->req_sub_paths) {
+            // find all subscription that doesn't use qos
+            SubRequester *subreq = entry->value->data;
+            subreq->reqSid = 0xFFFFFFFF;
+        }
 
-    dslink_map_clear(&link->node->req_sub_sids);
+        dslink_map_clear(&link->node->req_sub_sids);
+    }
 
     dslink_map_free(&link->requester_streams);
     dslink_map_free(&link->responder_streams);
