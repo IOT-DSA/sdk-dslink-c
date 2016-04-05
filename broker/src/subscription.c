@@ -125,20 +125,24 @@ void broker_update_sub_stream(BrokerSubStream *stream, json_t *varray) {
     stream->last_value = varray;
     json_incref(varray);
     broker_update_sub_reqs(stream);
+    printf("refcount %ld %p\n", varray->refcount, (void*)varray);
 }
 
 void broker_update_sub_stream_value(BrokerSubStream *stream, json_t *value, json_t *ts) {
     json_decref(stream->last_value);
-    if (!ts) {
-        char tsbuff[30];
-        dslink_create_ts(tsbuff, 30);
-        ts = json_string(tsbuff);
-    }
-    // create ts and
     json_t *varray = json_array();
     json_array_append(varray, json_null());
     json_array_append(varray, value);
-    json_array_append_new(varray, ts);
+
+    if (!ts) {
+        // create ts and
+        char tsbuff[30];
+        dslink_create_ts(tsbuff, 30);
+        ts = json_string(tsbuff);
+        json_array_append_new(varray, ts);
+    } else {
+        json_array_append(varray, ts);
+    }
 
     stream->last_value = varray;
     broker_update_sub_reqs(stream);
