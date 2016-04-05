@@ -113,6 +113,10 @@ ListNode *dslink_list_insert(List *list, void *data);
 // doesn't handle node->value
 void dslink_list_free(List *list);
 
+// free children nodes
+// doesn't handle node->value
+void dslink_list_free_all_nodes(List *list);
+
 #ifdef __cplusplus
 }
 #endif

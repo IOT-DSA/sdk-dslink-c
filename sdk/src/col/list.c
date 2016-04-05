@@ -27,3 +27,11 @@ void dslink_list_free(List *list) {
     }
     dslink_free(list);
 }
+
+void dslink_list_free_all_nodes(List *list) {
+    for (ListNodeBase *node = (list)->head.next; node != &(list)->head;) {
+        ListNodeBase *next = node->next;
+        dslink_free(node);
+        node = next;
+    }
+}

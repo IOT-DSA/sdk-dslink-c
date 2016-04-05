@@ -31,6 +31,33 @@ uint32_t broker_map_dslink_hash(void *key, size_t len) {
     return dslink_map_hash_key(key, len);
 }
 
+
+static
+int broker_map_node_cmp(void *key, void *other, size_t len) {
+    (void) len;
+    BrokerNode *a = key;
+    BrokerNode *b = other;
+    return strcmp(a->path, b->path);
+}
+
+static
+size_t broker_map_node_len(void *key) {
+    BrokerNode *a = key;
+
+    if (!a->path) {
+        return 0;
+    }
+
+    return strlen(a->path);
+}
+
+static
+uint32_t broker_map_node_hash(void *key, size_t len) {
+    key = (void*)((BrokerNode *) key)->path;
+    return dslink_map_hash_key(key, len);
+}
+
+
 BrokerListStream *broker_stream_list_init(void *node) {
     BrokerListStream *stream = dslink_calloc(1, sizeof(BrokerListStream));
     if (!stream) {
@@ -63,8 +90,8 @@ BrokerSubStream *broker_stream_sub_init() {
 
     stream->type = SUBSCRIPTION_STREAM;
 
-    if (dslink_map_init(&stream->reqs, broker_map_dslink_cmp,
-                        broker_map_dslink_len, broker_map_dslink_hash) != 0) {
+    if (dslink_map_init(&stream->reqSubs, broker_map_node_cmp,
+                        broker_map_node_len, broker_map_node_hash) != 0) {
         dslink_free(stream);
         return NULL;
     }
@@ -82,7 +109,7 @@ BrokerInvokeStream *broker_stream_invoke_init() {
     return stream;
 }
 
-void broker_stream_free(BrokerStream *stream, RemoteDSLink *reqLink) {
+void broker_stream_free(BrokerStream *stream) {
     if (!stream) {
         return;
     }
@@ -108,28 +135,17 @@ void broker_stream_free(BrokerStream *stream, RemoteDSLink *reqLink) {
         dslink_free(stream);
     } else if (stream->type == SUBSCRIPTION_STREAM) {
         BrokerSubStream *bss = (BrokerSubStream *) stream;
+        if (bss->respNode->type == DOWNSTREAM_NODE) {
+            DownstreamNode* dnode = (DownstreamNode*)bss->respNode;
+            broker_msg_send_unsubscribe(bss, ((DownstreamNode*)bss->respNode)->link);
 
-        if (reqLink) {
-            ref_t * ref = dslink_map_remove_get(&bss->reqs, reqLink);
-            SubRequester *subReq = ref->data;
-            if (subReq->qos & 2) {
-                //TODO
-            } else {
-                broker_free_sub_requester(subReq);
-                dslink_free(ref);
-            }
+            dslink_map_remove(&dnode->resp_sub_streams, bss->remote_path);
+            dslink_map_remove(&dnode->resp_sub_sids, &bss->respSid);
+        } else {
+            bss->respNode->sub_stream = NULL;
         }
-
-        if (bss->reqs.size > 0) {
-            return;
-        }
-        if (bss->responder) {
-            dslink_map_remove(&bss->responder->sub_paths, bss->remote_path->data);
-            dslink_map_remove(&bss->responder->resp_sub_sids, &bss->responder_sid);
-            broker_msg_send_unsubscribe(bss, bss->responder);
-        }
-        dslink_map_free(&bss->reqs);
-        dslink_decref(bss->remote_path);
+        dslink_map_free(&bss->reqSubs);
+        dslink_free(bss->remote_path);
         json_decref(bss->last_value);
         dslink_free(stream);
     }
@@ -140,13 +156,13 @@ void requester_stream_closed(BrokerStream *stream, RemoteDSLink *link) {
     if (stream->req_close_cb) {
         stream->req_close_cb(stream, link);
     }
-    broker_stream_free(stream, link);
+    broker_stream_free(stream);
 }
 
 void responder_stream_closed(BrokerStream *stream, RemoteDSLink *link) {
     if (stream->resp_close_cb) {
         if (stream->resp_close_cb(stream, link)) {
-            broker_stream_free(stream, NULL);
+            broker_stream_free(stream);
         }
     }
 }
@@ -214,3 +230,6 @@ void broker_stream_list_reset_remote_cache(BrokerListStream *stream,
         stream->cache_sent = 0;
     }
 }
+
+
+

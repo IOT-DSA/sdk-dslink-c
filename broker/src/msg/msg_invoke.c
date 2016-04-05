@@ -122,7 +122,7 @@ int broker_msg_handle_invoke(RemoteDSLink *link, json_t *req) {
         if (oldstream->req_close_cb) {
             oldstream->req_close_cb(oldstream, link);
         }
-        broker_stream_free(oldstream, link);
+        broker_stream_free(oldstream);
         dslink_decref(findref);
     }
     dslink_map_set(&link->requester_streams,

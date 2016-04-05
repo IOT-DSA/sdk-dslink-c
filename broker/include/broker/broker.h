@@ -30,10 +30,10 @@ typedef struct Broker {
     // Map<char *name, RemoteDSLink *>
     Map client_connecting;
 
-    // Map<char *dslinkName, List<PendingSub *> *>
+    // Map<char *dslinkPath, List<SubRequester *> *>
     Map remote_pending_sub;
 
-    // Map<char *path, List<PendingSub *> *>
+    // Map<char *path, List<SubRequester *> *>
     Map local_pending_sub;
 
     uv_timer_t *saveConnsHandler;

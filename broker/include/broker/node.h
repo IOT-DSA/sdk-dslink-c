@@ -42,6 +42,8 @@ typedef struct BrokerNode {
     BROKER_NODE_FIELDS;
 
     struct BrokerListStream *list_stream;
+    struct BrokerSubStream *sub_stream;
+
     on_invocation_cb on_invoke;
     json_t *value;
 
@@ -55,6 +57,7 @@ typedef struct DownstreamNode {
     BROKER_NODE_FIELDS;
 
     struct RemoteDSLink *link;
+
     ref_t *dsId;
 
     // Map<char *, Stream *>
@@ -67,6 +70,19 @@ typedef struct DownstreamNode {
     Map children_permissions;
 
     struct UpstreamPoll *upstreamPoll;
+
+    // Map<char *, BrokerSubStream *>
+    Map resp_sub_streams;
+
+    // Map<uint32_t *, BrokerSubStream *>
+    Map resp_sub_sids;
+
+    // Map<char *, SubRequester *>
+    Map req_sub_paths;
+
+    // Map<uint32_t *, SubRequester *>
+    Map req_sub_sids;
+
 } DownstreamNode;
 
 BrokerNode *broker_node_get(BrokerNode *root,
@@ -98,6 +114,7 @@ void broker_data_nodes_changed(struct Broker *broker);
 void broker_save_data_nodes(uv_timer_t* handle);
 int broker_load_data_nodes(struct Broker *broker);
 
+size_t broker_downstream_node_base_len(const char *path);
 #ifdef __cplusplus
 }
 #endif

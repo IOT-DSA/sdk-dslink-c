@@ -11,23 +11,24 @@ int broker_remote_dslink_init(RemoteDSLink *link) {
                         dslink_map_uint32_key_len_cal, dslink_map_hash_key) != 0
         || dslink_map_init(&link->requester_streams, dslink_map_uint32_cmp,
                         dslink_map_uint32_key_len_cal, dslink_map_hash_key) != 0
-        || dslink_map_init(&link->resp_sub_sids, dslink_map_uint32_cmp,
-                        dslink_map_uint32_key_len_cal, dslink_map_hash_key) != 0
-       || dslink_map_init(&link->req_sub_sids, dslink_map_uint32_cmp,
-                          dslink_map_uint32_key_len_cal, dslink_map_hash_key) != 0
-        || dslink_map_init(&link->req_pending_sub_sids, dslink_map_uint32_cmp,
-                          dslink_map_uint32_key_len_cal, dslink_map_hash_key) != 0
-        || dslink_map_init(&link->sub_paths, dslink_map_str_cmp,
-                           dslink_map_str_key_len_cal, dslink_map_hash_key) != 0
-        || dslink_map_init(&link->local_subs, dslink_map_str_cmp,
-                           dslink_map_str_key_len_cal, dslink_map_hash_key) != 0) {
+//        || dslink_map_init(&link->resp_sub_sids, dslink_map_uint32_cmp,
+//                        dslink_map_uint32_key_len_cal, dslink_map_hash_key) != 0
+//       || dslink_map_init(&link->req_sub_sids, dslink_map_uint32_cmp,
+//                          dslink_map_uint32_key_len_cal, dslink_map_hash_key) != 0
+//        || dslink_map_init(&link->req_pending_sub_sids, dslink_map_uint32_cmp,
+//                          dslink_map_uint32_key_len_cal, dslink_map_hash_key) != 0
+//        || dslink_map_init(&link->sub_paths, dslink_map_str_cmp,
+//                           dslink_map_str_key_len_cal, dslink_map_hash_key) != 0
+//        || dslink_map_init(&link->local_subs, dslink_map_str_cmp,
+//                           dslink_map_str_key_len_cal, dslink_map_hash_key) != 0
+            ) {
         dslink_map_free(&link->responder_streams);
         dslink_map_free(&link->requester_streams);
-        dslink_map_free(&link->resp_sub_sids);
-        dslink_map_free(&link->req_sub_sids);
-        dslink_map_free(&link->req_pending_sub_sids);
-        dslink_map_free(&link->sub_paths);
-        dslink_map_free(&link->local_subs);
+//        dslink_map_free(&link->resp_sub_sids);
+//        dslink_map_free(&link->req_sub_sids);
+//        dslink_map_free(&link->req_pending_sub_sids);
+//        dslink_map_free(&link->sub_paths);
+//        dslink_map_free(&link->local_subs);
         return 1;
     }
     permission_groups_init(&link->permission_groups);
@@ -56,45 +57,46 @@ void broker_remote_dslink_free(RemoteDSLink *link) {
         entry->value->data = NULL;
     }
 
-    dslink_map_foreach(&link->local_subs) {
-        Listener *l = entry->value->data;
-        listener_remove(l);
-        dslink_free(l->data);
-        dslink_free(l);
-    }
+//    dslink_map_foreach(&link->local_subs) {
+//        Listener *l = entry->value->data;
+//        listener_remove(l);
+//        dslink_free(l->data);
+//        dslink_free(l);
+//    }
+//
+//    link->resp_sub_sids.locked = 1;
+//    dslink_map_foreach(&link->resp_sub_sids) {
+//        BrokerSubStream *stream = entry->value->data;
+//        dslink_map_foreach(&stream->reqs) {
+//            RemoteDSLink *l = entry->key->data;
+//            SubRequester *subReq = entry->value->data;
+//            broker_subscribe_disconnected_remote(l,
+//                                                 stream->remote_path->data,
+//                                                 subReq->reqSid, subReq->qos, subReq->qosQueue);
+//            subReq->qosQueue = NULL;
+//            broker_free_sub_requester(subReq);
+//        }
+//        stream->responder = NULL;
+//    }
+//
+//    link->req_sub_sids.locked = 1;
+//    dslink_map_foreach(&link->req_sub_sids) {
+//        BrokerSubStream *stream = entry->value->data;
+//        broker_stream_free((BrokerStream *) stream, link);
+//    }
+//
+//    link->req_pending_sub_sids.locked = 1;
+//    dslink_map_foreach(&link->req_pending_sub_sids) {
+//        PendingSub *sub = entry->value->data;
+//        broker_free_pending_sub(sub, 1);
+//    }
+//
+//    dslink_map_free(&link->local_subs);
+//    dslink_map_free(&link->sub_paths);
+//    dslink_map_free(&link->resp_sub_sids);
+//    dslink_map_free(&link->req_sub_sids);
+//    dslink_map_free(&link->req_pending_sub_sids);
 
-    link->resp_sub_sids.locked = 1;
-    dslink_map_foreach(&link->resp_sub_sids) {
-        BrokerSubStream *stream = entry->value->data;
-        dslink_map_foreach(&stream->reqs) {
-            RemoteDSLink *l = entry->key->data;
-            SubRequester *subReq = entry->value->data;
-            broker_subscribe_disconnected_remote(l,
-                                                 stream->remote_path->data,
-                                                 subReq->reqSid, subReq->qos, subReq->qosQueue);
-            subReq->qosQueue = NULL;
-            broker_free_sub_requester(subReq);
-        }
-        stream->responder = NULL;
-    }
-
-    link->req_sub_sids.locked = 1;
-    dslink_map_foreach(&link->req_sub_sids) {
-        BrokerSubStream *stream = entry->value->data;
-        broker_stream_free((BrokerStream *) stream, link);
-    }
-
-    link->req_pending_sub_sids.locked = 1;
-    dslink_map_foreach(&link->req_pending_sub_sids) {
-        PendingSub *sub = entry->value->data;
-        broker_free_pending_sub(sub, 1);
-    }
-
-    dslink_map_free(&link->local_subs);
-    dslink_map_free(&link->sub_paths);
-    dslink_map_free(&link->resp_sub_sids);
-    dslink_map_free(&link->req_sub_sids);
-    dslink_map_free(&link->req_pending_sub_sids);
     dslink_map_free(&link->requester_streams);
     dslink_map_free(&link->responder_streams);
 
