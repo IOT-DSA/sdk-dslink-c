@@ -75,11 +75,35 @@ void broker_free_sub_requester(SubRequester *req) {
 void clear_qos_queue(List *qosQueue) {
     dslink_list_foreach(qosQueue) {
         ListNode *lnode = (ListNode *)node;
-        dslink_decref(lnode->value);
+        json_decref(lnode->value);
     }
     dslink_list_free_all_nodes(qosQueue);
 }
 
+
+void broker_update_sub_req_qos(SubRequester *subReq) {
+    if (subReq->reqNode->link) {
+
+        json_t *top = json_object();
+        json_t *resps = json_array();
+        json_object_set_new_nocheck(top, "responses", resps);
+        json_t *newResp = json_object();
+        json_array_append_new(resps, newResp);
+        json_object_set_new_nocheck(newResp, "rid", json_integer(0));
+        json_t *updates = json_array();
+        json_object_set_new_nocheck(newResp, "updates", updates);
+        dslink_list_foreach(subReq->qosQueue) {
+            json_t *varray = ((ListNode*)node)->value;
+            json_array_set_new(varray, 0, json_integer(subReq->reqSid));
+            json_array_append(updates, varray);
+        }
+
+        broker_ws_send_obj(subReq->reqNode->link, top);
+
+        json_decref(top);
+        clear_qos_queue(subReq->qosQueue);
+    }
+}
 
 void broker_update_sub_req(SubRequester *subReq, json_t *varray) {
     if (subReq->reqNode->link) {

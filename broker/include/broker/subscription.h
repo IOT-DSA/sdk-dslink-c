@@ -30,6 +30,7 @@ void broker_free_sub_requester(SubRequester *req);
 
 void clear_qos_queue(List *qosQueue);
 
+void broker_update_sub_req_qos(SubRequester *subReq);
 void broker_update_sub_req(SubRequester *subReq, json_t *varray);
 
 void broker_update_sub_stream(BrokerSubStream *stream, json_t *array);
