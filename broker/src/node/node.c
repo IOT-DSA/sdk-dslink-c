@@ -336,6 +336,11 @@ void broker_dslink_connect(DownstreamNode *dsn, RemoteDSLink *link) {
         broker_stream_list_connect(stream, dsn);
     }
 
+    dslink_map_foreach(&dsn->resp_sub_streams) {
+        BrokerSubStream *stream = entry->value->data;
+        send_subscribe_request(dsn, stream->remote_path, stream->respSid, stream->respQos);
+    }
+
     ref_t *ref = dslink_map_remove_get(&link->broker->remote_pending_sub,
                                        (char *) dsn->path);
     if (ref) {
