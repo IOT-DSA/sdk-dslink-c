@@ -31,6 +31,7 @@ typedef struct ListNode {
 
 typedef struct List {
     ListNodeBase head;
+    size_t size;
 } List;
 
 static inline
@@ -56,6 +57,7 @@ void list_insert_node_after(void *node, void *base) {
         ((ListNodeBase *) node)->next = ((ListNodeBase *) base)->next;
         ((ListNodeBase *) base)->next = node;
         ((ListNodeBase *) node)->prev = base;
+        ((ListNodeBase*)base)->list->size ++;
     }
 }
 
@@ -67,6 +69,7 @@ void list_insert_node_before(void *node, void *base) {
         ((ListNodeBase *) node)->prev = ((ListNodeBase *) base)->prev;
         ((ListNodeBase *) base)->prev = node;
         ((ListNodeBase *) node)->next = base;
+        ((ListNodeBase*)base)->list->size ++;
     }
 }
 
@@ -78,6 +81,7 @@ void list_insert_node(List *list, void *node) {
 static inline
 void *list_remove_node(void *node) {
     if (node && ((ListNodeBase*)node)->list) {
+        ((ListNodeBase*)node)->list->size --;
         ((ListNodeBase*)node)->prev->next = ((ListNodeBase*)node)->next;
         ((ListNodeBase*)node)->next->prev = ((ListNodeBase*)node)->prev;
         ((ListNodeBase*)node)->list = NULL;
@@ -92,12 +96,14 @@ void list_remove_all_nodes(List *list) {
     }
     list->head.next = &list->head;
     list->head.prev = &list->head;
+    list->size = 0;
 }
 
 static inline
 void list_free_node(void *node) {
     if (node) {
         if (((ListNodeBase*)node)->list) {
+            ((ListNodeBase*)node)->list->size --;
             ((ListNodeBase*)node)->prev->next = ((ListNodeBase*)node)->next;
             ((ListNodeBase*)node)->next->prev = ((ListNodeBase*)node)->prev;
         }

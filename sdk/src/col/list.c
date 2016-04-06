@@ -3,6 +3,7 @@
 #include "dslink/col/list.h"
 
 void list_init(List *list) {
+    list->size = 0;
     list->head.list = list;
     list->head.next = &list->head;
     list->head.prev = &list->head;
@@ -34,4 +35,5 @@ void dslink_list_free_all_nodes(List *list) {
         dslink_free(node);
         node = next;
     }
+    list_init(list);
 }
