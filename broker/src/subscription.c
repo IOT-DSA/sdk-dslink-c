@@ -1,6 +1,7 @@
 #include <broker/subscription.h>
 #include <dslink/utils.h>
 #include <broker/net/ws.h>
+#include <broker/config.h>
 
 
 void send_subscribe_request(DownstreamNode *node,
@@ -131,6 +132,11 @@ void broker_update_sub_req(SubRequester *subReq, json_t *varray) {
         }
         if ((subReq->qos & 1) == 0) {
             clear_qos_queue(subReq->qosQueue);
+        } else if (subReq->qosQueue->size >= broker_max_qos_queue_size) {
+            // destroy qos queue when exceed max queue size
+            clear_qos_queue(subReq->qosQueue);
+            subReq->qos = 0;
+            return;
         }
         dslink_list_insert(subReq->qosQueue, varray);
         json_incref(varray);
