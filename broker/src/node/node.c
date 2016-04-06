@@ -330,6 +330,7 @@ void broker_dslink_disconnect(DownstreamNode *node) {
 
 void broker_dslink_connect(DownstreamNode *dsn, RemoteDSLink *link) {
     dsn->link = link;
+    json_object_del(dsn->meta, "$disconnectedTs");
     dslink_map_foreach(&dsn->list_streams) {
         BrokerListStream *stream = entry->value->data;
         broker_stream_list_connect(stream, dsn);
@@ -351,7 +352,6 @@ void broker_dslink_connect(DownstreamNode *dsn, RemoteDSLink *link) {
     }
 
 
-    json_object_del(dsn->meta, "$disconnectedTs");
 }
 
 size_t broker_downstream_node_base_len(const char *path) {
