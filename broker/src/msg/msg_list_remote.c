@@ -36,12 +36,7 @@ void send_list_request(BrokerListStream *stream,
     json_object_set_new_nocheck(req, "method", json_string("list"));
     json_object_set_new_nocheck(req, "path", json_string(path));
 
-    uint32_t rid;
-    if (stream == NULL || stream->responder_rid == 0) {
-        rid = broker_node_incr_rid(node);
-    } else {
-        rid = stream->responder_rid;
-    }
+    uint32_t rid = broker_node_incr_rid(node);
 
     json_object_set_new_nocheck(req, "rid",
                                 json_integer(rid));
@@ -51,7 +46,10 @@ void send_list_request(BrokerListStream *stream,
 
     if (stream == NULL) {
         stream = init_remote_list_stream(node, path, reqLink, reqRid, rid);
+    } else {
+        stream->responder_rid = rid;
     }
+
     // can be first time list
     // can also happen after link disconnect and reconnect
     dslink_map_set(&node->link->responder_streams, dslink_int_ref(rid),
