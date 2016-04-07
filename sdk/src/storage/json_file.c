@@ -103,15 +103,15 @@ void json_storage_init_save_timer(StorageProvider *provider) {
 }
 
 static
-void json_storage_trigger_save(StorageProvider *provider, char **rkey) {
+void json_storage_trigger_save(StorageProvider *provider, const char **rkey) {
     JsonStore *store = provider->data;
 
     if (store->timer_setup == 0) {
         json_storage_init_save_timer(provider);
     }
 
-    char *keyA = rkey[0];
-    char *keyB = rkey[1];
+    const char *keyA = rkey[0];
+    const char *keyB = rkey[1];
 
     json_t *levelA = json_object_get(store->root, keyA);
 
@@ -175,7 +175,7 @@ void json_storage_handle_save_tick(uv_timer_t *timer) {
             dslink_strdup(keyB)
         };
 
-        json_storage_trigger_save(provider, (char **) rkey);
+        json_storage_trigger_save(provider, (const char **) rkey);
         store->waiting++;
     }
 
@@ -183,9 +183,9 @@ void json_storage_handle_save_tick(uv_timer_t *timer) {
 }
 
 static
-void json_storage_push(StorageProvider *provider, char **rkey, json_t *value, storage_push_done_cb cb, void *data) {
-    char *keyA = rkey[0];
-    char *keyB = rkey[1];
+void json_storage_push(StorageProvider *provider, const char **rkey, json_t *value, storage_push_done_cb cb, void *data) {
+    const char *keyA = rkey[0];
+    const char *keyB = rkey[1];
 
     JsonStore *store = provider->data;
     json_t *levelA = json_object_get(store->root, keyA);
@@ -221,9 +221,9 @@ void json_storage_push(StorageProvider *provider, char **rkey, json_t *value, st
 }
 
 static
-void json_storage_pull(StorageProvider *provider, char **rkey, storage_pull_done_cb cb, void *data) {
-    char *keyA = rkey[0];
-    char *keyB = rkey[1];
+void json_storage_pull(StorageProvider *provider, const char **rkey, storage_pull_done_cb cb, void *data) {
+    const char *keyA = rkey[0];
+    const char *keyB = rkey[1];
 
     JsonStore *store = provider->data;
     json_t *levelA = json_object_get(store->root, keyA);
@@ -339,9 +339,9 @@ json_t *json_storage_load(StorageProvider *provider) {
 }
 
 static
-void json_storage_store(StorageProvider *provider, char **rkey, json_t *value, storage_gen_done_cb cb, void *data) {
-    char *keyA = rkey[0];
-    char *keyB = rkey[1];
+void json_storage_store(StorageProvider *provider, const char **rkey, json_t *value, storage_gen_done_cb cb, void *data) {
+    const char *keyA = rkey[0];
+    const char *keyB = rkey[1];
 
     JsonStore *store = provider->data;
     json_t *levelA = json_object_get(store->root, keyA);
@@ -374,9 +374,9 @@ void json_storage_store(StorageProvider *provider, char **rkey, json_t *value, s
 }
 
 static
-void json_storage_recall(StorageProvider *provider, char **rkey, storage_recall_done_cb cb, void *data) {
-    char *keyA = rkey[0];
-    char *keyB = rkey[1];
+void json_storage_recall(StorageProvider *provider, const char **rkey, storage_recall_done_cb cb, void *data) {
+    const char *keyA = rkey[0];
+    const char *keyB = rkey[1];
 
     JsonStore *store = provider->data;
 

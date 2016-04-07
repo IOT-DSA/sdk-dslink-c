@@ -18,7 +18,7 @@ typedef void (*storage_pull_done_cb)(json_t *value, void *data);
 
 typedef void (*storage_store_cb)(
     struct StorageProvider *provider,
-    char **key,
+    const char **key,
     json_t *value,
     storage_gen_done_cb cb,
     void *data
@@ -26,14 +26,14 @@ typedef void (*storage_store_cb)(
 
 typedef void (*storage_recall_cb)(
     struct StorageProvider *provider,
-    char **key,
+    const char **key,
     storage_recall_done_cb cb,
     void *data
 );
 
 typedef void (*storage_push_cb)(
     struct StorageProvider *provider,
-    char **key,
+    const char **key,
     json_t *value,
     storage_push_done_cb cb,
     void *data
@@ -41,7 +41,7 @@ typedef void (*storage_push_cb)(
 
 typedef void (*storage_pull_cb)(
     struct StorageProvider *provider,
-    char **key,
+    const char **key,
     storage_pull_done_cb cb,
     void *data
 );
@@ -74,11 +74,11 @@ void dslink_storage_destroy(StorageProvider *provider);
 
 json_t *dslink_storage_traverse(StorageProvider *provider);
 
-void dslink_storage_push(StorageProvider *provider, char *group, char *key, json_t *value, storage_push_done_cb cb, void *data);
-void dslink_storage_pull(StorageProvider *provider, char *group, char *key, storage_pull_done_cb cb, void *data);
+void dslink_storage_push(StorageProvider *provider, const char *group, const char *key, json_t *value, storage_push_done_cb cb, void *data);
+void dslink_storage_pull(StorageProvider *provider, const char *group, const char *key, storage_pull_done_cb cb, void *data);
 
-void dslink_storage_store(StorageProvider *provider, char *group, char *key, json_t *value, storage_gen_done_cb cb, void *data);
-void dslink_storage_recall(StorageProvider *provider, char *group, char *key, storage_recall_done_cb cb, void *data);
+void dslink_storage_store(StorageProvider *provider, const char *group, const char *key, json_t *value, storage_gen_done_cb cb, void *data);
+void dslink_storage_recall(StorageProvider *provider, const char *group, const char *key, storage_recall_done_cb cb, void *data);
 void dslink_storage_destroy_group(StorageProvider *provider, char *group);
 
 #ifdef __cplusplus
