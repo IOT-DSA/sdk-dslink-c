@@ -2,6 +2,7 @@
 #define SDK_DSLINK_C_STORAGE_STORAGE_H
 
 #include <jansson.h>
+#include <uv.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -62,6 +63,7 @@ typedef struct StorageProvider {
     storage_traverse_cb traverse_cb;
 
     void *data;
+    uv_loop_t *loop;
 } StorageProvider;
 
 StorageProvider *dslink_storage_init(json_t *config);

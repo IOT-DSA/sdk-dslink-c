@@ -1,21 +1,35 @@
 #include <dslink/storage/storage.h>
+#include <uv.h>
+
+StorageProvider *storage;
 
 static
-void on_val_get(json_t *value, void *data) {
+void print_json(json_t *json) {
+    char *encoded = json_dumps(json, JSON_INDENT(2));
+    printf("%s", encoded);
+}
+
+static
+void on_val_save(void *data) {
     (void) data;
-    printf("%s\n", json_dumps(value, JSON_INDENT(2) | JSON_ENCODE_ANY));
+    json_t *json = dslink_storage_traverse(storage);
+    print_json(json);
+    printf("\n");
 }
 
 int main() {
-    StorageProvider *storage = dslink_storage_init(json_object());
+    storage = dslink_storage_init(json_object());
 
-    char *key[] = {
+    char *array[] = {
         "Hello",
-        "World",
-        NULL
+        "World"
     };
 
-    dslink_storage_push(storage, key, json_string("Test"), NULL, NULL);
-
-    dslink_storage_pull(storage, key, on_val_get, NULL);
+    json_t *loaded = dslink_storage_traverse(storage);
+    print_json(loaded);
+    printf("\n");
+    dslink_storage_push(storage, array, json_string("Hello World"), on_val_save, NULL);
+    dslink_storage_push(storage, array, json_string("Hello World"), on_val_save, NULL);
+    dslink_storage_pull(storage, array, NULL, NULL);
+    return uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 }

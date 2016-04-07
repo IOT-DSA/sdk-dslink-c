@@ -1,5 +1,5 @@
 #include <dslink/storage/storage.h>
-#include <dslink/storage/json_in_memory.h>
+#include <dslink/storage/json_file.h>
 
 StorageProvider *dslink_storage_init(json_t *config) {
     (void) config;
@@ -10,10 +10,10 @@ StorageProvider *dslink_storage_init(json_t *config) {
     if (json_is_string(jPath)) {
         path = (char *) json_string_value(jPath);
     } else {
-        path = ".";
+        path = "storage";
     }
 
-    return dslink_storage_json_memory_create(path);
+    return dslink_storage_json_file_create(path);
 }
 
 void dslink_storage_destroy(StorageProvider *provider) {

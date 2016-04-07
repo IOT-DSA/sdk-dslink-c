@@ -6,7 +6,7 @@
 
 static
 void invoke_send_one_row(DSLink *link, DSNode *node,
-                  json_t *rid, json_t *params, ref_t *stream_ref) {
+                         json_t *rid, json_t *params, ref_t *stream_ref) {
     (void) node;
     (void) params;
     (void) stream_ref;
@@ -40,8 +40,46 @@ void invoke_send_one_row(DSLink *link, DSNode *node,
 }
 
 static
+void invoke_send_echo(DSLink *link, DSNode *node,
+                      json_t *rid, json_t *params, ref_t *stream_ref) {
+    (void) node;
+    (void) params;
+    (void) stream_ref;
+    json_t *top = json_object();
+    if (!top) {
+        return;
+    }
+    json_t *resps = json_array();
+    if (!resps) {
+        json_delete(top);
+        return;
+    }
+    json_object_set_new_nocheck(top, "responses", resps);
+
+    json_t *resp = json_object();
+    if (!resp) {
+        json_delete(top);
+        return;
+    }
+    json_t *updates = json_array();
+    json_t *update = json_array();
+    json_array_append_new(updates, update);
+
+    json_t *msg = json_incref(json_object_get(params, "input"));
+
+    json_array_append_new(update, msg);
+    json_object_set_new_nocheck(resp, "updates", updates);
+    json_array_append_new(resps, resp);
+
+    json_object_set_new_nocheck(resp, "stream", json_string("closed"));
+    json_object_set_nocheck(resp, "rid", rid);
+    dslink_ws_send_obj((struct wslay_event_context *) link->_ws, top);
+    json_delete(top);
+}
+
+static
 void invoke_send_multiple_rows(DSLink *link, DSNode *node,
-                         json_t *rid, json_t *params, ref_t *stream_ref) {
+                               json_t *rid, json_t *params, ref_t *stream_ref) {
     (void) node;
     (void) params;
     (void) stream_ref;
@@ -80,7 +118,7 @@ void invoke_send_multiple_rows(DSLink *link, DSNode *node,
 
 static
 void invoke_send_multiple_rows_multiple_updates(DSLink *link, DSNode *node,
-                               json_t *rid, json_t *params, ref_t *stream_ref) {
+                                                json_t *rid, json_t *params, ref_t *stream_ref) {
     (void) node;
     (void) params;
     (void) stream_ref;
@@ -184,7 +222,7 @@ static void invoke_cancel_stream_numbers(DSLink *link, DSNode *node, void *strea
 
 static
 void invoke_send_streaming_numbers(DSLink *link, DSNode *node,
-                                                json_t *rid, json_t *params, ref_t *stream_ref) {
+                                   json_t *rid, json_t *params, ref_t *stream_ref) {
     (void) node;
     (void) params;
     (void) stream_ref;
@@ -312,6 +350,41 @@ void responder_init_invoke(DSLink *link, DSNode *root) {
         if (dslink_node_add_child(link, getStreamNow) != 0) {
             log_warn("Failed to add get multiple rows action to the root node\n");
             dslink_node_tree_free(link, getStreamNow);
+            return;
+        }
+    }
+
+    {
+        DSNode *echoNode = dslink_node_create(root, "echo", "node");
+        if (!echoNode) {
+            log_warn("Failed to create echo action node\n");
+            return;
+        }
+
+        echoNode->on_invocation = invoke_send_echo;
+        dslink_node_set_meta(link, echoNode, "$name", json_string("Echo"));
+        dslink_node_set_meta(link, echoNode, "$invokable", json_string("read"));
+
+        json_t *columns = json_array();
+        json_t *message_row = json_object();
+        json_object_set_new(message_row, "name", json_string("message"));
+        json_object_set_new(message_row, "type", json_string("string"));
+
+        json_t *message_param = json_object();
+        json_object_set_new(message_row, "name", json_string("input"));
+        json_object_set_new(message_row, "type", json_string("string"));
+
+        json_array_append_new(columns, message_row);
+
+        json_t *params = json_array();
+        json_array_append_new(params, message_param);
+
+        dslink_node_set_meta(link, echoNode, "$columns", columns);
+        dslink_node_set_meta(link, echoNode, "$params", params);
+
+        if (dslink_node_add_child(link, echoNode) != 0) {
+            log_warn("Failed to add echo action to the root node\n");
+            dslink_node_tree_free(link, echoNode);
             return;
         }
     }
