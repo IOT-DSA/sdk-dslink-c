@@ -310,6 +310,8 @@ int broker_start() {
     uv_loop_init(mainLoop);
     mainLoop->data = &broker;
 
+    broker.storage->loop = mainLoop;
+
     json_t *defaultPermission = json_object_get(config, "defaultPermission");
 
     broker_config_load(config);
