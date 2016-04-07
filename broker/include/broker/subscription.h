@@ -40,6 +40,7 @@ void broker_update_sub_stream_value(BrokerSubStream *stream, json_t *value, json
 
 void broker_update_stream_qos(BrokerSubStream *stream);
 void broker_update_sub_qos(SubRequester *req, uint8_t qos);
+void serialize_qos_queue(SubRequester *subReq, uint8_t delete);
 
 #ifdef __cplusplus
 }

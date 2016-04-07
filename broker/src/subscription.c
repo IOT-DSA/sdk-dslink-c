@@ -47,6 +47,25 @@ SubRequester *broker_create_sub_requester(DownstreamNode * node, const char *pat
     return req;
 }
 
+void serialize_qos_queue(SubRequester *subReq, uint8_t delete) {
+    if (!subReq->qosKey1) {
+        subReq->qosKey1 = dslink_str_escape(subReq->reqNode->path);
+    }
+    if (!subReq->qosKey2) {
+        subReq->qosKey2 = dslink_str_escape(subReq->path);
+    }
+    if (delete) {
+        dslink_storage_store(((Broker *)mainLoop->data)->storage, subReq->qosKey1, subReq->qosKey2, NULL, NULL, NULL);
+    } else {
+        json_t *array = json_array();
+        json_array_append_new(array, json_integer(subReq->qos));
+        json_array_append(array, subReq->qosQueue);
+        dslink_storage_store(((Broker *)mainLoop->data)->storage, subReq->qosKey1, subReq->qosKey2, array, NULL, NULL);
+        json_decref(array);
+    }
+
+}
+
 void broker_free_sub_requester(SubRequester *req) {
     dslink_map_remove(&req->reqNode->req_sub_paths, (void*)req->path);
 
@@ -68,6 +87,7 @@ void broker_free_sub_requester(SubRequester *req) {
         }
     }
     if (req->qos & 2) {
+        serialize_qos_queue(req, 1);
         dslink_storage_store(((Broker *)mainLoop->data)->storage, req->reqNode->path, req->path, NULL, NULL, NULL);
     }
     if (req->qosQueue) {
@@ -81,24 +101,10 @@ void broker_free_sub_requester(SubRequester *req) {
 
 }
 
-static
-void serialize_qos_queue(SubRequester *subReq){
-    json_t *array = json_array();
-    json_array_append_new(array, json_integer(subReq->qos));
-    json_array_append(array, subReq->qosQueue);
-    if (!subReq->qosKey1) {
-        subReq->qosKey1 = dslink_str_escape(subReq->reqNode->path);
-    }
-    if (!subReq->qosKey2) {
-        subReq->qosKey2 = dslink_str_escape(subReq->path);
-    }
-    dslink_storage_store(((Broker *)mainLoop->data)->storage, subReq->qosKey1, subReq->qosKey2, array, NULL, NULL);
-    json_decref(array);
-}
 void clear_qos_queue(SubRequester *subReq, uint8_t serialize) {
     json_array_clear(subReq->qosQueue);
     if (serialize && subReq->qos & 2) {
-        serialize_qos_queue(subReq);
+        serialize_qos_queue(subReq, 0);
     }
 }
 
@@ -159,8 +165,8 @@ void broker_update_sub_req(SubRequester *subReq, json_t *varray) {
             return;
         }
         json_array_append(subReq->qosQueue, varray);
-        if (subReq->qos | 2) {
-            serialize_qos_queue(subReq);
+        if (subReq->qos & 2) {
+            serialize_qos_queue(subReq, 0);
         }
     }
 }
@@ -215,10 +221,20 @@ void broker_update_stream_qos(BrokerSubStream *stream) {
 }
 void broker_update_sub_qos(SubRequester *req, uint8_t qos) {
     if (req->qos != qos) {
+        uint8_t oldqos = req->qos;
         req->qos = qos;
+        if (oldqos & 2 && !(qos & 2)) {
+            // delete qos file
+            serialize_qos_queue(req, 1);
+        }
+
         if (req->qos > 0 && !(req->qosQueue)) {
             req->qosQueue = json_array();
         }
         broker_update_stream_qos(req->stream);
+        if (qos & 2 && !(oldqos & 2)) {
+            // save qos file
+            serialize_qos_queue(req, 0);
+        }
     }
 }
