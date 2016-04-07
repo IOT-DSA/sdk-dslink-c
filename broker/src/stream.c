@@ -63,7 +63,6 @@ BrokerListStream *broker_stream_list_init(void *node) {
     if (!stream) {
         return NULL;
     }
-
     stream->type = LIST_STREAM;
     stream->req_close_cb = broker_list_req_closed;
     if (dslink_map_init(&stream->requester_links, broker_map_dslink_cmp,
@@ -119,6 +118,13 @@ void broker_stream_free(BrokerStream *stream) {
         if (s->requester_links.size > 0) {
             // don't free it when there is any other attached dslink
             return;
+        }
+        if (s->node->type == DOWNSTREAM_NODE) {
+            DownstreamNode *dnode = (DownstreamNode *)s->node;
+            if (dnode->link) {
+                printf("remove resp stream %p %d \n", (void*)stream, s->responder_rid);
+                dslink_map_remove(&dnode->link->responder_streams, &s->responder_rid);
+            }
         }
         dslink_map_free(&s->requester_links);
         dslink_free(s->remote_path);
