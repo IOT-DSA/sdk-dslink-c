@@ -37,6 +37,7 @@ json_t *broker_config_gen() {
 
     json_object_set_new_nocheck(broker, "log_level", json_string("info"));
     json_object_set_new_nocheck(broker, "allowAllLinks", json_true());
+    json_object_set_new_nocheck(broker, "maxQueue", json_integer(1024));
     json_object_set_new_nocheck(broker, "defaultPermission", json_null());
 
     json_t *storage = json_object();
@@ -87,6 +88,7 @@ json_t *broker_config_get() {
 }
 
 uint8_t broker_enable_token = 1;
+size_t broker_max_qos_queue_size = 1024;
 char *broker_storage_path = ".";
 
 int broker_config_load(json_t* json) {
@@ -108,6 +110,17 @@ int broker_config_load(json_t* json) {
     } else {
         // true by default
         broker_enable_token = 0;
+    }
+
+    // load maxQueue
+    json_t* maxQueue = json_object_get(json, "maxQueue");
+    if (json_is_integer(maxQueue)) {
+        broker_max_qos_queue_size = (size_t)json_integer_value(maxQueue);
+        if (broker_max_qos_queue_size < 16) {
+            broker_max_qos_queue_size = 16;
+        } else if (broker_max_qos_queue_size > 0xFFFFF) {
+            broker_max_qos_queue_size = 0xFFFFF;
+        }
     }
 
     json_t *storage = json_object_get(json, "storage");

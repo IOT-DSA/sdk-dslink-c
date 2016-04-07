@@ -11,6 +11,8 @@ extern "C" {
 
 #include "broker/remote_dslink.h"
 
+struct BrokerNode;
+
 typedef void (*continuous_invoke_cb)(RemoteDSLink *link, json_t *params);
 typedef void (*invoke_close_cb)(void *stream);
 typedef int (*stream_close_cb)(void *stream, RemoteDSLink *link);
@@ -62,16 +64,17 @@ typedef struct BrokerSubStream {
 
     BROKER_STREAM_FIELDS;
 
-    RemoteDSLink *responder;
-    uint32_t responder_sid;
+    struct BrokerNode *respNode;
+    uint32_t respSid;
+    uint8_t respQos;
 
-    // char *
-    ref_t *remote_path;
+    char *remote_path;
+
 
     json_t *last_value;
 
-    // Map<RemoteDSLink *, uint32_t *>
-    Map clients;
+    // Map<DownstreamNode *, SubClient *>
+    Map reqSubs;
 
 } BrokerSubStream;
 
@@ -81,9 +84,10 @@ BrokerSubStream *broker_stream_sub_init();
 
 void requester_stream_closed(BrokerStream *stream, RemoteDSLink *link);
 void responder_stream_closed(BrokerStream * stream, RemoteDSLink *link);
-void broker_stream_free(BrokerStream *stream, RemoteDSLink *link);
+void broker_stream_free(BrokerStream *stream);
 json_t *broker_stream_list_get_cache(BrokerListStream *stream);
 void broker_stream_list_reset_remote_cache(BrokerListStream *stream, RemoteDSLink *link);
+
 
 #ifdef __cplusplus
 }

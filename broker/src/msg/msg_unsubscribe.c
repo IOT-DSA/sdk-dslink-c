@@ -1,3 +1,4 @@
+#include <broker/subscription.h>
 #include "broker/net/ws.h"
 #include "broker/node.h"
 #include "broker/utils.h"
@@ -5,6 +6,9 @@
 #include "broker/msg/msg_unsubscribe.h"
 
 void broker_msg_send_unsubscribe(BrokerSubStream *bss, RemoteDSLink *link) {
+    if (!((DownstreamNode*)bss->respNode)->link) {
+        return;
+    }
     json_t *top = json_object();
     json_t *reqs = json_array();
     json_object_set_new_nocheck(top, "requests", reqs);
@@ -20,35 +24,22 @@ void broker_msg_send_unsubscribe(BrokerSubStream *bss, RemoteDSLink *link) {
 
     {
         json_t *sids = json_array();
-        json_array_append_new(sids, json_integer(bss->responder_sid));
+        json_array_append_new(sids, json_integer(bss->respSid));
         json_object_set_new_nocheck(req, "sids", sids);
     }
 
-    broker_ws_send_obj(bss->responder, top);
+    broker_ws_send_obj(((DownstreamNode*)bss->respNode)->link, top);
     json_decref(top);
 }
 
 static
 void handle_unsubscribe(RemoteDSLink *link, uint32_t sid) {
-    ref_t *ref = dslink_map_remove_get(&link->local_subs, &sid);
+    ref_t *ref = dslink_map_remove_get(&link->node->req_sub_sids, &sid);
     if (ref) {
-        Listener *listener = ref->data;
-        listener_remove(listener);
-
-        dslink_free(listener->data);
-        dslink_free(listener);
+        SubRequester *subreq = ref->data;
+        broker_free_sub_requester(subreq);
         dslink_decref(ref);
-        return;
     }
-
-    ref = dslink_map_remove_get(&link->req_sub_sids, &sid);
-    if (!ref) {
-        return;
-    }
-
-    BrokerSubStream *bss = ref->data;
-    broker_stream_free((BrokerStream *) bss, link);
-    dslink_decref(ref);
 }
 
 int broker_msg_handle_unsubscribe(RemoteDSLink *link, json_t *req) {

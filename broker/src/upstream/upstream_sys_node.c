@@ -61,7 +61,6 @@ void load_upstream_node(BrokerNode *parentNode, const char* nodeName, json_t* da
 
 }
 
-
 static
 int load_upstreams(BrokerNode *parentNode){
     uv_fs_t dir;

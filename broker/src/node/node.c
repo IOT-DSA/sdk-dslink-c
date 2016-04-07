@@ -8,6 +8,7 @@
 #include <dslink/mem/mem.h>
 #include <dslink/utils.h>
 #include <broker/upstream/upstream_handshake.h>
+#include <broker/subscription.h>
 
 #include "broker/broker.h"
 #include "broker/msg/msg_subscribe.h"
@@ -103,6 +104,70 @@ BrokerNode *broker_node_createl(const char *name, size_t nameLen,
     return node;
 }
 
+DownstreamNode *broker_init_downstream_node(BrokerNode *parentNode, const char *name) {
+    DownstreamNode *node = dslink_calloc(1, sizeof(DownstreamNode));
+    if (!node) {
+        return NULL;
+    }
+    node->type = DOWNSTREAM_NODE;
+
+
+    if (dslink_map_init(&node->list_streams, dslink_map_str_cmp,
+                        dslink_map_str_key_len_cal, dslink_map_hash_key) != 0
+        || dslink_map_init(&node->children_permissions, dslink_map_str_cmp,
+                           dslink_map_str_key_len_cal, dslink_map_hash_key) != 0
+        || dslink_map_init(&node->req_sub_paths, dslink_map_str_cmp,
+                           dslink_map_str_key_len_cal, dslink_map_hash_key) != 0
+        || dslink_map_init(&node->resp_sub_streams, dslink_map_str_cmp,
+                           dslink_map_str_key_len_cal, dslink_map_hash_key) != 0
+        || dslink_map_init(&node->req_sub_sids, dslink_map_uint32_cmp,
+                           dslink_map_uint32_key_len_cal, dslink_map_hash_key) != 0
+        || dslink_map_init(&node->resp_sub_sids, dslink_map_uint32_cmp,
+                           dslink_map_uint32_key_len_cal, dslink_map_hash_key) != 0
+            ) {
+        goto fail;
+    }
+
+    {
+        size_t parentPathLen = strlen(parentNode->path);
+        size_t nameLen = strlen(name);
+        char *path = dslink_malloc(parentPathLen + nameLen + 2);
+        memcpy(path, parentNode->path, parentPathLen);
+        path[parentPathLen] = '/';
+        strcpy(path + parentPathLen + 1, name);
+        node->path = path;
+    }
+    node->name = dslink_strdup(name);
+    node->meta = json_object();
+    if (!(node->name
+          && node->meta
+          && json_object_set_new_nocheck(node->meta, "$is",
+                                         json_string_nocheck("node")) == 0)) {
+        goto fail;
+    }
+    node->permissionList = NULL;
+
+    char *tmpKey = dslink_strdup(name);
+    if (!tmpKey) {
+        goto fail;
+    }
+    if (dslink_map_set(parentNode->children,
+                       dslink_ref(tmpKey, dslink_free),
+                       dslink_ref(node, NULL)) != 0) {
+        dslink_free(tmpKey);
+        goto fail;
+    }
+    node->parent = parentNode;
+    return node;
+
+    fail:
+    dslink_map_free(&node->list_streams);
+    DSLINK_CHECKED_EXEC(dslink_free, (char *) node->name);
+    json_decref(node->meta);
+    dslink_free(node);
+    return NULL;
+}
+
 static
 void broker_node_update_child(BrokerNode *parent, const char* name) {
     if (parent->list_stream) {
@@ -180,12 +245,25 @@ void broker_node_free(BrokerNode *node) {
     }
 
     if (node->type == DOWNSTREAM_NODE) {
-        dslink_map_free(&((DownstreamNode *)node)->list_streams);
-        virtual_permission_free_map(&((DownstreamNode *)node)->children_permissions);
-        if (((DownstreamNode *)node)->upstreamPoll) {
-            upstream_clear_poll(((DownstreamNode *)node)->upstreamPoll);
-            dslink_free(((DownstreamNode *)node)->upstreamPoll);
+        DownstreamNode *dnode = (DownstreamNode *)node;
+        dslink_map_free(&dnode->list_streams);
+        virtual_permission_free_map(&dnode->children_permissions);
+        if (dnode->upstreamPoll) {
+            upstream_clear_poll(dnode->upstreamPoll);
+            dslink_free(dnode->upstreamPoll);
         }
+
+        dslink_map_foreach(&dnode->req_sub_paths) {
+            SubRequester *subreq = entry->value->data;
+            broker_free_sub_requester(subreq);
+        }
+        dslink_map_foreach(&dnode->resp_sub_streams) {
+           // TODO move to pending subscriptions
+        }
+        dslink_map_free(&dnode->req_sub_sids);
+        dslink_map_free(&dnode->req_sub_paths);
+        dslink_map_free(&dnode->resp_sub_sids);
+        dslink_map_free(&dnode->resp_sub_streams);
     } else {
         // TODO: add a new type for these listeners
         // they shouldn't be part of base node type
@@ -232,6 +310,9 @@ void broker_node_update_value(BrokerNode *node, json_t *value, uint8_t isNewValu
     if (!isNewValue) {
         json_incref(value);
     }
+    if (node->sub_stream) {
+        broker_update_sub_stream_value(node->sub_stream, value, NULL);
+    }
     listener_dispatch_message(&node->on_value_update, node);
 }
 
@@ -249,30 +330,46 @@ void broker_dslink_disconnect(DownstreamNode *node) {
 
 void broker_dslink_connect(DownstreamNode *dsn, RemoteDSLink *link) {
     dsn->link = link;
+    json_object_del(dsn->meta, "$disconnectedTs");
     dslink_map_foreach(&dsn->list_streams) {
         BrokerListStream *stream = entry->value->data;
         broker_stream_list_connect(stream, dsn);
     }
 
+    dslink_map_foreach(&dsn->resp_sub_streams) {
+        BrokerSubStream *stream = entry->value->data;
+        send_subscribe_request(dsn, stream->remote_path, stream->respSid, stream->respQos);
+    }
+
     ref_t *ref = dslink_map_remove_get(&link->broker->remote_pending_sub,
-                                       (char *) dsn->name);
+                                       (char *) dsn->path);
     if (ref) {
         List *subs = ref->data;
 
         size_t len = strlen(link->path);
         dslink_list_foreach(subs) {
-            PendingSub *sub = ((ListNode *) node)->value;
-            if (!sub->req->link) {
-                continue;
-            }
+            SubRequester *sub = ((ListNode *) node)->value;
 
-            const char *out = sub->path + len;
-            broker_subscribe_remote(dsn, sub->req->link,
-                                    sub->reqSid, sub->path, out);
+            const char *respPath = sub->path + len;
+            broker_subscribe_remote(dsn, sub, respPath);
         }
-
         dslink_decref(ref);
     }
 
-    json_object_del(dsn->meta, "$disconnectedTs");
+
+}
+
+size_t broker_downstream_node_base_len(const char *path) {
+    const char *name;
+    if (path[1] == 'd') {
+        name = path + sizeof("/downstream/");
+    } else {
+        name = path + sizeof("/upstream/");
+    }
+
+    const char *end = strchr(name, '/');
+    if (!end) {
+        return 0;
+    }
+    return  end - path;
 }

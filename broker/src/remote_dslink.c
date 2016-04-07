@@ -3,7 +3,8 @@
 #include <broker/permission/permission.h>
 #include <broker/msg/msg_subscribe.h>
 #include <broker/utils.h>
-#include "broker/stream.h"
+#include <broker/stream.h>
+#include <broker/subscription.h>
 
 int broker_remote_dslink_init(RemoteDSLink *link) {
     memset(link, 0, sizeof(RemoteDSLink));
@@ -11,23 +12,10 @@ int broker_remote_dslink_init(RemoteDSLink *link) {
                         dslink_map_uint32_key_len_cal, dslink_map_hash_key) != 0
         || dslink_map_init(&link->requester_streams, dslink_map_uint32_cmp,
                         dslink_map_uint32_key_len_cal, dslink_map_hash_key) != 0
-        || dslink_map_init(&link->resp_sub_sids, dslink_map_uint32_cmp,
-                        dslink_map_uint32_key_len_cal, dslink_map_hash_key) != 0
-       || dslink_map_init(&link->req_sub_sids, dslink_map_uint32_cmp,
-                          dslink_map_uint32_key_len_cal, dslink_map_hash_key) != 0
-        || dslink_map_init(&link->req_pending_sub_sids, dslink_map_uint32_cmp,
-                          dslink_map_uint32_key_len_cal, dslink_map_hash_key) != 0
-        || dslink_map_init(&link->sub_paths, dslink_map_str_cmp,
-                           dslink_map_str_key_len_cal, dslink_map_hash_key) != 0
-        || dslink_map_init(&link->local_subs, dslink_map_str_cmp,
-                           dslink_map_str_key_len_cal, dslink_map_hash_key) != 0) {
+            ) {
         dslink_map_free(&link->responder_streams);
         dslink_map_free(&link->requester_streams);
-        dslink_map_free(&link->resp_sub_sids);
-        dslink_map_free(&link->req_sub_sids);
-        dslink_map_free(&link->req_pending_sub_sids);
-        dslink_map_free(&link->sub_paths);
-        dslink_map_free(&link->local_subs);
+
         return 1;
     }
     permission_groups_init(&link->permission_groups);
@@ -56,43 +44,33 @@ void broker_remote_dslink_free(RemoteDSLink *link) {
         entry->value->data = NULL;
     }
 
-    dslink_map_foreach(&link->local_subs) {
-        Listener *l = entry->value->data;
-        listener_remove(l);
-        dslink_free(l->data);
-        dslink_free(l);
-    }
+    List req_sub_to_remove;
+    list_init(&req_sub_to_remove);
 
-    link->resp_sub_sids.locked = 1;
-    dslink_map_foreach(&link->resp_sub_sids) {
-        BrokerSubStream *stream = entry->value->data;
-        dslink_map_foreach(&stream->clients) {
-            RemoteDSLink *l = entry->key->data;
-            uint32_t *sid = entry->value->data;
-            broker_subscribe_disconnected_remote(l,
-                                                 stream->remote_path->data,
-                                                 *sid);
+    if (link->node) {
+        dslink_map_foreach(&link->node->req_sub_paths) {
+            // find all subscription that doesn't use qos
+            SubRequester *subreq = entry->value->data;
+            if (subreq->qos == 0) {
+                dslink_list_insert(&req_sub_to_remove, subreq);
+            }
         }
-        stream->responder = NULL;
+        dslink_list_foreach(&req_sub_to_remove) {
+            // clear non-qos subscription
+            SubRequester *subreq = ((ListNode *)node)->value;
+            broker_free_sub_requester(subreq);
+        }
+        dslink_list_free_all_nodes(&req_sub_to_remove);
+
+        dslink_map_foreach(&link->node->req_sub_paths) {
+            // find all subscription that doesn't use qos
+            SubRequester *subreq = entry->value->data;
+            subreq->reqSid = 0xFFFFFFFF;
+        }
+
+        dslink_map_clear(&link->node->req_sub_sids);
     }
 
-    link->req_sub_sids.locked = 1;
-    dslink_map_foreach(&link->req_sub_sids) {
-        BrokerSubStream *stream = entry->value->data;
-        broker_stream_free((BrokerStream *) stream, link);
-    }
-
-    link->req_pending_sub_sids.locked = 1;
-    dslink_map_foreach(&link->req_pending_sub_sids) {
-        PendingSub *sub = entry->value->data;
-        broker_free_pending_sub(sub, 1);
-    }
-
-    dslink_map_free(&link->local_subs);
-    dslink_map_free(&link->sub_paths);
-    dslink_map_free(&link->resp_sub_sids);
-    dslink_map_free(&link->req_sub_sids);
-    dslink_map_free(&link->req_pending_sub_sids);
     dslink_map_free(&link->requester_streams);
     dslink_map_free(&link->responder_streams);
 

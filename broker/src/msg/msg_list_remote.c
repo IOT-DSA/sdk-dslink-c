@@ -37,7 +37,7 @@ void send_list_request(BrokerListStream *stream,
     json_object_set_new_nocheck(req, "path", json_string(path));
 
     uint32_t rid;
-    if (stream == NULL) {
+    if (stream == NULL || stream->responder_rid == 0) {
         rid = broker_node_incr_rid(node);
     } else {
         rid = stream->responder_rid;

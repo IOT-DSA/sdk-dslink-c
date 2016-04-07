@@ -101,6 +101,9 @@ set(DSLINK_SRC
     "${DSLINK_SRC_DIR}/mem/mem.c"
     "${DSLINK_SRC_DIR}/mem/ref.c"
 
+    "${DSLINK_SRC_DIR}/storage/storage.c"
+    "${DSLINK_SRC_DIR}/storage/json_file.c"
+
     "${DSLINK_SRC_DIR}/msg/list_response.c"
     "${DSLINK_SRC_DIR}/msg/request_handler.c"
     "${DSLINK_SRC_DIR}/msg/response_handler.c"
@@ -164,7 +167,7 @@ set(BROKER_SRC
     "${BROKER_SRC_DIR}/upstream/upstream_handshake.c"
     "${BROKER_SRC_DIR}/node/node_serialization.c"
     "${BROKER_SRC_DIR}/sys/permission_action.c"
-)
+    "${BROKER_SRC_DIR}/msg/sub_stream.c" broker/src/subscription.c)
 
 set(EXAMPLE_RESPONDER_SRC_DIR "${CMAKE_CURRENT_LIST_DIR}/examples/responder/src")
 set(EXAMPLE_RESPONDER_SRC
@@ -234,7 +237,7 @@ endif()
 ###### Configure Examples ######
 
 if (DSLINK_BUILD_EXAMPLES)
-    foreach(example "responder" "requester")
+    foreach(example "responder" "requester" "storage")
         include("${CMAKE_CURRENT_SOURCE_DIR}/examples/${example}/CMakeLists.txt")
         add_executable(${example} ${EXAMPLE_SRC})
         target_link_libraries(${example} sdk_dslink_c-static)

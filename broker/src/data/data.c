@@ -10,6 +10,7 @@
 #include "broker/broker.h"
 #include "broker/data/data_actions.h"
 #include "broker/net/ws.h"
+#include "broker/subscription.h"
 
 void broker_data_node_update(BrokerNode *node,
                              json_t *value,
@@ -82,6 +83,25 @@ void on_delete_node_invoked(RemoteDSLink *link,
 }
 
 static
+void handle_pending_sub(Broker *broker, BrokerNode *n) {
+    if (!broker) {
+        return;
+    }
+    ref_t *ref = dslink_map_remove_get(&broker->local_pending_sub,
+                                       (char *) n->path);
+    if (ref) {
+        List *subs = ref->data;
+
+        dslink_list_foreach(subs) {
+            SubRequester *sub = ((ListNode *) node)->value;
+            broker_handle_local_subscribe(n, sub);
+        }
+
+        dslink_decref(ref);
+    }
+}
+
+static
 void on_add_node_invoked(RemoteDSLink *link,
                          BrokerNode *node, json_t *req, PermissionLevel maxPermission) {
     (void)maxPermission;
@@ -113,30 +133,8 @@ void on_add_node_invoked(RemoteDSLink *link,
         return;
     }
     broker_create_data_actions(child);
+    handle_pending_sub(link->broker, child);
     broker_data_nodes_changed(link->broker);
-}
-
-static
-void handle_pending_sub(Broker *broker, BrokerNode *n) {
-    if (!broker) {
-        return;
-    }
-    ref_t *ref = dslink_map_remove_get(&broker->local_pending_sub,
-                                       (char *) n->path);
-    if (ref) {
-        List *subs = ref->data;
-
-        dslink_list_foreach(subs) {
-            PendingSub *sub = ((ListNode *) node)->value;
-            if (!sub->req->link) {
-                continue;
-            }
-
-            broker_handle_local_subscribe(n, sub->req->link, sub->reqSid);
-        }
-
-        dslink_decref(ref);
-    }
 }
 
 static
@@ -188,7 +186,7 @@ void broker_create_dynamic_data_node(Broker *broker, BrokerNode *node,
         } else {
             broker_node_update_value(node, value, 0);
         }
-        handle_pending_sub(broker, node);
+
     } else {
         const char *name = strchr(path, '/');
         if (!name) {
@@ -225,6 +223,7 @@ void broker_create_dynamic_data_node(Broker *broker, BrokerNode *node,
             broker_node_free(child);
             return;
         }
+        handle_pending_sub(broker, node);
         broker_create_data_actions(child);
 
         broker_create_dynamic_data_node(broker, child, name,

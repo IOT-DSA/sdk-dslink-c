@@ -40,50 +40,6 @@ int generate_salt(unsigned char *salt, size_t len) {
 }
 
 
-DownstreamNode *broker_init_downstream_node(BrokerNode *parentNode, const char *name) {
-    DownstreamNode *node = dslink_calloc(1, sizeof(DownstreamNode));
-    if (!node) {
-        return NULL;
-    }
-    node->type = DOWNSTREAM_NODE;
-    if (dslink_map_init(&node->list_streams, dslink_map_str_cmp,
-                           dslink_map_str_key_len_cal, dslink_map_hash_key) != 0
-        || dslink_map_init(&node->children_permissions, dslink_map_str_cmp,
-                              dslink_map_str_key_len_cal, dslink_map_hash_key) != 0) {
-        goto fail;
-    }
-
-    node->name = dslink_strdup(name);
-    node->meta = json_object();
-    if (!(node->name
-          && node->meta
-          && json_object_set_new_nocheck(node->meta, "$is",
-                                         json_string_nocheck("node")) == 0)) {
-        goto fail;
-    }
-    node->permissionList = NULL;
-
-    char *tmpKey = dslink_strdup(name);
-    if (!tmpKey) {
-        goto fail;
-    }
-    if (dslink_map_set(parentNode->children,
-                       dslink_ref(tmpKey, dslink_free),
-                       dslink_ref(node, NULL)) != 0) {
-        dslink_free(tmpKey);
-        goto fail;
-    }
-    node->parent = parentNode;
-    return node;
-
-fail:
-    dslink_map_free(&node->list_streams);
-    DSLINK_CHECKED_EXEC(dslink_free, (char *) node->name);
-    json_decref(node->meta);
-    dslink_free(node);
-    return NULL;
-}
-
 json_t *broker_handshake_handle_conn(Broker *broker,
                                      const char *dsId,
                                      const char *token,

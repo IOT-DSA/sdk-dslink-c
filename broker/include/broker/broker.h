@@ -6,12 +6,16 @@ extern "C" {
 #endif
 
 #include <wslay/wslay.h>
+
+#include <dslink/storage/storage.h>
 #include <dslink/socket.h>
-#include "broker/node.h"
+
+#include <broker/node.h>
 
 struct uv_loop_t;
 
 typedef struct Broker {
+    StorageProvider *storage;
 
     BrokerNode *root;
 
@@ -26,10 +30,10 @@ typedef struct Broker {
     // Map<char *name, RemoteDSLink *>
     Map client_connecting;
 
-    // Map<char *dslinkName, List<PendingSub *> *>
+    // Map<char *dslinkPath, List<SubRequester *> *>
     Map remote_pending_sub;
 
-    // Map<char *path, List<PendingSub *> *>
+    // Map<char *path, List<SubRequester *> *>
     Map local_pending_sub;
 
     uv_timer_t *saveConnsHandler;

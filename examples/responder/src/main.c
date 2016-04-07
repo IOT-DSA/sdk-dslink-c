@@ -1,6 +1,8 @@
 #define LOG_TAG "main"
 
 #include <dslink/log.h>
+#include <dslink/storage/storage.h>
+
 #include "replicator.h"
 #include "rng.h"
 #include "invoke.h"

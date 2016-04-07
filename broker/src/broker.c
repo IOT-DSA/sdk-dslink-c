@@ -10,9 +10,12 @@
 #define LOG_TAG "broker"
 #include <dslink/log.h>
 #include <dslink/utils.h>
+
+#include <dslink/storage/storage.h>
+
 #include <broker/upstream/upstream_node.h>
 #include <broker/utils.h>
-#include "broker/net/ws.h"
+#include <broker/net/ws.h>
 
 #define CONN_RESP "HTTP/1.1 200 OK\r\n" \
                     "Connection: close\r\n" \
@@ -182,6 +185,10 @@ void broker_close_link(RemoteDSLink *link) {
 
 static
 void broker_free(Broker *broker) {
+    if (broker->storage) {
+        dslink_storage_destroy(broker->storage);
+    }
+
     broker_node_free(broker->root);
     dslink_map_free(&broker->client_connecting);
     dslink_map_free(&broker->remote_pending_sub);
@@ -191,7 +198,6 @@ void broker_free(Broker *broker) {
 
 static
 int broker_init(Broker *broker, json_t *defaultPermission) {
-    memset(broker, 0, sizeof(Broker));
     broker->root = broker_node_create("", "node");
     if (!broker->root) {
         goto fail;
@@ -229,7 +235,7 @@ int broker_init(Broker *broker, json_t *defaultPermission) {
         goto fail;
     }
     broker_load_downstream_nodes(broker);
-
+    broker_load_qos_storage(broker);
 
     if (broker_sys_node_populate(broker->sys)) {
         goto fail;
@@ -300,6 +306,7 @@ int broker_start() {
     }
 
     Broker broker;
+    memset(&broker, 0, sizeof(Broker));
 
     mainLoop = dslink_calloc(1, sizeof(uv_loop_t));
     uv_loop_init(mainLoop);
@@ -308,6 +315,9 @@ int broker_start() {
     json_t *defaultPermission = json_object_get(config, "defaultPermission");
 
     broker_config_load(config);
+
+    broker.storage = dslink_storage_init(config);
+    broker.storage->loop = mainLoop;
 
     if (broker_init(&broker, defaultPermission) != 0) {
         ret = 1;
