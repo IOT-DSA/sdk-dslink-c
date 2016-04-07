@@ -36,6 +36,7 @@ SubRequester *broker_create_sub_requester(DownstreamNode * node, const char *pat
     SubRequester *req = dslink_calloc(1, sizeof(SubRequester));
     if (qosQueue) {
         req->qosQueue = qosQueue;
+        json_incref(qosQueue);
     } else if (qos > 0) {
         req->qosQueue = json_array();
     }
@@ -71,7 +72,7 @@ void broker_free_sub_requester(SubRequester *req) {
     }
     if (req->qosQueue) {
         clear_qos_queue(req, 1);
-        dslink_free(req->qosQueue);
+        json_decref(req->qosQueue);
     }
     dslink_free(req->path);
     dslink_free(req->qosKey1);

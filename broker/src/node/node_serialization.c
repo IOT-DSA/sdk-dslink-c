@@ -5,6 +5,9 @@
 #include <broker/data/data.h>
 #include <broker/config.h>
 #include <string.h>
+#include <dslink/utils.h>
+#include <broker/msg/msg_subscribe.h>
+#include <broker/subscription.h>
 
 static
 void broker_save_downstream_virtual_nodes(VirtualPermissionNode *node, const char *name, json_t *pdata) {
@@ -241,7 +244,45 @@ int broker_load_data_nodes(Broker *broker) {
 
 int broker_load_qos_storage(Broker *broker) {
     json_t *loaded = dslink_storage_traverse(broker->storage);
-    (void)loaded;
 
+    const char *key;
+    json_t *value;
+
+    char *out;
+    json_t *loadedCopy = json_copy(loaded);
+    json_object_foreach(loadedCopy, key, value) {
+        if (!json_is_object(value)) {
+            continue;
+        }
+        char *reqPath = dslink_str_unescape(key);
+        BrokerNode *node = broker_node_get(broker->root, reqPath, &out);
+        if (node && node->type == DOWNSTREAM_NODE) {
+            const char *key2;
+            json_t *value2;
+            json_object_foreach(value, key2, value2) {
+                if (json_array_size(value2) != 2) {
+                    continue;
+                }
+                json_t *qosJson = json_array_get(value2, 0);
+                json_t *qosQueue = json_array_get(value2, 1);
+
+                if (!json_is_array(qosQueue) || !json_is_integer(qosJson)) {
+                    continue;
+                }
+                uint8_t qos = (uint8_t)json_integer_value(qosJson);
+
+                char *resqPath = dslink_str_unescape(key2);
+
+                SubRequester *subreq = broker_create_sub_requester((DownstreamNode*)node, resqPath, 0, qos, qosQueue);
+                broker_add_new_subscription(broker, subreq);
+
+                dslink_free(resqPath);
+            }
+        } else {
+            dslink_storage_destroy_group(broker->storage, reqPath);
+        }
+        dslink_free(reqPath);
+    }
+    json_decref(loadedCopy);
     return 0;
 }

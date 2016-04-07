@@ -120,6 +120,32 @@ void broker_subscribe_local_nonexistent(const char *path, SubRequester *subreq) 
     subreq->pendingNode = dslink_list_insert(subs, subreq);
 }
 
+
+void broker_add_new_subscription(Broker *broker, SubRequester *subreq) {
+    char *out = NULL;
+    DownstreamNode * reqNode = subreq->reqNode;
+    BrokerNode *respNode = broker_node_get(broker->root, subreq->path, &out);
+
+    dslink_map_set(&reqNode->req_sub_paths, dslink_str_ref(subreq->path), dslink_ref(subreq, NULL));
+    dslink_map_set(&reqNode->req_sub_sids, dslink_int_ref(subreq->reqSid), dslink_ref(subreq, NULL));
+
+    if (!respNode) {
+        if (dslink_str_starts_with(subreq->path, "/downstream/") || dslink_str_starts_with(subreq->path, "/upstream/")) {
+            broker_subscribe_disconnected_remote(subreq->path, subreq);
+        } else {
+            broker_subscribe_local_nonexistent(subreq->path, subreq);
+        }
+        return;
+    }
+
+    if (respNode->type == REGULAR_NODE) {
+        broker_handle_local_subscribe( respNode, subreq);
+    } else {
+        DownstreamNode *downNode = (DownstreamNode *)respNode;
+        broker_subscribe_remote(downNode, subreq, out);
+    }
+}
+
 static
 void handle_subscribe(RemoteDSLink *link, json_t *sub) {
     const char *path = json_string_value(json_object_get(sub, "path"));
@@ -182,29 +208,9 @@ void handle_subscribe(RemoteDSLink *link, json_t *sub) {
         return;
     }
 
-    char *out = NULL;
-    BrokerNode *respNode = broker_node_get(link->broker->root, path, &out);
-
     SubRequester *subreq = broker_create_sub_requester(reqNode, path, sid, qos, NULL);
 
-    dslink_map_set(&reqNode->req_sub_paths, dslink_str_ref(path), dslink_ref(subreq, NULL));
-    dslink_map_set(&reqNode->req_sub_sids, dslink_int_ref(sid), dslink_ref(subreq, NULL));
-
-    if (!respNode) {
-        if (dslink_str_starts_with(path, "/downstream/") || dslink_str_starts_with(path, "/upstream/")) {
-            broker_subscribe_disconnected_remote(path, subreq);
-        } else {
-            broker_subscribe_local_nonexistent(path, subreq);
-        }
-        return;
-    }
-
-    if (respNode->type == REGULAR_NODE) {
-        broker_handle_local_subscribe( respNode, subreq);
-    } else {
-        DownstreamNode *downNode = (DownstreamNode *)respNode;
-        broker_subscribe_remote(downNode, subreq, out);
-    }
+    broker_add_new_subscription(link->broker, subreq);
 }
 
 int broker_msg_handle_subscribe(RemoteDSLink *link, json_t *req) {
