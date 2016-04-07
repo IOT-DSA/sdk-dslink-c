@@ -131,6 +131,7 @@ void json_storage_trigger_save(StorageProvider *provider, char **rkey) {
         store->waiting--;
         uv_fs_t req;
         uv_fs_unlink(provider->loop, &req, tm, NULL);
+        uv_fs_req_cleanup(&req);
         dslink_free(tm);
         return;
     }
@@ -410,6 +411,40 @@ void json_storage_destroy(StorageProvider *provider) {
     dslink_free(store);
 }
 
+static
+void json_storage_destroy_group(StorageProvider *provider, char *group) {
+    JsonStore *store = provider->data;
+
+    char tm[256];
+
+    {
+        int len = snprintf(tm, sizeof(tm) - 1, "%s/%s", store->path, group);
+        tm[len] = '\0';
+    }
+
+    uv_fs_t dirf;
+    uv_dirent_t d;
+    if (uv_fs_scandir(NULL, &dirf, tm, 0, NULL) > 0) {
+        while (uv_fs_scandir_next(&dirf, &d) != UV_EOF) {
+            if (d.type != UV_DIRENT_FILE) {
+                continue;
+            }
+
+            char tmp[256];
+            int len = snprintf(tmp, sizeof(tmp) - 1, "%s/%s/%s", store->path, group, d.name);
+            tmp[len] = '\0';
+
+            uv_fs_t req;
+            uv_fs_unlink(provider->loop, &req, tmp, NULL);
+            uv_fs_req_cleanup(&req);
+        }
+    }
+
+    uv_fs_t req;
+    uv_fs_rmdir(provider->loop, &req, tm, NULL);
+    uv_fs_req_cleanup(&req);
+}
+
 StorageProvider *dslink_storage_json_file_create(char *path) {
     StorageProvider *storage = dslink_malloc(sizeof(StorageProvider));
     JsonStore *store = storage->data = dslink_malloc(sizeof(JsonStore));
@@ -432,5 +467,6 @@ StorageProvider *dslink_storage_json_file_create(char *path) {
 
     storage->store_cb = json_storage_store;
     storage->recall_cb = json_storage_recall;
+    storage->destroy_group_cb = json_storage_destroy_group;
     return storage;
 }

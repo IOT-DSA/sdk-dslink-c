@@ -36,6 +36,10 @@ void dslink_storage_recall(StorageProvider *provider, char **key, storage_recall
     provider->recall_cb(provider, key, cb, data);
 }
 
+void dslink_storage_destroy_group(StorageProvider *provider, char *group) {
+    provider->destroy_group_cb(provider, group);
+}
+
 json_t *dslink_storage_traverse(StorageProvider *provider) {
     return provider->traverse_cb(provider);
 }
