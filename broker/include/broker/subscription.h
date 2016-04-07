@@ -9,13 +9,15 @@ extern "C" {
 #include <broker/node.h>
 
 typedef struct SubRequester {
-    const char *path;
+    char *path;
     DownstreamNode *reqNode;
     DownstreamNode *respNode;
     BrokerSubStream *stream;
     uint32_t reqSid;
     uint8_t qos;
-    List *qosQueue;
+    json_t *qosQueue;
+    char *qosKey1;
+    char *qosKey2;
     // pending list node
     ListNode *pendingNode;
 } SubRequester;
@@ -25,10 +27,10 @@ void send_subscribe_request(DownstreamNode *node,
                             uint32_t sid,
                             uint8_t qos);
 
-SubRequester *broker_create_sub_requester(DownstreamNode * node, const char *path, uint32_t reqSid, uint8_t qos, List *qosQueue);
+SubRequester *broker_create_sub_requester(DownstreamNode * node, const char *path, uint32_t reqSid, uint8_t qos, json_t *qosQueue);
 void broker_free_sub_requester(SubRequester *req);
 
-void clear_qos_queue(List *qosQueue);
+void clear_qos_queue(SubRequester *subReq, uint8_t serialize);
 
 void broker_update_sub_req_qos(SubRequester *subReq);
 void broker_update_sub_req(SubRequester *subReq, json_t *varray);

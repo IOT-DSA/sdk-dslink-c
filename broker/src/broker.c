@@ -198,7 +198,6 @@ void broker_free(Broker *broker) {
 
 static
 int broker_init(Broker *broker, json_t *defaultPermission) {
-    memset(broker, 0, sizeof(Broker));
     broker->root = broker_node_create("", "node");
     if (!broker->root) {
         goto fail;
@@ -236,7 +235,7 @@ int broker_init(Broker *broker, json_t *defaultPermission) {
         goto fail;
     }
     broker_load_downstream_nodes(broker);
-
+    broker_load_qos_storage(broker);
 
     if (broker_sys_node_populate(broker->sys)) {
         goto fail;
@@ -307,6 +306,7 @@ int broker_start() {
     }
 
     Broker broker;
+    memset(&broker, 0, sizeof(Broker));
 
     mainLoop = dslink_calloc(1, sizeof(uv_loop_t));
     uv_loop_init(mainLoop);
@@ -316,13 +316,13 @@ int broker_start() {
 
     broker_config_load(config);
 
+    broker.storage = dslink_storage_init(config);
+    broker.storage->loop = mainLoop;
+
     if (broker_init(&broker, defaultPermission) != 0) {
         ret = 1;
         goto exit;
     }
-
-    broker.storage = dslink_storage_init(config);
-    broker.storage->loop = mainLoop;
 
     ret = broker_start_server(config);
 exit:

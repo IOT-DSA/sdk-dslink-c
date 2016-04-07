@@ -173,7 +173,7 @@ void handle_subscribe(RemoteDSLink *link, json_t *sub) {
         reqsub->reqSid = sid;
         dslink_map_set(&reqNode->req_sub_sids, dslink_int_ref(sid), dslink_ref(reqsub, NULL));
         broker_update_sub_qos(reqsub, qos);
-        if (reqsub->qosQueue && list_is_not_empty(reqsub->qosQueue)) {
+        if (json_array_size(reqsub->qosQueue) > 0) {
             // send qos data
             broker_update_sub_req_qos(reqsub);
         } else if (reqsub->stream && reqsub->stream->last_value) {

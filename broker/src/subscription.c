@@ -2,6 +2,7 @@
 #include <dslink/utils.h>
 #include <broker/net/ws.h>
 #include <broker/config.h>
+#include <broker/broker.h>
 
 
 void send_subscribe_request(DownstreamNode *node,
@@ -31,13 +32,12 @@ void send_subscribe_request(DownstreamNode *node,
 }
 
 
-SubRequester *broker_create_sub_requester(DownstreamNode * node, const char *path, uint32_t reqSid, uint8_t qos, List *qosQueue) {
+SubRequester *broker_create_sub_requester(DownstreamNode * node, const char *path, uint32_t reqSid, uint8_t qos, json_t *qosQueue) {
     SubRequester *req = dslink_calloc(1, sizeof(SubRequester));
     if (qosQueue) {
         req->qosQueue = qosQueue;
     } else if (qos > 0) {
-        req->qosQueue = dslink_malloc(sizeof(List));
-        list_init(req->qosQueue);
+        req->qosQueue = json_array();
     }
     req->path = dslink_strdup(path);
     req->reqNode = node;
@@ -66,19 +66,39 @@ void broker_free_sub_requester(SubRequester *req) {
             broker_stream_free((BrokerStream *)req->stream);
         }
     }
+    if (req->qos & 2) {
+        dslink_storage_store(((Broker *)mainLoop->data)->storage, req->reqNode->path, req->path, NULL, NULL, NULL);
+    }
     if (req->qosQueue) {
-        clear_qos_queue(req->qosQueue);
+        clear_qos_queue(req, 1);
         dslink_free(req->qosQueue);
     }
+    dslink_free(req->path);
+    dslink_free(req->qosKey1);
+    dslink_free(req->qosKey2);
     dslink_free(req);
+
 }
 
-void clear_qos_queue(List *qosQueue) {
-    dslink_list_foreach(qosQueue) {
-        ListNode *lnode = (ListNode *)node;
-        json_decref(lnode->value);
+static
+void serialize_qos_queue(SubRequester *subReq){
+    json_t *array = json_array();
+    json_array_append_new(array, json_integer(subReq->qos));
+    json_array_append(array, subReq->qosQueue);
+    if (!subReq->qosKey1) {
+        subReq->qosKey1 = dslink_str_escape(subReq->reqNode->path);
     }
-    dslink_list_free_all_nodes(qosQueue);
+    if (!subReq->qosKey2) {
+        subReq->qosKey2 = dslink_str_escape(subReq->path);
+    }
+    dslink_storage_store(((Broker *)mainLoop->data)->storage, subReq->qosKey1, subReq->qosKey2, array, NULL, NULL);
+    json_decref(array);
+}
+void clear_qos_queue(SubRequester *subReq, uint8_t serialize) {
+    json_array_clear(subReq->qosQueue);
+    if (serialize && subReq->qos & 2) {
+        serialize_qos_queue(subReq);
+    }
 }
 
 
@@ -91,18 +111,18 @@ void broker_update_sub_req_qos(SubRequester *subReq) {
         json_t *newResp = json_object();
         json_array_append_new(resps, newResp);
         json_object_set_new_nocheck(newResp, "rid", json_integer(0));
-        json_t *updates = json_array();
-        json_object_set_new_nocheck(newResp, "updates", updates);
-        dslink_list_foreach(subReq->qosQueue) {
-            json_t *varray = ((ListNode*)node)->value;
+
+        size_t idx;
+        json_t *varray;
+        json_array_foreach(subReq->qosQueue, idx, varray) {
             json_array_set_new(varray, 0, json_integer(subReq->reqSid));
-            json_array_append(updates, varray);
         }
+        json_object_set_nocheck(newResp, "updates", subReq->qosQueue);
 
         broker_ws_send_obj(subReq->reqNode->link, top);
 
         json_decref(top);
-        clear_qos_queue(subReq->qosQueue);
+        clear_qos_queue(subReq, 1);
     }
 }
 
@@ -127,19 +147,20 @@ void broker_update_sub_req(SubRequester *subReq, json_t *varray) {
     } else if (subReq->qos > 0){
         // add to qos queue
         if (!subReq->qosQueue) {
-            subReq->qosQueue = dslink_malloc(sizeof(List));
-            list_init(subReq->qosQueue);
+            subReq->qosQueue = json_array();
         }
         if ((subReq->qos & 1) == 0) {
-            clear_qos_queue(subReq->qosQueue);
-        } else if (subReq->qosQueue->size >= broker_max_qos_queue_size) {
+            clear_qos_queue(subReq, 0);
+        } else if (json_array_size(subReq->qosQueue) >= broker_max_qos_queue_size) {
             // destroy qos queue when exceed max queue size
-            clear_qos_queue(subReq->qosQueue);
+            clear_qos_queue(subReq, 1);
             subReq->qos = 0;
             return;
         }
-        dslink_list_insert(subReq->qosQueue, varray);
-        json_incref(varray);
+        json_array_append(subReq->qosQueue, varray);
+        if (subReq->qos | 2) {
+            serialize_qos_queue(subReq);
+        }
     }
 }
 
@@ -195,8 +216,7 @@ void broker_update_sub_qos(SubRequester *req, uint8_t qos) {
     if (req->qos != qos) {
         req->qos = qos;
         if (req->qos > 0 && !(req->qosQueue)) {
-            req->qosQueue = dslink_malloc(sizeof(List));
-            list_init(req->qosQueue);
+            req->qosQueue = json_array();
         }
         broker_update_stream_qos(req->stream);
     }

@@ -108,7 +108,7 @@ void broker_dslink_connect(DownstreamNode *node, struct RemoteDSLink *link);
 void broker_downstream_nodes_changed(struct Broker *broker);
 void broker_save_downstream_nodes(uv_timer_t* handle);
 int broker_load_downstream_nodes(struct Broker *broker);
-
+int broker_load_qos_storage(struct Broker *broker);
 // add a timer to save data nodes
 void broker_data_nodes_changed(struct Broker *broker);
 void broker_save_data_nodes(uv_timer_t* handle);

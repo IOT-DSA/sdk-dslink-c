@@ -237,3 +237,11 @@ int broker_load_data_nodes(Broker *broker) {
     }
     return 0;
 }
+
+
+int broker_load_qos_storage(Broker *broker) {
+    json_t *loaded = dslink_storage_traverse(broker->storage);
+    (void)loaded;
+
+    return 0;
+}
