@@ -185,6 +185,10 @@ void broker_close_link(RemoteDSLink *link) {
 
 static
 void broker_free(Broker *broker) {
+    if (broker->storage) {
+        dslink_storage_destroy(broker->storage);
+    }
+
     broker_node_free(broker->root);
     dslink_map_free(&broker->client_connecting);
     dslink_map_free(&broker->remote_pending_sub);
@@ -304,13 +308,9 @@ int broker_start() {
 
     Broker broker;
 
-    broker.storage = dslink_storage_init(config);
-
     mainLoop = dslink_calloc(1, sizeof(uv_loop_t));
     uv_loop_init(mainLoop);
     mainLoop->data = &broker;
-
-    broker.storage->loop = mainLoop;
 
     json_t *defaultPermission = json_object_get(config, "defaultPermission");
 
@@ -320,6 +320,9 @@ int broker_start() {
         ret = 1;
         goto exit;
     }
+
+    broker.storage = dslink_storage_init(config);
+    broker.storage->loop = mainLoop;
 
     ret = broker_start_server(config);
 exit:
