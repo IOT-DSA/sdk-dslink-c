@@ -354,7 +354,7 @@ void json_storage_store(StorageProvider *provider, const char **rkey, json_t *va
     if (!value) {
         json_object_del(levelA, keyB);
     } else {
-        json_object_set_new(levelA, keyB, value);
+        json_object_set(levelA, keyB, value);
     }
 
     json_t *sub = json_array();
