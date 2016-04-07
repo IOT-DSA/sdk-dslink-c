@@ -122,17 +122,20 @@ void json_storage_trigger_save(StorageProvider *provider, char **rkey) {
 
     json_t *levelB = json_object_get(levelA, keyB);
 
-    if (!levelB) {
-        levelB = json_array();
-        json_object_set_new(levelA, keyB, levelB);
-    }
-
-    char *encoded = json_dumps(levelB, JSON_ENCODE_ANY);
     char *tm = dslink_malloc(256);
     memset(tm, 0, 256);
 
     sprintf(tm, "%s/%s/%s", store->path, keyA, keyB);
 
+    if (!levelB) {
+        store->waiting--;
+        uv_fs_t req;
+        uv_fs_unlink(provider->loop, &req, tm, NULL);
+        dslink_free(tm);
+        return;
+    }
+
+    char *encoded = json_dumps(levelB, JSON_ENCODE_ANY);
     void **pass = dslink_malloc(sizeof(tm) + sizeof(encoded) + sizeof(JsonStore*));
     pass[0] = tm;
     pass[1] = encoded;
@@ -335,20 +338,59 @@ json_t *json_storage_load(StorageProvider *provider) {
 }
 
 static
-void json_storage_store(StorageProvider *provider, char **rkey, json_t *value, storage_store_done_cb cb, void *data) {
-    (void) provider;
-    (void) rkey;
-    (void) value;
-    (void) cb;
-    (void) data;
+void json_storage_store(StorageProvider *provider, char **rkey, json_t *value, storage_gen_done_cb cb, void *data) {
+    char *keyA = rkey[0];
+    char *keyB = rkey[1];
+
+    JsonStore *store = provider->data;
+    json_t *levelA = json_object_get(store->root, keyA);
+
+    if (!levelA) {
+        levelA = json_object();
+        json_object_set_new(store->root, keyA, levelA);
+    }
+
+    if (!value) {
+        json_object_del(levelA, keyB);
+    } else {
+        json_object_set_new(levelA, keyB, value);
+    }
+
+    json_t *sub = json_array();
+    json_array_append_new(sub, json_string(keyA));
+    json_array_append_new(sub, json_string(keyB));
+    size_t z =  strlen(keyA) + strlen(keyB) + 1;
+    char *keyFull = dslink_malloc(z);
+    sprintf(keyFull, "%s%s", keyA, keyB);
+    json_object_set(store->save_queue, keyFull, sub);
+    dslink_free(keyFull);
+
+    json_storage_trigger_save(provider, rkey);
+
+    if (cb) {
+        cb(data);
+    }
 }
 
 static
 void json_storage_recall(StorageProvider *provider, char **rkey, storage_recall_done_cb cb, void *data) {
-    (void) provider;
-    (void) rkey;
-    (void) cb;
-    (void) data;
+    char *keyA = rkey[0];
+    char *keyB = rkey[1];
+
+    JsonStore *store = provider->data;
+
+    json_t *levelA = json_object_get(store->root, keyA);
+
+    if (!levelA) {
+        levelA = json_object();
+        json_object_set_new(store->root, keyA, levelA);
+    }
+
+    json_t *levelB = json_object_get(levelA, keyB);
+
+    if (cb) {
+        cb(levelB, data);
+    }
 }
 
 static

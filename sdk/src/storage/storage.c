@@ -28,7 +28,7 @@ void dslink_storage_pull(StorageProvider *provider, char **key, storage_pull_don
     provider->pull_cb(provider, key, cb, data);
 }
 
-void dslink_storage_store(StorageProvider *provider, char **key, json_t *value, storage_store_done_cb cb, void *data) {
+void dslink_storage_store(StorageProvider *provider, char **key, json_t *value, storage_gen_done_cb cb, void *data) {
     provider->store_cb(provider, key, value, cb, data);
 }
 

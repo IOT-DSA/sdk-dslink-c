@@ -10,7 +10,7 @@ extern "C" {
 
 struct StorageProvider;
 
-typedef void (*storage_store_done_cb)(void *data);
+typedef void (*storage_gen_done_cb)(void *data);
 typedef void (*storage_recall_done_cb)(json_t *value, void *data);
 
 typedef void (*storage_push_done_cb)(void *data);
@@ -20,7 +20,7 @@ typedef void (*storage_store_cb)(
     struct StorageProvider *provider,
     char **key,
     json_t *value,
-    storage_store_done_cb cb,
+    storage_gen_done_cb cb,
     void *data
 );
 
@@ -48,6 +48,7 @@ typedef void (*storage_pull_cb)(
 
 typedef void (*storage_init_cb)(struct StorageProvider *provider);
 typedef void (*storage_destroy_cb)(struct StorageProvider *provider);
+typedef void (*storage_destroy_group_cb)(struct StorageProvider *provider, char *group);
 
 typedef json_t* (*storage_traverse_cb)(struct StorageProvider *provider);
 
@@ -60,6 +61,8 @@ typedef struct StorageProvider {
 
     storage_pull_cb pull_cb;
     storage_push_cb push_cb;
+    storage_destroy_group_cb destroy_group_cb;
+
     storage_traverse_cb traverse_cb;
 
     void *data;
@@ -74,7 +77,7 @@ json_t *dslink_storage_traverse(StorageProvider *provider);
 void dslink_storage_push(StorageProvider *provider, char **key, json_t *value, storage_push_done_cb cb, void *data);
 void dslink_storage_pull(StorageProvider *provider, char **key, storage_pull_done_cb cb, void *data);
 
-void dslink_storage_store(StorageProvider *provider, char **key, json_t *value, storage_store_done_cb cb, void *data);
+void dslink_storage_store(StorageProvider *provider, char **key, json_t *value, storage_gen_done_cb cb, void *data);
 void dslink_storage_recall(StorageProvider *provider, char **key, storage_recall_done_cb cb, void *data);
 
 #ifdef __cplusplus
