@@ -20,17 +20,12 @@ void on_got_value(json_t *val, void *data) {
 int main() {
     storage = dslink_storage_init(json_object());
 
-    char *array[] = {
-        "Hello",
-        "World"
-    };
-
     json_t *loaded = dslink_storage_traverse(storage);
     print_json(loaded);
     printf("\n");
 
-    dslink_storage_store(storage, array, json_string("Hello World"), NULL, NULL);
-    dslink_storage_recall(storage, array, on_got_value, NULL);
+    dslink_storage_store(storage, "Hello", "World", json_string("Hello World"), NULL, NULL);
+    dslink_storage_recall(storage, "Hello", "World", on_got_value, NULL);
 
     return uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 }

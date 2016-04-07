@@ -74,11 +74,11 @@ void dslink_storage_destroy(StorageProvider *provider);
 
 json_t *dslink_storage_traverse(StorageProvider *provider);
 
-void dslink_storage_push(StorageProvider *provider, char **key, json_t *value, storage_push_done_cb cb, void *data);
-void dslink_storage_pull(StorageProvider *provider, char **key, storage_pull_done_cb cb, void *data);
+void dslink_storage_push(StorageProvider *provider, char *group, char *key, json_t *value, storage_push_done_cb cb, void *data);
+void dslink_storage_pull(StorageProvider *provider, char *group, char *key, storage_pull_done_cb cb, void *data);
 
-void dslink_storage_store(StorageProvider *provider, char **key, json_t *value, storage_gen_done_cb cb, void *data);
-void dslink_storage_recall(StorageProvider *provider, char **key, storage_recall_done_cb cb, void *data);
+void dslink_storage_store(StorageProvider *provider, char *group, char *key, json_t *value, storage_gen_done_cb cb, void *data);
+void dslink_storage_recall(StorageProvider *provider, char *group, char *key, storage_recall_done_cb cb, void *data);
 void dslink_storage_destroy_group(StorageProvider *provider, char *group);
 
 #ifdef __cplusplus
