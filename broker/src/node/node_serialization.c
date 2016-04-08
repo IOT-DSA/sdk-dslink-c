@@ -10,15 +10,16 @@
 #include <broker/subscription.h>
 
 static
-void broker_save_downstream_virtual_nodes(VirtualPermissionNode *node, const char *name, json_t *pdata) {
-    json_t *data = json_object();
+void broker_save_downstream_virtual_nodes(VirtualDownstreamNode *node, const char *name, json_t *pdata) {
+    json_t *data = json_copy(node->meta);
 
     json_t *plist = permission_list_save(node->permissionList);
     if (plist) {
         json_object_set_new_nocheck(data, "?permissions", plist);
     }
+
     dslink_map_foreach(&node->childrenNode) {
-        VirtualPermissionNode *vnode = entry->value->data;
+        VirtualDownstreamNode *vnode = entry->value->data;
         broker_save_downstream_virtual_nodes(vnode, entry->key->data, data);
     }
     json_object_set_new_nocheck(pdata, name, data);
@@ -50,7 +51,7 @@ void broker_save_downstream_nodes(uv_timer_t *handle) {
             json_object_set_new_nocheck(data, "?permissions", plist);
         }
         dslink_map_foreach(&node->children_permissions) {
-            VirtualPermissionNode *vnode = entry->value->data;
+            VirtualDownstreamNode *vnode = entry->value->data;
             broker_save_downstream_virtual_nodes(vnode, entry->key->data, data);
         }
 
@@ -66,8 +67,8 @@ void broker_save_downstream_nodes(uv_timer_t *handle) {
 
 static
 void broker_load_downstream_virtual_nodes(Map *map, const char *name, json_t *data) {
-    VirtualPermissionNode *node = dslink_malloc(sizeof(VirtualPermissionNode));
-    virtual_permission_init(node);
+    VirtualDownstreamNode *node = dslink_malloc(sizeof(VirtualDownstreamNode));
+    virtual_downstream_node_init(node);
     dslink_map_set(map, dslink_str_ref(name), dslink_ref(node, NULL));
     if (json_is_object(data)) {
         const char *key;
@@ -79,7 +80,8 @@ void broker_load_downstream_virtual_nodes(Map *map, const char *name, json_t *da
                     node->permissionList = permission_list_load(value);
                 }
             } else if (*key == '$' || *key == '@') {
-                // TODO: copy attributes?
+                // copy metadata
+                json_object_set_nocheck(node->meta, key, value);
             } else {
                 broker_load_downstream_virtual_nodes(&node->childrenNode, key, value);
             }
@@ -158,7 +160,6 @@ json_t *broker_save_data_node(BrokerNode *node) {
     const char *key;
     json_t *value;
     json_object_foreach(node->meta, key, value) {
-
         json_object_set_nocheck(data, key, value);
     }
 

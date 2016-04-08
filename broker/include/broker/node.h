@@ -52,6 +52,14 @@ typedef struct BrokerNode {
     Dispatcher on_child_removed;
 } BrokerNode;
 
+// virtual permission node for downstream nodes
+typedef struct VirtualDownstreamNode {
+    List *permissionList;
+    // Map<char *, VirtualDownstreamNode *>
+    Map childrenNode;
+    json_t *meta;
+} VirtualDownstreamNode;
+
 typedef struct DownstreamNode {
 
     BROKER_NODE_FIELDS;
@@ -66,7 +74,7 @@ typedef struct DownstreamNode {
     uint32_t rid;
     uint32_t sid;
 
-    // Map<char *, VirtualPermissionNode *>
+    // Map<char *, VirtualDownstreamNode *>
     Map children_permissions;
 
     struct UpstreamPoll *upstreamPoll;
@@ -113,6 +121,11 @@ int broker_load_qos_storage(struct Broker *broker);
 void broker_data_nodes_changed(struct Broker *broker);
 void broker_save_data_nodes(uv_timer_t* handle);
 int broker_load_data_nodes(struct Broker *broker);
+
+void virtual_downstream_node_init(VirtualDownstreamNode *node);
+void virtual_downstream_node_free(VirtualDownstreamNode *node);
+// free a children map of virtual permissions
+void virtual_downstream_free_map(Map *map);
 
 size_t broker_downstream_node_base_len(const char *path);
 #ifdef __cplusplus

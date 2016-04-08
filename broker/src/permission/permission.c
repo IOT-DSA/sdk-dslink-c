@@ -84,26 +84,6 @@ void permission_groups_load(PermissionGroups* groups, const char *dsId, const ch
     groups->groupLen = len;
 }
 
-void virtual_permission_init(VirtualPermissionNode* node) {
-    node->permissionList = NULL;
-    dslink_map_init(&node->childrenNode, dslink_map_str_cmp,
-                    dslink_map_str_key_len_cal, dslink_map_hash_key);
-}
-
-void virtual_permission_free(VirtualPermissionNode* pnode) {
-    virtual_permission_free_map(&pnode->childrenNode);
-    permission_list_free(pnode->permissionList);
-    dslink_free(pnode);
-}
-
-void virtual_permission_free_map(Map* map) {
-    dslink_map_foreach(map) {
-        VirtualPermissionNode* node = entry->value->data;
-        virtual_permission_free(node);
-    }
-    dslink_map_free(map);
-}
-
 static
 int get_current_permission(List *permissionList,
                         const char **groups, PermissionLevel *levels, size_t glen) {
@@ -128,7 +108,7 @@ int get_current_permission(List *permissionList,
 }
 
 static
-void get_virtual_permission(const char* path, VirtualPermissionNode* node,
+void get_virtual_permission(const char* path, VirtualDownstreamNode* node,
                             const char **groups, PermissionLevel *levels, size_t glen) {
     if (node->permissionList) {
         if (get_current_permission(node->permissionList, groups, levels, glen)) {
@@ -151,7 +131,7 @@ void get_virtual_permission(const char* path, VirtualPermissionNode* node,
 
     ref_t *ref = dslink_map_get(&node->childrenNode, name);
     if (ref && ref->data) {
-        VirtualPermissionNode *child = ref->data;
+        VirtualDownstreamNode *child = ref->data;
         get_virtual_permission(next, child, groups, levels, glen);
     }
 
@@ -186,7 +166,7 @@ void get_node_permission(const char* path, BrokerNode* node,
     if (node->type == DOWNSTREAM_NODE) {
         ref_t *ref = dslink_map_get(&((DownstreamNode *)node)->children_permissions, name);
         if (ref && ref->data) {
-            VirtualPermissionNode *child = ref->data;
+            VirtualDownstreamNode *child = ref->data;
             get_virtual_permission(next, child, groups, levels, glen);
         }
     } else {
@@ -224,7 +204,7 @@ PermissionLevel get_permission(const char* path, BrokerNode* rootNode, RemoteDSL
 
 
 static
-uint8_t set_virtual_permission(const char* path, VirtualPermissionNode* node, json_t *json) {
+uint8_t set_virtual_permission(const char* path, VirtualDownstreamNode* node, json_t *json) {
     if (!path || *path == 0) {
         List *permissions = permission_list_load(json);
         permission_list_free(node->permissionList);
@@ -241,12 +221,12 @@ uint8_t set_virtual_permission(const char* path, VirtualPermissionNode* node, js
             name = (char*)path;
         }
         ref_t *ref = dslink_map_get(&node->childrenNode, name);
-        VirtualPermissionNode *child;
+        VirtualDownstreamNode *child;
         if (ref && ref->data) {
             child = ref->data;
         } else {
-            child = dslink_calloc(1, sizeof(VirtualPermissionNode));
-            virtual_permission_init(child);
+            child = dslink_calloc(1, sizeof(VirtualDownstreamNode));
+            virtual_downstream_node_init(child);
             dslink_map_set(&node->childrenNode, dslink_str_ref(name), dslink_ref(child, NULL));
         }
         return set_virtual_permission(next, child, json);
@@ -272,12 +252,12 @@ uint8_t set_node_permission(const char* path, BrokerNode* node, json_t *json) {
         }
         if (node->type == DOWNSTREAM_NODE) {
             ref_t *ref = dslink_map_get(&((DownstreamNode *)node)->children_permissions, name);
-            VirtualPermissionNode *child;
+            VirtualDownstreamNode *child;
             if (ref && ref->data) {
                 child = ref->data;
             } else {
-                child = dslink_calloc(1, sizeof(VirtualPermissionNode));
-                virtual_permission_init(child);
+                child = dslink_calloc(1, sizeof(VirtualDownstreamNode));
+                virtual_downstream_node_init(child);
                 dslink_map_set(&((DownstreamNode *)node)->children_permissions, dslink_str_ref(name), dslink_ref(child, NULL));
             }
             return set_virtual_permission(next, child, json);

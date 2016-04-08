@@ -247,7 +247,7 @@ void broker_node_free(BrokerNode *node) {
     if (node->type == DOWNSTREAM_NODE) {
         DownstreamNode *dnode = (DownstreamNode *)node;
         dslink_map_free(&dnode->list_streams);
-        virtual_permission_free_map(&dnode->children_permissions);
+        virtual_downstream_free_map(&dnode->children_permissions);
         if (dnode->upstreamPoll) {
             upstream_clear_poll(dnode->upstreamPoll);
             dslink_free(dnode->upstreamPoll);

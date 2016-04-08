@@ -15,6 +15,7 @@ extern "C" {
 
 struct RemoteDSLink;
 struct BrokerNode;
+struct VirtualDownstreamNode;
 
 // numbers in the PermissionLevel doesn't matter
 // it should always be serialized as string
@@ -41,21 +42,9 @@ typedef struct PermissionPair {
     PermissionLevel permission;
 } PermissionPair;
 
-// virtual permission node for downstream nodes
-typedef struct VirtualPermissionNode {
-    List *permissionList;
-    Map childrenNode;
-} VirtualPermissionNode;
-
 void permission_groups_init(PermissionGroups* groups);
 void permission_groups_free(PermissionGroups* groups);
 void permission_groups_load(PermissionGroups* groups, const char *dsId, const char* str);
-
-
-void virtual_permission_init(VirtualPermissionNode* node);
-void virtual_permission_free(VirtualPermissionNode* node);
-// free a children map of virtual permissions
-void virtual_permission_free_map(Map* map);
 
 // permission list for node or virtual node
 void permission_list_free(List* list);
