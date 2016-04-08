@@ -272,6 +272,7 @@ uint8_t set_node_permission(const char* path, BrokerNode* node, json_t *json) {
         }
     }
 }
+
 uint8_t set_permission(const char* path, struct BrokerNode* rootNode, struct RemoteDSLink *reqLink, json_t *json) {
     if (!json_is_array(json)) {
         return 1;

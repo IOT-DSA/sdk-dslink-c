@@ -122,7 +122,6 @@ void broker_stream_free(BrokerStream *stream) {
         if (s->node->type == DOWNSTREAM_NODE) {
             DownstreamNode *dnode = (DownstreamNode *)s->node;
             if (dnode->link) {
-                printf("remove resp stream %p %d \n", (void*)stream, s->responder_rid);
                 dslink_map_remove(&dnode->link->responder_streams, &s->responder_rid);
             }
         }
@@ -219,13 +218,31 @@ void broker_stream_list_reset_remote_cache(BrokerListStream *stream,
                                            RemoteDSLink *link) {
     json_object_clear(stream->updates_cache);
     if (link) {
-        json_object_set_new_nocheck(stream->updates_cache,
-                                    "$base", json_string_nocheck(link->path));
-        if (strcmp(stream->remote_path, "/") == 0
-            && link->linkData) {
+        json_object_set_new_nocheck(stream->updates_cache, "$base", json_string_nocheck(link->path));
+        if (strcmp(stream->remote_path, "/") == 0) {
             // add linkData into the updates_cache
-            json_object_set_nocheck(stream->updates_cache,
-                                    "$linkData", link->linkData);
+            if (link->linkData) {
+                json_object_set_nocheck(stream->updates_cache, "$linkData", link->linkData);
+            }
+            const char *key;
+            json_t *value;
+            json_object_foreach(stream->node->meta, key, value) {
+                if (*key == '@') {
+                    json_object_set_nocheck(stream->updates_cache, key, value);
+                }
+            }
+        } else {
+            // set downstream virtual attribute
+            json_t *meta = set_downstream_attribute(stream->remote_path+1, (DownstreamNode*)stream->node, NULL, NULL);
+            if (meta) {
+                const char *key;
+                json_t *value;
+                json_object_foreach(meta, key, value) {
+                    if (*key == '@') {
+                        json_object_set_nocheck(stream->updates_cache, key, value);
+                    }
+                }
+            }
         }
     } else {
         char ts[32];

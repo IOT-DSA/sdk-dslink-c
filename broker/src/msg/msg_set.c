@@ -7,6 +7,7 @@
 #include "broker/broker.h"
 #include "broker/msg/msg_set.h"
 
+
 static
 int broker_msg_check_set_arrtribtues(RemoteDSLink *link, json_t *req, const char *path) {
     const char * name = strrchr(path, '/') + 1;
@@ -49,7 +50,14 @@ int broker_msg_check_set_arrtribtues(RemoteDSLink *link, json_t *req, const char
     }
 
     if (node && node->type == DOWNSTREAM_NODE) {
-
+        if (set_downstream_attribute(out + 1, (DownstreamNode*)node, name, value)) {
+            ref_t *ref = dslink_map_get(&((DownstreamNode*)node)->list_streams, out);
+            if (ref) {
+                BrokerListStream *liststream = ref->data;
+                update_list_attribute(node, liststream, name, value);
+            }
+            broker_downstream_nodes_changed(link->broker);
+        }
     } else if (node) {
         json_object_set_nocheck(node->meta, name, value);
         if (node->list_stream) {
@@ -59,7 +67,6 @@ int broker_msg_check_set_arrtribtues(RemoteDSLink *link, json_t *req, const char
             broker_data_nodes_changed(link->broker);
         }
     }
-
 
     dslink_free(nodePath);
     broker_utils_send_closed_resp(link, req, NULL);

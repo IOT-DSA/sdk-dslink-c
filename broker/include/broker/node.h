@@ -127,6 +127,11 @@ void virtual_downstream_node_free(VirtualDownstreamNode *node);
 // free a children map of virtual permissions
 void virtual_downstream_free_map(Map *map);
 
+// set attribute and return the node
+// if key == NULL, only get the node
+json_t *set_virtual_attribute(const char* path, VirtualDownstreamNode* node, const char *key, json_t *value);
+json_t *set_downstream_attribute(const char* path, DownstreamNode* node, const char *key, json_t *value);
+
 size_t broker_downstream_node_base_len(const char *path);
 #ifdef __cplusplus
 }
