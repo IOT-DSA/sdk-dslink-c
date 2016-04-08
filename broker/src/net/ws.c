@@ -21,7 +21,7 @@ void broker_ws_send_init(Socket *sock, const char *accept) {
 }
 
 int broker_ws_send_obj(RemoteDSLink *link, json_t *obj) {
-    char *data = json_dumps(obj, JSON_PRESERVE_ORDER);
+    char *data = json_dumps(obj, JSON_PRESERVE_ORDER | JSON_COMPACT);
     if (!data) {
         return DSLINK_ALLOC_ERR;
     }
