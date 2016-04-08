@@ -135,6 +135,52 @@ fail:
     return;
 }
 
+void update_list_attribute(BrokerNode *node,
+                       BrokerListStream *stream,
+                       const char *name, json_t *value) {
+    if (!(node && stream && name)) {
+        return;
+    }
+
+    json_t *updates = json_array();
+    if (value) {
+        json_t *updateRow = json_array();
+
+        json_array_append_new(updateRow, json_string(name));
+        json_array_append(updateRow, value);
+        json_array_append_new(updates, updateRow);
+
+        json_object_set_nocheck(stream->updates_cache, name, value);
+
+    } else {
+        json_t *removeMap = json_object();
+        json_object_set_new(removeMap, "name", json_string(name));
+        json_object_set_new(removeMap, "change", json_string("remove"));
+        json_array_append_new(updates, removeMap);
+        json_object_del(stream->updates_cache, name);
+    }
+
+
+    json_t *top = json_object();
+    json_t *resps = json_array();
+    json_object_set_new_nocheck(top, "responses", resps);
+    json_t *resp = json_object();
+    json_array_append_new(resps, resp);
+
+    json_object_set_new_nocheck(resp, "stream", json_string("open"));
+    json_object_set_new_nocheck(resp, "updates", updates);
+
+    dslink_map_foreach(&stream->requester_links) {
+        json_object_del(resp, "rid");
+        json_t *newRid = json_integer(*((uint32_t *) entry->value->data));
+        json_object_set_new_nocheck(resp, "rid", newRid);
+
+        RemoteDSLink *client = entry->key->data;
+        broker_ws_send_obj(client, top);
+    }
+    json_decref(top);
+}
+
 void update_list_child(BrokerNode *node,
                        BrokerListStream *stream,
                        const char *name) {

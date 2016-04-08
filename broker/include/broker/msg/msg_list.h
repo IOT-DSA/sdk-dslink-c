@@ -10,6 +10,7 @@ extern "C" {
 
 int broker_msg_handle_list(RemoteDSLink *link, json_t *req);
 void update_list_child(BrokerNode *node, BrokerListStream *stream, const char* name);
+void update_list_attribute(BrokerNode *node, BrokerListStream *stream, const char *name, json_t *value);
 
 int broker_list_req_closed(void *stream, RemoteDSLink *reqLink);
 void broker_add_requester_list_stream(RemoteDSLink *reqLink,

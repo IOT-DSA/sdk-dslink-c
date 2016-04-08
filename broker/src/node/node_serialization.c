@@ -157,7 +157,7 @@ json_t *broker_save_data_node(BrokerNode *node) {
     // save metadata
     const char *key;
     json_t *value;
-    json_object_foreach(data, key, value) {
+    json_object_foreach(node->meta, key, value) {
 
         json_object_set_nocheck(data, key, value);
     }
