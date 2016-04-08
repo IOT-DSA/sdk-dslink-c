@@ -259,13 +259,13 @@ BrokerNode *broker_query_create_action(BrokerNode *parent) {
     }
 
     if (json_object_set_new(node->meta, "$invokable",
-                            json_string("write")) != 0) {
+                            json_string_nocheck("write")) != 0) {
         broker_node_free(node);
         return NULL;
     }
 
     if (json_object_set_new(node->meta, "$result",
-                            json_string("stream")) != 0) {
+                            json_string_nocheck("stream")) != 0) {
         broker_node_free(node);
         return NULL;
     }

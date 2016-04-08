@@ -178,7 +178,7 @@ void add_to_update(json_t *updates, const char *key, json_t *value) {
     json_t *update = json_array();
 
     // name
-    json_array_append_new(update, json_string(key));
+    json_array_append_new(update, json_string_nocheck(key));
     //value
     json_array_append(update, value);
 

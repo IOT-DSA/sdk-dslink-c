@@ -24,12 +24,12 @@ int init_sys_static(BrokerNode *sysNode) {
     }
 
     if (json_object_set_new(buildNode->meta, "$type",
-                            json_string("string")) != 0) {
+                            json_string_nocheck("string")) != 0) {
         return 1;
     }
 
     if (json_object_set_new(buildNode->meta, "$name",
-                            json_string("Server Build")) != 0) {
+                            json_string_nocheck("Server Build")) != 0) {
         return 1;
     }
 
@@ -39,12 +39,12 @@ int init_sys_static(BrokerNode *sysNode) {
     }
 
     if (json_object_set_new(versionNode->meta, "$type",
-                            json_string("string")) != 0) {
+                            json_string_nocheck("string")) != 0) {
         return 1;
     }
 
     if (json_object_set_new(versionNode->meta, "$name",
-                            json_string("DSA Version")) != 0) {
+                            json_string_nocheck("DSA Version")) != 0) {
         return 1;
     }
 
@@ -54,22 +54,22 @@ int init_sys_static(BrokerNode *sysNode) {
     }
 
     if (json_object_set_new(startTimeNode->meta, "$type",
-                            json_string("string")) != 0) {
+                            json_string_nocheck("string")) != 0) {
         return 1;
     }
 
     if (json_object_set_new(startTimeNode->meta, "$name",
-                            json_string("Start Time")) != 0) {
+                            json_string_nocheck("Start Time")) != 0) {
         return 1;
     }
 
-    buildNode->value = json_string(BROKER_SERVER_BUILD);
-    versionNode->value = json_string(BROKER_DSA_VERSION);
+    buildNode->value = json_string_nocheck(BROKER_SERVER_BUILD);
+    versionNode->value = json_string_nocheck(BROKER_DSA_VERSION);
 
     {
         char ts[32];
         dslink_create_ts(ts, 32);
-        startTimeNode->value = json_string(ts);
+        startTimeNode->value = json_string_nocheck(ts);
     }
 
     return 0;

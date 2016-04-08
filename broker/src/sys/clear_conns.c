@@ -31,7 +31,7 @@ void clear_conns(RemoteDSLink *link,
                     dslink_str_ref(dsn->name), dslink_ref(dsn, NULL));
         } else {
             json_t *update = json_object();
-            json_object_set_new_nocheck(update, "name", json_string(dsn->name));
+            json_object_set_new_nocheck(update, "name", json_string_nocheck(dsn->name));
             json_object_set_new_nocheck(update, "change",
                                         json_string_nocheck("remove"));
             json_array_append_new(updates, update);
@@ -69,12 +69,12 @@ int init_clear_conns(BrokerNode *sysNode) {
     }
 
     if (json_object_set_new(clearConnsNode->meta, "$invokable",
-                            json_string("write")) != 0) {
+                            json_string_nocheck("write")) != 0) {
         return 1;
     }
 
     if (json_object_set_new(clearConnsNode->meta, "$name",
-                            json_string("Clear Conns")) != 0) {
+                            json_string_nocheck("Clear Conns")) != 0) {
         return 1;
     }
 

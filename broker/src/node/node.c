@@ -325,7 +325,7 @@ void broker_dslink_disconnect(DownstreamNode *node) {
     node->link = NULL;
     char disconnectedTs[32];
     dslink_create_ts(disconnectedTs, 32);
-    json_object_set_new(node->meta, "$disconnectedTs", json_string(disconnectedTs));
+    json_object_set_new(node->meta, "$disconnectedTs", json_string_nocheck(disconnectedTs));
 }
 
 void broker_dslink_connect(DownstreamNode *dsn, RemoteDSLink *link) {

@@ -19,10 +19,10 @@ void send_invoke_request(DownstreamNode *node,
     json_array_append(reqs, req);
 
     json_object_set_new_nocheck(req, "rid", json_integer(rid));
-    json_object_set_new_nocheck(req, "path", json_string(path));
+    json_object_set_new_nocheck(req, "path", json_string_nocheck(path));
     if (maxPermission < PERMISSION_CONFIG) {
         json_object_set_new_nocheck(req, "permit",
-                                    json_string(permission_level_str(maxPermission)));
+                                    json_string_nocheck(permission_level_str(maxPermission)));
     }
 
     broker_ws_send_obj(node->link, top);
@@ -145,8 +145,8 @@ int broker_invoke_safe_json_set(json_t *obj, const char *name, json_t *data) {
 int broker_invoke_create_param(json_t *params,
                                const char *name, const char *type) {
     json_t *param = json_object();
-    if (broker_invoke_safe_json_set(param, "name", json_string(name)) != 0
-        || broker_invoke_safe_json_set(param, "type", json_string(type)) != 0
+    if (broker_invoke_safe_json_set(param, "name", json_string_nocheck(name)) != 0
+        || broker_invoke_safe_json_set(param, "type", json_string_nocheck(type)) != 0
         || json_array_append_new(params, param) != 0) {
         json_decref(param);
         return 1;

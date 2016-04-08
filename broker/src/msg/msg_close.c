@@ -10,7 +10,7 @@ void broker_send_close_request(RemoteDSLink *respLink,
 
     json_t *req = json_object();
     json_array_append_new(reqs, req);
-    json_object_set_new_nocheck(req, "method", json_string("close"));
+    json_object_set_new_nocheck(req, "method", json_string_nocheck("close"));
     json_object_set_new_nocheck(req, "rid", json_integer(rid));
 
     broker_ws_send_obj(respLink, top);

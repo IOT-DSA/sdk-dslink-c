@@ -303,10 +303,10 @@ char *dslink_handshake_generate_req(DSLink *link, char **dsId) {
     }
 
     { // Create the request body
-        json_object_set_new(obj, "publicKey", json_string((char *) pubKey));
+        json_object_set_new(obj, "publicKey", json_string_nocheck((char *) pubKey));
         json_object_set_new(obj, "isRequester", json_boolean(link->is_requester));
         json_object_set_new(obj, "isResponder", json_boolean(link->is_responder));
-        json_object_set_new(obj, "version", json_string("1.1.2"));
+        json_object_set_new(obj, "version", json_string_nocheck("1.1.2"));
         body = json_dumps(obj, JSON_INDENT(2));
         if (!body) {
             goto fail;

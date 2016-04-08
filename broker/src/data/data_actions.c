@@ -10,7 +10,7 @@ BrokerNode *broker_data_create_delete_action(BrokerNode *parent) {
     }
 
     if (json_object_set_new(node->meta, "$invokable",
-                            json_string("write")) != 0
+                            json_string_nocheck("write")) != 0
         || broker_node_add(parent, node) != 0) {
         broker_node_free(node);
         return NULL;
@@ -26,7 +26,7 @@ BrokerNode *broker_data_create_add_node_action(BrokerNode *parent) {
     }
 
     if (json_object_set_new(node->meta, "$invokable",
-                            json_string("write")) != 0) {
+                            json_string_nocheck("write")) != 0) {
         broker_node_free(node);
         return NULL;
     }
@@ -52,7 +52,7 @@ BrokerNode *broker_data_create_add_value_action(BrokerNode *parent) {
     }
 
     if (json_object_set_new(node->meta, "$invokable",
-                            json_string("write")) != 0) {
+                            json_string_nocheck("write")) != 0) {
         broker_node_free(node);
         return NULL;
     }
@@ -82,7 +82,7 @@ BrokerNode *broker_data_create_publish_action(BrokerNode *parent) {
     }
 
     if (json_object_set_new(node->meta, "$invokable",
-                            json_string("write")) != 0) {
+                            json_string_nocheck("write")) != 0) {
         broker_node_free(node);
         return NULL;
     }

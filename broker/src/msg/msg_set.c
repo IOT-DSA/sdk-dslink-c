@@ -43,7 +43,7 @@ int broker_msg_handle_set(RemoteDSLink *link, json_t *req) {
         json_t *reqs = json_array();
         json_object_set_new_nocheck(top, "requests", reqs);
         json_object_set_new_nocheck(req, "rid", json_integer(reqRid));
-        json_object_set_new_nocheck(req, "path", json_string(out));
+        json_object_set_new_nocheck(req, "path", json_string_nocheck(out));
         json_array_append(reqs, req);
 
         broker_ws_send_obj(dsn->link, top);

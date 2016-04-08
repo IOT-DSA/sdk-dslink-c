@@ -105,9 +105,9 @@ json_t *broker_handshake_handle_conn(Broker *broker,
         goto fail;
     }
 
-    json_object_set_new_nocheck(resp, "wsUri", json_string("/ws"));
-    json_object_set_new_nocheck(resp, "tempKey", json_string(tempKey));
-    json_object_set_new_nocheck(resp, "salt", json_string(link->auth->salt));
+    json_object_set_new_nocheck(resp, "wsUri", json_string_nocheck("/ws"));
+    json_object_set_new_nocheck(resp, "tempKey", json_string_nocheck(tempKey));
+    json_object_set_new_nocheck(resp, "salt", json_string_nocheck(link->auth->salt));
     if (json_boolean_value(json_object_get(handshake, "isResponder"))) {
         link->isResponder = 1;
     }
@@ -173,7 +173,7 @@ json_t *broker_handshake_handle_conn(Broker *broker,
                 DownstreamNode *node = broker_init_downstream_node(broker->downstream, name);
 
                 if (json_is_true(json_object_get(node->meta, "$$managed"))) {
-                    json_object_set_new_nocheck(node->meta, "$$token", json_string(tokenNode->name));
+                    json_object_set_new_nocheck(node->meta, "$$token", json_string_nocheck(tokenNode->name));
                 }
 
                 node->dsId = dslink_str_ref(dsId);
@@ -195,7 +195,7 @@ json_t *broker_handshake_handle_conn(Broker *broker,
                 goto fail;
             }
         }
-        json_object_set_new_nocheck(resp, "path", json_string(buf));
+        json_object_set_new_nocheck(resp, "path", json_string_nocheck(buf));
 
         link->path = dslink_strdup(buf);
         if (!link->path) {

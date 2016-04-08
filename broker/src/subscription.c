@@ -18,12 +18,12 @@ void send_subscribe_request(DownstreamNode *node,
 
     uint32_t rid = broker_node_incr_rid(node);
     json_object_set_new_nocheck(req, "rid", json_integer(rid));
-    json_object_set_new_nocheck(req, "method", json_string("subscribe"));
+    json_object_set_new_nocheck(req, "method", json_string_nocheck("subscribe"));
     json_t *paths = json_array();
     json_object_set_new_nocheck(req, "paths", paths);
     json_t *p = json_object();
     json_array_append_new(paths, p);
-    json_object_set_new_nocheck(p, "path", json_string(path));
+    json_object_set_new_nocheck(p, "path", json_string_nocheck(path));
     json_object_set_new_nocheck(p, "sid", json_integer(sid));
     json_object_set_new_nocheck(p, "qos", json_integer(qos));
 
@@ -195,7 +195,7 @@ void broker_update_sub_stream_value(BrokerSubStream *stream, json_t *value, json
         // create ts and
         char tsbuff[30];
         dslink_create_ts(tsbuff, 30);
-        ts = json_string(tsbuff);
+        ts = json_string_nocheck(tsbuff);
         json_array_append_new(varray, ts);
     } else {
         json_array_append(varray, ts);

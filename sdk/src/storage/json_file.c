@@ -205,12 +205,12 @@ void json_storage_push(StorageProvider *provider, const char **rkey, json_t *val
     json_array_insert_new(levelB, 0, value);
 
     json_t *sub = json_array();
-    json_array_append_new(sub, json_string(keyA));
-    json_array_append_new(sub, json_string(keyB));
+    json_array_append_new(sub, json_string_nocheck(keyA));
+    json_array_append_new(sub, json_string_nocheck(keyB));
     size_t z =  strlen(keyA) + strlen(keyB) + 1;
     char *keyFull = dslink_malloc(z);
     sprintf(keyFull, "%s%s", keyA, keyB);
-    json_object_set(store->save_queue, keyFull, sub);
+    json_object_set_nocheck(store->save_queue, keyFull, sub);
     dslink_free(keyFull);
 
     json_storage_trigger_save(provider, rkey);
@@ -249,12 +249,12 @@ void json_storage_pull(StorageProvider *provider, const char **rkey, storage_pul
         json_array_remove(levelB, 0);
 
         json_t *sub = json_array();
-        json_array_append_new(sub, json_string(keyA));
-        json_array_append_new(sub, json_string(keyB));
+        json_array_append_new(sub, json_string_nocheck(keyA));
+        json_array_append_new(sub, json_string_nocheck(keyB));
         size_t z =  strlen(keyA) + strlen(keyB) + 1;
         char *keyFull = dslink_malloc(z);
         sprintf(keyFull, "%s%s", keyA, keyB);
-        json_object_set(store->save_queue, keyFull, sub);
+        json_object_set_nocheck(store->save_queue, keyFull, sub);
         dslink_free(keyFull);
 
         json_storage_trigger_save(provider, rkey);
@@ -291,7 +291,7 @@ json_t *json_storage_load(StorageProvider *provider) {
             continue;
         }
 
-        json_array_append_new(names, json_string(d.name));
+        json_array_append_new(names, json_string_nocheck(d.name));
         json_object_set_new(root, d.name, json_object());
     }
 
@@ -354,16 +354,16 @@ void json_storage_store(StorageProvider *provider, const char **rkey, json_t *va
     if (!value) {
         json_object_del(levelA, keyB);
     } else {
-        json_object_set(levelA, keyB, value);
+        json_object_set_nocheck(levelA, keyB, value);
     }
 
     json_t *sub = json_array();
-    json_array_append_new(sub, json_string(keyA));
-    json_array_append_new(sub, json_string(keyB));
+    json_array_append_new(sub, json_string_nocheck(keyA));
+    json_array_append_new(sub, json_string_nocheck(keyB));
     size_t z =  strlen(keyA) + strlen(keyB) + 1;
     char *keyFull = dslink_malloc(z);
     sprintf(keyFull, "%s%s", keyA, keyB);
-    json_object_set(store->save_queue, keyFull, sub);
+    json_object_set_nocheck(store->save_queue, keyFull, sub);
     dslink_free(keyFull);
 
     json_storage_trigger_save(provider, rkey);

@@ -325,7 +325,7 @@ int init_tokens(BrokerNode *sysNode) {
     }
 
     if (json_object_set_new(addTokenAction->meta, "$invokable",
-                            json_string("config")) != 0) {
+                            json_string_nocheck("config")) != 0) {
         broker_node_free(addTokenAction);
         return 1;
     }
