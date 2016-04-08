@@ -30,6 +30,8 @@ json_t *set_virtual_attribute(const char* path,
         if (key) {
             if (value){
                 json_object_set_nocheck(node->meta, key, value);
+            } else {
+                json_object_del(node->meta, key);
             }
         }
         return node->meta;
@@ -64,6 +66,8 @@ json_t *set_downstream_attribute(const char* path, DownstreamNode* node, const c
         if (key) {
             if (value){
                 json_object_set_nocheck(node->meta, key, value);
+            } else {
+                json_object_del(node->meta, key);
             }
         }
         return node->meta;

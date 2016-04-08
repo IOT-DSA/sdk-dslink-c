@@ -3,6 +3,7 @@
 
 #include <string.h>
 #include <broker/subscription.h>
+#include <broker/msg/msg_remove.h>
 #include "broker/msg/msg_set.h"
 #include "broker/msg/msg_unsubscribe.h"
 #include "broker/msg/msg_subscribe.h"
@@ -69,6 +70,10 @@ void broker_handle_req(RemoteDSLink *link, json_t *req) {
     } else if (strcmp(method, "set") == 0) {
         if (broker_msg_handle_set(link, req) != 0) {
             log_err("Failed to handle set request");
+        }
+    } else if (strcmp(method, "remove") == 0) {
+        if (broker_msg_handle_remove(link, req) != 0) {
+            log_err("Failed to handle remove request");
         }
     } else if (strcmp(method, "close") == 0) {
         if (broker_msg_handle_close(link, req) != 0) {
