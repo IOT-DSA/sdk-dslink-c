@@ -50,7 +50,7 @@ void send_list_updates(RemoteDSLink *reqLink,
     json_array_append_new(resps, resp);
 
     json_object_set_new_nocheck(resp, "rid", json_integer(reqRid));
-    json_object_set_new_nocheck(resp, "stream", json_string("open"));
+    json_object_set_new_nocheck(resp, "stream", json_string_nocheck("open"));
     json_object_set_new_nocheck(resp, "updates", cached_updates);
 
     broker_ws_send_obj(reqLink, top);
@@ -158,7 +158,7 @@ void update_list_child(BrokerNode *node,
 
         json_t *updateRow = json_array();
 
-        json_array_append_new(updateRow, json_string(name));
+        json_array_append_new(updateRow, json_string_nocheck(name));
         json_array_append_new(updateRow, obj);
         json_array_append_new(updates, updateRow);
 
@@ -166,8 +166,8 @@ void update_list_child(BrokerNode *node,
 
     } else {
         json_t *removeMap = json_object();
-        json_object_set_new(removeMap, "name", json_string(name));
-        json_object_set_new(removeMap, "change", json_string("remove"));
+        json_object_set_new(removeMap, "name", json_string_nocheck(name));
+        json_object_set_new(removeMap, "change", json_string_nocheck("remove"));
         json_array_append_new(updates, removeMap);
         json_object_del(stream->updates_cache, name);
     }
@@ -179,7 +179,7 @@ void update_list_child(BrokerNode *node,
     json_t *resp = json_object();
     json_array_append_new(resps, resp);
 
-    json_object_set_new_nocheck(resp, "stream", json_string("open"));
+    json_object_set_new_nocheck(resp, "stream", json_string_nocheck("open"));
     json_object_set_new_nocheck(resp, "updates", updates);
 
     dslink_map_foreach(&stream->requester_links) {

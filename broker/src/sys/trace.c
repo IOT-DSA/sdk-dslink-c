@@ -33,7 +33,7 @@ int init_trace_node(BrokerNode *sysNode) {
 
 
     if (json_object_set_new(traceRequester->meta, "$invokable",
-                            json_string("config")) != 0) {
+                            json_string_nocheck("config")) != 0) {
         return 1;
     }
 

@@ -19,9 +19,9 @@ void broker_utils_send_closed_resp(RemoteDSLink *link, json_t *req, const char* 
     json_t *rid;
     if (json_is_object(req)) {
         rid = json_object_get(req, "rid");
-        json_object_set(resp, "rid", rid);
+        json_object_set_nocheck(resp, "rid", rid);
     } else if (json_is_integer(req)) {
-        json_object_set(resp, "rid", req);
+        json_object_set_nocheck(resp, "rid", req);
     }
 
 
@@ -51,7 +51,7 @@ void broker_utils_send_static_list_resp(RemoteDSLink *link, json_t *req) {
     json_t *rid;
     if (json_is_object(req)) {
         rid = json_object_get(req, "rid");
-        json_object_set(resp, "rid", rid);
+        json_object_set_nocheck(resp, "rid", rid);
     }
 
     json_t *updates = json_array();

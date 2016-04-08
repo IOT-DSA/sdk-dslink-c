@@ -17,7 +17,7 @@ void dslink_response_list_append_meta(json_t *obj,
 static
 int dslink_response_list_append_update(json_t *updates,
                                        const char *key, json_t *value, uint8_t new) {
-    json_t *str = json_string(key);
+    json_t *str = json_string_nocheck(key);
     if (!str) {
         return DSLINK_ALLOC_ERR;
     }
@@ -43,10 +43,10 @@ int dslink_response_list_append_child(json_t *update, DSNode *child) {
     if (!obj) {
         return DSLINK_ALLOC_ERR;
     }
-    json_array_append_new(update, json_string(child->name));
+    json_array_append_new(update, json_string_nocheck(child->name));
     json_array_append_new(update, obj);
 
-    json_object_set_new(obj, "$is", json_string(child->profile));
+    json_object_set_new(obj, "$is", json_string_nocheck(child->profile));
     if (child->meta_data) {
         Map *meta = child->meta_data;
         dslink_response_list_append_meta(obj, meta, "$name");
@@ -89,7 +89,7 @@ int dslink_response_list(DSLink *link, json_t *req, DSNode *node) {
         }
         json_object_set_new_nocheck(resp, "updates", updates);
 
-        json_t *profile = json_string(node->profile);
+        json_t *profile = json_string_nocheck(node->profile);
         dslink_response_list_append_update(updates, "$is", profile, 1);
         if (node->meta_data) {
             dslink_map_foreach(node->meta_data) {
@@ -121,7 +121,7 @@ int dslink_response_list(DSLink *link, json_t *req, DSNode *node) {
 
     json_t *jsonRid = json_object_get(req, "rid");
     json_object_set_nocheck(resp, "rid", jsonRid);
-    json_object_set_new_nocheck(resp, "stream", json_string("open"));
+    json_object_set_new_nocheck(resp, "stream", json_string_nocheck("open"));
 
     {
         Stream *stream = dslink_malloc(sizeof(Stream));

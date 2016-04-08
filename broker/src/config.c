@@ -30,12 +30,12 @@ json_t *broker_config_gen() {
 
         {
             json_object_set_new_nocheck(http, "enabled", json_true());
-            json_object_set_new_nocheck(http, "host", json_string("0.0.0.0"));
+            json_object_set_new_nocheck(http, "host", json_string_nocheck("0.0.0.0"));
             json_object_set_new_nocheck(http, "port", json_integer(8100));
         }
     }
 
-    json_object_set_new_nocheck(broker, "log_level", json_string("info"));
+    json_object_set_new_nocheck(broker, "log_level", json_string_nocheck("info"));
     json_object_set_new_nocheck(broker, "allowAllLinks", json_true());
     json_object_set_new_nocheck(broker, "maxQueue", json_integer(1024));
     json_object_set_new_nocheck(broker, "defaultPermission", json_null());
@@ -49,7 +49,7 @@ json_t *broker_config_gen() {
         uv_cwd(cwd, size);
         dslink_free(size);
 
-        json_object_set_new_nocheck(storage, "path", json_string(cwd));
+        json_object_set_new_nocheck(storage, "path", json_string_nocheck(cwd));
     }
 
     json_object_set_new_nocheck(broker, "storage", storage);

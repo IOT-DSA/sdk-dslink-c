@@ -62,9 +62,9 @@ ref_t* dslink_requester_send_request(DSLink *link, json_t *req, request_handler_
 
 ref_t* dslink_requester_list(DSLink* link, const char* path, request_handler_cb cb) {
     json_t *json = json_object();
-    json_object_set_new(json, "method", json_string("list"));
+    json_object_set_new(json, "method", json_string_nocheck("list"));
 
-    json_object_set_new(json, "path", json_string(path));
+    json_object_set_new(json, "path", json_string_nocheck(path));
 
     return dslink_requester_send_request(link, json, cb);
 }
@@ -73,11 +73,11 @@ ref_t* dslink_requester_subscribe(DSLink* link, const char* path, value_sub_cb c
     uint32_t sid = dslink_requester_incr_sid(link->requester);
 
     json_t *json = json_object();
-    json_object_set_new(json, "method", json_string("subscribe"));
+    json_object_set_new(json, "method", json_string_nocheck("subscribe"));
 
     json_t *paths = json_array();
     json_t *obj = json_object();
-    json_object_set_new(obj, "path", json_string(path));
+    json_object_set_new(obj, "path", json_string_nocheck(path));
     json_object_set_new(obj, "sid", json_integer(sid));
     json_object_set_new(obj, "qos", json_integer(qos));
     json_array_append_new(paths, obj);
@@ -104,8 +104,8 @@ ref_t* dslink_requester_subscribe(DSLink* link, const char* path, value_sub_cb c
 ref_t* dslink_requester_set(DSLink* link, const char* path, json_t *value) {
     json_t *json = json_object();
 
-    json_object_set_new_nocheck(json, "method", json_string("set"));
-    json_object_set_new_nocheck(json, "path", json_string(path));
+    json_object_set_new_nocheck(json, "method", json_string_nocheck("set"));
+    json_object_set_new_nocheck(json, "path", json_string_nocheck(path));
     json_object_set_new_nocheck(json, "value", value);
 
     return dslink_requester_send_request(link, json, dslink_requester_ignore_response);
@@ -113,15 +113,15 @@ ref_t* dslink_requester_set(DSLink* link, const char* path, json_t *value) {
 
 ref_t* dslink_requester_remove(DSLink* link, const char* path) {
     json_t *json = json_object();
-    json_object_set_new_nocheck(json, "method", json_string("remove"));
-    json_object_set_new_nocheck(json, "path", json_string(path));
+    json_object_set_new_nocheck(json, "method", json_string_nocheck("remove"));
+    json_object_set_new_nocheck(json, "path", json_string_nocheck(path));
 
     return dslink_requester_send_request(link, json, dslink_requester_ignore_response);
 }
 
 ref_t* dslink_requester_unsubscribe(DSLink* link, uint32_t sid) {
     json_t *json = json_object();
-    json_object_set_new(json, "method", json_string("unsubscribe"));
+    json_object_set_new(json, "method", json_string_nocheck("unsubscribe"));
 
     json_t *sids = json_array();
     json_array_append_new(sids, json_integer(sid));
@@ -135,9 +135,9 @@ ref_t* dslink_requester_unsubscribe(DSLink* link, uint32_t sid) {
 
 ref_t* dslink_requester_invoke(DSLink *link, const char *path, json_t *params, request_handler_cb cb) {
     json_t *json = json_object();
-    json_object_set_new(json, "method", json_string("invoke"));
+    json_object_set_new(json, "method", json_string_nocheck("invoke"));
 
-    json_object_set_new(json, "path", json_string(path));
+    json_object_set_new(json, "path", json_string_nocheck(path));
     json_object_set_new(json, "params", params);
 
     ref_t *ref = dslink_requester_send_request(link, json, cb);
@@ -146,7 +146,7 @@ ref_t* dslink_requester_invoke(DSLink *link, const char *path, json_t *params, r
 
 int dslink_requester_close(DSLink *link, uint32_t rid) {
     json_t *json = json_object();
-    json_object_set_new(json, "method", json_string("close"));
+    json_object_set_new(json, "method", json_string_nocheck("close"));
 
     json_t *jsonRid = json_integer(rid);
     json_object_set_new(json, "rid", jsonRid);

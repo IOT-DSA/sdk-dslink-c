@@ -50,12 +50,12 @@ int init_update_permissions_action(BrokerNode *sysNode) {
     }
 
     if (json_object_set_new(updatePermissionsAction->meta, "$invokable",
-                            json_string("read")) != 0) {
+                            json_string_nocheck("read")) != 0) {
         return 1;
     }
 
     if (json_object_set_new(updatePermissionsAction->meta, "$name",
-                            json_string("Update Permissions")) != 0) {
+                            json_string_nocheck("Update Permissions")) != 0) {
         return 1;
     }
 

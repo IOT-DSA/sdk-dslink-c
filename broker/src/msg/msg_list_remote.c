@@ -33,8 +33,8 @@ void send_list_request(BrokerListStream *stream,
 
     json_t *req = json_object();
     json_array_append_new(reqs, req);
-    json_object_set_new_nocheck(req, "method", json_string("list"));
-    json_object_set_new_nocheck(req, "path", json_string(path));
+    json_object_set_new_nocheck(req, "method", json_string_nocheck("list"));
+    json_object_set_new_nocheck(req, "path", json_string_nocheck(path));
 
     uint32_t rid = broker_node_incr_rid(node);
 
@@ -91,7 +91,7 @@ void broker_list_dslink_send_cache(BrokerListStream *stream){
     json_t *resp = json_object();
     json_array_append_new(resps, resp);
 
-    json_object_set_new_nocheck(resp, "stream", json_string("open"));
+    json_object_set_new_nocheck(resp, "stream", json_string_nocheck("open"));
     json_object_set_new_nocheck(resp, "updates", cached_updates);
 
     dslink_map_foreach(&stream->requester_links) {

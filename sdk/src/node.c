@@ -112,7 +112,7 @@ int dslink_node_add_child(DSLink *link, DSNode *node) {
     }
     json_array_append_new(resps, resp);
     json_object_set_new_nocheck(resp, "stream",
-                                json_string("open"));
+                                json_string_nocheck("open"));
     json_object_set_new_nocheck(resp, "rid", json_integer(*id));
     json_t *updates = json_array();
     if (!updates) {
@@ -220,7 +220,7 @@ void dslink_node_tree_free(DSLink *link, DSNode *root) {
                     json_object_set_new_nocheck(resp, "rid",
                                                 json_integer(*rid));
                     json_object_set_new_nocheck(resp, "stream",
-                                                json_string("open"));
+                                                json_string_nocheck("open"));
                     json_t *updates = json_array();
                     if (updates) {
                         json_object_set_new_nocheck(resp, "updates", updates);
@@ -229,10 +229,10 @@ void dslink_node_tree_free(DSLink *link, DSNode *root) {
                             json_array_append_new(updates, update);
                             json_object_set_new_nocheck(update,
                                                         "name",
-                                                        json_string(root->name));
+                                                        json_string_nocheck(root->name));
                             json_object_set_new_nocheck(update,
                                                         "change",
-                                                        json_string("remove"));
+                                                        json_string_nocheck("remove"));
                             send = 1;
                         }
                     }
@@ -312,7 +312,7 @@ int dslink_node_set_meta(DSLink *link, DSNode *node,
     }
     json_array_append_new(resps, resp);
     json_object_set_new_nocheck(resp, "stream",
-                                json_string("open"));
+                                json_string_nocheck("open"));
     json_object_set_new_nocheck(resp, "rid", json_integer(*id));
     json_t *updates = json_array();
     if (!updates) {
@@ -325,15 +325,15 @@ int dslink_node_set_meta(DSLink *link, DSNode *node,
         if (!update) {
             goto cleanup;
         }
-        json_object_set_new(update, "name", json_string(name));
-        json_object_set_new(update, "change", json_string("remove"));
+        json_object_set_new(update, "name", json_string_nocheck(name));
+        json_object_set_new(update, "change", json_string_nocheck("remove"));
         json_array_append_new(updates, update);
     } else {
         json_t *update = json_array();
         if (!update) {
             goto cleanup;
         }
-        json_array_append_new(update, json_string(name));
+        json_array_append_new(update, json_string_nocheck(name));
         json_array_append_new(update, value);
         json_array_append_new(updates, update);
     }
@@ -350,7 +350,7 @@ int dslink_node_set_value(struct DSLink *link, DSNode *node, json_t *value) {
     char ts[32];
     dslink_create_ts(ts, sizeof(ts));
 
-    json_t *jsonTs = json_string(ts);
+    json_t *jsonTs = json_string_nocheck(ts);
     if (!jsonTs) {
         return DSLINK_ALLOC_ERR;
     }

@@ -306,7 +306,7 @@ int init_sys_upstream_node(BrokerNode *sysNode) {
     }
 
     if (json_object_set_new(addUpstreamAction->meta, "$invokable",
-                            json_string("config")) != 0) {
+                            json_string_nocheck("config")) != 0) {
         broker_node_free(addUpstreamAction);
         return 1;
     }

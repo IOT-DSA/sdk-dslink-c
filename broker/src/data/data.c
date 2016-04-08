@@ -53,7 +53,7 @@ void on_delete_node_invoked(RemoteDSLink *link,
             json_object_set_new_nocheck(resp, "stream", json_string_nocheck("open"));
             json_t *updates = json_array();
             json_t *update = json_object();
-            json_object_set_new_nocheck(update, "name", json_string(node->name));
+            json_object_set_new_nocheck(update, "name", json_string_nocheck(node->name));
             json_object_set_new_nocheck(update, "change",
                                         json_string_nocheck("remove"));
             json_array_append_new(updates, update);

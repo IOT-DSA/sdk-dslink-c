@@ -23,7 +23,7 @@ int dslink_response_send_closed(DSLink *link, json_t *rid) {
     }
     json_array_append_new(resps, resp);
     json_object_set(resp, "rid", rid);
-    json_object_set_new_nocheck(resp, "stream", json_string("closed"));
+    json_object_set_new_nocheck(resp, "stream", json_string_nocheck("closed"));
     dslink_ws_send_obj(link->_ws, top);
     json_delete(top);
     return 0;
