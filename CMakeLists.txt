@@ -68,9 +68,12 @@ ADD_C_FLAGS("-fPIC")
 ##### Configure Flags #####
 
 ADD_C_FLAGS("-std=gnu99")
-ADD_C_FLAGS("-Wall -Wextra -Werror")
-ADD_C_FLAGS("-Wno-overlength-strings")
-ADD_C_FLAGS("-pedantic")
+
+if (NOT NO_WARNINGS)
+    ADD_C_FLAGS("-Wall -Wextra -Werror")
+    ADD_C_FLAGS("-Wno-overlength-strings")
+    ADD_C_FLAGS("-pedantic")
+endif()
 
 if (${CMAKE_C_COMPILER_ID} STREQUAL "Clang")
     ADD_C_FLAGS("-Qunused-arguments")
