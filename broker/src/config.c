@@ -7,6 +7,7 @@
 #include <uv.h>
 
 #include <sys/param.h>
+#include <dslink/utils.h>
 
 #include "broker/config.h"
 #define BROKER_CONF_LOC "broker.json"
@@ -138,6 +139,9 @@ int broker_config_load(json_t* json) {
 
 static
 const char *pathcat(const char *parent, const char *child) {
+    if (*parent == '\0') {
+        return dslink_strdup(child);
+    }
     size_t size = strlen(parent) + strlen(child) + 2;
     char *path = dslink_malloc(size);
     snprintf(path, size, "%s/%s", parent, child);
