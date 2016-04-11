@@ -5,6 +5,7 @@
 #include <broker/msg/msg_subscribe.h>
 #include "broker/msg/msg_unsubscribe.h"
 #include "broker/msg/msg_list.h"
+#include <broker/subscription.h>
 
 static
 int broker_map_dslink_cmp(void *key, void *other, size_t len) {
@@ -115,9 +116,10 @@ void broker_stream_free(BrokerStream *stream) {
 
     if (stream->type == LIST_STREAM) {
         BrokerListStream *s = (BrokerListStream *) stream;
-        if (s->requester_links.size > 0) {
-            // don't free it when there is any other attached dslink
-            return;
+        dslink_map_foreach(&s->requester_links) {
+            RemoteDSLink *link = entry->key->data;
+            uint32_t *rid = entry->value->data;
+            dslink_map_remove(&link->requester_streams, rid);
         }
         if (s->node->type == DOWNSTREAM_NODE) {
             DownstreamNode *dnode = (DownstreamNode *)s->node;
@@ -141,12 +143,24 @@ void broker_stream_free(BrokerStream *stream) {
     } else if (stream->type == SUBSCRIPTION_STREAM) {
         BrokerSubStream *bss = (BrokerSubStream *) stream;
         if (bss->respNode->type == DOWNSTREAM_NODE) {
+            dslink_map_foreach(&bss->reqSubs) {
+                SubRequester *reqsub = entry->value->data;
+                reqsub->stream = NULL;
+                reqsub->respNode = NULL;
+                broker_subscribe_disconnected_remote(reqsub->path, reqsub);
+            }
             DownstreamNode* dnode = (DownstreamNode*)bss->respNode;
             broker_msg_send_unsubscribe(bss, ((DownstreamNode*)bss->respNode)->link);
 
             dslink_map_remove(&dnode->resp_sub_streams, bss->remote_path);
             dslink_map_remove(&dnode->resp_sub_sids, &bss->respSid);
         } else {
+            dslink_map_foreach(&bss->reqSubs) {
+                SubRequester *reqsub = entry->value->data;
+                reqsub->stream = NULL;
+                reqsub->respNode = NULL;
+                broker_subscribe_local_nonexistent(reqsub->path, reqsub);
+            }
             bss->respNode->sub_stream = NULL;
         }
         dslink_map_free(&bss->reqSubs);

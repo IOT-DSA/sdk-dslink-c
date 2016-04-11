@@ -22,6 +22,11 @@ void broker_subscribe_disconnected_remote(const char *path,
 
 void broker_add_new_subscription(struct Broker *broker, struct SubRequester *subreq);
 
+void broker_subscribe_disconnected_remote(const char *path, struct SubRequester *subreq);
+void broker_subscribe_local_nonexistent(const char *path, struct SubRequester *subreq);
+
+
+
 #ifdef __cplusplus
 }
 #endif

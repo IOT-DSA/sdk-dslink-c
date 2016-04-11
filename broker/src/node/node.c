@@ -239,11 +239,6 @@ void broker_node_free(BrokerNode *node) {
         dslink_free(node->children);
     }
 
-    if (node->list_stream) {
-        // TODO, assign the stream to a pending node
-        node->list_stream->node = NULL;
-    }
-
     if (node->type == DOWNSTREAM_NODE) {
         DownstreamNode *dnode = (DownstreamNode *)node;
         dslink_map_free(&dnode->list_streams);
@@ -258,8 +253,12 @@ void broker_node_free(BrokerNode *node) {
             broker_free_sub_requester(subreq);
         }
         dslink_map_foreach(&dnode->resp_sub_streams) {
-           // TODO move to pending subscriptions
+            broker_stream_free(entry->value->data);
         }
+        dslink_map_foreach(&dnode->list_streams) {
+            broker_stream_free(entry->value->data);
+        }
+        dslink_map_free(&dnode->list_streams);
         dslink_map_free(&dnode->req_sub_sids);
         dslink_map_free(&dnode->req_sub_paths);
         dslink_map_free(&dnode->resp_sub_sids);
@@ -270,6 +269,8 @@ void broker_node_free(BrokerNode *node) {
         listener_remove_all(&node->on_value_update);
         listener_remove_all(&node->on_child_added);
         listener_remove_all(&node->on_child_removed);
+        broker_stream_free((BrokerStream*)node->list_stream);
+        broker_stream_free((BrokerStream*)node->sub_stream);
         json_decref(node->value);
     }
     permission_list_free(node->permissionList);
