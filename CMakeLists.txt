@@ -122,6 +122,7 @@ set(DSLINK_SRC
     "${DSLINK_SRC_DIR}/utils.c"
     "${DSLINK_SRC_DIR}/ws.c"
     "${DSLINK_SRC_DIR}/requester.c"
+    "${DSLINK_SRC_DIR}/async_connect.c"
 )
 
 set(LIBRARY_SRC
