@@ -44,10 +44,12 @@ json_t *broker_config_gen() {
     json_t *storage = json_object();
 
     {
-        char cwd[MAXPATHLEN];
+        char cwd[MAXPATHLEN] = ".";
 
         size_t *size = dslink_malloc(sizeof(size_t));
-        uv_cwd(cwd, size);
+        if (uv_cwd(cwd, size) != 0) {
+            cwd[0] = '.';
+        }
         dslink_free(size);
 
         json_object_set_new_nocheck(storage, "path", json_string_nocheck(cwd));
