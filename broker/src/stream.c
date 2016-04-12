@@ -171,9 +171,18 @@ void broker_stream_free(BrokerStream *stream) {
 
 }
 
+
+
 void requester_stream_closed(BrokerStream *stream, RemoteDSLink *link) {
     if (stream->req_close_cb) {
         stream->req_close_cb(stream, link);
+    }
+    if (stream->type == LIST_STREAM) {
+        BrokerListStream *s = (BrokerListStream *) stream;
+        if (s->node && s->requester_links.size > 0) {
+            // don't free list stream when it's still open
+            return;
+        }
     }
     broker_stream_free(stream);
 }
