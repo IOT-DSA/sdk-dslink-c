@@ -77,6 +77,7 @@ static int wsa_init_done = 0;
 #include "dslink/socket_private.h"
 #include "dslink/socket.h"
 #include "dslink/err.h"
+#include "../../include/broker/upstream/upstream_handshake.h"
 
 static int net_prepare( void )
 {
@@ -99,8 +100,15 @@ static int net_prepare( void )
     return( 0 );
 }
 
-int mbedtls_net_connect_async( mbedtls_net_context *ctx, const char *host, const char *port, int proto )
+int connectConnCheck(UpstreamPoll *upstreamPoll) {
+    return connect( upstreamPoll->sock->socket_ctx.fd, upstreamPoll->conCheckAddrList->ai_addr, MSVC_INT_CAST upstreamPoll->conCheckAddrList->ai_addrlen );
+}
+
+static
+int mbedtls_net_connect_async(UpstreamPoll *upstreamPoll, const char *host, const char *port, int proto )
 {
+    mbedtls_net_context *ctx = &upstreamPoll->sock->socket_ctx;
+
     int ret;
     struct addrinfo hints, *addr_list;
 
@@ -122,29 +130,28 @@ int mbedtls_net_connect_async( mbedtls_net_context *ctx, const char *host, const
                             addr_list->ai_protocol );
     if( ctx->fd < 0 )
     {
-        ret = MBEDTLS_ERR_NET_SOCKET_FAILED;
+        freeaddrinfo( addr_list );
+        return MBEDTLS_ERR_NET_SOCKET_FAILED;
     } else  {
-        //mbedtls_net_set_nonblock(ctx);
-        if( connect( ctx->fd, addr_list->ai_addr, MSVC_INT_CAST addr_list->ai_addrlen ) == 0 ) {
-            ret = 0;
-        } else {
-            close( ctx->fd );
-            ret = MBEDTLS_ERR_NET_CONNECT_FAILED;
-        }
+        mbedtls_net_set_nonblock(ctx);
+        if (connect( ctx->fd, addr_list->ai_addr, MSVC_INT_CAST addr_list->ai_addrlen ) != 0) {
+            if (errno != 115 && errno != 114) {
+                freeaddrinfo( addr_list );
+                return MBEDTLS_ERR_NET_SOCKET_FAILED;
+            }
+        };
+        upstreamPoll->conCheckAddrList = addr_list;
+        return 0;
     }
 
 
-
-
-    freeaddrinfo( addr_list );
-
-    return( ret );
 }
 
 static
-int dslink_socket_connect_secure_async(SslSocket *sock,
+int dslink_socket_connect_secure_async(UpstreamPoll *upstreamPoll,
                                  const char *address,
                                  unsigned short port) {
+    SslSocket *sock = (SslSocket*)upstreamPoll->sock;
     if ((errno = mbedtls_ctr_drbg_seed(&sock->drbg, mbedtls_entropy_func,
                                        &sock->entropy, NULL, 0)) != 0) {
         return DSLINK_CRYPT_ENTROPY_SEED_ERR;
@@ -152,7 +159,7 @@ int dslink_socket_connect_secure_async(SslSocket *sock,
 
     char num[6];
     snprintf(num, sizeof(num), "%d", port);
-    if ((errno = mbedtls_net_connect_async(&sock->socket_ctx, address,
+    if ((errno = mbedtls_net_connect_async(upstreamPoll, address,
                                      num, MBEDTLS_NET_PROTO_TCP)) != 0) {
         return DSLINK_SOCK_CONNECT_ERR;
     }
@@ -190,32 +197,32 @@ int dslink_socket_connect_secure_async(SslSocket *sock,
 }
 
 static
-int dslink_socket_connect_insecure_async(Socket *sock,
+int dslink_socket_connect_insecure_async(UpstreamPoll *upstreamPoll,
                                    const char *address,
                                    unsigned short port) {
+    Socket *sock = upstreamPoll->sock;
     mbedtls_net_init(&sock->socket_ctx);
     char num[6];
     snprintf(num, sizeof(num), "%d", port);
-    if ((errno = mbedtls_net_connect_async(&sock->socket_ctx, address,
+    if ((errno = mbedtls_net_connect_async(upstreamPoll, address,
                                      num, MBEDTLS_NET_PROTO_TCP)) != 0) {
         return DSLINK_SOCK_CONNECT_ERR;
     }
     return 0;
 }
 
-int dslink_socket_connect_async(Socket **sock,
+int dslink_socket_connect_async(UpstreamPoll *upstreamPoll,
                           const char *address,
                           unsigned short port,
                           uint_fast8_t secure) {
-    *sock = dslink_socket_init(secure);
-    mbedtls_net_set_nonblock(&(*sock)->socket_ctx);
-    if (!(*sock)) {
+    upstreamPoll->sock = dslink_socket_init(secure);
+    mbedtls_net_set_nonblock(&upstreamPoll->sock->socket_ctx);
+    if (!upstreamPoll->sock) {
         return DSLINK_ALLOC_ERR;
     }
     if (secure) {
-        SslSocket *s = (SslSocket *) *sock;
-        return dslink_socket_connect_secure_async(s, address, port);
+        return dslink_socket_connect_secure_async(upstreamPoll, address, port);
     } else {
-        return dslink_socket_connect_insecure_async(*sock, address, port);
+        return dslink_socket_connect_insecure_async(upstreamPoll, address, port);
     }
 }

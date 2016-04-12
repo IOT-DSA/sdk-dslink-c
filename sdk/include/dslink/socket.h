@@ -47,11 +47,6 @@ void dslink_socket_close(Socket *sock);
 void dslink_socket_close_nofree(Socket *sock);
 void dslink_socket_free(Socket *sock);
 
-int dslink_socket_connect_async(Socket **sock,
-                                const char *address,
-                                unsigned short port,
-                                uint_fast8_t secure);
-
 #ifdef __cplusplus
 }
 #endif

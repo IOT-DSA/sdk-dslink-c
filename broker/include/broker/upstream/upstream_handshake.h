@@ -19,12 +19,16 @@ struct wslay_event_context;
 typedef enum UpstreamPollStatus {
     UPSTREAM_NONE = 0,
     UPSTREAM_CONN,
+    UPSTREAM_CONN_CHECK,
     UPSTREAM_WS
 } UpstreamPollStatus;
 
 typedef struct UpstreamPoll {
     UpstreamPollStatus status;
     uv_poll_t *connPoll;
+    uv_timer_t *connCheckTimer;
+    uint32_t connCheckCount;
+    struct addrinfo *conCheckAddrList;
     uv_poll_t *wsPoll;
     char *brokerUrl;
     char *dsId;
@@ -55,6 +59,13 @@ void upstream_disconnected();
 void upstream_disconnect();
 
 void init_upstream_link(struct Broker *broker, UpstreamPoll *upstreamPoll);
+
+
+int dslink_socket_connect_async(UpstreamPoll *upstreamPoll,
+                                const char *address,
+                                unsigned short port,
+                                uint_fast8_t secure);
+int connectConnCheck(UpstreamPoll *upstreamPoll);
 
 #ifdef __cplusplus
 }

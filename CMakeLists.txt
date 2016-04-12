@@ -122,7 +122,6 @@ set(DSLINK_SRC
     "${DSLINK_SRC_DIR}/utils.c"
     "${DSLINK_SRC_DIR}/ws.c"
     "${DSLINK_SRC_DIR}/requester.c"
-    "${DSLINK_SRC_DIR}/async_connect.c"
 )
 
 set(LIBRARY_SRC
@@ -169,12 +168,14 @@ set(BROKER_SRC
     "${BROKER_SRC_DIR}/permission/permission.c"
     "${BROKER_SRC_DIR}/sys/clear_conns.c"
     "${BROKER_SRC_DIR}/upstream/upstream_handshake.c"
+    "${BROKER_SRC_DIR}/upstream/async_connect.c"
     "${BROKER_SRC_DIR}/node/node_serialization.c"
     "${BROKER_SRC_DIR}/sys/permission_action.c"
     "${BROKER_SRC_DIR}/msg/sub_stream.c"
     "${BROKER_SRC_DIR}/subscription.c"
     "${BROKER_SRC_DIR}/node/virtual_downstream.c"
-    "${BROKER_SRC_DIR}/msg/msg_remove.c")
+    "${BROKER_SRC_DIR}/msg/msg_remove.c"
+)
 
    set(EXAMPLE_RESPONDER_SRC_DIR "${CMAKE_CURRENT_LIST_DIR}/examples/responder/src")
 set(EXAMPLE_RESPONDER_SRC
