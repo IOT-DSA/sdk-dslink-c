@@ -129,9 +129,9 @@ void upstream_handshake_handle_ws(UpstreamPoll *upstreamPoll) {
     upstreamPoll->ws = ptr;
     link->ws = ptr;
 
-    mbedtls_net_set_nonblock(&upstreamPoll->clientDslink->_socket->socket_fd);
+    mbedtls_net_set_nonblock(&upstreamPoll->clientDslink->_socket->socket_ctx);
 
-    uv_poll_init(mainLoop, upstreamPoll->wsPoll, upstreamPoll->clientDslink->_socket->socket_fd.fd);
+    uv_poll_init(mainLoop, upstreamPoll->wsPoll, upstreamPoll->clientDslink->_socket->socket_ctx.fd);
     upstreamPoll->wsPoll->data = upstreamPoll;
     uv_poll_start(upstreamPoll->wsPoll, UV_READABLE, upstream_io_handler);
 
@@ -239,7 +239,7 @@ void upstream_connect_conn(UpstreamPoll *upstreamPoll) {
 
     char *conndata = dslink_handshake_generate_req(clientDslink, &dsId);
 
-    if (dslink_socket_connect(&sock, clientDslink->config.broker_url->host,
+    if (dslink_socket_connect_async(&sock, clientDslink->config.broker_url->host,
                               clientDslink->config.broker_url->port,
                               clientDslink->config.broker_url->secure) != 0) {
         upstream_reconnect(upstreamPoll);
@@ -249,7 +249,7 @@ void upstream_connect_conn(UpstreamPoll *upstreamPoll) {
 
 
     upstreamPoll->connPoll = dslink_calloc(1, sizeof(uv_poll_t));
-    uv_poll_init(mainLoop, upstreamPoll->connPoll, sock->socket_fd.fd);
+    uv_poll_init(mainLoop, upstreamPoll->connPoll, sock->socket_ctx.fd);
 
     upstreamPoll->dsId = dslink_strdup(dsId);
     upstreamPoll->connPoll->data = upstreamPoll;

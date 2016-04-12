@@ -14,7 +14,7 @@ Socket *dslink_socket_init(uint_fast8_t secure) {
             return NULL;
         }
         s->secure = 1;
-        mbedtls_net_init(&s->socket_fd);
+        mbedtls_net_init(&s->socket_ctx);
         mbedtls_entropy_init(&s->entropy);
         mbedtls_ctr_drbg_init(&s->drbg);
         mbedtls_ssl_init(&s->ssl);
@@ -26,7 +26,7 @@ Socket *dslink_socket_init(uint_fast8_t secure) {
             return NULL;
         }
         s->secure = 0;
-        mbedtls_net_init(&s->socket_fd);
+        mbedtls_net_init(&s->socket_ctx);
         return s;
     }
 }
@@ -42,7 +42,7 @@ int dslink_socket_connect_secure(SslSocket *sock,
 
     char num[6];
     snprintf(num, sizeof(num), "%d", port);
-    if ((errno = mbedtls_net_connect(&sock->socket_fd, address,
+    if ((errno = mbedtls_net_connect(&sock->socket_ctx, address,
                                      num, MBEDTLS_NET_PROTO_TCP)) != 0) {
         return DSLINK_SOCK_CONNECT_ERR;
     }
@@ -64,7 +64,7 @@ int dslink_socket_connect_secure(SslSocket *sock,
         return DSLINK_SOCK_SSL_HOSTNAME_SET_ERR;
     }
 
-    mbedtls_ssl_set_bio(&sock->ssl, &sock->socket_fd,
+    mbedtls_ssl_set_bio(&sock->ssl, &sock->socket_ctx,
                         mbedtls_net_send, mbedtls_net_recv, NULL);
 
     int stat;
@@ -83,10 +83,10 @@ static
 int dslink_socket_connect_insecure(Socket *sock,
                                    const char *address,
                                    unsigned short port) {
-    mbedtls_net_init(&sock->socket_fd);
+    mbedtls_net_init(&sock->socket_ctx);
     char num[6];
     snprintf(num, sizeof(num), "%d", port);
-    if ((errno = mbedtls_net_connect(&sock->socket_fd, address,
+    if ((errno = mbedtls_net_connect(&sock->socket_ctx, address,
                                      num, MBEDTLS_NET_PROTO_TCP)) != 0) {
         return DSLINK_SOCK_CONNECT_ERR;
     }
@@ -98,7 +98,7 @@ int dslink_socket_connect(Socket **sock,
                           unsigned short port,
                           uint_fast8_t secure) {
     *sock = dslink_socket_init(secure);
-    mbedtls_net_set_nonblock(&(*sock)->socket_fd);
+    mbedtls_net_set_nonblock(&(*sock)->socket_ctx);
     if (!(*sock)) {
         return DSLINK_ALLOC_ERR;
     }
@@ -116,7 +116,7 @@ int dslink_socket_read(Socket *sock, char *buf, size_t len) {
         r = mbedtls_ssl_read(&((SslSocket *) sock)->ssl,
                              (unsigned char *) buf, len);
     } else {
-        r = mbedtls_net_recv(&sock->socket_fd, (unsigned char *) buf, len);
+        r = mbedtls_net_recv(&sock->socket_ctx, (unsigned char *) buf, len);
     }
     if (r < 0) {
         errno = r;
@@ -131,7 +131,7 @@ int dslink_socket_write(Socket *sock, char *buf, size_t len) {
         r = mbedtls_ssl_write(&((SslSocket *) sock)->ssl,
                               (unsigned char *) buf, len);
     } else {
-        r = mbedtls_net_send(&sock->socket_fd, (unsigned char *) buf, len);
+        r = mbedtls_net_send(&sock->socket_ctx, (unsigned char *) buf, len);
     }
     if (r < 0) {
         errno = r;
@@ -149,7 +149,7 @@ void dslink_socket_close_nofree(Socket *sock) {
         mbedtls_ssl_free(&s->ssl);
         mbedtls_ssl_config_free(&s->conf);
     }
-    mbedtls_net_free(&sock->socket_fd);
+    mbedtls_net_free(&sock->socket_ctx);
 }
 
 void dslink_socket_close(Socket *sock) {

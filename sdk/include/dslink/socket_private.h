@@ -12,7 +12,7 @@ extern "C" {
 struct SslSocket {
 
     uint_fast8_t secure;
-    mbedtls_net_context socket_fd;
+    mbedtls_net_context socket_ctx;
     mbedtls_entropy_context entropy;
     mbedtls_ctr_drbg_context drbg;
     mbedtls_ssl_context ssl;
@@ -23,7 +23,7 @@ struct SslSocket {
 struct Socket {
 
     uint_fast8_t secure;
-    mbedtls_net_context socket_fd;
+    mbedtls_net_context socket_ctx;
 
 };
 

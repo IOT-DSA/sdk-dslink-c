@@ -318,11 +318,11 @@ void dslink_handshake_handle_ws(DSLink *link, link_callback on_requester_ready_c
     }
     link->_ws = ptr;
 
-    mbedtls_net_set_nonblock(&link->_socket->socket_fd);
+    mbedtls_net_set_nonblock(&link->_socket->socket_ctx);
 
     uv_poll_t poll;
     {
-        uv_poll_init(&link->loop, &poll, link->_socket->socket_fd.fd);
+        uv_poll_init(&link->loop, &poll, link->_socket->socket_ctx.fd);
         poll.data = link;
         uv_poll_start(&poll, UV_READABLE, io_handler);
     }

@@ -26,7 +26,7 @@ void broker_server_client_ready(uv_poll_t *poll,
     Client *client = poll->data;
     Server *server = client->server;
     server->data_ready(client, poll->loop->data);
-    if (client->sock->socket_fd.fd == -1) {
+    if (client->sock->socket_ctx.fd == -1) {
         // The callback closed the connection
         dslink_socket_free(client->sock);
         dslink_free(client);
@@ -53,7 +53,7 @@ void broker_server_new_client(uv_poll_t *poll,
         goto fail;
     }
 
-    if (mbedtls_net_accept(&server->srv, &client->sock->socket_fd,
+    if (mbedtls_net_accept(&server->srv, &client->sock->socket_ctx,
                            NULL, 0, NULL) != 0) {
         log_warn("Failed to accept a client connection\n");
         goto fail_poll_setup;
@@ -66,7 +66,7 @@ void broker_server_new_client(uv_poll_t *poll,
 
     uv_loop_t *loop = poll->loop;
     if (uv_poll_init(loop, clientPoll,
-                     client->sock->socket_fd.fd) != 0) {
+                     client->sock->socket_ctx.fd) != 0) {
         dslink_free(clientPoll);
         goto fail_poll_setup;
     }
