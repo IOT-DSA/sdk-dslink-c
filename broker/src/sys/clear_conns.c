@@ -23,6 +23,9 @@ void clear_conns(RemoteDSLink *link,
     json_object_set_new_nocheck(resp, "stream", json_string_nocheck("open"));
     json_t *updates = json_array();
 
+    List nodeToDelete;
+    list_init(&nodeToDelete);
+
     dslink_map_foreach(link->broker->downstream->children) {
         DownstreamNode *dsn = (DownstreamNode *) entry->value->data;
         if (dsn->link) {
@@ -30,6 +33,7 @@ void clear_conns(RemoteDSLink *link,
                     map,
                     dslink_str_ref(dsn->name), dslink_ref(dsn, NULL));
         } else {
+            dslink_list_insert(&nodeToDelete, dsn);
             json_t *update = json_object();
             json_object_set_new_nocheck(update, "name", json_string_nocheck(dsn->name));
             json_object_set_new_nocheck(update, "change",
@@ -57,6 +61,14 @@ void clear_conns(RemoteDSLink *link,
 
     dslink_map_free(omap);
     broker_utils_send_closed_resp(link, req, NULL);
+
+    dslink_list_foreach(&nodeToDelete) {
+        ListNode *lnode =  (ListNode *)node;
+        DownstreamNode *dsn = lnode->value;
+        // set to NULL to skip the removing from parent part
+        dsn->parent = NULL;
+        broker_node_free((BrokerNode*)dsn);
+    }
 }
 
 int init_clear_conns(BrokerNode *sysNode) {
