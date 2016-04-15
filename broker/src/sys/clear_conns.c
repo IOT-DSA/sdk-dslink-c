@@ -69,6 +69,7 @@ void clear_conns(RemoteDSLink *link,
         dsn->parent = NULL;
         broker_node_free((BrokerNode*)dsn);
     }
+    broker_downstream_nodes_changed(mainLoop->data);
 }
 
 int init_clear_conns(BrokerNode *sysNode) {
