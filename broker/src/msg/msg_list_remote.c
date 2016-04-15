@@ -128,8 +128,7 @@ void broker_list_dslink_response(RemoteDSLink *link, json_t *resp, BrokerListStr
                         const char *originalBase = json_string_value(childValue);
                         if (originalBase) {
                             char buff[512];
-                            strcpy(buff, stream->remote_path);
-                            strcat(buff, "/");
+                            strcpy(buff, stream->node->path);
                             strcat(buff, originalBase);
                             json_object_set_new_nocheck(
                                     stream->updates_cache, "$base",
