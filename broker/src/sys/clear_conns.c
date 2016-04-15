@@ -24,8 +24,8 @@ void clear_conns(RemoteDSLink *link,
     json_t *updates = json_array();
 
     dslink_map_foreach(link->broker->downstream->children) {
-        BrokerNode *dsn = (BrokerNode *) entry->value->data;
-        if (!json_object_get(dsn->meta, "$disconnectedTs")) {
+        DownstreamNode *dsn = (DownstreamNode *) entry->value->data;
+        if (dsn->link) {
             dslink_map_set(
                     map,
                     dslink_str_ref(dsn->name), dslink_ref(dsn, NULL));
