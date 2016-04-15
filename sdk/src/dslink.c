@@ -218,17 +218,20 @@ void dslink_link_free(DSLink *link) {
         dslink_free(link->msg);
     }
 
+    if (link->linkData) {
+        json_decref(link->linkData);
+    }
     dslink_free(link);
 }
 
 int dslink_init(int argc, char **argv,
                 const char *name, uint8_t isRequester,
                 uint8_t isResponder, DSLinkCallbacks *cbs) {
-    DSLink *link = dslink_malloc(sizeof(DSLink));
+    DSLink *link = dslink_calloc(1, sizeof(DSLink));
     link->closing = 0;
     link->is_responder = isResponder;
     link->is_requester = isRequester;
-    link->_ws = NULL;
+
 
     uv_loop_init(&link->loop);
 

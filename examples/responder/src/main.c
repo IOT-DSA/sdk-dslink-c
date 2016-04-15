@@ -15,6 +15,11 @@ void init(DSLink *link) {
     responder_init_rng(link, superRoot);
     responder_init_invoke(link, superRoot);
 
+    // add link data
+    json_t * linkData = json_object();
+    json_object_set_nocheck(linkData, "test", json_true());
+    link->linkData = linkData;
+
     log_info("Initialized!\n");
 }
 

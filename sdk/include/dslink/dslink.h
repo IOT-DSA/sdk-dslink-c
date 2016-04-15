@@ -40,6 +40,8 @@ struct DSLink {
     uv_loop_t loop; // Primary event loop
     DSLinkConfig config; // Configuration
     uint32_t *msg;
+
+    json_t *linkData;
 };
 
 struct Responder {
