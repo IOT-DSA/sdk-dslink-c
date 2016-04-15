@@ -241,7 +241,10 @@ void broker_stream_list_reset_remote_cache(BrokerListStream *stream,
                                            RemoteDSLink *link) {
     json_object_clear(stream->updates_cache);
     if (link) {
-        json_object_set_new_nocheck(stream->updates_cache, "$base", json_string_nocheck(link->path));
+        if (strcmp(stream->remote_path,"/") != 0) {
+            json_object_set_new_nocheck(stream->updates_cache, "$base", json_string_nocheck(link->path));
+        }
+
         if (strcmp(stream->remote_path, "/") == 0) {
             // add linkData into the updates_cache
             if (link->linkData) {
