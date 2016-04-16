@@ -27,6 +27,7 @@ ref_t* dslink_requester_unsubscribe(DSLink *link, uint32_t sid);
 ref_t* dslink_requester_set(DSLink *link, const char *path, json_t *value);
 ref_t* dslink_requester_remove(DSLink *link, const char *path);
 ref_t* dslink_requester_invoke(DSLink *link, const char *path, json_t *params, request_handler_cb cb);
+int dslink_requester_invoke_update_params(DSLink *link, uint32_t rid, json_t *params);
 int dslink_requester_close(DSLink *link, uint32_t rid);
 
 #endif //SDK_DSLINK_C_REQUESTER_H

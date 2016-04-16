@@ -3,8 +3,6 @@
 #include <dslink/log.h>
 #include <dslink/requester.h>
 
-int count = 1;
-
 void on_req_close(struct DSLink *link, ref_t *req_ref, json_t *resp) {
     (void) link;
     (void) resp;
@@ -26,7 +24,10 @@ void on_invoke_updates(struct DSLink *link, ref_t *req_ref, json_t *resp) {
     dslink_free(data);
 }
 
-void on_invoke_timer_fire(uv_timer_t *timer) {
+ref_t *streamInvokeRef = NULL;
+void on_timer_fire(uv_timer_t *timer) {
+    static int count = 0;
+
     DSLink *link = timer->data;
 
     if (count == 3) {
@@ -37,23 +38,38 @@ void on_invoke_timer_fire(uv_timer_t *timer) {
         return;
     }
 
-    json_t *params = json_object();
-    json_object_set_new(params, "command", json_string("ls"));
 
-    configure_request(dslink_requester_invoke(
-        link,
-        "/downstream/System/Execute_Command",
-        params,
-        on_invoke_updates
-    ));
-
+    // set value
+    json_t *value = json_real(rand());
     configure_request(dslink_requester_set(
         link,
         "/data/c-sdk/requester/testNumber",
-        json_real(rand())
+        value
     ));
+    json_decref(value);
+
+    // stream invoke
+    json_t *params = json_object();
+    json_object_set_new(params, "Path", json_string("/data/test_c_sdk"));
+    json_object_set_new(params, "Value", json_integer(count));
+    RequestHolder *holder = streamInvokeRef->data;
+    dslink_requester_invoke_update_params(link, holder->rid, params);
+    json_decref(params);
 
     count++;
+}
+void start_stream_invoke(DSLink *link) {
+    json_t *params = json_object();
+    json_object_set_new(params, "Path", json_string("/data/test_c_sdk"));
+    json_object_set_new(params, "Value", json_integer(-1));
+    streamInvokeRef = dslink_requester_invoke(
+            link,
+            "/data/publish",
+            params,
+            on_invoke_updates
+    );
+    json_decref(params);
+    configure_request(streamInvokeRef);
 }
 
 void on_list_update(struct DSLink *link, ref_t *req_ref, json_t *resp) {
@@ -128,10 +144,12 @@ void requester_ready(DSLink *link) {
     ));
     configure_request(dslink_requester_set(link, "/downstream/Weather/@test", json_integer(4)));
 
+    start_stream_invoke(link);
+    
     uv_timer_t *timer = malloc(sizeof(uv_timer_t));
     timer->data = link;
     uv_timer_init(&link->loop, timer);
-    uv_timer_start(timer, on_invoke_timer_fire, 0, 2000);
+    uv_timer_start(timer, on_timer_fire, 0, 2000);
 }
 
 int main(int argc, char **argv) {
