@@ -166,6 +166,7 @@ json_t *broker_handshake_handle_conn(Broker *broker,
         }
         if (!nodeExists && broker_enable_token) {
             if (!token) {
+                log_err("Failed to connet, need token\n");
                 goto fail;
             }
             BrokerNode* tokenNode = get_token_node(token, dsId);
@@ -192,6 +193,7 @@ json_t *broker_handshake_handle_conn(Broker *broker,
 
                 broker_downstream_nodes_changed(broker);
             } else {
+                log_err("Invalid token: %s\n", token);
                 goto fail;
             }
         }

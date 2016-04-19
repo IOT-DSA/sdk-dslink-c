@@ -52,6 +52,7 @@ void handle_conn(Broker *broker, HttpRequest *req, Socket *sock) {
     if (!dsId) {
         goto exit;
     }
+    log_info("%s connecting \n", dsId);
     const char *token = broker_http_param_get(&req->uri, "token");
     json_t *resp = broker_handshake_handle_conn(broker, dsId, token, body);
     json_decref(body);
@@ -131,6 +132,7 @@ void broker_on_data_callback(Client *client, void *data) {
 
     if (strcmp(req.uri.resource, "/conn") == 0) {
         if (strcmp(req.method, "POST") != 0) {
+            log_info("invalid method on /conn \n");
             broker_send_bad_request(client->sock);
             goto exit;
         }
@@ -138,6 +140,7 @@ void broker_on_data_callback(Client *client, void *data) {
         handle_conn(broker, &req, client->sock);
     } else if (strcmp(req.uri.resource, "/ws") == 0) {
         if (strcmp(req.method, "GET") != 0) {
+            log_info("invalid method on /ws \n");
             broker_send_bad_request(client->sock);
             goto exit;
         }
