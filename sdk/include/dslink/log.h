@@ -23,20 +23,13 @@ extern int dslink_log_lvl;
 #define LOG_LVL_ERR   200
 #define LOG_LVL_WARN  300
 #define LOG_LVL_INFO  400
-#ifndef NDEBUG
 #define LOG_LVL_DEBUG 500
-#endif
 
 #define log_fatal(...) DSLINK_DO_LOG(LOG_LVL_FATAL, "FATAL", __VA_ARGS__)
 #define log_err(...) DSLINK_DO_LOG(LOG_LVL_ERR, "ERROR", __VA_ARGS__)
 #define log_warn(...) DSLINK_DO_LOG(LOG_LVL_WARN, "WARN", __VA_ARGS__)
 #define log_info(...) DSLINK_DO_LOG(LOG_LVL_INFO, "INFO", __VA_ARGS__)
-
-#ifndef NDEBUG
 #define log_debug(...) DSLINK_DO_LOG(LOG_LVL_DEBUG, "DEBUG", __VA_ARGS__)
-#else
-#define log_debug(...)
-#endif
 
 int dslink_log_set_lvl(const char *level);
 void dslink_log_print_time();
