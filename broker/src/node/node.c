@@ -142,7 +142,7 @@ DownstreamNode *broker_init_downstream_node(BrokerNode *parentNode, const char *
     if (!(node->name
           && node->meta
           && json_object_set_new_nocheck(node->meta, "$is",
-                                         json_string_nocheck("node")) == 0)) {
+                                         json_string_nocheck("dsa/link")) == 0)) {
         goto fail;
     }
     node->permissionList = NULL;
