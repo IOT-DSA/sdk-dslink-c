@@ -296,6 +296,8 @@ int broker_msg_handle_list(RemoteDSLink *link, json_t *req) {
         }
     } else if (dslink_str_starts_with(path, "/defs/")) {
         broker_utils_send_static_list_resp(link, req);
+    } else /*if (dslink_str_starts_with(path, "/downstream/") || dslink_str_starts_with(path, "/upstream/"))*/{
+        broker_utils_send_disconnected_list_resp(link, req);
     }
 
     return 0;

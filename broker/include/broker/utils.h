@@ -13,6 +13,8 @@ void broker_utils_send_closed_resp(RemoteDSLink *link,
 
 void broker_utils_send_static_list_resp(RemoteDSLink *link, json_t *req);
 
+void broker_utils_send_disconnected_list_resp(RemoteDSLink *link, json_t *req);
+
 #ifdef __cplusplus
 }
 #endif

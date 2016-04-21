@@ -152,6 +152,7 @@ void broker_list_dslink_response(RemoteDSLink *link, json_t *resp, BrokerListStr
                                 json_t * profile = json_object_get(stream->node->meta, "$is");
                                 if (!profile || strcmp(json_string_value(profile), "dsa/broker") != 0) {
                                     json_object_set_new_nocheck(stream->node->meta, "$is", json_string_nocheck("dsa/broker"));
+
                                 }
                             }
                         }
