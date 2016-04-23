@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.0 FATAL_ERROR)
-project(sdk_dslink_c C)
+project(dslink C)
 
 option(USE_CCACHE "Enable CCache Support" ON)
 option(DSLINK_BUILD_BROKER "Whether to build the broker" OFF)
