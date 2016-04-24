@@ -176,12 +176,6 @@ set(BROKER_SRC
     "${BROKER_SRC_DIR}/node/virtual_downstream.c"
     "${BROKER_SRC_DIR}/msg/msg_remove.c"
 )
-
-   set(EXAMPLE_RESPONDER_SRC_DIR "${CMAKE_CURRENT_LIST_DIR}/examples/responder/src")
-set(EXAMPLE_RESPONDER_SRC
-    "${EXAMPLE_RESPONDER_SRC_DIR}/main.c"
-)
-
 ###### Configure Tests #####
 
 if (DSLINK_TEST)
@@ -215,6 +209,9 @@ install(TARGETS sdk_dslink_c
         RUNTIME DESTINATION "${DSLINK_INSTALL_BIN_DIR}" COMPONENT lib)
 
 install(DIRECTORY "sdk/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev)
+install(DIRECTORY "deps/mbed/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev)
+install(DIRECTORY "deps/wslay/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev)
+install(DIRECTORY "deps/jansson/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev)
 
 ####### Configure Broker #######
 
