@@ -216,6 +216,8 @@ install(DIRECTORY "deps/jansson/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_
 ####### Configure Broker #######
 
 if (DSLINK_BUILD_BROKER)
+    install(DIRECTORY "broker/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev)
+
     if (GIT_COMMIT_HASH)
         set_source_files_properties(
             "broker/src/broker.c"
