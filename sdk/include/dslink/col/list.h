@@ -55,9 +55,9 @@ void list_insert_node_after(void *node, void *base) {
         ((ListNodeBase *) node)->list = ((ListNodeBase *) base)->list;
         ((ListNodeBase *) base)->next->prev = node;
         ((ListNodeBase *) node)->next = ((ListNodeBase *) base)->next;
-        ((ListNodeBase *) base)->next = node;
-        ((ListNodeBase *) node)->prev = base;
-        ((ListNodeBase*)base)->list->size ++;
+        ((ListNodeBase *) base)->next = (ListNodeBase *) node;
+        ((ListNodeBase *) node)->prev = (ListNodeBase *) base;
+        ((ListNodeBase *)base)->list->size++;
     }
 }
 
@@ -67,9 +67,9 @@ void list_insert_node_before(void *node, void *base) {
         ((ListNodeBase *) node)->list = ((ListNodeBase *) base)->list;
         ((ListNodeBase *) base)->prev->next = node;
         ((ListNodeBase *) node)->prev = ((ListNodeBase *) base)->prev;
-        ((ListNodeBase *) base)->prev = node;
-        ((ListNodeBase *) node)->next = base;
-        ((ListNodeBase*)base)->list->size ++;
+        ((ListNodeBase *) base)->prev = (ListNodeBase *) node;
+        ((ListNodeBase *) node)->next = (ListNodeBase *) base;
+        ((ListNodeBase*)base)->list->size++;
     }
 }
 
