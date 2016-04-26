@@ -21,17 +21,27 @@ void broker_server_client_ready(uv_poll_t *poll,
                                 int status,
                                 int events) {
     (void) status;
-    (void) events;
-
     Client *client = poll->data;
     Server *server = client->server;
-    server->data_ready(client, poll->loop->data);
-    if (client->sock->socket_ctx.fd == -1) {
-        // The callback closed the connection
-        dslink_socket_free(client->sock);
-        dslink_free(client);
-        uv_close((uv_handle_t *) poll, broker_free_handle);
+
+    if (events & UV_READABLE) {
+        server->data_ready(client, poll->loop->data);
+        if (client->sock->socket_ctx.fd == -1) {
+            // The callback closed the connection
+            dslink_socket_free(client->sock);
+            dslink_free(client);
+            client = NULL;
+            uv_close((uv_handle_t *) poll, broker_free_handle);
+        }
     }
+    if (client && (events & UV_WRITABLE)) {
+        RemoteDSLink *link = client->sock_data;
+        if (link) {
+            link->ws->write_enabled = 1;
+            wslay_event_send(link->ws);
+        }
+    }
+
 }
 
 static
@@ -73,7 +83,7 @@ void broker_server_new_client(uv_poll_t *poll,
 
     clientPoll->data = client;
     client->poll = clientPoll;
-    uv_poll_start(clientPoll, UV_READABLE, broker_server_client_ready);
+    uv_poll_start(clientPoll, UV_READABLE|UV_WRITABLE, broker_server_client_ready);
 
     log_debug("Accepted a client connection\n");
     return;
