@@ -10,6 +10,8 @@
 #define LOG_TAG "token"
 #include <dslink/log.h>
 #include <broker/config.h>
+#include <broker/broker.h>
+#include <dslink/utils.h>
 
 static
 BrokerNode *tokenRootNode;
@@ -78,10 +80,10 @@ void save_token_node(BrokerNode *node) {
 }
 
 static
-void load_token_node(const char* tokenName, json_t* data) {
+BrokerNode * load_token_node(const char* tokenName, json_t* data) {
     BrokerNode *tokenNode = broker_node_create(tokenName, "node");
     if (!tokenNode) {
-        return;
+        return NULL;
     }
     const char* key;
     json_t* value;
@@ -96,6 +98,7 @@ void load_token_node(const char* tokenName, json_t* data) {
     broker_node_add(tokenNode, deleteAction);
 
     deleteAction->on_invoke = delete_token_invoke;
+    return tokenNode;
 }
 
 static
@@ -264,6 +267,56 @@ void token_used(BrokerNode *tokenNode) {
 }
 
 static
+void append_file_token(json_t *json) {
+    if(json_is_object(json)) {
+        json_t* token = json_object_get(json, "$$token");
+        if (json_is_string(token)) {
+            const char *tokenstr = json_string_value(token);
+            char name[17];
+            memcpy(name, tokenstr, 16);
+            name[16] = 0;
+            BrokerNode * tokenNode = load_token_node(name, json);
+            if (tokenNode) {
+                save_token_node(tokenNode);
+            }
+
+        }
+    }
+}
+
+static
+void parse_new_token_json(const char* path, json_t* json) {
+    if (json_is_array(json)) {
+        size_t index;
+        json_t *value;
+        json_array_foreach(json, index, value) {
+            append_file_token(value);
+        }
+    } else {
+        append_file_token(json);
+    }
+    uv_fs_t unlink_req;
+    uv_fs_unlink(NULL, &unlink_req, path, NULL);
+}
+
+static
+void new_file_token_changed(uv_fs_poll_t* handle,
+                      int status,
+                      const uv_stat_t* prev,
+                      const uv_stat_t* curr) {
+    (void)prev;
+    (void)curr;
+    if (status == 0) {
+        json_error_t err;
+        json_t *val = json_load_file(handle->data, 0 , &err);
+        parse_new_token_json(handle->data, val);
+    }
+
+}
+
+static uv_fs_poll_t newTokenFileHandler;
+
+static
 int load_tokens() {
     uv_fs_t dir;
 
@@ -288,12 +341,24 @@ int load_tokens() {
         json_error_t err;
         json_t *val = json_load_file(tmp, 0 , &err);
         if (val) {
-            load_token_node(d.name, val);
+            if (strlen(d.name) == 16) {
+                load_token_node(d.name, val);
+            } else if (strcmp(d.name, "append") == 0) {
+                // find token name from json
+                parse_new_token_json(tmp, val);
+            }
+
             json_decref(val);
         }
     }
 
+    char *newTokenPath = (char*)broker_pathcat(base, "append");
+    uv_fs_poll_init(mainLoop, &newTokenFileHandler);
+    uv_fs_poll_start(&newTokenFileHandler, new_file_token_changed, newTokenPath, 1000);
+    newTokenFileHandler.data = newTokenPath;
+
     dslink_free((void *) base);
+
 
     return 0;
 }

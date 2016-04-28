@@ -139,8 +139,7 @@ int broker_config_load(json_t* json) {
     return 0;
 }
 
-static
-const char *pathcat(const char *parent, const char *child) {
+const char *broker_pathcat(const char *parent, const char *child) {
     if (*parent == '\0') {
         return dslink_strdup(child);
     }
@@ -151,5 +150,5 @@ const char *pathcat(const char *parent, const char *child) {
 }
 
 const char *broker_get_storage_path(char *child) {
-    return pathcat(broker_storage_path, child);
+    return broker_pathcat(broker_storage_path, child);
 }
