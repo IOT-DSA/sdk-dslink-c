@@ -45,7 +45,9 @@ ssize_t broker_want_write_cb(wslay_event_context_ptr ctx,
 
     int written = dslink_socket_write(link->client->sock, (char *) data, len);
     if (written < 0) {
-        if (errno == MBEDTLS_ERR_SSL_WANT_WRITE) {
+        if (errno == EAGAIN) {
+            wslay_event_set_error(ctx, WSLAY_ERR_WOULDBLOCK);
+        } else if (errno == MBEDTLS_ERR_SSL_WANT_WRITE) {
             wslay_event_set_error(ctx, WSLAY_ERR_WANT_WRITE);
         } else {
             wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
