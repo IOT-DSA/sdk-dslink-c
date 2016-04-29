@@ -293,6 +293,7 @@ int broker_handshake_handle_ws(Broker *broker,
     }
 
     DownstreamNode *node = NULL;
+    int pendingUpdateList = 0;
     { // Handle retrieval of the downstream node
         ref = dslink_map_get(broker->downstream->children,
                                     (char *) link->name);
@@ -304,9 +305,7 @@ int broker_handshake_handle_ws(Broker *broker,
             }
             oldDsId = dslink_ref(dslink_strdup(dsId), dslink_free);
             if (broker->downstream->list_stream) {
-                update_list_child(broker->downstream,
-                                  broker->downstream->list_stream,
-                                  link->name);
+                pendingUpdateList = 1;
             }
             broker_downstream_nodes_changed(broker);
         } else {
@@ -353,6 +352,13 @@ int broker_handshake_handle_ws(Broker *broker,
 
     // set the ->link and update all existing stream
     broker_dslink_connect(node, link);
+
+    if (pendingUpdateList) {
+        update_list_child(broker->downstream,
+                          broker->downstream->list_stream,
+                          link->name);
+    }
+
     log_info("DSLink `%s` has connected\n", dsId);
 exit:
     mbedtls_ecdh_free(&link->auth->tempKey);
