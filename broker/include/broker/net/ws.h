@@ -13,6 +13,7 @@ int broker_ws_send_obj(RemoteDSLink *link, json_t *obj);
 int broker_ws_send(RemoteDSLink *link, const char *data);
 int broker_ws_generate_accept_key(const char *buf, size_t bufLen,
                                   char *out, size_t outLen);
+int broker_count_json_msg(json_t *json);
 
 #ifdef __cplusplus
 }

@@ -5,6 +5,7 @@
 #include <dslink/log.h>
 #include <dslink/err.h>
 #include <sys/time.h>
+#include <broker/sys/throughput.h>
 
 #include "broker/msg/msg_handler.h"
 #include "broker/net/ws.h"
@@ -86,6 +87,13 @@ void broker_on_ws_data(wslay_event_context_ptr ctx,
         json_error_t err;
         json_t *data = json_loadb((char *) arg->msg,
                                   arg->msg_length, 0, &err);
+        if (throughput_input_needed()) {
+            int receiveMessages = 0;
+            if (data) {
+                receiveMessages = broker_count_json_msg(data);
+            }
+            throughput_add_input(arg->msg_length, receiveMessages);
+        }
         if (!data) {
             return;
         }

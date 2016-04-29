@@ -20,7 +20,28 @@ void broker_ws_send_init(Socket *sock, const char *accept) {
     int bLen = snprintf(buf, sizeof(buf), BROKER_WS_RESP, accept);
     dslink_socket_write(sock, buf, (size_t) bLen);
 }
-
+int broker_count_json_msg(json_t *json) {
+    int messages = 0;
+    json_t * requests = json_object_get(json, "requests");
+    json_t * responses = json_object_get(json, "responses");
+    if (json_is_array(requests)) {
+        messages += json_array_size(requests);
+    }
+    if (json_is_array(responses)) {
+        size_t  idx;
+        json_t * value;
+        json_array_foreach(responses, idx, value) {
+            json_t *updates = json_object_get(value, "updates");
+            size_t updatesSize = json_array_size(updates);
+            if (updatesSize > 0) {
+                messages += updatesSize;
+            } else {
+                messages ++;
+            }
+        }
+    }
+    return messages;
+}
 int broker_ws_send_obj(RemoteDSLink *link, json_t *obj) {
     ++link->msgId;
     json_object_set_new_nocheck(obj, "msg", json_integer(link->msgId));
@@ -32,25 +53,7 @@ int broker_ws_send_obj(RemoteDSLink *link, json_t *obj) {
     }
     int sentBytes = broker_ws_send(link, data);
     if (throughput_output_needed()) {
-        int sentMessages = 0;
-        json_t * requests = json_object_get(obj, "requests");
-        json_t * responses = json_object_get(obj, "responses");
-        if (json_is_array(requests)) {
-            sentMessages += json_array_size(requests);
-        }
-        if (json_is_array(responses)) {
-            size_t  idx;
-            json_t * value;
-            json_array_foreach(responses, idx, value) {
-                json_t *updates = json_object_get(value, "updates");
-                size_t updatesSize = json_array_size(updates);
-                if (updatesSize > 0) {
-                    sentMessages += updatesSize;
-                } else {
-                    sentMessages ++;
-                }
-            }
-        }
+        int sentMessages = broker_count_json_msg(obj);
         throughput_add_output(sentBytes, sentMessages);
     }
     dslink_free(data);
