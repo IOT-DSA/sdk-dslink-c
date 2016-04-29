@@ -175,6 +175,7 @@ set(BROKER_SRC
     "${BROKER_SRC_DIR}/subscription.c"
     "${BROKER_SRC_DIR}/node/virtual_downstream.c"
     "${BROKER_SRC_DIR}/msg/msg_remove.c"
+    "${BROKER_SRC_DIR}/sys/throughput.c"
 )
 ###### Configure Tests #####
 

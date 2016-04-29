@@ -5,6 +5,7 @@
 #define LOG_TAG "ws"
 #include <dslink/log.h>
 #include <dslink/err.h>
+#include <broker/sys/throughput.h>
 
 #include "broker/remote_dslink.h"
 #include "broker/net/ws.h"
@@ -29,7 +30,29 @@ int broker_ws_send_obj(RemoteDSLink *link, json_t *obj) {
     if (!data) {
         return DSLINK_ALLOC_ERR;
     }
-    broker_ws_send(link, data);
+    int sentBytes = broker_ws_send(link, data);
+    if (throughput_output_needed()) {
+        int sentMessages = 0;
+        json_t * requests = json_object_get(obj, "requests");
+        json_t * responses = json_object_get(obj, "responses");
+        if (json_is_array(requests)) {
+            sentMessages += json_array_size(requests);
+        }
+        if (json_is_array(responses)) {
+            size_t  idx;
+            json_t * value;
+            json_array_foreach(responses, idx, value) {
+                json_t *updates = json_object_get(value, "updates");
+                size_t updatesSize = json_array_size(updates);
+                if (updatesSize > 0) {
+                    sentMessages += updatesSize;
+                } else {
+                    sentMessages ++;
+                }
+            }
+        }
+        throughput_add_output(sentBytes, sentMessages);
+    }
     dslink_free(data);
     return 0;
 }
@@ -45,7 +68,7 @@ int broker_ws_send(RemoteDSLink *link, const char *data) {
     wslay_event_queue_msg(link->ws, &msg);
     wslay_event_send(link->ws);
     log_debug("Message sent to %s: %s\n", (char *) link->dsId->data, data);
-    return 0;
+    return (int)msg.msg_length;
 }
 
 int broker_ws_generate_accept_key(const char *buf, size_t bufLen,
