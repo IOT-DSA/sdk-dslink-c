@@ -26,6 +26,11 @@ void clear_conns(RemoteDSLink *link,
     List nodeToDelete;
     list_init(&nodeToDelete);
 
+    json_t *update_cache = NULL;
+    if (link->broker->downstream->list_stream) {
+        update_cache = link->broker->downstream->list_stream->updates_cache;
+    }
+
     dslink_map_foreach(link->broker->downstream->children) {
         DownstreamNode *dsn = (DownstreamNode *) entry->value->data;
         if (dsn->link) {
@@ -39,6 +44,9 @@ void clear_conns(RemoteDSLink *link,
             json_object_set_new_nocheck(update, "change",
                                         json_string_nocheck("remove"));
             json_array_append_new(updates, update);
+            if (update_cache) {
+                json_object_del(update_cache, dsn->name);
+            }
         }
     }
 
