@@ -52,7 +52,7 @@ Url *dslink_url_parse(const char *address) {
         } else if (c == '/' && state == 2) {
             // Parse the port
             --len; // Rewind a character
-            char num[len];
+            char num[len + 1];
             for (uint_fast8_t i = 0; i < len; ++i) {
                 *(num + i) = *(address + i);
             }
