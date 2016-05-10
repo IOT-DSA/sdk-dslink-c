@@ -157,9 +157,9 @@ void add_token_invoke(RemoteDSLink *link,
 
         }
 
-        json_t* mamaged = json_object_get(params , "Managed");
-        if (json_is_boolean(mamaged)) {
-            json_object_set_nocheck(tokenNode->meta, "$$mamaged", mamaged);
+        json_t* managed = json_object_get(params , "Managed");
+        if (json_is_boolean(managed)) {
+            json_object_set_nocheck(tokenNode->meta, "$$managed", managed);
         }
 
         json_t* group = json_object_get(params , "Group");
