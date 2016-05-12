@@ -234,7 +234,7 @@ void recv_frame_cb(wslay_event_context_ptr ctx,
     }
 
     json_t *reqs = json_object_get(obj, "requests");
-    if (reqs) {
+    if (link->is_responder && reqs) {
         size_t index;
         json_t *value;
         json_array_foreach(reqs, index, value) {
@@ -246,7 +246,7 @@ void recv_frame_cb(wslay_event_context_ptr ctx,
 
     json_t *resps = json_object_get(obj, "responses");
 
-    if (resps) {
+    if (link->is_requester && resps) {
         size_t index;
         json_t *value;
         json_array_foreach(resps, index, value) {
