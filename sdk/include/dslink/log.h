@@ -39,7 +39,7 @@ void dslink_log_print_time();
 #define DSLINK_DO_LOG(lvl, pref, ...) \
     LOG_LVL_CHK(lvl) { \
         dslink_log_print_time(); \
-        printf(" " DSLINK_LOG_GEN_LAYOUT(pref) __VA_ARGS__); \
+        printf(" " DSLINK_LOG_GEN_LAYOUT(pref) __VA_ARGS__); fflush(stdout);\
     }
 
 #ifdef __cplusplus

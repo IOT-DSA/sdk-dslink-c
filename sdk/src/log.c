@@ -33,4 +33,5 @@ void dslink_log_print_time() {
     time_t now = time(NULL);
     strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", localtime(&now));
     printf("%s", buf);
+    fflush(stdout);
 }
