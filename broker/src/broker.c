@@ -33,7 +33,7 @@ uv_loop_t *mainLoop = NULL;
 static
 void handle_conn(Broker *broker, HttpRequest *req, Socket *sock) {
     json_error_t err;
-
+    char *dsId = NULL;
     json_t *body;
     {
         const char *start = strchr(req->body, '{');
@@ -48,7 +48,7 @@ void handle_conn(Broker *broker, HttpRequest *req, Socket *sock) {
         }
     }
 
-    const char *dsId = broker_http_param_get(&req->uri, "dsId");
+    dsId = dslink_str_unescape(broker_http_param_get(&req->uri, "dsId"));
     if (!dsId) {
         goto exit;
     }
@@ -76,12 +76,16 @@ void handle_conn(Broker *broker, HttpRequest *req, Socket *sock) {
     dslink_socket_write(sock, buf, (size_t) len);
 
 exit:
+    if (dsId) {
+        dslink_free(dsId);
+    }
     return;
 }
 
 static
 int handle_ws(Broker *broker, HttpRequest *req, Client *client) {
     size_t len = 0;
+    char *dsId = NULL;
     const char *key = broker_http_header_get(req->headers,
                                              "Sec-WebSocket-Key", &len);
     if (!key) {
@@ -92,7 +96,7 @@ int handle_ws(Broker *broker, HttpRequest *req, Client *client) {
         goto fail;
     }
 
-    const char *dsId = broker_http_param_get(&req->uri, "dsId");
+    dsId = dslink_str_unescape(broker_http_param_get(&req->uri, "dsId"));
     const char *auth = broker_http_param_get(&req->uri, "auth");
     if (!(dsId && auth)) {
         goto fail;
@@ -105,6 +109,9 @@ int handle_ws(Broker *broker, HttpRequest *req, Client *client) {
 
     return 0;
 fail:
+    if (dsId) {
+        dslink_free(dsId);
+    }
     broker_send_bad_request(client->sock);
     dslink_socket_close_nofree(client->sock);
     return 1;

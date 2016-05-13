@@ -107,13 +107,86 @@ char *dslink_str_replace_all(const char *haystack,
                                       replacement, replacementLen, 1);
 }
 
+static
+int decodeBase16(char c) {
+    if (c>='0' && c<='9') {
+        return c - '0';
+    }
+    if (c>='a' && c<='f') {
+        return c - ('a' - 10);
+    }
+    if (c>='A' && c<='F') {
+        return c - ('A' - 10);
+    }
+    return -1;
+}
+static char encodeBase16(int code) {
+    if (code >= 0) {
+        if (code < 10) {
+            return (char)(code + '0');
+        }
+        if (code < 16) {
+            return (char)(code + ('A'-10));
+        }
+    }
+    return -1;
+}
+
 char *dslink_str_escape(const char *data) {
-    //TODO other invalid characters
-    return dslink_str_replace_all(data, "/", "%2F");
+    if (!data) {
+        return NULL;
+    }
+    size_t lenoff = 1;
+    const char *search = data;
+    while (*search) {
+        if (*search <= ',' || *search == '/' || *search == ':' || *search == '=') {
+            lenoff += 2;
+        }
+        ++search;
+    }
+    char *rslt = dslink_malloc((search-data) + lenoff);
+
+    char *pt = rslt;
+    while (*data) {
+        if (*data <= ',' || *data == '/' || *data == ':' || *data == '=') {
+            *pt = '%';
+            *(pt + 1) = encodeBase16((*data)>>4);
+            *(pt + 2) = encodeBase16((*data)&0xF);
+        } else {
+            *pt = *data;
+            ++pt;
+        }
+        ++data;
+    }
+    *pt = '\0';
+    return rslt;
 }
 
 char *dslink_str_unescape(const char *data) {
-    return dslink_str_replace_all(data, "%2F", "/");
+    if (!data) {
+        return NULL;
+    }
+    char *rslt = dslink_malloc(strlen(data) + 1);
+    char *pt = rslt;
+    while (*data) {
+        if (*data == '%') {
+            int c1 = decodeBase16(*(data+1));
+            if (c1 > -1) {
+                int c2 = decodeBase16(*(data+2));
+                if (c2 > -1) {
+                    *pt = (char)((c1<<4) + c2);
+                    ++pt;
+                    data += 3;
+                    continue;
+                }
+            }
+        }
+        *pt = *data;
+        ++pt;
+        data++;
+    }
+    *pt = '\0';
+    return rslt;
 }
 
 int dslink_str_starts_with(const char *a, const char *b) {

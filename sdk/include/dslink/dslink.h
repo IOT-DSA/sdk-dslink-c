@@ -68,6 +68,7 @@ struct Requester {
     uint32_t *sid;
     Map *request_handlers;
     Map *list_subs;
+    // Map<uint32*, Stream*>
     Map *open_streams;
     Map *value_handlers;
 };
