@@ -56,7 +56,7 @@ int dslink_response_handle(DSLink *link, json_t *resp) {
                 dslink_map_remove(link->requester->value_handlers, &holder->sid);
             }
 
-            if (strcmp(method, "invoke") == 0) {
+            if (cb) {
                 cb(link, holder_ref, resp);
             }
 
