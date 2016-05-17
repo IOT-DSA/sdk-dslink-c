@@ -34,6 +34,7 @@ void broker_server_client_ready(uv_poll_t *poll,
             uv_close((uv_handle_t *) poll, broker_free_handle);
         }
     }
+
     if (client && (events & UV_WRITABLE)) {
         RemoteDSLink *link = client->sock_data;
         if (link) {
@@ -83,7 +84,7 @@ void broker_server_new_client(uv_poll_t *poll,
 
     clientPoll->data = client;
     client->poll = clientPoll;
-    uv_poll_start(clientPoll, UV_READABLE|UV_WRITABLE, broker_server_client_ready);
+    uv_poll_start(clientPoll, UV_READABLE, broker_server_client_ready);
 
     log_debug("Accepted a client connection\n");
     return;
