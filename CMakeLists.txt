@@ -223,7 +223,7 @@ if (DSLINK_BUILD_BROKER)
         set_source_files_properties(
             "broker/src/broker.c"
             PROPERTIES
-            COMPILE_DEFINITIONS GIT_COMMIT_HASH="${GIT_COMMIT_HASH}"
+            COMPILE_DEFINITIONS GIT_COMMIT_HASH="${GIT_COMMIT_HASH}" BROKER_SERVER_BUILD="${GIT_COMMIT_HASH}"
         )
     endif()
 
