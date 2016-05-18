@@ -135,7 +135,7 @@ int broker_msg_handle_invoke(RemoteDSLink *link, json_t *req) {
 
 static
 int broker_invoke_safe_json_set(json_t *obj, const char *name, json_t *data) {
-    if (json_object_set_new(obj, name, data) != 0) {
+    if (json_object_set_new_nocheck(obj, name, data) != 0) {
         json_decref(data);
         return 1;
     }

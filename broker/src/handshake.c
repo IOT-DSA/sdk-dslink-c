@@ -332,7 +332,7 @@ int broker_handshake_handle_ws(Broker *broker,
     link->node = node;
     node->dsId = oldDsId;
     client->sock_data = link;
-    json_object_set_new(node->meta, "$$dsId", json_string_nocheck(dsId));
+    json_object_set_new_nocheck(node->meta, "$$dsId", json_string_nocheck(dsId));
 
     wslay_event_context_ptr ws;
     if (wslay_event_context_server_init(&ws,

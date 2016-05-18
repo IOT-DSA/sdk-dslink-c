@@ -94,7 +94,7 @@ BrokerNode * load_token_node(const char* tokenName, json_t* data) {
     broker_node_add(tokenRootNode, tokenNode);
 
     BrokerNode *deleteAction = broker_node_create("delete", "node");
-    json_object_set_new(deleteAction->meta, "$invokable", json_string_nocheck("config"));
+    json_object_set_new_nocheck(deleteAction->meta, "$invokable", json_string_nocheck("config"));
     broker_node_add(tokenNode, deleteAction);
 
     deleteAction->on_invoke = delete_token_invoke;
@@ -173,7 +173,7 @@ void add_token_invoke(RemoteDSLink *link,
     }
 
     BrokerNode *deleteAction = broker_node_create("delete", "node");
-    json_object_set_new(deleteAction->meta, "$invokable", json_string_nocheck("config"));
+    json_object_set_new_nocheck(deleteAction->meta, "$invokable", json_string_nocheck("config"));
     broker_node_add(tokenNode, deleteAction);
 
     deleteAction->on_invoke = delete_token_invoke;
@@ -189,7 +189,7 @@ void add_token_invoke(RemoteDSLink *link,
         json_array_append_new(resps, resp);
 
         json_t *rid = json_object_get(req, "rid");
-        json_object_set(resp, "rid", rid);
+        json_object_set_nocheck(resp, "rid", rid);
         json_object_set_new_nocheck(resp, "stream",
                                     json_string_nocheck("closed"));
 
@@ -389,7 +389,7 @@ int init_tokens(BrokerNode *sysNode) {
         return 1;
     }
 
-    if (json_object_set_new(addTokenAction->meta, "$invokable",
+    if (json_object_set_new_nocheck(addTokenAction->meta, "$invokable",
                             json_string_nocheck("config")) != 0) {
         broker_node_free(addTokenAction);
         return 1;
@@ -398,13 +398,13 @@ int init_tokens(BrokerNode *sysNode) {
     json_error_t err;
     json_t *paramList = json_loads("[{\"name\":\"TimeRange\",\"type\":\"string\",\"editor\":\"daterange\"},{\"name\":\"Count\",\"type\":\"number\",\"description\":\"how many times this token can be used\"},{\"name\":\"Managed\",\"type\":\"bool\",\"description\":\"when a managed token is deleted, server will delete all the dslinks associated with the token\"},{\"name\":\"Group\",\"type\":\"string\",\"description\":\"default permission group\"}]",
         0, &err);
-    if (!paramList || json_object_set_new(addTokenAction->meta, "$params", paramList) != 0) {
+    if (!paramList || json_object_set_new_nocheck(addTokenAction->meta, "$params", paramList) != 0) {
         return 1;
     }
 
     json_t *columnList = json_array();
     if (broker_invoke_create_param(columnList, "tokenName", "string") != 0
-        || json_object_set_new(addTokenAction->meta, "$columns", columnList) != 0) {
+        || json_object_set_new_nocheck(addTokenAction->meta, "$columns", columnList) != 0) {
         return 1;
     }
 

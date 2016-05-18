@@ -30,7 +30,7 @@ void broker_utils_send_closed_resp(RemoteDSLink *link, json_t *req, const char* 
                                 json_string_nocheck("closed"));
     if (errorType) {
         json_t * errorObject = json_object();
-        json_object_set_new(errorObject, "type", json_string_nocheck(errorType));
+        json_object_set_new_nocheck(errorObject, "type", json_string_nocheck(errorType));
         json_object_set_new_nocheck(resp, "error", errorObject);
     }
 

@@ -154,8 +154,8 @@ void update_list_attribute(BrokerNode *node,
 
     } else {
         json_t *removeMap = json_object();
-        json_object_set_new(removeMap, "name", json_string(name));
-        json_object_set_new(removeMap, "change", json_string("remove"));
+        json_object_set_new_nocheck(removeMap, "name", json_string(name));
+        json_object_set_new_nocheck(removeMap, "change", json_string("remove"));
         json_array_append_new(updates, removeMap);
         json_object_del(stream->updates_cache, name);
     }
@@ -198,7 +198,7 @@ void update_list_child(BrokerNode *node,
         if (node->type == DOWNSTREAM_NODE) {
             DownstreamNode *dsn = (DownstreamNode *) node;
             if (dsn->link && dsn->link->linkData) {
-                json_object_set(obj, "$linkData", dsn->link->linkData);
+                json_object_set_nocheck(obj, "$linkData", dsn->link->linkData);
             }
         }
 
@@ -212,8 +212,8 @@ void update_list_child(BrokerNode *node,
 
     } else {
         json_t *removeMap = json_object();
-        json_object_set_new(removeMap, "name", json_string_nocheck(name));
-        json_object_set_new(removeMap, "change", json_string_nocheck("remove"));
+        json_object_set_new_nocheck(removeMap, "name", json_string_nocheck(name));
+        json_object_set_new_nocheck(removeMap, "change", json_string_nocheck("remove"));
         json_array_append_new(updates, removeMap);
         json_object_del(stream->updates_cache, name);
     }

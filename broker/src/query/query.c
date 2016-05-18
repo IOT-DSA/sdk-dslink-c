@@ -223,7 +223,7 @@ void query_invoke(struct RemoteDSLink *link,
             json_array_append_new(resps, resp);
 
             json_t *rid = json_object_get(request, "rid");
-            json_object_set(resp, "rid", rid);
+            json_object_set_nocheck(resp, "rid", rid);
             json_object_set_new_nocheck(resp, "stream",
                                         json_string_nocheck("open"));
 
@@ -243,7 +243,7 @@ exit_with_error:
         json_array_append_new(resps, resp);
 
         json_t *rid = json_object_get(request, "rid");
-        json_object_set(resp, "rid", rid);
+        json_object_set_nocheck(resp, "rid", rid);
         json_object_set_new_nocheck(resp, "stream",
                                     json_string_nocheck("closed"));
 
@@ -258,13 +258,13 @@ BrokerNode *broker_query_create_action(BrokerNode *parent) {
         return NULL;
     }
 
-    if (json_object_set_new(node->meta, "$invokable",
+    if (json_object_set_new_nocheck(node->meta, "$invokable",
                             json_string_nocheck("write")) != 0) {
         broker_node_free(node);
         return NULL;
     }
 
-    if (json_object_set_new(node->meta, "$result",
+    if (json_object_set_new_nocheck(node->meta, "$result",
                             json_string_nocheck("stream")) != 0) {
         broker_node_free(node);
         return NULL;
@@ -272,7 +272,7 @@ BrokerNode *broker_query_create_action(BrokerNode *parent) {
 
     json_t *paramList = json_array();
     if (broker_invoke_create_param(paramList, "query", "string") != 0
-        || json_object_set_new(node->meta, "$params", paramList) != 0) {
+        || json_object_set_new_nocheck(node->meta, "$params", paramList) != 0) {
         goto fail;
     }
 
@@ -281,7 +281,7 @@ BrokerNode *broker_query_create_action(BrokerNode *parent) {
         || broker_invoke_create_param(columnList, "change", "string") != 0
         || broker_invoke_create_param(columnList, "value", "dynamic") != 0
         || broker_invoke_create_param(columnList, "ts", "string") != 0
-        || json_object_set_new(node->meta, "$columns", columnList) != 0) {
+        || json_object_set_new_nocheck(node->meta, "$columns", columnList) != 0) {
         goto fail;
     }
 

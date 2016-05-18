@@ -136,12 +136,14 @@ void broker_list_dslink_response(RemoteDSLink *link, json_t *resp, BrokerListStr
                         }
                         continue; // already added to cache
                     }
+
                     if (strcmp(name, "$is") == 0) {
                         // clear cache when $base or $is changed
                         if (cache_need_reset) {
                             broker_stream_list_reset_remote_cache(stream, link);
                             cache_need_reset = 0;
                         }
+
                         if (strcmp(stream->remote_path, "/") == 0) {
                             const char *isValue = json_string_value(childValue);
                             if (strcmp(isValue, "dsa/broker") != 0) {
@@ -152,7 +154,6 @@ void broker_list_dslink_response(RemoteDSLink *link, json_t *resp, BrokerListStr
                                 json_t * profile = json_object_get(stream->node->meta, "$is");
                                 if (!profile || strcmp(json_string_value(profile), "dsa/broker") != 0) {
                                     json_object_set_new_nocheck(stream->node->meta, "$is", json_string_nocheck("dsa/broker"));
-
                                 }
                             }
                         }

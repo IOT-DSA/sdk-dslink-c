@@ -91,12 +91,12 @@ int init_clear_conns(BrokerNode *sysNode) {
         return 1;
     }
 
-    if (json_object_set_new(clearConnsNode->meta, "$invokable",
+    if (json_object_set_new_nocheck(clearConnsNode->meta, "$invokable",
                             json_string_nocheck("write")) != 0) {
         return 1;
     }
 
-    if (json_object_set_new(clearConnsNode->meta, "$name",
+    if (json_object_set_new_nocheck(clearConnsNode->meta, "$name",
                             json_string_nocheck("Clear Conns")) != 0) {
         return 1;
     }

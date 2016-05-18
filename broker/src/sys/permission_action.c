@@ -49,19 +49,19 @@ int init_update_permissions_action(BrokerNode *sysNode) {
         return 1;
     }
 
-    if (json_object_set_new(updatePermissionsAction->meta, "$invokable",
+    if (json_object_set_new_nocheck(updatePermissionsAction->meta, "$invokable",
                             json_string_nocheck("read")) != 0) {
         return 1;
     }
 
-    if (json_object_set_new(updatePermissionsAction->meta, "$name",
+    if (json_object_set_new_nocheck(updatePermissionsAction->meta, "$name",
                             json_string_nocheck("Update Permissions")) != 0) {
         return 1;
     }
 
     json_error_t err;
     json_t *params = json_loads("[{\"name\":\"Path\",\"type\":\"string\"},{\"name\":\"Permissions\",\"type\":\"dynamic\"}]", 0, &err);
-    if (json_object_set_new(updatePermissionsAction->meta, "$params", params) != 0) {
+    if (json_object_set_new_nocheck(updatePermissionsAction->meta, "$params", params) != 0) {
         return 1;
     }
 

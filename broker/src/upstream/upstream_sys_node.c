@@ -26,23 +26,23 @@ void save_upstream_node(BrokerNode *node) {
 
     BrokerNode* propNode;
     propNode = dslink_map_get(node->children, "name")->data;
-    json_object_set(output, "name", propNode->value);
+    json_object_set_nocheck(output, "name", propNode->value);
 
     propNode = dslink_map_get(node->children, "brokerName")->data;
-    json_object_set(output, "brokerName", propNode->value);
+    json_object_set_nocheck(output, "brokerName", propNode->value);
 
     propNode = dslink_map_get(node->children, "url")->data;
-    json_object_set(output, "url", propNode->value);
+    json_object_set_nocheck(output, "url", propNode->value);
 
     propNode = dslink_map_get(node->children, "token")->data;
-    json_object_set(output, "token", propNode->value);
+    json_object_set_nocheck(output, "token", propNode->value);
 
     propNode = dslink_map_get(node->children, "group")->data;
-    json_object_set(output, "group", propNode->value);
+    json_object_set_nocheck(output, "group", propNode->value);
 
 
     propNode = dslink_map_get(node->children, "enabled")->data;
-    json_object_set(output, "enabled", propNode->value);
+    json_object_set_nocheck(output, "enabled", propNode->value);
 
     json_dump_file(output, tmp, 0);
     json_decref(output);
@@ -217,40 +217,40 @@ void add_upstream_invoke(RemoteDSLink *link,
 
     BrokerNode *propNode;
     propNode = broker_node_create("name", "node");
-    json_object_set_new(propNode->meta, "$writable", json_string_nocheck("write"));
-    json_object_set_new(propNode->meta, "$type", json_string_nocheck("string"));
+    json_object_set_new_nocheck(propNode->meta, "$writable", json_string_nocheck("write"));
+    json_object_set_new_nocheck(propNode->meta, "$type", json_string_nocheck("string"));
     broker_node_update_value(propNode, namejson, 0);
     broker_node_add(upstreamNode, propNode);
 
     propNode = broker_node_create("brokerName", "node");
-    json_object_set_new(propNode->meta, "$writable", json_string_nocheck("write"));
-    json_object_set_new(propNode->meta, "$type", json_string_nocheck("string"));
+    json_object_set_new_nocheck(propNode->meta, "$writable", json_string_nocheck("write"));
+    json_object_set_new_nocheck(propNode->meta, "$type", json_string_nocheck("string"));
     broker_node_update_value(propNode, brokerNameJson, 0);
     broker_node_add(upstreamNode, propNode);
 
 
     propNode = broker_node_create("url", "node");
-    json_object_set_new(propNode->meta, "$writable", json_string_nocheck("write"));
-    json_object_set_new(propNode->meta, "$type", json_string_nocheck("string"));
+    json_object_set_new_nocheck(propNode->meta, "$writable", json_string_nocheck("write"));
+    json_object_set_new_nocheck(propNode->meta, "$type", json_string_nocheck("string"));
     broker_node_update_value(propNode, urlJson, 0);
     broker_node_add(upstreamNode, propNode);
 
     propNode = broker_node_create("token", "node");
-    json_object_set_new(propNode->meta, "$writable", json_string_nocheck("write"));
-    json_object_set_new(propNode->meta, "$type", json_string_nocheck("string"));
+    json_object_set_new_nocheck(propNode->meta, "$writable", json_string_nocheck("write"));
+    json_object_set_new_nocheck(propNode->meta, "$type", json_string_nocheck("string"));
     broker_node_update_value(propNode, tokenJson, 0);
     broker_node_add(upstreamNode, propNode);
 
 
     propNode = broker_node_create("group", "node");
-    json_object_set_new(propNode->meta, "$writable", json_string_nocheck("write"));
-    json_object_set_new(propNode->meta, "$type", json_string_nocheck("string"));
+    json_object_set_new_nocheck(propNode->meta, "$writable", json_string_nocheck("write"));
+    json_object_set_new_nocheck(propNode->meta, "$type", json_string_nocheck("string"));
     broker_node_update_value(propNode, groupJson, 0);
     broker_node_add(upstreamNode, propNode);
 
     propNode = broker_node_create("enabled", "node");
-    json_object_set_new(propNode->meta, "$writable", json_string_nocheck("write"));
-    json_object_set_new(propNode->meta, "$type", json_string_nocheck("bool"));
+    json_object_set_new_nocheck(propNode->meta, "$writable", json_string_nocheck("write"));
+    json_object_set_new_nocheck(propNode->meta, "$type", json_string_nocheck("bool"));
     if (json_is_false(enabledJson)) {
         broker_node_update_value(propNode, json_false(), 0);
     } else {
@@ -263,7 +263,7 @@ void add_upstream_invoke(RemoteDSLink *link,
     // TODO: detect enabled change and start/stop upstream
 
     BrokerNode *deleteAction = broker_node_create("delete", "node");
-    json_object_set_new(deleteAction->meta, "$invokable", json_string_nocheck("config"));
+    json_object_set_new_nocheck(deleteAction->meta, "$invokable", json_string_nocheck("config"));
     broker_node_add(upstreamNode, deleteAction);
 
     deleteAction->on_invoke = delete_upstream_invoke;
@@ -305,7 +305,7 @@ int init_sys_upstream_node(BrokerNode *sysNode) {
         return 1;
     }
 
-    if (json_object_set_new(addUpstreamAction->meta, "$invokable",
+    if (json_object_set_new_nocheck(addUpstreamAction->meta, "$invokable",
                             json_string_nocheck("config")) != 0) {
         broker_node_free(addUpstreamAction);
         return 1;
@@ -316,7 +316,7 @@ int init_sys_upstream_node(BrokerNode *sysNode) {
     json_t *paramList = json_loads(
             "[{\"name\":\"name\",\"type\":\"string\",\"description\":\"Upstream Broker Name\",\"placeholder\":\"UpstreamBroker\"},{\"name\":\"url\",\"type\":\"string\",\"description\":\"Url to the Upstream Broker\",\"placeholder\":\"http://upstream.broker.com/conn\"},{\"name\":\"brokerName\",\"type\":\"string\",\"description\":\"The name of the link when connected to the Upstream Broker\",\"placeholder\":\"ThisBroker\"},{\"name\":\"token\",\"type\":\"string\",\"description\":\"Broker Token (if needed)\",\"placeholder\":\"OptionalAuthToken\"},{\"name\":\"group\",\"type\":\"string\",\"description\":\"default permission group\"}]",
             0, &err);
-    if (!paramList || json_object_set_new(addUpstreamAction->meta, "$params", paramList) != 0) {
+    if (!paramList || json_object_set_new_nocheck(addUpstreamAction->meta, "$params", paramList) != 0) {
         return 1;
     }
 

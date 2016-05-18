@@ -24,12 +24,12 @@ int init_sys_static(BrokerNode *sysNode) {
         return 1;
     }
 
-    if (json_object_set_new(buildNode->meta, "$type",
+    if (json_object_set_new_nocheck(buildNode->meta, "$type",
                             json_string_nocheck("string")) != 0) {
         return 1;
     }
 
-    if (json_object_set_new(buildNode->meta, "$name",
+    if (json_object_set_new_nocheck(buildNode->meta, "$name",
                             json_string_nocheck("Server Build")) != 0) {
         return 1;
     }
@@ -39,12 +39,12 @@ int init_sys_static(BrokerNode *sysNode) {
         return 1;
     }
 
-    if (json_object_set_new(versionNode->meta, "$type",
+    if (json_object_set_new_nocheck(versionNode->meta, "$type",
                             json_string_nocheck("string")) != 0) {
         return 1;
     }
 
-    if (json_object_set_new(versionNode->meta, "$name",
+    if (json_object_set_new_nocheck(versionNode->meta, "$name",
                             json_string_nocheck("DSA Version")) != 0) {
         return 1;
     }
@@ -54,12 +54,12 @@ int init_sys_static(BrokerNode *sysNode) {
         return 1;
     }
 
-    if (json_object_set_new(startTimeNode->meta, "$type",
+    if (json_object_set_new_nocheck(startTimeNode->meta, "$type",
                             json_string_nocheck("string")) != 0) {
         return 1;
     }
 
-    if (json_object_set_new(startTimeNode->meta, "$name",
+    if (json_object_set_new_nocheck(startTimeNode->meta, "$name",
                             json_string_nocheck("Start Time")) != 0) {
         return 1;
     }

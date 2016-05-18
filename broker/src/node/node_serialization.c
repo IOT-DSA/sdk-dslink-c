@@ -175,7 +175,7 @@ json_t *broker_save_data_node(BrokerNode *node) {
         // don't serialize actions
         if (!json_object_get(childNode->meta, "$invokable")) {
             json_t *childData = broker_save_data_node(childNode);
-            json_object_set_new(data, entry->key->data, childData);
+            json_object_set_new_nocheck(data, entry->key->data, childData);
         }
 
     }

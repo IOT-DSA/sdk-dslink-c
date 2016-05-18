@@ -25,12 +25,12 @@ int init_restart(BrokerNode *sysNode) {
         return 1;
     }
 
-    if (json_object_set_new(restartNode->meta, "$invokable",
+    if (json_object_set_new_nocheck(restartNode->meta, "$invokable",
                             json_string_nocheck("write")) != 0) {
         return 1;
     }
 
-    if (json_object_set_new(restartNode->meta, "$name",
+    if (json_object_set_new_nocheck(restartNode->meta, "$name",
                             json_string_nocheck("Restart Broker")) != 0) {
         return 1;
     }

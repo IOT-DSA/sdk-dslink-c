@@ -215,8 +215,10 @@ int broker_init(Broker *broker, json_t *defaultPermission) {
     broker->root->permissionList = permission_list_load(defaultPermission);
 
     broker->root->path = dslink_strdup("/");
-    json_object_set_new(broker->root->meta, "$downstream",
+    json_object_set_new_nocheck(broker->root->meta, "$downstream",
                         json_string_nocheck("/downstream"));
+
+    json_object_set_new_nocheck(broker->root->meta, "$is", json_string_nocheck("dsa/broker"));
 
     broker->sys = broker_node_create("sys", "static");
     if (!(broker->sys && broker_node_add(broker->root, broker->sys) == 0)) {
@@ -250,8 +252,6 @@ int broker_init(Broker *broker, json_t *defaultPermission) {
     if (broker_sys_node_populate(broker->sys)) {
         goto fail;
     }
-
-
 
 
     BrokerNode *node = broker_node_create("defs", "static");
