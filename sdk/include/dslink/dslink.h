@@ -42,6 +42,7 @@ struct DSLink {
     uint32_t *msg;
 
     json_t *linkData;
+    json_t *dslinkJson;
 };
 
 struct Responder {
@@ -83,6 +84,9 @@ struct DSLinkCallbacks {
 int dslink_init(int argc, char **argv,
                 const char *name, uint8_t isRequester,
                 uint8_t isResponder, DSLinkCallbacks *cbs);
+
+json_t *dslink_read_dslink_json();
+json_t *dslink_json_get_config(DSLink *link, const char *key);
 
 void dslink_close(DSLink *link);
 

@@ -4,6 +4,7 @@
 #include <argtable3.h>
 #include <string.h>
 #include <wslay/wslay.h>
+#include <jansson.h>
 
 #include "dslink/handshake.h"
 #include "dslink/utils.h"
@@ -221,7 +222,65 @@ void dslink_link_free(DSLink *link) {
     if (link->linkData) {
         json_decref(link->linkData);
     }
+
+    if (link->dslinkJson) {
+        json_decref(link->dslinkJson);
+    }
+
     dslink_free(link);
+}
+
+json_t *dslink_read_dslink_json() {
+    json_error_t err;
+    json_t *json = json_load_file("dslink.json", JSON_DECODE_ANY, &err);
+
+    if (!json) {
+        log_warn("Failed to load dslink.json: %s\n", err.text);
+        return NULL;
+    }
+
+    if (!json_is_object(json)) {
+        log_warn("Failed to load dslink.json: Root is not a JSON object.\n");
+        return NULL;
+    }
+
+    return json;
+}
+
+json_t *dslink_json_get_config(DSLink *link, const char *key) {
+    if (!link) {
+        return NULL;
+    }
+
+    if (!json_is_object(link->dslinkJson)) {
+        return NULL;
+    }
+
+    json_t *configs = json_object_get(link->dslinkJson, "configs");
+
+    if (!json_is_object(configs)) {
+        return NULL;
+    }
+
+    json_t *section = json_object_get(configs, key);
+
+    if (!json_is_object(section)) {
+        return NULL;
+    }
+
+    json_t *value = json_object_get(section, "value");
+
+    if (value) {
+        return value;
+    }
+
+    json_t *defaultValue = json_object_get(section, "default");
+
+    if (defaultValue) {
+        return defaultValue;
+    }
+
+    return NULL;
 }
 
 int dslink_init(int argc, char **argv,
@@ -231,7 +290,6 @@ int dslink_init(int argc, char **argv,
     link->closing = 0;
     link->is_responder = isResponder;
     link->is_requester = isRequester;
-
 
     uv_loop_init(&link->loop);
 
@@ -277,6 +335,8 @@ int dslink_init(int argc, char **argv,
             goto exit;
         }
     }
+
+    link->dslinkJson = dslink_read_dslink_json();
 
     if (cbs->init_cb) {
         cbs->init_cb(link);

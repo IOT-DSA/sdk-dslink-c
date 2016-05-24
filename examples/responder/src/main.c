@@ -9,6 +9,11 @@
 
 // Called to initialize your node structure.
 void init(DSLink *link) {
+    json_t *messageValue = dslink_json_get_config(link, "message");
+    if (messageValue) {
+        log_info("Message = %s\n", json_string_value(messageValue));
+    }
+
     DSNode *superRoot = link->responder->super_root;
 
     responder_init_replicator(link, superRoot);
