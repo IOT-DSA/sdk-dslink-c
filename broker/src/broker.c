@@ -16,6 +16,7 @@
 #include <broker/upstream/upstream_node.h>
 #include <broker/utils.h>
 #include <broker/net/ws.h>
+#include <dslink/socket_private.h>
 
 #define CONN_RESP "HTTP/1.1 200 OK\r\n" \
                     "Connection: close\r\n" \
@@ -129,12 +130,19 @@ void broker_on_data_callback(Client *client, void *data) {
         return;
     }
 
+    if (client->sock->socket_ctx.fd == -1) {
+        goto exit;
+    }
+
     HttpRequest req;
     char buf[1024];
     {
         int read = dslink_socket_read(client->sock, buf, sizeof(buf) - 1);
         buf[read] = '\0';
-        broker_http_parse_req(&req, buf);
+        int err = broker_http_parse_req(&req, buf);
+        if (err) {
+            return;
+        }
     }
 
     if (strcmp(req.uri.resource, "/conn") == 0) {
