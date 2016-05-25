@@ -141,7 +141,7 @@ void broker_on_data_callback(Client *client, void *data) {
         buf[read] = '\0';
         int err = broker_http_parse_req(&req, buf);
         if (err) {
-            return;
+            goto exit;
         }
     }
 
