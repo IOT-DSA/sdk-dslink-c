@@ -407,7 +407,6 @@ void json_storage_destroy(StorageProvider *provider) {
 
     json_delete(store->root);
     json_delete(store->save_queue);
-    dslink_free(store->path);
     dslink_free(store);
 }
 
