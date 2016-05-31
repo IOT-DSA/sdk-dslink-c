@@ -179,7 +179,7 @@ json_t *broker_handshake_handle_conn(Broker *broker,
                 if (broker->downstream->list_stream) {
                     update_list_child(broker->downstream,
                                       broker->downstream->list_stream,
-                                      link->name);
+                                      name);
                 }
 
                 json_t *group = json_object_get(tokenNode->meta, "$$group");
