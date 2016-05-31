@@ -11,6 +11,7 @@
 #include <dslink/log.h>
 #include <broker/config.h>
 #include <broker/broker.h>
+#include <broker/stream.h>
 #include <dslink/utils.h>
 
 static
@@ -49,6 +50,88 @@ unsigned char get_random_char() {
 }
 
 static
+void clear_managed_link(const char * name){
+    Map* map = dslink_calloc(1, sizeof(Map));
+
+    Broker *broker = mainLoop->data;
+
+    dslink_map_init(map, dslink_map_str_cmp,
+                    dslink_map_str_key_len_cal, dslink_map_hash_key);
+
+    json_t *top = json_object();
+    json_t *resps = json_array();
+    json_object_set_new_nocheck(top, "responses", resps);
+    json_t *resp = json_object();
+    json_array_append_new(resps, resp);
+    json_object_set_new_nocheck(resp, "stream", json_string_nocheck("open"));
+    json_t *updates = json_array();
+
+    List nodeToDelete;
+    list_init(&nodeToDelete);
+
+    json_t *update_cache = NULL;
+    if (broker->downstream->list_stream) {
+        update_cache = broker->downstream->list_stream->updates_cache;
+    }
+
+    int foundlink = 0;
+    dslink_map_foreach(broker->downstream->children) {
+        DownstreamNode *dsn = (DownstreamNode *) entry->value->data;
+        json_t *tokenjson = json_object_get(dsn->meta, "$$token");
+        const char * tokenstr = json_string_value(tokenjson);
+        if (tokenstr && strcmp(tokenstr, name) == 0) {
+            if (dsn->link) {
+                broker_close_link(dsn->link);
+                dsn->link = NULL;
+            }
+            dslink_list_insert(&nodeToDelete, dsn);
+            json_t *update = json_object();
+            json_object_set_new_nocheck(update, "name", json_string_nocheck(dsn->name));
+            json_object_set_new_nocheck(update, "change",
+                                        json_string_nocheck("remove"));
+            json_array_append_new(updates, update);
+            if (update_cache) {
+                json_object_del(update_cache, dsn->name);
+            }
+            foundlink++;
+        } else {
+            dslink_map_set(
+                    map,
+                    dslink_str_ref(dsn->name), dslink_ref(dsn, NULL));
+        }
+    }
+    if (foundlink) {
+        json_object_set_new_nocheck(resp, "updates", updates);
+
+        if (broker->downstream->list_stream) {
+            dslink_map_foreach(&broker->downstream->list_stream->requester_links) {
+                uint32_t *rid = entry->value->data;
+                json_object_set_new_nocheck(resp, "rid", json_integer(*rid));
+                broker_ws_send_obj(entry->key->data, top);
+            }
+        }
+        dslink_map_clear(broker->downstream->children);
+        Map* omap = broker->downstream->children;
+
+        broker->downstream->children = map;
+
+        dslink_map_free(omap);
+        dslink_list_foreach(&nodeToDelete) {
+            ListNode *lnode =  (ListNode *)node;
+            DownstreamNode *dsn = lnode->value;
+            // set to NULL to skip the removing from parent part
+            dsn->parent = NULL;
+            broker_node_free((BrokerNode*)dsn);
+        }
+        broker_downstream_nodes_changed(mainLoop->data);
+    } else {
+        dslink_map_free(map);
+    }
+
+    dslink_list_free_all_nodes(&nodeToDelete);
+    json_decref(top);
+}
+static
 void delete_token_invoke(RemoteDSLink *link,
                          BrokerNode *node,
                          json_t *req, PermissionLevel maxPermission) {
@@ -57,6 +140,9 @@ void delete_token_invoke(RemoteDSLink *link,
 
     BrokerNode *parentNode = node->parent;
 
+    if (json_is_true(json_object_get(parentNode->meta, "$$managed"))) {
+        clear_managed_link(parentNode->name);
+    }
     char tmp[256];
     int len = snprintf(tmp, sizeof(tmp) - 1, "token/%s", parentNode->name);
     tmp[len] = '\0';

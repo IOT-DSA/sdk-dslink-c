@@ -173,9 +173,7 @@ json_t *broker_handshake_handle_conn(Broker *broker,
             if (tokenNode) {
                 DownstreamNode *node = broker_init_downstream_node(broker->downstream, name);
 
-                if (json_is_true(json_object_get(node->meta, "$$managed"))) {
-                    json_object_set_new_nocheck(node->meta, "$$token", json_string_nocheck(tokenNode->name));
-                }
+                json_object_set_new_nocheck(node->meta, "$$token", json_string_nocheck(tokenNode->name));
 
                 node->dsId = dslink_str_ref(dsId);
                 if (broker->downstream->list_stream) {

@@ -78,6 +78,7 @@ void clear_conns(RemoteDSLink *link,
         broker_node_free((BrokerNode*)dsn);
     }
     broker_downstream_nodes_changed(mainLoop->data);
+    dslink_list_free_all_nodes(&nodeToDelete);
 }
 
 int init_clear_conns(BrokerNode *sysNode) {

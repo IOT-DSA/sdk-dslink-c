@@ -125,6 +125,8 @@ void broker_on_data_callback(Client *client, void *data) {
         link->ws->read_enabled = 1;
         wslay_event_recv(link->ws);
         if (link->pendingClose) {
+            // clear the poll now, so it won't get cleared twice
+            link->client->poll = NULL;
             broker_close_link(link);
         }
         return;
@@ -175,6 +177,10 @@ void broker_close_link(RemoteDSLink *link) {
         return;
     }
     if (link->client) {
+        if (link->client->poll) {
+            uv_close((uv_handle_t *) link->client->poll,
+                     broker_free_handle);
+        }
         dslink_socket_close_nofree(link->client->sock);
     }
     if (link->dsId) {

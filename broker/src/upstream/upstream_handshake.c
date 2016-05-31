@@ -44,6 +44,7 @@ void upstream_clear_poll(UpstreamPoll *upstreamPoll) {
     } else if (upstreamPoll->status == UPSTREAM_WS) {
         uv_poll_stop(upstreamPoll->wsPoll);
         uv_close((uv_handle_t *)upstreamPoll->wsPoll, broker_free_handle);
+        upstreamPoll->remoteDSLink->client->poll = NULL;
     }
     if (upstreamPoll->reconnectTimer) {
         uv_timer_stop(upstreamPoll->reconnectTimer);
