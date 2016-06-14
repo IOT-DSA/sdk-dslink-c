@@ -108,7 +108,6 @@ void clear_qos_queue(SubRequester *subReq, uint8_t serialize) {
     }
 }
 
-
 void broker_update_sub_req_qos(SubRequester *subReq) {
     if (subReq->reqNode->link) {
 
@@ -135,7 +134,6 @@ void broker_update_sub_req_qos(SubRequester *subReq) {
 
 void broker_update_sub_req(SubRequester *subReq, json_t *varray) {
     if (subReq->reqNode->link) {
-
         json_t *top = json_object();
         json_t *resps = json_array();
         json_object_set_new_nocheck(top, "responses", resps);

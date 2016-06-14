@@ -76,6 +76,12 @@ void broker_on_ws_data(wslay_event_context_ptr ctx,
                 void *user_data) {
     (void) ctx;
     RemoteDSLink *link = user_data;
+
+    if (!link->lastReceiveTime) {
+        link->lastReceiveTime = dslink_malloc(sizeof(struct timeval));
+    }
+    gettimeofday(link->lastReceiveTime, NULL);
+
     if (arg->opcode == WSLAY_TEXT_FRAME) {
         if (arg->msg_length == 2
             && arg->msg[0] == '{'

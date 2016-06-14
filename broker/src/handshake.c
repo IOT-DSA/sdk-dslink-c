@@ -246,7 +246,6 @@ fail:
     return NULL;
 }
 
-
 void dslink_handle_ping(uv_timer_t* handle) {
     RemoteDSLink *link = handle->data;
     if (link->lastWriteTime) {
@@ -254,7 +253,16 @@ void dslink_handle_ping(uv_timer_t* handle) {
         gettimeofday(&current_time, NULL);
         long time_diff = current_time.tv_sec - link->lastWriteTime->tv_sec;
         if (time_diff >= 60) {
-            broker_ws_send(link, "{}");
+            broker_ws_send_obj(link, json_object());
+        }
+    }
+
+    if (link->lastReceiveTime) {
+        struct timeval current_time;
+        gettimeofday(&current_time, NULL);
+        long time_diff = current_time.tv_sec - link->lastReceiveTime->tv_sec;
+        if (time_diff >= 90) {
+            broker_close_link(link);
         }
     }
 }
@@ -355,7 +363,7 @@ int broker_handshake_handle_ws(Broker *broker,
     ping_timer = dslink_malloc(sizeof(uv_timer_t));
     ping_timer->data = link;
     uv_timer_init(link->client->poll->loop, ping_timer);
-    uv_timer_start(ping_timer, dslink_handle_ping, 1000, 30000);
+    uv_timer_start(ping_timer, dslink_handle_ping, 1000, 10000);
     link->pingTimerHandle = ping_timer;
 
     // set the ->link and update all existing stream

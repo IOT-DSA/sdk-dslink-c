@@ -35,6 +35,7 @@ typedef struct RemoteDSLink {
 
     struct timeval *lastWriteTime;
     uv_timer_t *pingTimerHandle;
+    struct timeval *lastReceiveTime;
 
     wslay_event_context_ptr ws;
     Client *client;
