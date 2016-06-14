@@ -185,9 +185,11 @@ json_t *broker_handshake_handle_conn(Broker *broker,
 
                 node->dsId = dslink_str_ref(dsId);
                 if (broker->downstream->list_stream) {
+                    node->link = link;
                     update_list_child(broker->downstream,
                                       broker->downstream->list_stream,
                                       name);
+                    node->link = NULL;
                 }
 
                 json_t *group = json_object_get(tokenNode->meta, "$$group");
