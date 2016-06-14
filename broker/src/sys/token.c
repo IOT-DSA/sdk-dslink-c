@@ -166,7 +166,7 @@ void save_token_node(BrokerNode *node) {
 }
 
 static
-BrokerNode * load_token_node(const char* tokenName, json_t* data) {
+BrokerNode *load_token_node(const char* tokenName, json_t* data) {
     BrokerNode *tokenNode = broker_node_create(tokenName, "node");
     if (!tokenNode) {
         return NULL;
@@ -304,6 +304,7 @@ BrokerNode *get_token_node(const char *hashedToken, const char *dsId) {
     if (!ref) {
         return NULL;
     }
+
     BrokerNode* node = ref->data;
 
     json_t *countJson = json_object_get(node->meta, "$$count");
@@ -315,13 +316,27 @@ BrokerNode *get_token_node(const char *hashedToken, const char *dsId) {
     if (!json_is_string(tokenJson)) {
         return NULL;
     }
-    const char * token = json_string_value(tokenJson);
+    const char *token = json_string_value(tokenJson);
 
+    uv_fs_t stat_req;
+
+    char tokenPath[256];
+
+    {
+        int len = snprintf(tokenPath, sizeof(tokenPath) - 1, "token/%s", tokenId);
+        tokenPath[len] = '\0';
+    }
+
+    int res = uv_fs_stat(NULL, &stat_req, tokenPath, NULL);
+
+    if (res < 0) {
+        dslink_map_remove(tokenRootNode->children, tokenId);
+        return NULL;
+    }
 
     unsigned char hashBinary[40];
     size_t outlen;
     dslink_base64_url_decode(hashBinary,40, &outlen, (unsigned char*)tokenHash, strlen(tokenHash));
-
 
     size_t id_len = strlen(dsId) ;
     char *in = dslink_malloc(id_len + 49);

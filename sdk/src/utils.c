@@ -120,6 +120,7 @@ int decodeBase16(char c) {
     }
     return -1;
 }
+
 static char encodeBase16(int code) {
     if (code >= 0) {
         if (code < 10) {

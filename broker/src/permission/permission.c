@@ -14,6 +14,7 @@ const char *permission_level_str(PermissionLevel level) {
     }
     return "none";
 }
+
 PermissionLevel permission_str_level(const char *str) {
     if (!str) {
         return PERMISSION_NEVER;
@@ -26,7 +27,6 @@ PermissionLevel permission_str_level(const char *str) {
     }
     return p;
 }
-
 
 void permission_groups_init(PermissionGroups* groups) {
     groups->groups = NULL;
@@ -41,8 +41,6 @@ void permission_groups_free(PermissionGroups* groups) {
         dslink_free(groups->groups);
     }
 }
-
-
 
 void permission_groups_load(PermissionGroups* groups, const char *dsId, const char* str) {
     if (groups->groups) {
@@ -293,7 +291,6 @@ uint8_t set_permission(const char* path, struct BrokerNode* rootNode, struct Rem
 
     return rslt;
 }
-
 
 // permission list for node or virtual node
 void permission_list_free(List* list) {

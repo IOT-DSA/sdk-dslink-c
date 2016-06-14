@@ -156,6 +156,7 @@ json_t *broker_handshake_handle_conn(Broker *broker,
             if (ref == NULL) {
                 break;
             }
+
             if (!((DownstreamNode *) ref->data)->dsId || strcmp(dsId, ((DownstreamNode *) ref->data)->dsId->data) == 0) {
                 nodeExists = 1;
                 break;
@@ -164,14 +165,21 @@ json_t *broker_handshake_handle_conn(Broker *broker,
             name[nameLen] = dsId[nameLen];
             nameLen++;
         }
-        if (!nodeExists && broker_enable_token) {
+
+        ref_t *downstreamNodeRef = dslink_map_get(broker->downstream->children, name);
+        DownstreamNode *downstreamNodeNow = downstreamNodeRef ? downstreamNodeRef->data : NULL;
+
+        if (broker_enable_token) {
+            BrokerNode* tokenNode = NULL;
             if (!token) {
-                log_err("Failed to connet, need token\n");
+                log_err("Failed to connect, you need a token.\n");
                 goto fail;
+            } else {
+                tokenNode = get_token_node(token, dsId);
             }
-            BrokerNode* tokenNode = get_token_node(token, dsId);
+
             if (tokenNode) {
-                DownstreamNode *node = broker_init_downstream_node(broker->downstream, name);
+                DownstreamNode *node = nodeExists == 1 ? downstreamNodeNow : broker_init_downstream_node(broker->downstream, name);
 
                 json_object_set_new_nocheck(node->meta, "$$token", json_string_nocheck(tokenNode->name));
 
