@@ -11,11 +11,6 @@
 static
 int broker_msg_check_set_arrtribtues(RemoteDSLink *link, json_t *req, const char *path) {
     const char * name = strrchr(path, '/') + 1;
-    if (*name == '$') {
-        // set config, not implemented
-        broker_utils_send_closed_resp(link, req, "invalidParameter");
-        return 1;
-    }
     if (*name != '@') {
         // not attribute
         return 0;
@@ -123,17 +118,26 @@ int broker_msg_handle_set(RemoteDSLink *link, json_t *req) {
 
         broker_ws_send_obj(dsn->link, top);
         json_decref(top);
-    } else if (node) {
-        json_t *value = json_object_get(req, "value");
-        if (dslink_str_starts_with(path, "/data")) {
-            broker_data_node_update(node, value, 0);
-        } else {
-            broker_node_update_value(node, value, 0);
+    } else {
+        const char * name = strrchr(path, '/') + 1;
+        if (*name == '$') {
+            // set config on local node, invalid
+            broker_utils_send_closed_resp(link, req, "invalidParameter");
+            return 1;
         }
-    } else if (dslink_str_starts_with(path, "/data")) {
-        json_t *value = json_object_get(req, "value");
-        broker_create_dynamic_data_node(link->broker, link->broker->root, path, value, 1);
+        if (node) {
+            json_t *value = json_object_get(req, "value");
+            if (dslink_str_starts_with(path, "/data")) {
+                broker_data_node_update(node, value, 0);
+            } else {
+                broker_node_update_value(node, value, 0);
+            }
+        } else if (dslink_str_starts_with(path, "/data")) {
+            json_t *value = json_object_get(req, "value");
+            broker_create_dynamic_data_node(link->broker, link->broker->root, path, value, 1);
+        }
     }
+
 
     broker_utils_send_closed_resp(link, req, NULL);
 
