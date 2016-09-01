@@ -23,6 +23,7 @@ typedef void (*link_callback)(DSLink *link);
 struct DSLinkConfig {
     Url *broker_url;
     const char *name;
+    const char *token;
 };
 
 struct DSLink {

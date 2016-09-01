@@ -316,9 +316,30 @@ char *dslink_handshake_generate_req(DSLink *link, char **dsId) {
         }
     }
     {
-        char uri[128];
+        char uri[256];
         int reqLen = snprintf(uri, sizeof(uri) - 1, "%s?dsId=%s",
                               link->config.broker_url->uri, *dsId);
+        if (link->config.token) {
+            char tokenId[17] = {0};
+            memcpy(tokenId, link->config.token, 16);
+
+            size_t id_len = strlen(*dsId) ;
+            char *in = dslink_malloc(id_len + 49);
+            memcpy(in, *dsId, id_len);
+            memcpy(in + id_len, link->config.token, 48);
+            *(in + id_len + 48) = '\0';
+
+            unsigned char auth[32];
+            mbedtls_sha256((unsigned char *) in, id_len + 48, auth, 0);
+            dslink_free(in);
+
+            size_t outlen;
+            char tokenHash[64] = {0};
+            dslink_base64_url_encode((unsigned char*)tokenHash, sizeof(tokenHash), &outlen, auth, 32);
+
+            reqLen += snprintf(uri+reqLen, sizeof(uri) - reqLen - 1, "&token=%s%s",
+                               tokenId, tokenHash);
+        }
         uri[reqLen] = '\0';
         reqLen = snprintf(req, reqSize - 1, DSLINK_POST_REQ, uri,
                           link->config.broker_url->host,

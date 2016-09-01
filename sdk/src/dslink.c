@@ -51,12 +51,13 @@ int dslink_parse_opts(int argc,
                       DSLinkConfig *config) {
     int ret = 0;
     struct arg_lit *help;
-    struct arg_str *broker, *log;
+    struct arg_str *broker, *token, *log;
     struct arg_end *end;
 
     void *argTable[] = {
         help = arg_lit0("h", "help", "Displays this help menu"),
         broker = arg_str1("b", "broker", "url", "Sets the broker URL to connect to"),
+        token = arg_str0("t", "token", NULL, "Sets the token"),
         log = arg_str0("l", "log", "log type", "Sets the logging level"),
         end = arg_end(5)
     };
@@ -83,6 +84,10 @@ int dslink_parse_opts(int argc,
 
     const char *brokerUrl = broker->sval[0];
     config->broker_url = dslink_url_parse(brokerUrl);
+    if (token->count > 0) {
+        config->token = token->sval[0];
+    }
+
     if (!config->broker_url) {
         log_fatal("Failed to parse broker url\n");
         ret = 1;
