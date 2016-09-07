@@ -56,7 +56,7 @@ int dslink_parse_opts(int argc,
 
     void *argTable[] = {
         help = arg_lit0("h", "help", "Displays this help menu"),
-        broker = arg_str1("b", "broker", "url", "Sets the broker URL to connect to"),
+        broker = arg_str0("b", "broker", "url", "Sets the broker URL to connect to"),
         token = arg_str0("t", "token", NULL, "Sets the token"),
         log = arg_str0("l", "log", "log type", "Sets the logging level"),
         end = arg_end(5)
@@ -82,7 +82,20 @@ int dslink_parse_opts(int argc,
         goto exit;
     }
 
-    const char *brokerUrl = broker->sval[0];
+    const char *brokerUrl;
+    json_t *json = dslink_read_dslink_json();
+
+    if (broker->count > 0) {
+        brokerUrl = broker->sval[0];
+    } else {
+        json_t *str = dslink_json_raw_get_config(json, "broker");
+        if (json_is_string(str)) {
+            brokerUrl = json_string_value(str);
+        } else {
+            brokerUrl = "http://127.0.0.1:8080/conn";
+        }
+    }
+
     config->broker_url = dslink_url_parse(brokerUrl);
     if (token->count > 0) {
         config->token = token->sval[0];
@@ -102,10 +115,23 @@ int dslink_parse_opts(int argc,
             ret = 1;
             goto exit;
         }
+    } else {
+        json_t *lvl = dslink_json_raw_get_config(json, "log");
+        if (json_is_string(lvl)) {
+            if (dslink_log_set_lvl(json_string_value(lvl)) != 0) {
+                printf("Invalid log level: %s\n", json_string_value(lvl));
+                dslink_print_help();
+                ret = 1;
+                goto exit;
+            }
+        }
     }
 
 exit:
     arg_freetable(argTable, sizeof(argTable) / sizeof(argTable[0]));
+    if (json) {
+        json_decref(json);
+    }
     return ret;
 }
 
@@ -252,16 +278,12 @@ json_t *dslink_read_dslink_json() {
     return json;
 }
 
-json_t *dslink_json_get_config(DSLink *link, const char *key) {
-    if (!link) {
+json_t *dslink_json_raw_get_config(json_t *json, const char *key) {
+    if (!json_is_object(json)) {
         return NULL;
     }
 
-    if (!json_is_object(link->dslinkJson)) {
-        return NULL;
-    }
-
-    json_t *configs = json_object_get(link->dslinkJson, "configs");
+    json_t *configs = json_object_get(json, "configs");
 
     if (!json_is_object(configs)) {
         return NULL;
@@ -286,6 +308,14 @@ json_t *dslink_json_get_config(DSLink *link, const char *key) {
     }
 
     return NULL;
+}
+
+json_t *dslink_json_get_config(DSLink *link, const char *key) {
+    if (!link) {
+        return NULL;
+    }
+
+    return dslink_json_raw_get_config(link->dslinkJson, key);
 }
 
 int dslink_init(int argc, char **argv,

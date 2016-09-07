@@ -87,6 +87,7 @@ int dslink_init(int argc, char **argv,
                 uint8_t isResponder, DSLinkCallbacks *cbs);
 
 json_t *dslink_read_dslink_json();
+json_t *dslink_json_raw_get_config(json_t *json, const char *key);
 json_t *dslink_json_get_config(DSLink *link, const char *key);
 
 void dslink_close(DSLink *link);
