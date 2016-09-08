@@ -19,6 +19,7 @@ int dslink_handshake_connect_ws(Url *url,
                                 const char *tempKey,
                                 const char *salt,
                                 const char *dsId,
+                                const char *token,
                                 Socket **sock);
 void dslink_handshake_handle_ws(DSLink *link, link_callback on_requester_ready_cb);
 

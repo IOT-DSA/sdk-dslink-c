@@ -104,10 +104,12 @@ int dslink_handshake_connect_ws(Url *url,
                                 const char *tempKey,
                                 const char *salt,
                                 const char *dsId,
+                                const char *token,
                                 Socket **sock) {
     *sock = NULL;
     int ret = 0;
     unsigned char auth[90];
+    if (tempKey && salt)
     if ((ret = dslink_handshake_gen_auth_key(key, tempKey, salt,
                             auth, sizeof(auth))) != 0) {
         goto exit;
@@ -117,8 +119,15 @@ int dslink_handshake_connect_ws(Url *url,
     size_t reqLen;
     {
         char builtUri[256];
-        snprintf(builtUri, sizeof(builtUri) - 1, "%s?auth=%s&dsId=%s",
-                 uri, auth, dsId);
+        if (tempKey && salt) {
+            snprintf(builtUri, sizeof(builtUri) - 1, "%s?auth=%s&dsId=%s",
+                     uri, auth, dsId);
+        } else {
+            // trusted dslink
+            snprintf(builtUri, sizeof(builtUri) - 1, "%s?dsId=%s&token=%s",
+                     uri, dsId, token);
+        }
+
 
         char wsKey[32];
         if ((ret = gen_ws_key(wsKey, sizeof(wsKey))) != 0) {

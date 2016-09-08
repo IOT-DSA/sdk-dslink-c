@@ -387,7 +387,7 @@ int dslink_init(int argc, char **argv,
     const char *tKey = json_string_value(json_object_get(handshake, "tempKey"));
     const char *salt = json_string_value(json_object_get(handshake, "salt"));
 
-    if (!(uri && tKey && salt)) {
+    if (!(uri && ((tKey && salt) || link->config.token))) {
         log_fatal("Handshake didn't return the "
                       "necessary parameters to complete\n");
         ret = 2;
@@ -395,7 +395,7 @@ int dslink_init(int argc, char **argv,
     }
 
     if ((ret = dslink_handshake_connect_ws(link->config.broker_url, &link->key, uri,
-                                           tKey, salt, dsId, &sock)) != 0) {
+                                           tKey, salt, dsId, link->config.token, &sock)) != 0) {
         log_fatal("Failed to connect to the broker: %d\n", ret);
         ret = 2;
         goto exit;
