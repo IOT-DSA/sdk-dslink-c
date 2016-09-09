@@ -203,7 +203,7 @@ void connect_conn_callback(uv_poll_t *handle, int status, int events) {
         }
 
         if ((dslink_handshake_connect_ws(upstreamPoll->clientDslink->config.broker_url, &upstreamPoll->clientDslink->key, uri,
-                                         tKey, salt, upstreamPoll->dsId, &upstreamPoll->sock)) != 0) {
+                                         tKey, salt, upstreamPoll->dsId, NULL, &upstreamPoll->sock)) != 0) {
             log_warn("Failed to connect to broker\n");
             goto exit;
         } else {
@@ -250,7 +250,6 @@ void upstream_check_conn (uv_timer_t* handle) {
     char *conndata = dslink_handshake_generate_req(upstreamPoll->clientDslink, &dsId);
 
     dslink_socket_write(upstreamPoll->sock, conndata, strlen(conndata));
-
 
     upstreamPoll->connPoll = dslink_calloc(1, sizeof(uv_poll_t));
     uv_poll_init(mainLoop, upstreamPoll->connPoll, upstreamPoll->sock->socket_ctx.fd);

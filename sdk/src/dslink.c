@@ -50,6 +50,9 @@ int dslink_parse_opts(int argc,
                       char **argv,
                       DSLinkConfig *config) {
     int ret = 0;
+
+    json_t *json = NULL;
+
     struct arg_lit *help;
     struct arg_str *broker, *token, *log;
     struct arg_end *end;
@@ -83,7 +86,7 @@ int dslink_parse_opts(int argc,
     }
 
     const char *brokerUrl;
-    json_t *json = dslink_read_dslink_json();
+    json = dslink_read_dslink_json();
 
     if (broker->count > 0) {
         brokerUrl = broker->sval[0];
