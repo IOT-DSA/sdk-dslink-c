@@ -102,6 +102,11 @@ int dslink_parse_opts(int argc,
     config->broker_url = dslink_url_parse(brokerUrl);
     if (token->count > 0) {
         config->token = token->sval[0];
+    } else if (json) {
+        json_t *str = dslink_json_raw_get_config(json, "token");
+        if (str) {
+            config->token = json_string_value(str);
+        }
     }
 
     if (!config->broker_url) {
