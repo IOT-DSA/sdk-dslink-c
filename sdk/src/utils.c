@@ -153,6 +153,7 @@ char *dslink_str_escape(const char *data) {
             *pt = '%';
             *(pt + 1) = encodeBase16((*data)>>4);
             *(pt + 2) = encodeBase16((*data)&0xF);
+            pt += 3;
         } else {
             *pt = *data;
             ++pt;
