@@ -57,6 +57,9 @@ struct DSNode {
 
     // Invocation callback.
     node_action_cb on_invocation;
+
+    // Reference to a data object for convenience.
+    ref_t *data;
 };
 
 DSNode *dslink_node_create(DSNode *parent,

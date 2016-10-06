@@ -27,6 +27,7 @@ DSNode *dslink_node_create(DSNode *parent,
     node->parent = parent;
     node->name = name;
     node->profile = profile;
+    node->data = NULL;
 
     if (parent) {
         size_t pathLen = strlen(parent->path);
@@ -188,6 +189,10 @@ void dslink_node_tree_free_basic(DSNode *root) {
         }
         dslink_free(root->children->table);
         dslink_free(root->children);
+    }
+
+    if (root->data) {
+    	dslink_decref(root->data);
     }
 
     if (root->meta_data) {
