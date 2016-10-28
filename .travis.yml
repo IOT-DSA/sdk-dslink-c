@@ -15,11 +15,11 @@ matrix:
   - os: linux
     compiler: gcc-5
     dist: trusty
-  - os: osx
-    compiler: clang
-  - os: osx
-    compiler: gcc
-    env: CMAKE_FLAGS=-DCMAKE_C_COMPILER=gcc
+#  - os: osx
+#    compiler: clang
+#  - os: osx
+#    compiler: gcc
+#    env: CMAKE_FLAGS=-DCMAKE_C_COMPILER=gcc
 
 script:
 - bash .travis.sh
