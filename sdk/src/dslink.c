@@ -249,7 +249,8 @@ void dslink_close(DSLink *link) {
     uv_stop(&link->loop);
 }
 
-void dslink_link_free(DSLink *link) {
+static
+void dslink_link_clear(DSLink *link) {
     if (link->_ws) {
         wslay_event_context_free(link->_ws);
     }
@@ -265,7 +266,10 @@ void dslink_link_free(DSLink *link) {
     if (link->dslinkJson) {
         json_decref(link->dslinkJson);
     }
+}
 
+void dslink_link_free(DSLink *link) {
+    dslink_link_clear(link);
     dslink_free(link);
 }
 
@@ -505,25 +509,24 @@ int dslink_init_do(DSLink *link, int argc, char **argv,
 int dslink_init(int argc, char **argv,
                 const char *name, uint8_t isRequester,
                 uint8_t isResponder, DSLinkCallbacks *cbs) {
-    DSLink *link;
+    DSLink *link = dslink_calloc(1, sizeof(DSLink));
+    uv_loop_init(&link->loop);
 
     int ret = 0;
     while (1) {
-	link = dslink_calloc(1, sizeof(DSLink));
-	uv_loop_init(&link->loop);
 	ret = dslink_init_do(link, argc, argv, name,
 			isRequester, isResponder, cbs);
 	if (ret != 2)
 		break;
 
 	/* reconnecting */
-	memset(&link->loop, 0, sizeof(link->loop));	// make it sure
-        dslink_link_free(link);
+        dslink_link_clear(link);
         dslink_sleep(SECONDS_TO_MILLIS(5));
         log_info("Attempting to reconnect...\n");
     }
 
     dslink_link_free(link);
+    uv_loop_close(&link->loop);
 
     return ret;
 }
