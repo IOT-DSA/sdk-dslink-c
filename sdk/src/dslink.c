@@ -326,15 +326,18 @@ json_t *dslink_json_get_config(DSLink *link, const char *key) {
     return dslink_json_raw_get_config(link->dslinkJson, key);
 }
 
-int dslink_init(int argc, char **argv,
+/*
+ * @return ret
+ *     1:fatal error. e.g. key generation faled.
+ *     2:connection error. retry.
+ */    
+static
+int dslink_init_do(DSLink *link, int argc, char **argv,
                 const char *name, uint8_t isRequester,
                 uint8_t isResponder, DSLinkCallbacks *cbs) {
-    DSLink *link = dslink_calloc(1, sizeof(DSLink));
     link->closing = 0;
     link->is_responder = isResponder;
     link->is_requester = isRequester;
-
-    uv_loop_init(&link->loop);
 
     link->msg = dslink_malloc(sizeof(uint32_t));
     *link->msg = 0;
@@ -496,17 +499,31 @@ int dslink_init(int argc, char **argv,
     DSLINK_CHECKED_EXEC(dslink_free, dsId);
     DSLINK_CHECKED_EXEC(json_delete, handshake);
 
-    if (ret == 2) {
-        dslink_link_free(link);
+    return ret;
+}
 
+int dslink_init(int argc, char **argv,
+                const char *name, uint8_t isRequester,
+                uint8_t isResponder, DSLinkCallbacks *cbs) {
+    DSLink *link;
+
+    int ret = 0;
+    while (1) {
+	link = dslink_calloc(1, sizeof(DSLink));
+	uv_loop_init(&link->loop);
+	ret = dslink_init_do(link, argc, argv, name,
+			isRequester, isResponder, cbs);
+	if (ret != 2)
+		break;
+
+	/* reconnecting */
+	memset(&link->loop, 0, sizeof(link->loop));	// make it sure
+        dslink_link_free(link);
         dslink_sleep(SECONDS_TO_MILLIS(5));
-
         log_info("Attempting to reconnect...\n");
-
-        return dslink_init(argc, argv, name, isRequester, isResponder, cbs);
-    } else {
-        dslink_link_free(link);
     }
+
+    dslink_link_free(link);
 
     return ret;
 }
