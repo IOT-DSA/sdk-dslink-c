@@ -336,18 +336,11 @@ json_t *dslink_json_get_config(DSLink *link, const char *key) {
  *     2:connection error. retry.
  */    
 static
-int dslink_init_do(DSLink *link, int argc, char **argv,
-                const char *name, uint8_t isRequester,
-                uint8_t isResponder, DSLinkCallbacks *cbs) {
+int dslink_init_do(DSLink *link, DSLinkCallbacks *cbs) {
     link->closing = 0;
-    link->is_responder = isResponder;
-    link->is_requester = isRequester;
 
     link->msg = dslink_malloc(sizeof(uint32_t));
     *link->msg = 0;
-    if (handle_config(&link->config, name, argc, argv) != 0) {
-        return 1;
-    }
 
     json_t *handshake = NULL;
     char *dsId = NULL;
@@ -359,7 +352,7 @@ int dslink_init_do(DSLink *link, int argc, char **argv,
         goto exit;
     }
 
-    if (isResponder) {
+    if (link->is_responder) {
         link->responder = dslink_calloc(1, sizeof(Responder));
 
         if (!link->responder) {
@@ -373,7 +366,7 @@ int dslink_init_do(DSLink *link, int argc, char **argv,
         }
     }
 
-    if (isRequester) {
+    if (link->is_requester) {
         link->requester = dslink_calloc(1, sizeof(Requester));
         if (!link->requester) {
             log_fatal("Failed to create requester\n");
@@ -437,7 +430,7 @@ int dslink_init_do(DSLink *link, int argc, char **argv,
     }
 
     exit:
-    if (isResponder) {
+    if (link->is_responder) {
         if (link->responder->super_root) {
             dslink_node_tree_free(link, link->responder->super_root);
         }
@@ -465,7 +458,7 @@ int dslink_init_do(DSLink *link, int argc, char **argv,
         dslink_free(link->responder);
     }
 
-    if (isRequester) {
+    if (link->is_requester) {
         if (link->requester->list_subs) {
             dslink_map_free(link->requester->list_subs);
             dslink_free(link->requester->list_subs);
@@ -498,7 +491,6 @@ int dslink_init_do(DSLink *link, int argc, char **argv,
     }
 
     mbedtls_ecdh_free(&link->key);
-    dslink_url_free(link->config.broker_url);
     DSLINK_CHECKED_EXEC(dslink_socket_close, sock);
     DSLINK_CHECKED_EXEC(dslink_free, dsId);
     DSLINK_CHECKED_EXEC(json_delete, handshake);
@@ -512,10 +504,16 @@ int dslink_init(int argc, char **argv,
     DSLink *link = dslink_calloc(1, sizeof(DSLink));
     uv_loop_init(&link->loop);
 
+    link->is_responder = isResponder;
+    link->is_requester = isRequester;
+
+    if (handle_config(&link->config, name, argc, argv) != 0) {
+        return 1;
+    }
+
     int ret = 0;
     while (1) {
-	ret = dslink_init_do(link, argc, argv, name,
-			isRequester, isResponder, cbs);
+	ret = dslink_init_do(link, cbs);
 	if (ret != 2)
 		break;
 
