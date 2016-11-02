@@ -381,6 +381,14 @@ int dslink_init_do(DSLink *link, DSLinkCallbacks *cbs) {
 
     link->dslinkJson = dslink_read_dslink_json();
 
+    /*
+     * XXX
+     * do you think that init_cb() should be called at once, don't you ?
+     * if so, the initilization part should be moved into the out
+     * of the reconnecting loop, including the node map initilization.
+     * however, there is a code making the node map in the init_cb().
+     * XXX need to restructuring.
+     */
     if (cbs->init_cb) {
         cbs->init_cb(link);
     }
