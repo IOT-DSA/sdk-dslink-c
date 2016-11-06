@@ -310,6 +310,11 @@ void ping_timer_on_close(uv_handle_t *handle) {
     dslink_free(handle);
 }
 
+static
+void poll_on_close(uv_handle_t *handle) {
+    dslink_free(handle);
+}
+
 void dslink_handshake_handle_ws(DSLink *link, link_callback on_requester_ready_cb) {
     struct wslay_event_callbacks callbacks = {
         want_read_cb,
@@ -329,19 +334,19 @@ void dslink_handshake_handle_ws(DSLink *link, link_callback on_requester_ready_c
 
     mbedtls_net_set_nonblock(&link->_socket->socket_ctx);
 
-    uv_poll_t poll;
+    uv_poll_t *poll = dslink_malloc(sizeof(*poll));
     {
-        uv_poll_init(&link->loop, &poll, link->_socket->socket_ctx.fd);
-        poll.data = link;
-        uv_poll_start(&poll, UV_READABLE, io_handler);
+        uv_poll_init(&link->loop, poll, link->_socket->socket_ctx.fd);
+        poll->data = link;
+        uv_poll_start(poll, UV_READABLE, io_handler);
     }
 
-    uv_timer_t ping;
+    uv_timer_t *ping = dslink_malloc(sizeof(*ping));
     {
-        uv_timer_init(&link->loop, &ping);
-        ping.data = link;
-        ping.close_cb = ping_timer_on_close;
-        uv_timer_start(&ping, ping_handler, 0, 30000);
+        uv_timer_init(&link->loop, ping);
+        ping->data = link;
+        ping->close_cb = ping_timer_on_close;
+        uv_timer_start(ping, ping_handler, 0, 30000);
     }
 
     if (on_requester_ready_cb) {
@@ -349,9 +354,9 @@ void dslink_handshake_handle_ws(DSLink *link, link_callback on_requester_ready_c
     }
 
     uv_run(&link->loop, UV_RUN_DEFAULT);
-    uv_timer_stop(&ping);
-    uv_close((uv_handle_t *) &ping, ping_timer_on_close);
-    uv_loop_close(&link->loop);
+    uv_timer_stop(ping);
+    uv_close((uv_handle_t *) ping, ping_timer_on_close);
+    uv_close((uv_handle_t *) poll, poll_on_close);
 
     wslay_event_context_free(ptr);
     link->_ws = NULL;

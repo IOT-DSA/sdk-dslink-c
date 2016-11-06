@@ -249,7 +249,8 @@ void dslink_close(DSLink *link) {
     uv_stop(&link->loop);
 }
 
-void dslink_link_free(DSLink *link) {
+static
+void dslink_link_clear(DSLink *link) {
     if (link->_ws) {
         wslay_event_context_free(link->_ws);
     }
@@ -265,7 +266,10 @@ void dslink_link_free(DSLink *link) {
     if (link->dslinkJson) {
         json_decref(link->dslinkJson);
     }
+}
 
+void dslink_link_free(DSLink *link) {
+    dslink_link_clear(link);
     dslink_free(link);
 }
 
@@ -326,21 +330,17 @@ json_t *dslink_json_get_config(DSLink *link, const char *key) {
     return dslink_json_raw_get_config(link->dslinkJson, key);
 }
 
-int dslink_init(int argc, char **argv,
-                const char *name, uint8_t isRequester,
-                uint8_t isResponder, DSLinkCallbacks *cbs) {
-    DSLink *link = dslink_calloc(1, sizeof(DSLink));
+/*
+ * @return ret
+ *     1:fatal error. e.g. key generation faled.
+ *     2:connection error. retry.
+ */    
+static
+int dslink_init_do(DSLink *link, DSLinkCallbacks *cbs) {
     link->closing = 0;
-    link->is_responder = isResponder;
-    link->is_requester = isRequester;
-
-    uv_loop_init(&link->loop);
 
     link->msg = dslink_malloc(sizeof(uint32_t));
     *link->msg = 0;
-    if (handle_config(&link->config, name, argc, argv) != 0) {
-        return 1;
-    }
 
     json_t *handshake = NULL;
     char *dsId = NULL;
@@ -352,7 +352,7 @@ int dslink_init(int argc, char **argv,
         goto exit;
     }
 
-    if (isResponder) {
+    if (link->is_responder) {
         link->responder = dslink_calloc(1, sizeof(Responder));
 
         if (!link->responder) {
@@ -366,7 +366,7 @@ int dslink_init(int argc, char **argv,
         }
     }
 
-    if (isRequester) {
+    if (link->is_requester) {
         link->requester = dslink_calloc(1, sizeof(Requester));
         if (!link->requester) {
             log_fatal("Failed to create requester\n");
@@ -430,7 +430,7 @@ int dslink_init(int argc, char **argv,
     }
 
     exit:
-    if (isResponder) {
+    if (link->is_responder) {
         if (link->responder->super_root) {
             dslink_node_tree_free(link, link->responder->super_root);
         }
@@ -458,7 +458,7 @@ int dslink_init(int argc, char **argv,
         dslink_free(link->responder);
     }
 
-    if (isRequester) {
+    if (link->is_requester) {
         if (link->requester->list_subs) {
             dslink_map_free(link->requester->list_subs);
             dslink_free(link->requester->list_subs);
@@ -491,22 +491,40 @@ int dslink_init(int argc, char **argv,
     }
 
     mbedtls_ecdh_free(&link->key);
-    dslink_url_free(link->config.broker_url);
     DSLINK_CHECKED_EXEC(dslink_socket_close, sock);
     DSLINK_CHECKED_EXEC(dslink_free, dsId);
     DSLINK_CHECKED_EXEC(json_delete, handshake);
 
-    if (ret == 2) {
-        dslink_link_free(link);
+    return ret;
+}
 
-        dslink_sleep(SECONDS_TO_MILLIS(5));
+int dslink_init(int argc, char **argv,
+                const char *name, uint8_t isRequester,
+                uint8_t isResponder, DSLinkCallbacks *cbs) {
+    DSLink *link = dslink_calloc(1, sizeof(DSLink));
+    uv_loop_init(&link->loop);
 
-        log_info("Attempting to reconnect...\n");
+    link->is_responder = isResponder;
+    link->is_requester = isRequester;
 
-        return dslink_init(argc, argv, name, isRequester, isResponder, cbs);
-    } else {
-        dslink_link_free(link);
+    if (handle_config(&link->config, name, argc, argv) != 0) {
+        return 1;
     }
+
+    int ret = 0;
+    while (1) {
+	ret = dslink_init_do(link, cbs);
+	if (ret != 2)
+		break;
+
+	/* reconnecting */
+        dslink_link_clear(link);
+        dslink_sleep(SECONDS_TO_MILLIS(5));
+        log_info("Attempting to reconnect...\n");
+    }
+
+    dslink_link_free(link);
+    uv_loop_close(&link->loop);
 
     return ret;
 }
