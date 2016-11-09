@@ -259,12 +259,12 @@ void dslink_link_clear(DSLink *link) {
         dslink_free(link->msg);
     }
 
-    if (link->linkData) {
-        json_decref(link->linkData);
+    if (link->link_data) {
+        json_decref(link->link_data);
     }
 
-    if (link->dslinkJson) {
-        json_decref(link->dslinkJson);
+    if (link->dslink_json) {
+        json_decref(link->dslink_json);
     }
 }
 
@@ -327,14 +327,9 @@ json_t *dslink_json_get_config(DSLink *link, const char *key) {
         return NULL;
     }
 
-    return dslink_json_raw_get_config(link->dslinkJson, key);
+    return dslink_json_raw_get_config(link->dslink_json, key);
 }
 
-/*
- * @return ret
- *     1:fatal error. e.g. key generation faled.
- *     2:connection error. retry.
- */    
 static
 int dslink_init_do(DSLink *link, DSLinkCallbacks *cbs) {
     link->closing = 0;
@@ -379,7 +374,7 @@ int dslink_init_do(DSLink *link, DSLinkCallbacks *cbs) {
         }
     }
 
-    link->dslinkJson = dslink_read_dslink_json();
+    link->dslink_json = dslink_read_dslink_json();
 
     if (cbs->init_cb) {
         cbs->init_cb(link);
@@ -419,7 +414,6 @@ int dslink_init_do(DSLink *link, DSLinkCallbacks *cbs) {
 
     dslink_handshake_handle_ws(link, cbs->on_requester_ready_cb);
 
-    // TODO: automatic reconnecting
     log_warn("Disconnected from the broker\n")
     if (cbs->on_disconnected_cb) {
         cbs->on_disconnected_cb(link);
@@ -513,11 +507,12 @@ int dslink_init(int argc, char **argv,
 
     int ret = 0;
     while (1) {
-	ret = dslink_init_do(link, cbs);
-	if (ret != 2)
-		break;
-
-	/* reconnecting */
+        ret = dslink_init_do(link, cbs);
+        if (ret != 2) {
+            log_info("%i\n", ret);
+            break;
+        }
+        
         dslink_link_clear(link);
         dslink_sleep(SECONDS_TO_MILLIS(5));
         log_info("Attempting to reconnect...\n");
