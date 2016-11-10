@@ -252,7 +252,11 @@ void dslink_node_tree_free(DSLink *link, DSNode *root) {
 cleanup:
     dslink_node_tree_free_basic(root);
 }
-
+int dslink_node_set_meta_new(struct DSLink *link, DSNode *node, const char *name, json_t *value) {
+    int result = dslink_node_set_meta(link, node, name, value);
+    json_decref(value);
+    return result;
+}
 int dslink_node_set_meta(DSLink *link, DSNode *node,
                          const char *name, json_t *value) {
     assert(node);
@@ -292,6 +296,11 @@ int dslink_node_set_meta(DSLink *link, DSNode *node,
         }
     }
 
+    if (link) {
+        if (node->on_data_changed) {
+            node->on_data_changed(link, node);
+        }
+    }
     if (!link->_ws) {
         return 0;
     }
@@ -339,7 +348,7 @@ int dslink_node_set_meta(DSLink *link, DSNode *node,
             goto cleanup;
         }
         json_array_append_new(update, json_string_nocheck(name));
-        json_array_append_new(update, value);
+        json_array_append(update, value);
         json_array_append_new(updates, update);
     }
 
@@ -349,6 +358,23 @@ int dslink_node_set_meta(DSLink *link, DSNode *node,
         json_delete(top);
 
     return 0;
+}
+
+json_t * dslink_node_get_meta(DSNode *node, const char *name) {
+    if (!node->meta_data) {
+        return NULL;
+    }
+    ref_t * ref = dslink_map_get(node->meta_data, (void*)name);
+    if (ref) {
+        return ref->data;
+    }
+    return NULL;
+}
+
+int dslink_node_set_value_new(struct DSLink *link, DSNode *node, json_t *value) {
+    int result = dslink_node_set_value(link, node, value);
+    json_decref(value);
+    return result;
 }
 
 int dslink_node_set_value(struct DSLink *link, DSNode *node, json_t *value) {
@@ -371,11 +397,57 @@ int dslink_node_set_value(struct DSLink *link, DSNode *node, json_t *value) {
     node->value_timestamp = jsonTs;
     node->value = value;
 
-    ref_t *sid = dslink_map_get(link->responder->value_path_subs,
-                                   (void *) node->path);
-    if (sid) {
-        dslink_response_send_val(link, node, *((uint32_t *) sid->data));
+    if (link) {
+        if (node->on_data_changed) {
+            node->on_data_changed(link, node);
+        }
+
+        ref_t *sid = dslink_map_get(link->responder->value_path_subs,
+                                    (void *) node->path);
+        if (sid) {
+            dslink_response_send_val(link, node, *((uint32_t *) sid->data));
+        }
     }
 
     return 0;
+}
+
+json_t *dslink_node_serialize(DSNode *node) {
+    json_t * map = json_object();
+    if (node->meta_data) {
+        dslink_map_foreach(node->meta_data) {
+            json_object_set(map, entry->key->data, entry->value->data);
+        }
+    }
+    if (node->value) {
+        json_object_set(map, "?value", node->value);
+    }
+    return map;
+}
+
+void dslink_node_deserialize(DSNode *node, json_t *data) {
+    if (node->meta_data) {
+        dslink_map_clear(node->meta_data);
+    } else {
+        node->meta_data = dslink_malloc(sizeof(Map));
+        dslink_map_init(node->meta_data, dslink_map_str_cmp,
+           dslink_map_str_key_len_cal, dslink_map_hash_key);
+    }
+    if (node->value) {
+        json_decref(node->value);
+        node->value = NULL;
+    }
+
+    const char *key;
+    json_t *value;
+
+    json_object_foreach(data, key, value) {
+        if (strcmp(key,"?value") == 0) {
+            dslink_node_set_value(NULL,node, value);
+        } else {
+            char *name = dslink_strdup(key);
+            dslink_map_set(node->meta_data, dslink_ref(name, free),
+                           dslink_ref(json_incref(value), (free_callback) json_decref));
+        }
+    }
 }

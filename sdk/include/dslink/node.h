@@ -55,6 +55,9 @@ struct DSNode {
     // Notification callback when the node is unsubscribed.
     node_event_cb on_unsubscribe;
 
+    // Notification callback when the node metadata or value is changed
+    node_event_cb on_data_changed;
+
     // Invocation callback.
     node_action_cb on_invocation;
 
@@ -70,7 +73,14 @@ DSNode *dslink_node_get_path(DSNode *root, const char *path);
 void dslink_node_tree_free(struct DSLink *link, DSNode *root);
 
 int dslink_node_set_meta(struct DSLink *link, DSNode *node, const char *name, json_t *value);
+int dslink_node_set_meta_new(struct DSLink *link, DSNode *node, const char *name, json_t *value);
+json_t * dslink_node_get_meta(DSNode *node, const char *name);
+
 int dslink_node_set_value(struct DSLink *link, DSNode *node, json_t *value);
+int dslink_node_set_value_new(struct DSLink *link, DSNode *node, json_t *value);
+
+json_t *dslink_node_serialize(DSNode *node);
+void dslink_node_deserialize(DSNode *node, json_t *data);
 
 #ifdef __cplusplus
 }

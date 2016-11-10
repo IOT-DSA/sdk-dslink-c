@@ -6,6 +6,7 @@
 #include "replicator.h"
 #include "rng.h"
 #include "invoke.h"
+#include "serialization.h"
 
 // Called to initialize your node structure.
 void init(DSLink *link) {
@@ -19,6 +20,7 @@ void init(DSLink *link) {
     responder_init_replicator(link, superRoot);
     responder_init_rng(link, superRoot);
     responder_init_invoke(link, superRoot);
+    responder_init_serialization(link, superRoot);
 
     // add link data
     json_t * linkData = json_object();
