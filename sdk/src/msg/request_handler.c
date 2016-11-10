@@ -66,7 +66,7 @@ int dslink_request_handle(DSLink *link, json_t *req) {
         }
     } else if (strcmp(method, "set") == 0) {
         const char *path = json_string_value(json_object_get(req, "path"));
-        json_t *value = json_incref(json_object_get(req, "value"));
+        json_t *value = json_object_get(req, "value");
         DSNode *node = dslink_node_get_path(link->responder->super_root, path);
         
         if (node) {

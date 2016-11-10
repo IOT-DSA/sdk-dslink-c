@@ -375,13 +375,13 @@ json_t * dslink_node_get_meta(DSNode *node, const char *name) {
     return NULL;
 }
 
-int dslink_node_set_value_new(struct DSLink *link, DSNode *node, json_t *value) {
-    int result = dslink_node_set_value(link, node, value);
-    json_decref(value);
+int dslink_node_set_value(struct DSLink *link, DSNode *node, json_t *value) {
+    json_incref(value);
+    int result = dslink_node_set_value_new(link, node, value);
     return result;
 }
 
-int dslink_node_set_value(struct DSLink *link, DSNode *node, json_t *value) {
+int dslink_node_set_value_new(struct DSLink *link, DSNode *node, json_t *value) {
     char ts[32];
     dslink_create_ts(ts, sizeof(ts));
 

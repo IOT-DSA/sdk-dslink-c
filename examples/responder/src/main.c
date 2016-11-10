@@ -21,7 +21,7 @@ void init(DSLink *link) {
     DSNode *stringValueNode = dslink_node_create(superRoot, "string", "node");
     dslink_node_set_meta(link, stringValueNode, "$type", json_string("string"));
     dslink_node_set_meta(link, stringValueNode, "$writable", json_string("write"));
-    dslink_node_set_value(link, stringValueNode, json_string("Hello World!"));
+    dslink_node_set_value_new(link, stringValueNode, json_string("Hello World!"));
     dslink_node_add_child(link, stringValueNode);
     
     responder_init_replicator(link, superRoot);

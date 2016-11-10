@@ -40,7 +40,7 @@ void responder_init_serialization(DSLink *link, DSNode *root) {
     DSNode *node = dslink_node_create(root, "saved", "node");
 
     // data for serialization testing
-    dslink_node_set_meta_new(link, node, "$$password", json_string_nocheck("Test1234"));
+    dslink_node_set_meta_new(link, node, "$$$password", json_string_nocheck("Test1234"));
     // load the data after set password to test if the deserialization is correct
     load_node(link, node);
     dslink_node_set_meta_new(link, node, "$writable", json_string_nocheck("write"));
