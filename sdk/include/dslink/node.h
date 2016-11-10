@@ -79,8 +79,8 @@ json_t * dslink_node_get_meta(DSNode *node, const char *name);
 int dslink_node_set_value(struct DSLink *link, DSNode *node, json_t *value);
 int dslink_node_set_value_new(struct DSLink *link, DSNode *node, json_t *value);
 
-json_t *dslink_node_serialize(DSNode *node);
-void dslink_node_deserialize(DSNode *node, json_t *data);
+json_t *dslink_node_serialize(struct DSLink *link, DSNode *node);
+void dslink_node_deserialize(struct DSLink *link, DSNode *node, json_t *data);
 
 #ifdef __cplusplus
 }

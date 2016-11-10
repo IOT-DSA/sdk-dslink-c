@@ -503,6 +503,7 @@ int dslink_init(int argc, char **argv,
                 uint8_t isResponder, DSLinkCallbacks *cbs) {
     DSLink *link = dslink_calloc(1, sizeof(DSLink));
     uv_loop_init(&link->loop);
+    link->loop.data = link;
 
     link->is_responder = isResponder;
     link->is_requester = isRequester;
