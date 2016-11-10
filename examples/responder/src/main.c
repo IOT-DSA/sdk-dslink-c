@@ -2,6 +2,7 @@
 
 #include <dslink/log.h>
 #include <dslink/storage/storage.h>
+#include <dslink/node.h>
 
 #include "replicator.h"
 #include "rng.h"
@@ -17,6 +18,12 @@ void init(DSLink *link) {
 
     DSNode *superRoot = link->responder->super_root;
 
+    DSNode *stringValueNode = dslink_node_create(superRoot, "string", "node");
+    dslink_node_set_meta(link, stringValueNode, "$type", json_string("string"));
+    dslink_node_set_meta(link, stringValueNode, "$writable", json_string("write"));
+    dslink_node_set_value(link, stringValueNode, json_string("Hello World!"));
+    dslink_node_add_child(link, stringValueNode);
+    
     responder_init_replicator(link, superRoot);
     responder_init_rng(link, superRoot);
     responder_init_invoke(link, superRoot);

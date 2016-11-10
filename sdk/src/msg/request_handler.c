@@ -64,6 +64,21 @@ int dslink_request_handle(DSLink *link, json_t *req) {
                 }
             }
         }
+    } else if (strcmp(method, "set") == 0) {
+        const char *path = json_string_value(json_object_get(req, "path"));
+        json_t *value = json_incref(json_object_get(req, "value"));
+        DSNode *node = dslink_node_get_path(link->responder->super_root, path);
+        
+        if (node) {
+            ref_t *writable_ref = dslink_map_get(node->meta_data, "$writable");
+            if (writable_ref && json_is_string((json_t*) writable_ref->data)) {
+                if (node->on_value_set) {
+                    node->on_value_set(link, node, value);
+                } else {
+                    dslink_node_set_value(link, node, value);
+                }
+            }
+        }
     } else if (strcmp(method, "close") == 0) {
         json_t *rid = json_object_get(req, "rid");
         uint32_t ridi = (uint32_t) json_integer_value(rid);

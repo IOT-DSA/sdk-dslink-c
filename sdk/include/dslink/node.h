@@ -14,6 +14,7 @@ struct DSNode;
 typedef struct DSNode DSNode;
 
 typedef void (*node_event_cb)(struct DSLink *link, DSNode *node);
+typedef void (*node_value_set_cb)(struct DSLink *link, DSNode *node, json_t *value);
 typedef void (*node_action_cb)(struct DSLink *link, DSNode *node,
                                json_t *rid, json_t *params, ref_t *stream);
 
@@ -60,6 +61,9 @@ struct DSNode {
 
     // Invocation callback.
     node_action_cb on_invocation;
+    
+    // Value set callback.
+    node_value_set_cb on_value_set;
 
     // Reference to a data object for convenience.
     ref_t *data;

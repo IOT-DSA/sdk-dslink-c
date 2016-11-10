@@ -87,15 +87,28 @@ int dslink_ws_send_obj(wslay_event_context_ptr ctx, json_t *obj) {
     return 0;
 }
 
-int dslink_ws_send(wslay_event_context_ptr ctx, const char *data) {
+static
+int dslink_ws_send_internal(wslay_event_context_ptr ctx, const char *data, uint8_t resend) {
+    (void) resend;
+    
     struct wslay_event_msg msg;
     msg.msg = (const uint8_t *) data;
     msg.msg_length = strlen(data);
     msg.opcode = WSLAY_TEXT_FRAME;
-    wslay_event_queue_msg(ctx, &msg);
-    wslay_event_send(ctx);
+    if (wslay_event_queue_msg(ctx, &msg) != 0) {
+        return 1;
+    }
+    
+    if (wslay_event_send(ctx) != 0) {
+        return 1;
+    }
+    
     log_debug("Message sent: %s\n", data);
     return 0;
+}
+
+int dslink_ws_send(struct wslay_event_context* ctx, const char* data) {
+    return dslink_ws_send_internal(ctx, data, 0);
 }
 
 int dslink_handshake_connect_ws(Url *url,
