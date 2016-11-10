@@ -20,7 +20,7 @@ void gen_number(uv_timer_t *timer) {
     dslink_node_set_value(link, node, json_real(x));
 
     if (x > 1000.0) {
-        dslink_node_set_meta(link, node, "@number", json_real(x));
+        dslink_node_set_meta_new(link, node, "@number", json_real(x));
     } else {
         dslink_node_set_meta(link, node, "@number", NULL);
     }
