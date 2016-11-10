@@ -376,12 +376,16 @@ json_t * dslink_node_get_meta(DSNode *node, const char *name) {
 }
 
 int dslink_node_set_value(struct DSLink *link, DSNode *node, json_t *value) {
+    return dslink_node_update_value_new(link, node, value);
+}
+
+int dslink_node_update_value(struct DSLink *link, DSNode *node, json_t *value) {
     json_incref(value);
-    int result = dslink_node_set_value_new(link, node, value);
+    int result = dslink_node_update_value_new(link, node, value);
     return result;
 }
 
-int dslink_node_set_value_new(struct DSLink *link, DSNode *node, json_t *value) {
+int dslink_node_update_value_new(struct DSLink *link, DSNode *node, json_t *value) {
     char ts[32];
     dslink_create_ts(ts, sizeof(ts));
 
@@ -486,7 +490,7 @@ void dslink_node_deserialize(DSLink *link, DSNode *node, json_t *data) {
 
     json_object_foreach(data, key, value) {
         if (strcmp(key,"?value") == 0) {
-            dslink_node_set_value(NULL,node, value);
+            dslink_node_update_value(NULL,node, value);
         } else {
             char *name = dslink_strdup(key);
             if (link && name[0] == '$' && name[1] == '$'

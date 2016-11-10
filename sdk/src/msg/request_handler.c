@@ -75,7 +75,7 @@ int dslink_request_handle(DSLink *link, json_t *req) {
                 if (node->on_value_set) {
                     node->on_value_set(link, node, value);
                 } else {
-                    dslink_node_set_value(link, node, value);
+                    dslink_node_update_value(link, node, value);
                 }
             }
         }

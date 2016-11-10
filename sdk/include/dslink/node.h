@@ -80,8 +80,11 @@ int dslink_node_set_meta(struct DSLink *link, DSNode *node, const char *name, js
 int dslink_node_set_meta_new(struct DSLink *link, DSNode *node, const char *name, json_t *value);
 json_t * dslink_node_get_meta(DSNode *node, const char *name);
 
+// deprecated, use dslink_node_update_value_new
 int dslink_node_set_value(struct DSLink *link, DSNode *node, json_t *value);
-int dslink_node_set_value_new(struct DSLink *link, DSNode *node, json_t *value);
+
+int dslink_node_update_value(struct DSLink *link, DSNode *node, json_t *value);
+int dslink_node_update_value_new(struct DSLink *link, DSNode *node, json_t *value);
 
 json_t *dslink_node_serialize(struct DSLink *link, DSNode *node);
 void dslink_node_deserialize(struct DSLink *link, DSNode *node, json_t *data);
