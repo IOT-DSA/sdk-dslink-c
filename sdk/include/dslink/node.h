@@ -14,6 +14,7 @@ struct DSNode;
 typedef struct DSNode DSNode;
 
 typedef void (*node_event_cb)(struct DSLink *link, DSNode *node);
+typedef void (*node_value_set_cb)(struct DSLink *link, DSNode *node, json_t *value);
 typedef void (*node_action_cb)(struct DSLink *link, DSNode *node,
                                json_t *rid, json_t *params, ref_t *stream);
 
@@ -55,8 +56,17 @@ struct DSNode {
     // Notification callback when the node is unsubscribed.
     node_event_cb on_unsubscribe;
 
+    // Notification callback when the node metadata or value is changed
+    node_event_cb on_data_changed;
+
     // Invocation callback.
     node_action_cb on_invocation;
+    
+    // Value set callback.
+    node_value_set_cb on_value_set;
+
+    // Reference to a data object for convenience.
+    ref_t *data;
 };
 
 DSNode *dslink_node_create(DSNode *parent,
@@ -67,7 +77,17 @@ DSNode *dslink_node_get_path(DSNode *root, const char *path);
 void dslink_node_tree_free(struct DSLink *link, DSNode *root);
 
 int dslink_node_set_meta(struct DSLink *link, DSNode *node, const char *name, json_t *value);
+int dslink_node_set_meta_new(struct DSLink *link, DSNode *node, const char *name, json_t *value);
+json_t * dslink_node_get_meta(DSNode *node, const char *name);
+
+// deprecated, use dslink_node_update_value_new
 int dslink_node_set_value(struct DSLink *link, DSNode *node, json_t *value);
+
+int dslink_node_update_value(struct DSLink *link, DSNode *node, json_t *value);
+int dslink_node_update_value_new(struct DSLink *link, DSNode *node, json_t *value);
+
+json_t *dslink_node_serialize(struct DSLink *link, DSNode *node);
+void dslink_node_deserialize(struct DSLink *link, DSNode *node, json_t *data);
 
 #ifdef __cplusplus
 }

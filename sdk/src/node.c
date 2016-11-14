@@ -1,10 +1,14 @@
 #include <string.h>
 #include <assert.h>
+#include <mbedtls/ecdh.h>
+#include <mbedtls/base64.h>
+#include "mbedtls/aes.h"
 #include "dslink/mem/mem.h"
 #include "dslink/ws.h"
 #include "dslink/msg/list_response.h"
 #include "dslink/msg/sub_response.h"
 #include "dslink/utils.h"
+
 
 DSNode *dslink_node_create(DSNode *parent,
                            const char *name, const char *profile) {
@@ -27,6 +31,7 @@ DSNode *dslink_node_create(DSNode *parent,
     node->parent = parent;
     node->name = name;
     node->profile = profile;
+    node->data = NULL;
 
     if (parent) {
         size_t pathLen = strlen(parent->path);
@@ -190,6 +195,10 @@ void dslink_node_tree_free_basic(DSNode *root) {
         dslink_free(root->children);
     }
 
+    if (root->data) {
+    	dslink_decref(root->data);
+    }
+
     if (root->meta_data) {
         dslink_map_free(root->meta_data);
         dslink_free(root->meta_data);
@@ -247,7 +256,11 @@ void dslink_node_tree_free(DSLink *link, DSNode *root) {
 cleanup:
     dslink_node_tree_free_basic(root);
 }
-
+int dslink_node_set_meta_new(struct DSLink *link, DSNode *node, const char *name, json_t *value) {
+    int result = dslink_node_set_meta(link, node, name, value);
+    json_decref(value);
+    return result;
+}
 int dslink_node_set_meta(DSLink *link, DSNode *node,
                          const char *name, json_t *value) {
     assert(node);
@@ -287,6 +300,11 @@ int dslink_node_set_meta(DSLink *link, DSNode *node,
         }
     }
 
+    if (link) {
+        if (node->on_data_changed) {
+            node->on_data_changed(link, node);
+        }
+    }
     if (!link->_ws) {
         return 0;
     }
@@ -334,7 +352,7 @@ int dslink_node_set_meta(DSLink *link, DSNode *node,
             goto cleanup;
         }
         json_array_append_new(update, json_string_nocheck(name));
-        json_array_append_new(update, value);
+        json_array_append(update, value);
         json_array_append_new(updates, update);
     }
 
@@ -346,7 +364,28 @@ int dslink_node_set_meta(DSLink *link, DSNode *node,
     return 0;
 }
 
+json_t * dslink_node_get_meta(DSNode *node, const char *name) {
+    if (!node->meta_data) {
+        return NULL;
+    }
+    ref_t * ref = dslink_map_get(node->meta_data, (void*)name);
+    if (ref) {
+        return ref->data;
+    }
+    return NULL;
+}
+
 int dslink_node_set_value(struct DSLink *link, DSNode *node, json_t *value) {
+    return dslink_node_update_value_new(link, node, value);
+}
+
+int dslink_node_update_value(struct DSLink *link, DSNode *node, json_t *value) {
+    json_incref(value);
+    int result = dslink_node_update_value_new(link, node, value);
+    return result;
+}
+
+int dslink_node_update_value_new(struct DSLink *link, DSNode *node, json_t *value) {
     char ts[32];
     dslink_create_ts(ts, sizeof(ts));
 
@@ -366,11 +405,123 @@ int dslink_node_set_value(struct DSLink *link, DSNode *node, json_t *value) {
     node->value_timestamp = jsonTs;
     node->value = value;
 
-    ref_t *sid = dslink_map_get(link->responder->value_path_subs,
-                                   (void *) node->path);
-    if (sid) {
-        dslink_response_send_val(link, node, *((uint32_t *) sid->data));
+    if (link) {
+        if (node->on_data_changed) {
+            node->on_data_changed(link, node);
+        }
+
+        ref_t *sid = dslink_map_get(link->responder->value_path_subs,
+                                    (void *) node->path);
+        if (sid) {
+            dslink_response_send_val(link, node, *((uint32_t *) sid->data));
+        }
     }
 
     return 0;
+}
+
+json_t *dslink_node_serialize(DSLink *link, DSNode *node) {
+    json_t * map = json_object();
+    if (node->meta_data) {
+        dslink_map_foreach(node->meta_data) {
+            char *name = entry->key->data;
+            json_t *value = entry->value->data;
+            if (link && name[0] == '$' && name[1] == '$'
+                && strcmp(name + strlen(name) - 8, "password") == 0
+                && json_is_string(value) ) {
+                // encrypt $$xxxpassword
+                mbedtls_aes_context aes;
+
+                unsigned char key[32];
+                unsigned char iv[16] = {0};
+
+                unsigned char input[128]= {0};
+                unsigned char output[128];
+                char base64[256] = {0};
+                base64[0] = 0x1b;
+                base64[1] = 'p';
+                base64[2] = 'w';
+                base64[3] = ':';
+
+                size_t input_len = strlen(json_string_value(value));
+                size_t base64_len = 0;
+
+                memcpy(input, json_string_value(value), input_len);
+                size_t output_len =  (input_len + 15) & 0xF0; // length needs to be 16x
+
+                memcpy(key, link->key.d.p, 32);
+                mbedtls_aes_setkey_enc( &aes, key, 256 );
+                mbedtls_aes_crypt_cbc( &aes, MBEDTLS_AES_ENCRYPT, output_len, iv, input, output);
+
+
+                mbedtls_base64_encode((unsigned char*)base64+4,
+                                      sizeof(base64)-4, &base64_len,
+                                      output, output_len);
+
+                json_object_set_new(map, name, json_string(base64));
+
+            } else {
+                json_object_set(map, name, entry->value->data);
+            }
+
+        }
+    }
+    if (node->value) {
+        json_object_set(map, "?value", node->value);
+    }
+    return map;
+}
+
+void dslink_node_deserialize(DSLink *link, DSNode *node, json_t *data) {
+    if (node->meta_data) {
+        dslink_map_clear(node->meta_data);
+    } else {
+        node->meta_data = dslink_malloc(sizeof(Map));
+        dslink_map_init(node->meta_data, dslink_map_str_cmp,
+           dslink_map_str_key_len_cal, dslink_map_hash_key);
+    }
+    if (node->value) {
+        json_decref(node->value);
+        node->value = NULL;
+    }
+
+    const char *key;
+    json_t *value;
+
+    json_object_foreach(data, key, value) {
+        if (strcmp(key,"?value") == 0) {
+            dslink_node_update_value(NULL,node, value);
+        } else {
+            char *name = dslink_strdup(key);
+            if (link && name[0] == '$' && name[1] == '$'
+                && json_is_string(value) && memcmp("\x1bpw:", json_string_value(value), 4) == 0) {
+                // decrypt password
+
+                mbedtls_aes_context aes;
+
+                unsigned char deckey[32];
+                unsigned char iv[16] = {0};
+
+                unsigned char input[128]= {0};
+                unsigned char output[128] = {0};
+
+                size_t input_len;
+
+                const char *base64 = json_string_value(value);
+                mbedtls_base64_decode(input,
+                                      sizeof(input), &input_len,
+                                      (const unsigned char *)base64+4, strlen(base64)-4);
+
+                memcpy(deckey, link->key.d.p, 32);
+                mbedtls_aes_setkey_dec( &aes, deckey, 256 );
+                mbedtls_aes_crypt_cbc( &aes, MBEDTLS_AES_DECRYPT, input_len, iv, input, output);
+
+                dslink_map_set(node->meta_data, dslink_ref(name, free),
+                               dslink_ref(json_string((const char *)output), (free_callback) json_decref));
+            } else {
+                dslink_map_set(node->meta_data, dslink_ref(name, free),
+                               dslink_ref(json_incref(value), (free_callback) json_decref));
+            }
+        }
+    }
 }

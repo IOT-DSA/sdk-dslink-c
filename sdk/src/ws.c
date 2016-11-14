@@ -87,15 +87,28 @@ int dslink_ws_send_obj(wslay_event_context_ptr ctx, json_t *obj) {
     return 0;
 }
 
-int dslink_ws_send(wslay_event_context_ptr ctx, const char *data) {
+static
+int dslink_ws_send_internal(wslay_event_context_ptr ctx, const char *data, uint8_t resend) {
+    (void) resend;
+    
     struct wslay_event_msg msg;
     msg.msg = (const uint8_t *) data;
     msg.msg_length = strlen(data);
     msg.opcode = WSLAY_TEXT_FRAME;
-    wslay_event_queue_msg(ctx, &msg);
-    wslay_event_send(ctx);
+    if (wslay_event_queue_msg(ctx, &msg) != 0) {
+        return 1;
+    }
+    
+    if (wslay_event_send(ctx) != 0) {
+        return 1;
+    }
+    
     log_debug("Message sent: %s\n", data);
     return 0;
+}
+
+int dslink_ws_send(struct wslay_event_context* ctx, const char* data) {
+    return dslink_ws_send_internal(ctx, data, 0);
 }
 
 int dslink_handshake_connect_ws(Url *url,
@@ -334,14 +347,14 @@ void dslink_handshake_handle_ws(DSLink *link, link_callback on_requester_ready_c
 
     mbedtls_net_set_nonblock(&link->_socket->socket_ctx);
 
-    uv_poll_t *poll = dslink_malloc(sizeof(*poll));
+    uv_poll_t *poll = dslink_calloc(1, sizeof(uv_poll_t));
     {
         uv_poll_init(&link->loop, poll, link->_socket->socket_ctx.fd);
         poll->data = link;
         uv_poll_start(poll, UV_READABLE, io_handler);
     }
 
-    uv_timer_t *ping = dslink_malloc(sizeof(*ping));
+    uv_timer_t *ping = dslink_calloc(1, sizeof(uv_poll_t));
     {
         uv_timer_init(&link->loop, ping);
         ping->data = link;

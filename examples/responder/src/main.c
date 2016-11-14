@@ -2,10 +2,12 @@
 
 #include <dslink/log.h>
 #include <dslink/storage/storage.h>
+#include <dslink/node.h>
 
 #include "replicator.h"
 #include "rng.h"
 #include "invoke.h"
+#include "serialization.h"
 
 // Called to initialize your node structure.
 void init(DSLink *link) {
@@ -16,14 +18,21 @@ void init(DSLink *link) {
 
     DSNode *superRoot = link->responder->super_root;
 
+    DSNode *stringValueNode = dslink_node_create(superRoot, "string", "node");
+    dslink_node_set_meta(link, stringValueNode, "$type", json_string("string"));
+    dslink_node_set_meta(link, stringValueNode, "$writable", json_string("write"));
+    dslink_node_update_value_new(link, stringValueNode, json_string("Hello World!"));
+    dslink_node_add_child(link, stringValueNode);
+    
     responder_init_replicator(link, superRoot);
     responder_init_rng(link, superRoot);
     responder_init_invoke(link, superRoot);
+    responder_init_serialization(link, superRoot);
 
     // add link data
     json_t * linkData = json_object();
     json_object_set_nocheck(linkData, "test", json_true());
-    link->linkData = linkData;
+    link->link_data = linkData;
 
     log_info("Initialized!\n");
 }

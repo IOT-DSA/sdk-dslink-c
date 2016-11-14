@@ -42,8 +42,8 @@ struct DSLink {
     DSLinkConfig config; // Configuration
     uint32_t *msg;
 
-    json_t *linkData;
-    json_t *dslinkJson;
+    json_t *link_data;
+    json_t *dslink_json;
 };
 
 struct Responder {

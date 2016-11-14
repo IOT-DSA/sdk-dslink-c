@@ -17,6 +17,14 @@ struct Server {
 };
 
 static
+void broker_server_free_client(uv_poll_t *poll) {
+    Client *client = poll->data;
+    dslink_socket_free(client->sock);
+    dslink_free(client);
+    uv_close((uv_handle_t *) poll, broker_free_handle);
+}
+
+static
 void broker_server_client_ready(uv_poll_t *poll,
                                 int status,
                                 int events) {
@@ -27,12 +35,19 @@ void broker_server_client_ready(uv_poll_t *poll,
     if (events & UV_READABLE) {
         server->data_ready(client, poll->loop->data);
         if (client->sock->socket_ctx.fd == -1) {
-            // The callback closed the connection
-            dslink_socket_free(client->sock);
-            dslink_free(client);
+            broker_server_free_client(poll);
             client = NULL;
-            uv_close((uv_handle_t *) poll, broker_free_handle);
         }
+    } else if (status == -EBADF && events ==0 && client) {
+        //broker_server_client_fail(poll);
+        // The callback closed the connection
+        RemoteDSLink *link = client->sock_data;
+        if (link) {
+            broker_close_link(link);
+        } else {
+            broker_server_free_client(poll);
+        }
+        client = NULL;
     }
 
     if (client && (events & UV_WRITABLE)) {

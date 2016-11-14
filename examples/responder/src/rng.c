@@ -17,10 +17,10 @@ void gen_number(uv_timer_t *timer) {
     }
 
     double x = rand() / 1000000.0;
-    dslink_node_set_value(link, node, json_real(x));
+    dslink_node_update_value_new(link, node, json_real(x));
 
     if (x > 1000.0) {
-        dslink_node_set_meta(link, node, "@number", json_real(x));
+        dslink_node_set_meta_new(link, node, "@number", json_real(x));
     } else {
         dslink_node_set_meta(link, node, "@number", NULL);
     }
@@ -61,7 +61,7 @@ void responder_init_rng(DSLink *link, DSNode *root) {
         return;
     }
 
-    if (dslink_node_set_value(link, num, json_integer(0)) != 0) {
+    if (dslink_node_update_value_new(link, num, json_integer(0)) != 0) {
         log_warn("Failed to set the value on the rng\n");
         dslink_node_tree_free(link, num);
         return;
