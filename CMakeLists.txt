@@ -68,6 +68,7 @@ ADD_C_FLAGS("-fPIC")
 ##### Configure Flags #####
 
 ADD_C_FLAGS("-std=gnu99")
+ADD_C_FLAGS("-Wno-tautological-compare")
 
 if (NOT NO_WARNINGS)
     ADD_C_FLAGS("-Wall -Wextra -Werror")
