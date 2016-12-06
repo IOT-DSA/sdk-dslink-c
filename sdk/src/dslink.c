@@ -519,8 +519,8 @@ int dslink_init(int argc, char **argv,
         log_info("Attempting to reconnect...\n");
     }
 
-    dslink_link_free(link);
     uv_loop_close(&link->loop);
+    dslink_link_free(link);
 
     return ret;
 }
