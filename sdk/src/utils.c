@@ -140,7 +140,7 @@ char *dslink_str_escape(const char *data) {
     size_t lenoff = 1;
     const char *search = data;
     while (*search) {
-        if (*search <= ',' || *search == '/' || *search == ':' || *search == '=') {
+        if (*search <= ',' || *search == '/' || *search == ':' || *search == '=' || *search == '%') {
             lenoff += 2;
         }
         ++search;
@@ -149,7 +149,7 @@ char *dslink_str_escape(const char *data) {
 
     char *pt = rslt;
     while (*data) {
-        if (*data <= ',' || *data == '/' || *data == ':' || *data == '=') {
+        if (*data <= ',' || *data == '/' || *data == ':' || *data == '=' || *search == '%') {
             *pt = '%';
             *(pt + 1) = encodeBase16((*data)>>4);
             *(pt + 2) = encodeBase16((*data)&0xF);

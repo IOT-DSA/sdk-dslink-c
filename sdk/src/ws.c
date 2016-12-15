@@ -13,6 +13,7 @@
 #include "dslink/msg/response_handler.h"
 #include "dslink/handshake.h"
 #include "dslink/ws.h"
+#include "dslink/utils.h"
 
 #define LOG_TAG "ws"
 #include "dslink/log.h"
@@ -132,14 +133,16 @@ int dslink_handshake_connect_ws(Url *url,
     size_t reqLen;
     {
         char builtUri[256];
+        char * encodedDsId = dslink_str_escape(dsId);
         if (tempKey && salt) {
             snprintf(builtUri, sizeof(builtUri) - 1, "%s?auth=%s&dsId=%s",
-                     uri, auth, dsId);
+                     uri, auth, encodedDsId);
         } else {
             // trusted dslink
             snprintf(builtUri, sizeof(builtUri) - 1, "%s?dsId=%s&token=%s",
-                     uri, dsId, token);
+                     uri, encodedDsId, token);
         }
+        dslink_free(encodedDsId);
 
 
         char wsKey[32];
