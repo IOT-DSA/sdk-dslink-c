@@ -89,6 +89,11 @@ int dslink_node_update_value_new(struct DSLink *link, DSNode *node, json_t *valu
 json_t *dslink_node_serialize(struct DSLink *link, DSNode *node);
 void dslink_node_deserialize(struct DSLink *link, DSNode *node, json_t *data);
 
+// Thread-safe API
+int dslink_node_update_value_safe(struct DSLink *link, char* path, json_t *value,  void (*callback)(int, void*), void * callback_data);
+int dslink_node_get_value_safe(struct DSLink *link, char* path,  void (*callback)(json_t *, void*), void * callback_data);
+int dslink_run_safe(struct DSLink *link, void (*callback)(struct DSLink *link, void*), void * callback_data);
+
 #ifdef __cplusplus
 }
 #endif

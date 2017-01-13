@@ -525,3 +525,39 @@ void dslink_node_deserialize(DSLink *link, DSNode *node, json_t *data) {
         }
     }
 }
+
+// Thread-safe API
+int dslink_node_update_value_safe(struct DSLink *link, char* path, json_t *value,  void (*callback)(int, void*), void * callback_data) {
+
+    DSLinkAsyncSetData *async_data = dslink_malloc(sizeof(DSLinkAsyncSetData));
+    async_data->node_path = path;
+    async_data->set_value = value;
+    async_data->callback = callback;
+    async_data->callback_data = callback_data;
+
+    link->async_set.data = (void*)async_data;
+
+    uv_async_send(&link->async_set);
+
+}
+int dslink_node_get_value_safe(struct DSLink *link, char* path,  void (*callback)(json_t *, void*), void * callback_data) {
+
+    DSLinkAsyncGetData *async_data = dslink_malloc(sizeof(DSLinkAsyncGetData));
+    async_data->node_path = path;
+    async_data->callback = callback;
+    async_data->callback_data = callback_data;
+
+    link->async_get.data = (void*)async_data;
+
+    uv_async_send(&link->async_get);
+}
+int dslink_run_safe(struct DSLink *link, void (*callback)(struct DSLink *link, void*), void * callback_data) {
+
+    DSLinkAsyncRunData *async_data = dslink_malloc(sizeof(DSLinkAsyncRunData));
+    async_data->callback = callback;
+    async_data->callback_data = callback_data;
+
+    link->async_run.data = (void*)async_data;
+
+    uv_async_send(&link->async_run);
+}
