@@ -522,32 +522,32 @@ void dslink_async_set_node_value(uv_async_t *async_handle) {
 
     DSLink *link = (DSLink*)(async_handle->loop->data);
     if(!link) {
-        log_info("DSLink not found!\n");
+        log_warn("DSLink not found!\n");
     } else {
         DSNode *node = dslink_node_get_path(link->responder->super_root,async_data->node_path);
+        int ret;
         if(node) {
 
-
-            int ret;
-
+            //json value's ref count must be 1 and should not be used in the other thread anymore
             if(dslink_node_update_value(link,node,async_data->set_value) == 0)
                 ret = 0;
             else
                 ret = -1;
 
 
-            if(async_data->callback) {
-                async_data->callback(ret,async_data->callback_data);
-            }
-
         } else {
             log_info("Node not found in the path\n");
+            ret = -1;
         }
+        if(async_data->callback) {
+            async_data->callback(ret,async_data->callback_data);
+        }
+
     }
     
     //free async_data which is allocated in API func
     dslink_free(async_data->node_path);
-    dslink_free(async_data->set_value);
+    json_decref(async_data->set_value);
     dslink_free(async_data);
 
 }
