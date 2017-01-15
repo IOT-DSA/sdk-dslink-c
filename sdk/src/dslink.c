@@ -576,13 +576,13 @@ int dslink_init(int argc, char **argv,
     link->loop.data = link;
 
     //thread-safe API async handle set
-    if(!uv_async_init(&link->loop, &link->async_get, dslink_async_get_node_value)) {
+    if(uv_async_init(&link->loop, &link->async_get, dslink_async_get_node_value)) {
         log_warn("Async handle init error\n");
     }
-    if(!uv_async_init(&link->loop, &link->async_set, dslink_async_set_node_value)) {
+    if(uv_async_init(&link->loop, &link->async_set, dslink_async_set_node_value)) {
         log_warn("Async handle init error\n");
     }
-    if(!uv_async_init(&link->loop, &link->async_run, dslink_async_run)) {
+    if(uv_async_init(&link->loop, &link->async_run, dslink_async_run)) {
         log_warn("Async handle init error\n");
     }
 
