@@ -123,6 +123,7 @@ set(DSLINK_SRC
     "${DSLINK_SRC_DIR}/utils.c"
     "${DSLINK_SRC_DIR}/ws.c"
     "${DSLINK_SRC_DIR}/requester.c"
+    "${DSLINK_SRC_DIR}/threadsafe_api_test.c"
 )
 
 set(LIBRARY_SRC
