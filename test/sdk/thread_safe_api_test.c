@@ -209,6 +209,7 @@ int run_thread_safe_api_tests(DSLink *link) {
 // Called to initialize your node structure.
 void init(DSLink *link) {
     DSNode *superRoot = link->responder->super_root;
+    (void)superRoot;
 
 
 
