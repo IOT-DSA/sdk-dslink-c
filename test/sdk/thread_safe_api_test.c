@@ -11,18 +11,19 @@
  * If everything was successful, removes the test node.
  */
 
-#define LOG_TAG "threadsafe_api_test"
+#define LOG_TAG "thread_safe_api_test"
 
-#include "dslink/threadsafe_api_test.h"
+#include "thread_safe_api_test.h"
 #include <dslink/log.h>
 #include <string.h>
 #include <assert.h>
+#include <dslink/storage/storage.h>
 
 #define PRINT_MODE // otherwise assert mode
 
-void threadsafe_api_test1(void *arg);
-void threadsafe_api_test2(void *arg);
-void threadsafe_api_test3(void *arg);
+void thread_safe_api_test1(void *arg);
+void thread_safe_api_test2(void *arg);
+void thread_safe_api_test3(void *arg);
 
 int testRes;
 
@@ -77,7 +78,7 @@ void async_run_callback_test3(DSLink *link, void* cbData) {
     }
 }
 
-void threadsafe_api_test3(void *arg) {
+void thread_safe_api_test3(void *arg) {
 
     char *sTest = (char*)dslink_malloc(4*sizeof(char));
     sTest[0]='t';
@@ -106,11 +107,11 @@ void nodval_async_set_callback_test2(int res, void* cbData) {
 //    dslink_free(cbData);
     if(testRes) {
         log_info("Test 2 done\n");
-        threadsafe_api_test3((DSLink *) cbData);
+        thread_safe_api_test3((DSLink *) cbData);
     }
 }
 
-void threadsafe_api_test2(void *arg) {
+void thread_safe_api_test2(void *arg) {
     dslink_node_update_value_safe((DSLink*)arg,
                                   strdup("test_node"),
                                   json_string("Changed_TestNodeVal"),
@@ -145,17 +146,17 @@ void nodval_async_get_callback_test1(json_t *retVal, void* cbData) {
 
     if(testRes) {
         log_info("Test 1 done\n");
-        threadsafe_api_test2((DSLink *) cbData);
+        thread_safe_api_test2((DSLink *) cbData);
     }
 }
 
-void threadsafe_api_test1(void *arg) {
+void thread_safe_api_test1(void *arg) {
 
     dslink_node_get_value_safe((DSLink*)arg,strdup("test_node"),nodval_async_get_callback_test1,arg);
 
 }
 
-int run_threadsafe_api_tests(DSLink *link) {
+int run_thread_safe_api_tests(DSLink *link) {
 
     int ret;
 #ifdef PRINT_MODE
@@ -193,9 +194,65 @@ int run_threadsafe_api_tests(DSLink *link) {
     testRes = 1;
 
     uv_thread_t new_thread_id;
-    uv_thread_create(&new_thread_id, threadsafe_api_test1, link);
+    uv_thread_create(&new_thread_id, thread_safe_api_test1, link);
 
     uv_thread_join(&new_thread_id);
 
     return 1;
+}
+
+///////////////////////////////////////////////////////
+
+
+
+
+// Called to initialize your node structure.
+void init(DSLink *link) {
+    DSNode *superRoot = link->responder->super_root;
+
+
+
+    // add link data
+    json_t *linkData = json_object();
+    json_object_set_nocheck(linkData, "test", json_true());
+    link->link_data = linkData;
+
+    log_info("Initialized!\n");
+
+
+    //TODO: delete
+    if(run_thread_safe_api_tests(link))
+        printf("test started successfully\n");
+    else
+        printf("test starting failed\n");
+}
+
+// Called when the DSLink is connected.
+void connected(DSLink *link) {
+    (void) link;
+    log_info("Connected!\n");
+}
+
+// Called when the DSLink is disconnected.
+// If this was not initiated by dslink_close,
+// then a reconnection attempt is made.
+void disconnected(DSLink *link) {
+    (void) link;
+    log_info("Disconnected!\n");
+}
+
+// The main function.
+int main(int argc, char **argv) {
+    DSLinkCallbacks cbs = { // Create our callback struct.
+            init, // init_cb
+            connected, //on_connected_cb
+            disconnected, // on_disconnected_cb
+            NULL // on_requester_ready_cb
+    };
+
+
+    // Initializes a DSLink and handles reconnection.
+    // Pass command line arguments, our dsId,
+    // are we a requester?, are we a responder?, and a reference to our callbacks.
+    return dslink_init(argc, argv, "Test_DSLink", 0, 1, &cbs);
 }
