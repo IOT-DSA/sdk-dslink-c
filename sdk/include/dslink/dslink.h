@@ -17,8 +17,17 @@ typedef struct DSLinkConfig DSLinkConfig;
 typedef struct DSLink DSLink;
 typedef struct Responder Responder;
 typedef struct Requester Requester;
+//thread-safe API async data struct definitions
+typedef struct DSLinkAsyncSetData DSLinkAsyncSetData;
+typedef struct DSLinkAsyncGetData DSLinkAsyncGetData;
+typedef struct DSLinkAsyncRunData DSLinkAsyncRunData;
+
 
 typedef void (*link_callback)(DSLink *link);
+//thread-safe API callback definitions
+typedef void (*async_set_callback)(int, void*);
+typedef void (*async_get_callback)(json_t *, void*);
+typedef void (*async_run_callback)(DSLink *link, void*);
 
 struct DSLinkConfig {
     Url *broker_url;
@@ -39,6 +48,9 @@ struct DSLink {
     Responder *responder; // Responder, only initialized for responder DSLinks
     mbedtls_ecdh_context key; // ECDH key
     uv_loop_t loop; // Primary event loop
+    uv_async_t async_get; // async get value
+    uv_async_t async_set; // async set value
+    uv_async_t async_run; // async run
     DSLinkConfig config; // Configuration
     uint32_t *msg;
 
@@ -80,6 +92,23 @@ struct DSLinkCallbacks {
     link_callback on_connected_cb;
     link_callback on_disconnected_cb;
     link_callback on_requester_ready_cb;
+};
+
+//thread-safe API async data structures
+struct DSLinkAsyncSetData {
+    char *node_path;
+    json_t *set_value;
+    async_set_callback callback;
+    void *callback_data;
+};
+struct DSLinkAsyncGetData {
+    char *node_path;
+    async_get_callback callback;
+    void *callback_data;
+};
+struct DSLinkAsyncRunData {
+    async_run_callback callback;
+    void *callback_data;
 };
 
 int dslink_init(int argc, char **argv,

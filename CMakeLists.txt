@@ -29,7 +29,7 @@ endmacro()
 
 ##### Git Version Info ####
 
-set(GIT_DIR "${CMAKE_SOURCE_DIR}/.git")
+set(GIT_DIR "${CMAKE_CURRENT_LIST_DIR}/.git")
 if (EXISTS "${GIT_DIR}" AND IS_DIRECTORY "${GIT_DIR}" AND NOT "${GIT_COMMIT_HASH}")
     execute_process(
         COMMAND git log -1 --format=%H
@@ -68,6 +68,7 @@ ADD_C_FLAGS("-fPIC")
 ##### Configure Flags #####
 
 ADD_C_FLAGS("-std=gnu99")
+ADD_C_FLAGS("-Wno-tautological-compare")
 
 if (NOT NO_WARNINGS)
     ADD_C_FLAGS("-Wall -Wextra -Werror")
@@ -209,34 +210,34 @@ install(TARGETS sdk_dslink_c
         ARCHIVE DESTINATION "${DSLINK_INSTALL_LIB_DIR}" COMPONENT lib
         RUNTIME DESTINATION "${DSLINK_INSTALL_BIN_DIR}" COMPONENT lib)
 
-install(DIRECTORY "sdk/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev)
-install(DIRECTORY "deps/mbed/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev)
-install(DIRECTORY "deps/wslay/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev)
-install(DIRECTORY "deps/jansson/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev)
+install(DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/sdk/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev)
+install(DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/deps/mbed/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev)
+install(DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/deps/wslay/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev)
+install(DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/deps/jansson/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev)
 
 ####### Configure Broker #######
 
 if (DSLINK_BUILD_BROKER)
-    install(DIRECTORY "broker/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev)
+    install(DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/broker/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev)
 
     if (GIT_COMMIT_HASH)
         set_source_files_properties(
-            "broker/src/broker.c"
+            "${CMAKE_CURRENT_LIST_DIR}/broker/src/broker.c"
             PROPERTIES
             COMPILE_DEFINITIONS GIT_COMMIT_HASH="${GIT_COMMIT_HASH}"
         )
     endif()
 
     add_library(sdk_broker_c-object OBJECT ${BROKER_SRC})
-    target_include_directories(sdk_broker_c-object PUBLIC "broker/include")
+    target_include_directories(sdk_broker_c-object PUBLIC "${CMAKE_CURRENT_LIST_DIR}/broker/include")
 
     add_library(sdk_broker_c SHARED $<TARGET_OBJECTS:sdk_broker_c-object>)
     target_link_libraries(sdk_broker_c sdk_dslink_c)
-    target_include_directories(sdk_broker_c PUBLIC "broker/include")
+    target_include_directories(sdk_broker_c PUBLIC "${CMAKE_CURRENT_LIST_DIR}/broker/include")
 
     add_library(sdk_broker_c-static STATIC $<TARGET_OBJECTS:sdk_broker_c-object>)
     target_link_libraries(sdk_broker_c-static sdk_dslink_c-static)
-    target_include_directories(sdk_broker_c-static PUBLIC "broker/include")
+    target_include_directories(sdk_broker_c-static PUBLIC "${CMAKE_CURRENT_LIST_DIR}/broker/include")
 
     add_executable(broker "${BROKER_SRC_DIR}/main.c")
     target_link_libraries(broker sdk_broker_c-static)

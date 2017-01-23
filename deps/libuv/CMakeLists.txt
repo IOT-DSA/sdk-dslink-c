@@ -79,6 +79,7 @@ else()
             "${LIBUV_SRC_DIR}/unix/fsevents.c"
             "${LIBUV_SRC_DIR}/unix/kqueue.c"
             "${LIBUV_SRC_DIR}/unix/proctitle.c"
+            "${LIBUV_SRC_DIR}/unix/pthread-barrier.c"
         )
     endif()
 endif()

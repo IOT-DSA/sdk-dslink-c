@@ -316,9 +316,12 @@ char *dslink_handshake_generate_req(DSLink *link, char **dsId) {
         }
     }
     {
+        char * encodedDsId = dslink_str_escape(*dsId);
+
         char uri[256];
         int reqLen = snprintf(uri, sizeof(uri) - 1, "%s?dsId=%s",
-                              link->config.broker_url->uri, *dsId);
+                              link->config.broker_url->uri, encodedDsId);
+        dslink_free(encodedDsId);
         if (link->config.token) {
             char tokenId[17] = {0};
             memcpy(tokenId, link->config.token, 16);

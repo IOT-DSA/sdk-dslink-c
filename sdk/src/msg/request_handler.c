@@ -10,6 +10,13 @@
 #define LOG_TAG "request_handler"
 #include "dslink/log.h"
 
+static
+void free_stream(void* p) {
+    Stream *stream = p;
+    dslink_free((void*)stream->path);
+    dslink_free(stream);
+}
+
 int dslink_request_handle(DSLink *link, json_t *req) {
     const char *method = json_string_value(json_object_get(req, "method"));
     if (!method) {
@@ -39,7 +46,7 @@ int dslink_request_handle(DSLink *link, json_t *req) {
             stream->type = INVOCATION_STREAM;
             stream->path = dslink_strdup(node->path);
 
-            ref_t *stream_ref = dslink_ref(stream, dslink_free);
+            ref_t *stream_ref = dslink_ref(stream, free_stream);
 
             json_t *jsonRid = json_object_get(req, "rid");
             json_t *params = json_object_get(req, "params");
@@ -59,7 +66,7 @@ int dslink_request_handle(DSLink *link, json_t *req) {
                                    stream_ref) != 0) {
                     dslink_free(rid);
                     dslink_free(stream_ref);
-                    dslink_free(stream);
+                    free_stream(stream);
                     return 1;
                 }
             }
