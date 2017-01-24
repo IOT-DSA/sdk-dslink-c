@@ -228,6 +228,19 @@ void upstream_check_conn (uv_timer_t* handle) {
     UpstreamPoll *upstreamPoll = handle->data;
 
     if (connectConnCheck(upstreamPoll) != 0) {
+#if defined(__APPLE__)
+        if (errno != EISCONN) {
+            if (errno != EALREADY) {
+                upstream_reconnect(upstreamPoll);
+            } else {
+                upstreamPoll->connCheckCount ++;
+                if (upstreamPoll->connCheckCount > 200) {
+                    upstream_reconnect(upstreamPoll);
+                }
+            }
+            return;
+	}
+#else
         if (errno != 114) {
             upstream_reconnect(upstreamPoll);
         } else {
@@ -237,6 +250,7 @@ void upstream_check_conn (uv_timer_t* handle) {
             }
         }
         return;
+#endif
     }
 
     if (upstreamPoll->connCheckTimer) {

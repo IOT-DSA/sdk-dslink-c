@@ -135,11 +135,18 @@ int mbedtls_net_connect_async(UpstreamPoll *upstreamPoll, const char *host, cons
     } else  {
         mbedtls_net_set_nonblock(ctx);
         if (connect( ctx->fd, addr_list->ai_addr, MSVC_INT_CAST addr_list->ai_addrlen ) != 0) {
+#if defined(__APPLE__)
+	    if (errno != EINPROGRESS && errno != EALREADY) {
+                freeaddrinfo( addr_list );
+                return MBEDTLS_ERR_NET_SOCKET_FAILED;
+            }
+#else
             if (errno != 115 && errno != 114) {
                 freeaddrinfo( addr_list );
                 return MBEDTLS_ERR_NET_SOCKET_FAILED;
             }
-        };
+#endif
+        }
         upstreamPoll->conCheckAddrList = addr_list;
         return 0;
     }
