@@ -252,3 +252,5 @@ if (DSLINK_BUILD_EXAMPLES)
         target_link_libraries(${example} sdk_dslink_c-static)
     endforeach()
 endif()
+
+ADD_C_FLAGS("$ENV{POST_C_FLAGS}")
