@@ -371,8 +371,8 @@ void responder_init_invoke(DSLink *link, DSNode *root) {
         json_object_set_new(message_row, "type", json_string("string"));
 
         json_t *message_param = json_object();
-        json_object_set_new(message_row, "name", json_string("input"));
-        json_object_set_new(message_row, "type", json_string("string"));
+        json_object_set_new(message_param, "name", json_string("input"));
+        json_object_set_new(message_param, "type", json_string("string"));
 
         json_array_append_new(columns, message_row);
 
