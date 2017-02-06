@@ -3,5 +3,11 @@
     "DSLINK_BUILD_BROKER": "ON",
     "CMAKE_BUILD_TYPE": "RELEASE"
   },
-  "dists": {}
+  "clang": false,
+  "args": {
+    "cmake": ["-DDSLINK_BUILD_BROKER=ON", "-DCMAKE_BUILD_TYPE=RELEASE"]
+  },
+  "dists": {
+    "broker": "{TARGET_UNDERSCORE}_broker"
+  }
 }
