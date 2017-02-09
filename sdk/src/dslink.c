@@ -54,7 +54,7 @@ int dslink_parse_opts(int argc,
     json_t *json = NULL;
 
     struct arg_lit *help;
-    struct arg_str *broker, *token, *log;
+    struct arg_str *broker, *token, *log, *name;
     struct arg_end *end;
 
     void *argTable[] = {
@@ -62,7 +62,8 @@ int dslink_parse_opts(int argc,
         broker = arg_str0("b", "broker", "url", "Sets the broker URL to connect to"),
         token = arg_str0("t", "token", NULL, "Sets the token"),
         log = arg_str0("l", "log", "log type", "Sets the logging level"),
-        end = arg_end(5)
+        name = arg_str0("n", "name", NULL, "Sets the dslink name"),
+        end = arg_end(6)
     };
 
     if (arg_nullcheck(argTable) != 0) {

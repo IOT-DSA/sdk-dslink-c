@@ -91,7 +91,6 @@ int dslink_ws_send_obj(wslay_event_context_ptr ctx, json_t *obj) {
 static
 int dslink_ws_send_internal(wslay_event_context_ptr ctx, const char *data, uint8_t resend) {
     (void) resend;
-    
     struct wslay_event_msg msg;
     msg.msg = (const uint8_t *) data;
     msg.msg_length = strlen(data);
@@ -99,11 +98,15 @@ int dslink_ws_send_internal(wslay_event_context_ptr ctx, const char *data, uint8
     if (wslay_event_queue_msg(ctx, &msg) != 0) {
         return 1;
     }
-    
-    if (wslay_event_send(ctx) != 0) {
-        return 1;
-    }
-    
+
+    // sending is moved to the thread: dslink_send_ws_thread
+//    if (wslay_event_send(ctx) != 0) {
+//        return 1;
+//    }
+
+    DSLink *link = (DSLink*)ctx->user_data;
+    uv_sem_post(&link->ws_send_sem);
+
     log_debug("Message sent: %s\n", data);
     return 0;
 }
@@ -223,6 +226,8 @@ ssize_t want_write_cb(wslay_event_context_ptr ctx,
     (void) flags;
 
     DSLink *link = user_data;
+
+
     int written = dslink_socket_write(link->_socket, (char *) data, len);
     if (written < 0) {
         if (errno == MBEDTLS_ERR_SSL_WANT_WRITE) {
@@ -331,6 +336,24 @@ void poll_on_close(uv_handle_t *handle) {
     dslink_free(handle);
 }
 
+void dslink_send_ws_thread(void *arg) {
+
+    DSLink *link = (DSLink*)arg;
+    while(1) {
+        uv_sem_wait(&link->ws_send_sem);
+
+        if(link->closing ==1)
+            break;
+
+        if (wslay_event_send(link->_ws) != 0) {
+            log_debug("Send error in thread\n");
+        }
+    }
+
+
+
+}
+
 void dslink_handshake_handle_ws(DSLink *link, link_callback on_requester_ready_cb) {
     struct wslay_event_callbacks callbacks = {
         want_read_cb,
@@ -369,10 +392,18 @@ void dslink_handshake_handle_ws(DSLink *link, link_callback on_requester_ready_c
         on_requester_ready_cb(link);
     }
 
+    uv_sem_init(&link->ws_send_sem,0);
+    uv_thread_t send_ws_thread_id;
+    uv_thread_create(&send_ws_thread_id, dslink_send_ws_thread, link);
+
     uv_run(&link->loop, UV_RUN_DEFAULT);
     uv_timer_stop(ping);
     uv_close((uv_handle_t *) ping, ping_timer_on_close);
     uv_close((uv_handle_t *) poll, poll_on_close);
+
+    uv_sem_post(&link->ws_send_sem);
+    uv_thread_join(&send_ws_thread_id);
+    uv_sem_destroy(&link->ws_send_sem);
 
     wslay_event_context_free(ptr);
     link->_ws = NULL;
