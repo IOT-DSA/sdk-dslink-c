@@ -6,6 +6,7 @@ option(DSLINK_BUILD_BROKER "Whether to build the broker" OFF)
 option(DSLINK_BUILD_EXAMPLES "Whether to build the examples" OFF)
 option(DSLINK_TEST "Whether to enable tests" OFF)
 option(TOOLCHAIN_DYNAMIC_LINK_ENABLE "Enable Dynamic Linking for Toolchain" ON)
+#option(NO_WARNINGS "No Warnings" ON)
 
 ##### Configure CMake Modules #####
 
@@ -71,7 +72,8 @@ ADD_C_FLAGS("-std=gnu99")
 ADD_C_FLAGS("-Wno-tautological-compare")
 
 if (NOT NO_WARNINGS)
-    ADD_C_FLAGS("-Wall -Wextra -Werror")
+#    ADD_C_FLAGS("-Wall -Wextra -Werror")
+    ADD_C_FLAGS("-Wall -Wextra")
     ADD_C_FLAGS("-Wno-overlength-strings")
     ADD_C_FLAGS("-pedantic")
 endif()
@@ -132,6 +134,7 @@ set(LIBRARY_SRC
     "${WSLAY_SRC}"
 )
 
+
 set(BROKER_SRC_DIR "${CMAKE_CURRENT_LIST_DIR}/broker/src")
 set(BROKER_SRC
     "${BROKER_SRC_DIR}/data/data.c"
@@ -185,16 +188,20 @@ if (DSLINK_TEST)
     enable_testing()
 endif()
 
+####### Configure libgit2 #####
+# Build libgit2
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/deps/libgit2)
+
 ###### Configure Libraries #####
 
 set(CMAKE_MACOSX_RPATH 1)
 add_library(sdk_dslink_c-object OBJECT ${LIBRARY_SRC})
 
 add_library(sdk_dslink_c-static STATIC $<TARGET_OBJECTS:sdk_dslink_c-object>)
-target_link_libraries(sdk_dslink_c-static jansson libuv)
+target_link_libraries(sdk_dslink_c-static jansson libuv git2)
 
 add_library(sdk_dslink_c SHARED $<TARGET_OBJECTS:sdk_dslink_c-object>)
-target_link_libraries(sdk_dslink_c jansson libuv)
+target_link_libraries(sdk_dslink_c jansson libuv git2)
 
 set(DSLINK_INSTALL_LIB_DIR lib CACHE PATH "Installation directory for libraries")
 set(DSLINK_INSTALL_BIN_DIR bin CACHE PATH "Installation directory for executables")
@@ -214,10 +221,13 @@ install(DIRECTORY "sdk/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COM
 install(DIRECTORY "deps/mbed/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev)
 install(DIRECTORY "deps/wslay/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev)
 install(DIRECTORY "deps/jansson/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev)
+install(DIRECTORY "deps/libgit2/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev)
 
 ####### Configure Broker #######
 
 if (DSLINK_BUILD_BROKER)
+    include_directories("${CMAKE_CURRENT_LIST_DIR}/broker/include")
+
     install(DIRECTORY "broker/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev)
 
     if (GIT_COMMIT_HASH)
@@ -252,3 +262,4 @@ if (DSLINK_BUILD_EXAMPLES)
         target_link_libraries(${example} sdk_dslink_c-static)
     endforeach()
 endif()
+
