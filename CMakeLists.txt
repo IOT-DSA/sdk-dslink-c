@@ -188,20 +188,16 @@ if (DSLINK_TEST)
     enable_testing()
 endif()
 
-####### Configure libgit2 #####
-# Build libgit2
-add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/deps/libgit2)
-
 ###### Configure Libraries #####
 
 set(CMAKE_MACOSX_RPATH 1)
 add_library(sdk_dslink_c-object OBJECT ${LIBRARY_SRC})
 
 add_library(sdk_dslink_c-static STATIC $<TARGET_OBJECTS:sdk_dslink_c-object>)
-target_link_libraries(sdk_dslink_c-static jansson libuv git2)
+target_link_libraries(sdk_dslink_c-static jansson libuv)
 
 add_library(sdk_dslink_c SHARED $<TARGET_OBJECTS:sdk_dslink_c-object>)
-target_link_libraries(sdk_dslink_c jansson libuv git2)
+target_link_libraries(sdk_dslink_c jansson libuv)
 
 set(DSLINK_INSTALL_LIB_DIR lib CACHE PATH "Installation directory for libraries")
 set(DSLINK_INSTALL_BIN_DIR bin CACHE PATH "Installation directory for executables")
@@ -221,7 +217,6 @@ install(DIRECTORY "sdk/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COM
 install(DIRECTORY "deps/mbed/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev)
 install(DIRECTORY "deps/wslay/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev)
 install(DIRECTORY "deps/jansson/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev)
-install(DIRECTORY "deps/libgit2/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev)
 
 ####### Configure Broker #######
 
