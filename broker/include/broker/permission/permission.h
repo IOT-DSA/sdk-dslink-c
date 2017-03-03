@@ -54,7 +54,8 @@ List *permission_list_load(json_t *json);
 
 PermissionLevel get_permission(const char* path, struct BrokerNode* rootNode, struct RemoteDSLink *reqLink);
 
-uint8_t set_permission(const char* path, struct BrokerNode* rootNode, struct RemoteDSLink *reqLink, json_t *json);
+uint8_t set_permission_list(const char *path, struct BrokerNode *rootNode, struct RemoteDSLink *reqLink, json_t *json);
+json_t *get_permission_list(const char* path, struct BrokerNode* rootNode, struct RemoteDSLink *reqLink);
 
 #ifdef __cplusplus
 }
