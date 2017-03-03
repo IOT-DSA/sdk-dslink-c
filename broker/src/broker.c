@@ -350,7 +350,6 @@ int broker_start() {
 
     ret = broker_start_server(config);
 exit:
-    json_decref(config);
     broker_free(&broker);
     dslink_free(mainLoop);
     return ret;

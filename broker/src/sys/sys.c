@@ -86,7 +86,7 @@ int broker_sys_node_populate(BrokerNode *sysNode) {
     init_sys_upstream_node(sysNode);
     init_sys_static(sysNode);
     init_clear_conns(sysNode);
-    init_update_permissions_action(sysNode);
+    init_permissions_actions(sysNode);
     init_throughput(sysNode);
     return 0;
 }

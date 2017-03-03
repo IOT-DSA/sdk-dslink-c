@@ -5,6 +5,7 @@
 #include <string.h>
 #include <dslink/utils.h>
 #include <broker/broker.h>
+#include <broker/config.h>
 
 const char* PERMISSION_NAMES[6] = {"none", "list", "read", "write", "config", "never"};
 
@@ -202,7 +203,7 @@ PermissionLevel get_permission(const char* path, BrokerNode* rootNode, RemoteDSL
 
 
 static
-uint8_t set_virtual_permission(const char* path, VirtualDownstreamNode* node, json_t *json) {
+uint8_t set_virtual_permission_list(const char* path, VirtualDownstreamNode* node, json_t *json) {
     if (!path || *path == 0) {
         List *permissions = permission_list_load(json);
         permission_list_free(node->permissionList);
@@ -227,12 +228,12 @@ uint8_t set_virtual_permission(const char* path, VirtualDownstreamNode* node, js
             virtual_downstream_node_init(child);
             dslink_map_set(&node->childrenNode, dslink_str_ref(name), dslink_ref(child, NULL));
         }
-        return set_virtual_permission(next, child, json);
+        return set_virtual_permission_list(next, child, json);
     }
 }
 
 static
-uint8_t set_node_permission(const char* path, BrokerNode* node, json_t *json) {
+uint8_t set_node_permission_list(const char* path, BrokerNode* node, json_t *json) {
     if (!path || *path == 0) {
         List *permissions = permission_list_load(json);
         permission_list_free(node->permissionList);
@@ -258,12 +259,12 @@ uint8_t set_node_permission(const char* path, BrokerNode* node, json_t *json) {
                 virtual_downstream_node_init(child);
                 dslink_map_set(&((DownstreamNode *)node)->children_permissions, dslink_str_ref(name), dslink_ref(child, NULL));
             }
-            return set_virtual_permission(next, child, json);
+            return set_virtual_permission_list(next, child, json);
         } else {
             ref_t *ref = dslink_map_get(node->children, name);
             if (ref && ref->data) {
                 BrokerNode *child = ref->data;
-                return set_node_permission(next, child, json);
+                return set_node_permission_list(next, child, json);
             } else {
                 return 1;
             }
@@ -271,7 +272,7 @@ uint8_t set_node_permission(const char* path, BrokerNode* node, json_t *json) {
     }
 }
 
-uint8_t set_permission(const char* path, struct BrokerNode* rootNode, struct RemoteDSLink *reqLink, json_t *json) {
+uint8_t set_permission_list(const char *path, struct BrokerNode *rootNode, struct RemoteDSLink *reqLink, json_t *json) {
     if (!json_is_array(json)) {
         return 1;
     }
@@ -279,10 +280,12 @@ uint8_t set_permission(const char* path, struct BrokerNode* rootNode, struct Rem
     if (level != PERMISSION_CONFIG) {
         return 1;
     }
-    uint8_t rslt = set_node_permission(path+1, rootNode, json);
+    uint8_t rslt = set_node_permission_list(path+1, rootNode, json);
     if (rslt == 0) {
         Broker *broker = mainLoop->data;
-        if (dslink_str_starts_with(path, "/data/")) {
+        if (strcmp(path, "/") == 0) {
+            broker_change_default_permissions(json);
+        } else if (dslink_str_starts_with(path, "/data/")) {
             broker_data_nodes_changed(broker);
         } else if (dslink_str_starts_with(path, "/downstream/")) {
             broker_downstream_nodes_changed(broker);
@@ -290,6 +293,80 @@ uint8_t set_permission(const char* path, struct BrokerNode* rootNode, struct Rem
     }
 
     return rslt;
+}
+
+
+static
+json_t *get_virtual_permission_list(const char* path, VirtualDownstreamNode* node) {
+    if (!path || *path == 0) {
+        return permission_list_save(node->permissionList);
+    } else {
+        const char* next = strstr(path, "/");
+        char* name;
+        if (next) {
+            name = dslink_calloc(next - path + 1, 1);
+            memcpy(name, path, next-path);
+            next ++; // remove '/'
+        } else {
+            name = (char*)path;
+        }
+        ref_t *ref = dslink_map_get(&node->childrenNode, name);
+        VirtualDownstreamNode *child;
+        if (ref && ref->data) {
+            child = ref->data;
+        } else {
+            child = dslink_calloc(1, sizeof(VirtualDownstreamNode));
+            virtual_downstream_node_init(child);
+            dslink_map_set(&node->childrenNode, dslink_str_ref(name), dslink_ref(child, NULL));
+        }
+        return get_virtual_permission_list(next, child);
+    }
+}
+
+static
+json_t *get_node_permission_list(const char* path, BrokerNode* node) {
+    if (!path || *path == 0) {
+        return permission_list_save(node->permissionList);
+    } else {
+        const char* next = strstr(path, "/");
+        char* name;
+        if (next) {
+            name = dslink_calloc(next - path + 1, 1);
+            memcpy(name, path, next-path);
+            next ++; // remove '/'
+        } else {
+            name = (char*)path;
+        }
+        if (node->type == DOWNSTREAM_NODE) {
+            ref_t *ref = dslink_map_get(&((DownstreamNode *)node)->children_permissions, name);
+            VirtualDownstreamNode *child;
+            if (ref && ref->data) {
+                child = ref->data;
+            } else {
+                child = dslink_calloc(1, sizeof(VirtualDownstreamNode));
+                virtual_downstream_node_init(child);
+                dslink_map_set(&((DownstreamNode *)node)->children_permissions, dslink_str_ref(name), dslink_ref(child, NULL));
+            }
+            return get_virtual_permission_list(next, child);
+        } else {
+            ref_t *ref = dslink_map_get(node->children, name);
+            if (ref && ref->data) {
+                BrokerNode *child = ref->data;
+                return get_node_permission_list(next, child);
+            } else {
+                return NULL;
+            }
+        }
+    }
+}
+
+json_t * get_permission_list(const char* path, struct BrokerNode* rootNode, struct RemoteDSLink *reqLink) {
+
+    PermissionLevel level = get_permission(path, rootNode, reqLink);
+    if (level < PERMISSION_READ) {
+        return NULL;
+    }
+    return get_node_permission_list(path+1, rootNode);
 }
 
 // permission list for node or virtual node

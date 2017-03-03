@@ -7,7 +7,7 @@ extern "C" {
 
 struct BrokerNode;
 
-int init_update_permissions_action(struct BrokerNode *sysNode);
+int init_permissions_actions(struct BrokerNode *sysNode);
 
 
 #ifdef __cplusplus
