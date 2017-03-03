@@ -5,6 +5,7 @@
 #include <string.h>
 #include <dslink/utils.h>
 #include <broker/broker.h>
+#include <broker/config.h>
 
 const char* PERMISSION_NAMES[6] = {"none", "list", "read", "write", "config", "never"};
 
@@ -282,7 +283,9 @@ uint8_t set_permission_list(const char *path, struct BrokerNode *rootNode, struc
     uint8_t rslt = set_node_permission_list(path+1, rootNode, json);
     if (rslt == 0) {
         Broker *broker = mainLoop->data;
-        if (dslink_str_starts_with(path, "/data/")) {
+        if (strcmp(path, "/") == 0) {
+            broker_change_default_permissions(json);
+        } else if (dslink_str_starts_with(path, "/data/")) {
             broker_data_nodes_changed(broker);
         } else if (dslink_str_starts_with(path, "/downstream/")) {
             broker_downstream_nodes_changed(broker);
