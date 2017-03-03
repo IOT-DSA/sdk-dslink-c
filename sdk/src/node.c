@@ -171,7 +171,24 @@ DSNode *dslink_node_get_path(DSNode *root, const char *path) {
     return node;
 }
 
-void dslink_node_tree_free_basic(DSNode *root) {
+void dslink_node_tree_free_basic(DSLink *link, DSNode *root) {
+
+    // DONE: remove node from open_streams, list_subs, and value_path_subs: implemented
+    dslink_map_remove(link->responder->value_path_subs, (void*)root->path);
+    MapEntry *foundMapEntry = NULL;
+    dslink_map_foreach(link->responder->value_sid_subs) {
+        if(!strcmp(dslink_map_get(link->responder->value_sid_subs, entry->key->data)->data,root->path)) {
+            foundMapEntry = entry;
+        }
+    }
+    if(foundMapEntry)
+        dslink_map_remove(link->responder->value_sid_subs,foundMapEntry->key->data);
+
+    ref_t* ridRef = dslink_map_remove_get(link->responder->list_subs,(void*)root->path);
+    if(ridRef)
+        dslink_map_remove(link->responder->open_streams,ridRef->data);
+
+
     DSLINK_CHECKED_EXEC(dslink_free, (void *) root->path);
     DSLINK_CHECKED_EXEC(dslink_free, (void *) root->name);
     DSLINK_CHECKED_EXEC(dslink_free, (void *) root->profile);
@@ -183,7 +200,7 @@ void dslink_node_tree_free_basic(DSNode *root) {
             {
                 DSNode *child = entry->value->data;
                 child->parent = NULL;
-                dslink_node_tree_free_basic(child);
+                dslink_node_tree_free_basic(link, child);
                 dslink_decref(entry->value);
             }
             MapEntry *tmp = entry->next;
@@ -204,7 +221,7 @@ void dslink_node_tree_free_basic(DSNode *root) {
         dslink_free(root->meta_data);
     }
 
-    // TODO: remove node from open_streams, list_subs, and value_path_subs
+
 
     dslink_free(root);
 }
@@ -254,7 +271,7 @@ void dslink_node_tree_free(DSLink *link, DSNode *root) {
         }
     }
 cleanup:
-    dslink_node_tree_free_basic(root);
+    dslink_node_tree_free_basic(link, root);
 }
 int dslink_node_set_meta_new(struct DSLink *link, DSNode *node, const char *name, json_t *value) {
     int result = dslink_node_set_meta(link, node, name, value);

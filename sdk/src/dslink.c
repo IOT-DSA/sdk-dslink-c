@@ -247,10 +247,6 @@ int dslink_handle_key(DSLink *link) {
 void dslink_close(DSLink *link) {
     link->closing = 1;
     wslay_event_queue_close(link->_ws, WSLAY_CODE_NORMAL_CLOSURE, NULL, 0);
-
-    uv_close((uv_handle_t*)&link->async_set,NULL);
-    uv_close((uv_handle_t*)&link->async_get,NULL);
-    uv_close((uv_handle_t*)&link->async_run,NULL);
     uv_stop(&link->loop);
 }
 
@@ -549,7 +545,7 @@ void dslink_async_set_node_value(uv_async_t *async_handle) {
         }
 
     }
-    
+
     //free async_data which is allocated in API func
     dslink_free(async_data->node_path);
     json_decref(async_data->set_value);
