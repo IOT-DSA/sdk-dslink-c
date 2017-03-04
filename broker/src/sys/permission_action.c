@@ -3,6 +3,7 @@
 #include <broker/utils.h>
 #include <broker/broker.h>
 #include <broker/net/ws.h>
+#include <broker/msg/msg_list.h>
 
 static
 void update_permissions(RemoteDSLink *link,
@@ -69,7 +70,7 @@ void get_permissions(RemoteDSLink *link,
             permissions = json_null();
         }
 
-
+        // send response
         json_t *top = json_object();
         json_t *resps = json_array();
         json_object_set_new_nocheck(top, "responses", resps);
@@ -92,6 +93,64 @@ void get_permissions(RemoteDSLink *link,
     }
 }
 
+
+
+static
+void update_permission_group(RemoteDSLink *link,
+                        BrokerNode *node,
+                        json_t *req, PermissionLevel maxPermission) {
+    (void)node;
+    if (maxPermission < PERMISSION_CONFIG) {
+        broker_utils_send_closed_resp(link, req, "permissionDenied");
+        return;
+    }
+    if (link && req) {
+        json_t *params = json_object_get(req, "params");
+        if (!json_is_object(params)) {
+            broker_utils_send_closed_resp(link, req, "invalidParameter");
+            return;
+        }
+
+        json_t *Name = json_object_get(params, "Name");
+        json_t *Group = json_object_get(params, "Group");
+        if (!json_is_string(Group)) {
+            Group = NULL;
+        }
+        if (!json_is_string(Name)) {
+            broker_utils_send_closed_resp(link, req, "invalidParameter");
+            return;
+        }
+
+        Broker *broker = mainLoop->data;
+
+        ref_t *ref = dslink_map_get(broker->downstream->children, (void *)json_string_value(Name));
+        if (ref && ref->data) {
+            DownstreamNode *child = ref->data;
+
+            ref_t *streamRef = dslink_map_get(&child->list_streams, "/");
+            if (streamRef && streamRef->data) {
+                BrokerListStream * stream = streamRef->data;
+                update_list_attribute((BrokerNode*)child, stream ,"$$group", Group);
+            }
+
+            broker_downstream_nodes_changed(broker);
+            if (child->link) {
+                if (child->link->client) {
+                    dslink_socket_close(child->link->client->sock);
+                    uv_close((uv_handle_t *) child->link->client->poll,
+                             broker_free_handle);
+                    dslink_free(child->link->client);
+                    child->link->client = NULL;
+                }
+
+                broker_remote_dslink_free(child->link);
+                child->link = NULL;
+            }
+        }
+
+        broker_utils_send_closed_resp(link, req, NULL);
+    }
+}
 int init_permissions_actions(BrokerNode *sysNode) {
 
 // update permissions
@@ -157,6 +216,37 @@ int init_permissions_actions(BrokerNode *sysNode) {
         return 1;
     }
     getPermissionsAction->on_invoke = get_permissions;
+
+
+
+// update permission group
+    BrokerNode *updateGroupAction = broker_node_create("updateGroup", "node");
+    if (!updateGroupAction) {
+        return 1;
+    }
+
+    if (broker_node_add(sysNode, updateGroupAction) != 0) {
+        broker_node_free(updateGroupAction);
+        return 1;
+    }
+
+    if (json_object_set_new_nocheck(updateGroupAction->meta, "$invokable",
+                                    json_string_nocheck("config")) != 0) {
+        return 1;
+    }
+
+    if (json_object_set_new_nocheck(updateGroupAction->meta, "$name",
+                                    json_string_nocheck("Update Permission Group")) != 0) {
+        return 1;
+    }
+
+
+    params = json_loads("[{\"name\":\"Name\",\"type\":\"string\"},{\"name\":\"Group\",\"type\":\"group\"}]", 0, &err);
+    if (json_object_set_new_nocheck(updateGroupAction->meta, "$params", params) != 0) {
+        return 1;
+    }
+
+    updateGroupAction->on_invoke = update_permission_group;
 
     return 0;
 }
