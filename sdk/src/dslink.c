@@ -99,14 +99,23 @@ int dslink_parse_opts(int argc,
             brokerUrl = "http://127.0.0.1:8080/conn";
         }
     }
-
     config->broker_url = dslink_url_parse(brokerUrl);
+
     if (token->count > 0) {
         config->token = token->sval[0];
     } else if (json) {
         json_t *str = dslink_json_raw_get_config(json, "token");
         if (str) {
             config->token = json_string_value(str);
+        }
+    }
+
+    if (name->count > 0) {
+        config->name = name->sval[0];
+    } else if (json) {
+        json_t *str = dslink_json_raw_get_config(json, "name");
+        if (str) {
+            config->name = json_string_value(str);
         }
     }
 
@@ -380,6 +389,7 @@ int dslink_init_do(DSLink *link, DSLinkCallbacks *cbs) {
     if (cbs->init_cb) {
         cbs->init_cb(link);
     }
+
 
     if ((ret = dslink_handshake_generate(link, &handshake, &dsId)) != 0) {
         log_fatal("Handshake failed: %d\n", ret);

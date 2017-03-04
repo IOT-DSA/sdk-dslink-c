@@ -1,5 +1,6 @@
 #if defined(__linux__)
 #include <stdint.h>
+#include <stdio.h>
 #endif
 
 #include <stdlib.h>
@@ -94,6 +95,16 @@ exit:
     dslink_url_free(url);
     return NULL;
 }
+
+char *dslink_url_convert_string(Url *url, char *urlStr) {
+
+    strcpy(urlStr,"");
+    if(url && url->uri && url->host && url->scheme) {
+        sprintf(urlStr,"%s://%s:%u%s",url->scheme,url->host,url->port,url->uri);
+    }
+    return urlStr;
+}
+
 
 void dslink_url_handle_scheme(const char* scheme,
                               unsigned short *port,
