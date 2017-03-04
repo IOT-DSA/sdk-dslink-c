@@ -340,8 +340,12 @@ int broker_handshake_handle_ws(Broker *broker,
     }
     
     // add permission group to link
-    json_t *group = json_object_get(node->meta, "$$group");
-    permission_groups_load(&link->permission_groups, dsId, json_string_value(group));
+    if (node->groups) {
+        permission_groups_load(&link->permission_groups, dsId, json_string_value(node->groups));
+    } else {
+        permission_groups_load(&link->permission_groups, dsId, NULL);
+    }
+
 
     link->client = client;
     link->dsId = oldDsId;

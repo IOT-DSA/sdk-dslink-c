@@ -68,6 +68,8 @@ typedef struct DownstreamNode {
 
     ref_t *dsId;
 
+    json_t *groups;
+
     // Map<char *, Stream *>
     Map list_streams;
 

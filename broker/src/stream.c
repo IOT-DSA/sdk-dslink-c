@@ -250,6 +250,9 @@ void broker_stream_list_reset_remote_cache(BrokerListStream *stream,
             if (link->linkData) {
                 json_object_set_nocheck(stream->updates_cache, "$linkData", link->linkData);
             }
+            if (link->node->groups) {
+                json_object_set_nocheck(stream->updates_cache, "$$group", link->node->groups);
+            }
             const char *key;
             json_t *value;
             json_object_foreach(stream->node->meta, key, value) {
@@ -276,6 +279,13 @@ void broker_stream_list_reset_remote_cache(BrokerListStream *stream,
         json_object_set_new_nocheck(stream->updates_cache,
                                     "$disconnectedTs",
                                     json_string_nocheck(ts));
+
+        if (strcmp(stream->remote_path, "/") == 0) {
+            // add linkData into the updates_cache
+            if (((DownstreamNode*)stream->node)) {
+                json_object_set_nocheck(stream->updates_cache, "$$group", ((DownstreamNode*)stream->node)->groups);
+            }
+        }
         stream->cache_sent = 0;
     }
 }

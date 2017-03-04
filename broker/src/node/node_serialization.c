@@ -45,6 +45,7 @@ void broker_save_downstream_nodes(uv_timer_t *handle) {
     dslink_map_foreach(broker->downstream->children) {
         DownstreamNode *node = entry->value->data;
         json_t *data = json_copy(node->meta);
+        json_object_del(data, "$disconnectedTs");
 
         json_t *plist = permission_list_save(node->permissionList);
         if (plist) {
@@ -125,6 +126,15 @@ int broker_load_downstream_nodes(Broker *broker) {
                     } else if (*key == '$' || *key == '@') {
                         // copy metadata
                         json_object_set_nocheck(node->meta, key, value);
+                        if (strcmp(key, "$$group") == 0 && json_is_string(value)) {
+                            if (node->groups) {
+                                json_decref(node->groups);
+                            }
+                            node->groups = value;
+                            if (node->groups) {
+                                json_incref(node->groups);
+                            }
+                        }
                     } else {
                         broker_load_downstream_virtual_nodes(&node->children_permissions, key, value);
                     }
