@@ -128,22 +128,28 @@ void update_permission_group(RemoteDSLink *link,
             DownstreamNode *child = ref->data;
 
             ref_t *streamRef = dslink_map_get(&child->list_streams, "/");
+
+            if (child->groups) {
+                json_decref(child->groups);
+            }
+            if (Group){
+                child->groups = Group;
+                json_incref(child->groups);
+                json_object_set_nocheck(child->meta,"$$group", Group);
+            } else {
+                child->groups = NULL;
+                json_object_del(child->meta,"$$group");
+            }
+
             if (streamRef && streamRef->data) {
                 BrokerListStream * stream = streamRef->data;
                 update_list_attribute((BrokerNode*)child, stream ,"$$group", Group);
             }
 
+
             broker_downstream_nodes_changed(broker);
             if (child->link) {
-                if (child->link->client) {
-                    dslink_socket_close(child->link->client->sock);
-                    uv_close((uv_handle_t *) child->link->client->poll,
-                             broker_free_handle);
-                    dslink_free(child->link->client);
-                    child->link->client = NULL;
-                }
-
-                broker_remote_dslink_free(child->link);
+                broker_close_link(child->link);
                 child->link = NULL;
             }
         }
