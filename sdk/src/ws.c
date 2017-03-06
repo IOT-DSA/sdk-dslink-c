@@ -107,7 +107,7 @@ int dslink_ws_send_internal(wslay_event_context_ptr ctx, const char *data, uint8
     DSLink *link = (DSLink*)ctx->user_data;
     uv_sem_post(&link->ws_send_sem);
 
-    log_debug("Message sent: %s\n", data);
+    log_debug("Message queued to be sent: %s\n", data);
     return 0;
 }
 
@@ -245,6 +245,7 @@ static
 void recv_frame_cb(wslay_event_context_ptr ctx,
                    const struct wslay_event_on_msg_recv_arg *arg,
                    void *user_data) {
+
     (void) ctx;
     if (arg->opcode != WSLAY_TEXT_FRAME) {
         return;
@@ -320,6 +321,8 @@ void io_handler(uv_poll_t *poll, int status, int events) {
 
 static
 void ping_handler(uv_timer_t *timer) {
+    log_debug("Pinging...\n");
+
     DSLink *link = timer->data;
     json_t *obj = json_object();
     dslink_ws_send_obj(link->_ws, obj);
@@ -338,15 +341,21 @@ void poll_on_close(uv_handle_t *handle) {
 
 void dslink_send_ws_thread(void *arg) {
 
+    int ret;
     DSLink *link = (DSLink*)arg;
     while(1) {
         uv_sem_wait(&link->ws_send_sem);
 
-        if(link->closing ==1)
+        if(link->closingSendThread ==1) {
+            log_debug("Closing ws send thread\n");
             break;
+        }
 
-        if (wslay_event_send(link->_ws) != 0) {
-            log_debug("Send error in thread\n");
+        ret = wslay_event_send(link->_ws);
+        if (ret != 0) {
+            log_debug("Send error in thread: %d\n",ret);
+        } else {
+            log_debug("Message sent: %d\n",ret);
         }
     }
 
@@ -392,15 +401,18 @@ void dslink_handshake_handle_ws(DSLink *link, link_callback on_requester_ready_c
         on_requester_ready_cb(link);
     }
 
+    link->closingSendThread = 0;
     uv_sem_init(&link->ws_send_sem,0);
     uv_thread_t send_ws_thread_id;
     uv_thread_create(&send_ws_thread_id, dslink_send_ws_thread, link);
 
     uv_run(&link->loop, UV_RUN_DEFAULT);
+
     uv_timer_stop(ping);
     uv_close((uv_handle_t *) ping, ping_timer_on_close);
     uv_close((uv_handle_t *) poll, poll_on_close);
 
+    link->closingSendThread = 1;
     uv_sem_post(&link->ws_send_sem);
     uv_thread_join(&send_ws_thread_id);
     uv_sem_destroy(&link->ws_send_sem);

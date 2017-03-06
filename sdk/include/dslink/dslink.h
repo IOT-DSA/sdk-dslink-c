@@ -40,6 +40,7 @@ struct DSLink {
     uint8_t is_responder;
 
     int closing;
+    int closingSendThread;
 
     struct wslay_event_context *_ws; // Event context for WSLay
     Socket *_socket; // Socket for the _ws connection

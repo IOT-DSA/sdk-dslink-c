@@ -6,6 +6,8 @@
 #include <broker/stream.h>
 #include <broker/subscription.h>
 
+#include <broker/net/ws.h>
+
 int broker_remote_dslink_init(RemoteDSLink *link) {
     memset(link, 0, sizeof(RemoteDSLink));
     if (dslink_map_init(&link->responder_streams, dslink_map_uint32_cmp,
@@ -19,10 +21,27 @@ int broker_remote_dslink_init(RemoteDSLink *link) {
         return 1;
     }
     permission_groups_init(&link->permission_groups);
+
+#ifdef BROKER_WS_SEND_THREAD_MODE
+    link->closing_send_thread = 0;
+    uv_sem_init(&link->ws_send_sem,0);
+    uv_thread_t send_ws_thread_id;
+    uv_thread_create(&send_ws_thread_id, broker_send_ws_thread, link);
+    link->ws_send_thread_id = &send_ws_thread_id;
+#endif
+
     return 0;
 }
 
 void broker_remote_dslink_free(RemoteDSLink *link) {
+
+#ifdef BROKER_WS_SEND_THREAD_MODE
+    link->closing_send_thread = 1;
+    uv_sem_post(&link->ws_send_sem);
+    uv_thread_join(link->ws_send_thread_id);
+    uv_sem_destroy(&link->ws_send_sem);
+#endif
+
     if (link->auth) {
         mbedtls_ecdh_free(&link->auth->tempKey);
         DSLINK_CHECKED_EXEC(free, (void *) link->auth->pubKey);
