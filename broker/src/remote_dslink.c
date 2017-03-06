@@ -25,9 +25,7 @@ int broker_remote_dslink_init(RemoteDSLink *link) {
 #ifdef BROKER_WS_SEND_THREAD_MODE
     link->closing_send_thread = 0;
     uv_sem_init(&link->ws_send_sem,0);
-    uv_thread_t send_ws_thread_id;
-    uv_thread_create(&send_ws_thread_id, broker_send_ws_thread, link);
-    link->ws_send_thread_id = &send_ws_thread_id;
+    uv_thread_create(&link->ws_send_thread_id, broker_send_ws_thread, link);
 #endif
 
     return 0;
@@ -38,7 +36,7 @@ void broker_remote_dslink_free(RemoteDSLink *link) {
 #ifdef BROKER_WS_SEND_THREAD_MODE
     link->closing_send_thread = 1;
     uv_sem_post(&link->ws_send_sem);
-    uv_thread_join(link->ws_send_thread_id);
+    uv_thread_join(&link->ws_send_thread_id);
     uv_sem_destroy(&link->ws_send_sem);
 #endif
 

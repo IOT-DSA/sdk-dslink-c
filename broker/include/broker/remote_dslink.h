@@ -68,7 +68,7 @@ typedef struct RemoteDSLink {
 #ifdef BROKER_WS_SEND_THREAD_MODE
     uv_sem_t ws_send_sem;
     int closing_send_thread;
-    uv_thread_t *ws_send_thread_id;
+    uv_thread_t ws_send_thread_id;
 #endif
 
 } RemoteDSLink;
