@@ -154,6 +154,7 @@ static
 void connect_conn_callback(uv_poll_t *handle, int status, int events) {
     (void) status;
     (void) events;
+
     UpstreamPoll *upstreamPoll = handle->data;
 
     uv_poll_stop(handle);
@@ -162,12 +163,22 @@ void connect_conn_callback(uv_poll_t *handle, int status, int events) {
 
     char *resp = NULL;
 
+    // We need to put the socket back into blocking mode to be able to receive the whole response
+    // potentially sliced into multiple network packets
+    mbedtls_net_set_block( &(upstreamPoll->sock->socket_ctx) );
+    
     int respLen = 0;
     while (1) {
         char buf[1024];
+        // As we know we only send a single http-request we may read until an error occurs or whole response was received.
         int read = dslink_socket_read(upstreamPoll->sock, buf, sizeof(buf) - 1);
         if (read <= 0) {
-            break;
+          int err = errno;
+          if ( err == EINTR ) {
+            // If call was interrupted by a signal we try it again.
+            continue;
+          }
+          break;
         }
         if (resp == NULL) {
             resp = dslink_malloc((size_t) read + 1);
