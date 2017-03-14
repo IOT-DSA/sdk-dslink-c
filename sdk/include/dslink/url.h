@@ -24,7 +24,8 @@ void dslink_url_free(Url *url);
 void dslink_url_handle_scheme(const char *scheme,
                               unsigned short *port,
                               uint_fast8_t *secure);
-
+void dslink_url_handle_scheme_for_secure(const char *scheme,
+                                         uint_fast8_t *secure);
 #ifdef __cplusplus
 }
 #endif

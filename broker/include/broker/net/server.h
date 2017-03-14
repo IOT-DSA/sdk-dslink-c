@@ -13,12 +13,15 @@ extern "C" {
 
 typedef struct Server Server;
 
+typedef struct SslServer SslServer;
+
 typedef struct Client {
     Server *server;
     Socket *sock;
     void *sock_data;
     uv_poll_t *poll;
 } Client;
+
 
 typedef void (*DataReadyCallback)(Client *client,
                                   void *data);
