@@ -331,12 +331,12 @@ int broker_handshake_handle_ws(Broker *broker,
     }
 
     if (node->link) {
-        Client *c = node->link->client;
+//        Client *c = node->link->client;
         broker_close_link(node->link);
-        uv_poll_t *poll = c->poll;
-        dslink_socket_free(c->sock);
-        dslink_free(c);
-        uv_close((uv_handle_t *) poll, broker_free_handle);
+//        uv_poll_t *poll = c->poll;
+//        dslink_socket_free(c->sock);
+//        dslink_free(c);
+//        uv_close((uv_handle_t *) poll, broker_free_handle);
     }
     
     // add permission group to link
