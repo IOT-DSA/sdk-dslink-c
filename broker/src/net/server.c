@@ -21,6 +21,7 @@ static void mbed_debug( void *ctx, int level,
                       const char *str )
 {
     ((void) level);
+    ((void) ctx);
     log_info( "%s:%04d: %s", file, line, str );
 }
 
