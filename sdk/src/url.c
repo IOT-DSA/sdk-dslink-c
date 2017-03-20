@@ -34,6 +34,7 @@ Url *dslink_url_parse(const char *address) {
             do {
                 c = *(address + (++len));
             } while (c == '/');
+            dslink_url_handle_scheme_for_secure(url->scheme, &url->secure);
             state = 1;
             address += len;
             len = 0;
@@ -120,7 +121,19 @@ void dslink_url_handle_scheme(const char* scheme,
         *secure = 1;
     }
 }
+void dslink_url_handle_scheme_for_secure(const char *scheme,
+                                         uint_fast8_t *secure) {
 
+    if (!scheme) {
+        return;
+    }
+
+    if (strcmp(scheme, "http") == 0) {
+        *secure = 0;
+    } else if (strcmp(scheme, "https") == 0) {
+        *secure = 1;
+    }
+}
 void dslink_url_free(Url *url) {
     if (!url) {
         return;

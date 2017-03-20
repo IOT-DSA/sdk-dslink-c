@@ -85,6 +85,7 @@ exit:
 
 static
 int handle_ws(Broker *broker, HttpRequest *req, Client *client) {
+
     size_t len = 0;
     char *dsId = NULL;
     const char *key = broker_http_header_get(req->headers,
@@ -118,7 +119,73 @@ fail:
     return 1;
 }
 
+void broker_https_on_data_callback(Client *client, void *data) {
+
+    Broker *broker = data;
+    RemoteDSLink *link = client->sock_data;
+    if (link) {
+        link->ws->read_enabled = 1;
+        wslay_event_recv(link->ws);
+        if (link->pendingClose) {
+            // clear the poll now, so it won't get cleared twice
+            link->client->poll = NULL;
+            broker_close_link(link);
+        }
+        return;
+    }
+
+    if (client->sock->socket_ctx.fd == -1) {
+        goto exit;
+    }
+
+    HttpRequest req;
+    char buf[1024];
+    char bodyBuf[1024];
+    {
+        int read = dslink_socket_read(client->sock, buf, sizeof(buf) - 1);
+        buf[read] = '\0';
+        int err = broker_http_parse_req(&req, buf);
+        if (err) {
+            goto exit;
+        }
+
+
+        //only java dslinks sends the body as a separate SSL record
+        read = dslink_socket_read(client->sock, bodyBuf, sizeof(bodyBuf) - 1);
+        if(read > 0) {
+            bodyBuf[read] = '\0';
+            req.body = bodyBuf;
+        }
+
+    }
+
+    if (strcmp(req.uri.resource, "/conn") == 0) {
+        if (strcmp(req.method, "POST") != 0) {
+            log_info("invalid method on /conn \n");
+            broker_send_bad_request(client->sock);
+            goto exit;
+        }
+
+        handle_conn(broker, &req, client->sock);
+    } else if (strcmp(req.uri.resource, "/ws") == 0) {
+        if (strcmp(req.method, "GET") != 0) {
+            log_info("invalid method on /ws \n");
+            broker_send_bad_request(client->sock);
+            goto exit;
+        }
+
+        handle_ws(broker, &req, client);
+        return;
+    } else {
+        broker_send_not_found_error(client->sock);
+    }
+
+    exit:
+    dslink_socket_close_nofree(client->sock);
+}
+
 void broker_on_data_callback(Client *client, void *data) {
+
     Broker *broker = data;
     RemoteDSLink *link = client->sock_data;
     if (link) {
@@ -145,6 +212,7 @@ void broker_on_data_callback(Client *client, void *data) {
         if (err) {
             goto exit;
         }
+
     }
 
     if (strcmp(req.uri.resource, "/conn") == 0) {

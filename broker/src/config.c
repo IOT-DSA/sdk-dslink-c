@@ -41,6 +41,25 @@ json_t *broker_config_gen() {
             json_object_set_new_nocheck(http, "port", json_integer(8100));
         }
     }
+    json_t *https = json_object();
+    {
+        if (!https) {
+            goto del_broker;
+        }
+
+        if (json_object_set_new_nocheck(broker_config, "https", https) != 0) {
+            goto del_https;
+        }
+
+        {
+            json_object_set_new_nocheck(https, "enabled", json_true());
+            json_object_set_new_nocheck(https, "host", json_string_nocheck("0.0.0.0"));
+            json_object_set_new_nocheck(https, "port", json_integer(8463));
+            json_object_set_new_nocheck(https, "certName", json_string_nocheck("server.pem"));
+            json_object_set_new_nocheck(https, "certKeyName", json_string_nocheck("key.pem"));
+
+        }
+    }
 
     json_object_set_new_nocheck(broker_config, "log_level", json_string_nocheck("info"));
     json_object_set_new_nocheck(broker_config, "allowAllLinks", json_true());
@@ -72,6 +91,9 @@ json_t *broker_config_gen() {
     }
 
     goto exit;
+
+del_https:
+    json_decref(https);
 del_http:
     json_decref(http);
 del_broker:

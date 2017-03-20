@@ -112,6 +112,7 @@ int dslink_socket_connect(Socket **sock,
 
 int dslink_socket_read(Socket *sock, char *buf, size_t len) {
     int r;
+
     if (sock->secure) {
         r = mbedtls_ssl_read(&((SslSocket *) sock)->ssl,
                              (unsigned char *) buf, len);

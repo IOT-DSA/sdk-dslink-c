@@ -306,6 +306,7 @@ void recv_frame_cb(wslay_event_context_ptr ctx,
 
 static
 void io_handler(uv_poll_t *poll, int status, int events) {
+
     (void) events;
     if (status < 0) {
         return;
@@ -314,7 +315,10 @@ void io_handler(uv_poll_t *poll, int status, int events) {
     DSLink *link = poll->data;
     int stat = wslay_event_recv(link->_ws);
     if (stat == 0 && (link->_ws->error == WSLAY_ERR_NO_MORE_MSG
-                      || link->_ws->error == 0)) {
+                        || link->_ws->error == WSLAY_ERR_CALLBACK_FAILURE
+                        || link->_ws->error == 0)) {
+
+        log_debug("Stopping dslink loop...\n");
         uv_stop(&link->loop);
     }
 }
