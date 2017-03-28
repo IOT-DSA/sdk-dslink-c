@@ -393,7 +393,7 @@ void dslink_handshake_handle_ws(DSLink *link, link_callback on_requester_ready_c
         uv_poll_start(poll, UV_READABLE, io_handler);
     }
 
-    uv_timer_t *ping = dslink_calloc(1, sizeof(uv_poll_t));
+    uv_timer_t *ping = dslink_calloc(1, sizeof(uv_timer_t));
     {
         uv_timer_init(&link->loop, ping);
         ping->data = link;
