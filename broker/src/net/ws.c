@@ -82,7 +82,7 @@ void broker_send_ws_thread(void *arg) {
                 log_debug("Message sent: %d\n", ret);
             }
 
-        } while(link->ws->queued_msg_count != 0);
+        } while(wslay_event_want_write(link->ws));
     }
 }
 #endif
@@ -100,7 +100,12 @@ int broker_ws_send(RemoteDSLink *link, const char *data) {
 #ifdef BROKER_WS_SEND_THREAD_MODE
     uv_sem_post(&link->ws_send_sem);
 #else
-    wslay_event_send(link->ws);
+    do {
+        int ret = wslay_event_send(link->ws);
+        if (ret != 0) {
+            log_debug("Send error: %d\n", ret);
+        }
+    } while(wslay_event_want_write(link->ws));
 #endif
 
     log_debug("Message sent to %s: %s\n", (char *) link->dsId->data, data);
