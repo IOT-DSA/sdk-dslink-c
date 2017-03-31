@@ -143,6 +143,10 @@ void broker_https_on_data_callback(Client *client, void *data) {
     char bodyBuf[1024];
     {
         int read = dslink_socket_read(client->sock, buf, sizeof(buf) - 1);
+        if(read < 0) {
+            goto exit;
+        }
+
         buf[read] = '\0';
         int err = broker_http_parse_req(&req, buf);
         if (err) {
@@ -207,6 +211,9 @@ void broker_on_data_callback(Client *client, void *data) {
     char buf[1024];
     {
         int read = dslink_socket_read(client->sock, buf, sizeof(buf) - 1);
+        if(read < 0) {
+            goto exit;
+        }
         buf[read] = '\0';
         int err = broker_http_parse_req(&req, buf);
         if (err) {
