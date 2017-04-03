@@ -17,9 +17,6 @@ extern "C" {
 #include "broker/net/server.h"
 #include "broker/permission/permission.h"
 
-//comment out to disable sending ws messages in thread
-#define BROKER_WS_SEND_THREAD_MODE
-
 typedef struct RemoteAuth {
 
     char salt[48];
@@ -64,13 +61,6 @@ typedef struct RemoteDSLink {
     Map responder_streams;
 
     PermissionGroups permission_groups;
-
-#ifdef BROKER_WS_SEND_THREAD_MODE
-    uv_sem_t ws_send_sem;
-    int closing_send_thread;
-    uv_thread_t ws_send_thread_id;
-#endif
-
 } RemoteDSLink;
 
 int broker_remote_dslink_init(RemoteDSLink *link);
