@@ -74,7 +74,6 @@ void broker_server_client_ready(uv_poll_t *poll,
     if (client && (events & UV_WRITABLE)) {
         RemoteDSLink *link = client->sock_data;
         if (link) {
-            link->ws->write_enabled = 1;
             wslay_event_send(link->ws);
         }
     }
@@ -111,7 +110,6 @@ void broker_ssl_server_client_ready(uv_poll_t *poll,
     if (client && (events & UV_WRITABLE)) {
         RemoteDSLink *link = client->sock_data;
         if (link) {
-            link->ws->write_enabled = 1;
             wslay_event_send(link->ws);
         }
     }

@@ -124,7 +124,6 @@ void broker_https_on_data_callback(Client *client, void *data) {
     Broker *broker = data;
     RemoteDSLink *link = client->sock_data;
     if (link) {
-        link->ws->read_enabled = 1;
         wslay_event_recv(link->ws);
         if (link->pendingClose) {
             // clear the poll now, so it won't get cleared twice
@@ -193,7 +192,6 @@ void broker_on_data_callback(Client *client, void *data) {
     Broker *broker = data;
     RemoteDSLink *link = client->sock_data;
     if (link) {
-        link->ws->read_enabled = 1;
         wslay_event_recv(link->ws);
         if (link->pendingClose) {
             // clear the poll now, so it won't get cleared twice
