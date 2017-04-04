@@ -73,12 +73,10 @@ int broker_ws_send(RemoteDSLink *link, const char *data) {
     msg.opcode = WSLAY_TEXT_FRAME;
     wslay_event_queue_msg(link->ws, &msg);
 
-    do {
-        int ret = wslay_event_send(link->ws);
-        if (ret != 0) {
-            log_debug("Send error: %d\n", ret);
-        }
-    } while(wslay_event_want_write(link->ws));
+    int ret = wslay_event_send(link->ws);
+    if (ret != 0) {
+        log_debug("Send error: %d\n", ret);
+    }
 
     log_debug("Message sent to %s: %s\n", (char *) link->dsId->data, data);
 
