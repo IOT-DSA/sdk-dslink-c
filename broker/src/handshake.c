@@ -352,6 +352,7 @@ int broker_handshake_handle_ws(Broker *broker,
     link->node = node;
     node->dsId = oldDsId;
     client->sock_data = link;
+
     json_object_set_new_nocheck(node->meta, "$$dsId", json_string_nocheck(dsId));
 
     wslay_event_context_ptr ws;
@@ -380,6 +381,7 @@ int broker_handshake_handle_ws(Broker *broker,
     }
 
     log_info("DSLink `%s` has connected\n", dsId);
+
 exit:
     mbedtls_ecdh_free(&link->auth->tempKey);
     dslink_free((void *) link->auth->pubKey);

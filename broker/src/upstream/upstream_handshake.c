@@ -88,12 +88,26 @@ void upstream_io_handler(uv_poll_t *poll, int status, int events) {
         return;
     }
     UpstreamPoll *upstreamPoll = poll->data;
-    int stat = wslay_event_recv(upstreamPoll->ws);
-    if ((stat == 0 && (upstreamPoll->ws->error == WSLAY_ERR_NO_MORE_MSG
-                      || upstreamPoll->ws->error == 0))) {
-        upstream_reconnect(upstreamPoll);
-    } else if (upstreamPoll->remoteDSLink->pendingClose) {
-        upstream_reconnect(upstreamPoll);
+
+    if (events & UV_READABLE) {
+        int stat = wslay_event_recv(upstreamPoll->ws);
+        if ((stat == 0 && (upstreamPoll->ws->error == WSLAY_ERR_NO_MORE_MSG
+                          || upstreamPoll->ws->error == 0))) {
+            upstream_reconnect(upstreamPoll);
+        } else if (upstreamPoll->remoteDSLink->pendingClose) {
+            upstream_reconnect(upstreamPoll);
+        }
+    }
+
+    if (events & UV_WRITABLE) {
+        if(!wslay_event_want_write(upstreamPoll->ws)) {
+            log_debug("Stopping WRITE poll on upstream node\n");
+            uv_poll_start(poll, UV_READABLE, upstream_io_handler);
+        } else {
+            log_debug("Enabling READ/WRITE poll upstream node\n");
+            uv_poll_start(poll, UV_READABLE | UV_WRITABLE, upstream_io_handler);
+            wslay_event_send(upstreamPoll->ws);
+        }
     }
 }
 
@@ -145,6 +159,7 @@ void upstream_handshake_handle_ws(UpstreamPoll *upstreamPoll) {
 
     uv_poll_init(mainLoop, upstreamPoll->wsPoll, upstreamPoll->clientDslink->_socket->socket_ctx.fd);
     upstreamPoll->wsPoll->data = upstreamPoll;
+    client->poll_cb = upstream_io_handler;
     uv_poll_start(upstreamPoll->wsPoll, UV_READABLE, upstream_io_handler);
 
     init_upstream_node(mainLoop->data, upstreamPoll);

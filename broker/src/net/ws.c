@@ -10,6 +10,7 @@
 
 #include "broker/remote_dslink.h"
 #include "broker/net/ws.h"
+#include "broker/net/server.h"
 
 #include <dslink/utils.h>
 
@@ -72,11 +73,7 @@ int broker_ws_send(RemoteDSLink *link, const char *data) {
     msg.msg_length = strlen(data);
     msg.opcode = WSLAY_TEXT_FRAME;
     wslay_event_queue_msg(link->ws, &msg);
-
-    int ret = wslay_event_send(link->ws);
-    if (ret != 0) {
-        log_debug("Send error: %d\n", ret);
-    }
+    uv_poll_start(link->client->poll, UV_READABLE | UV_WRITABLE, link->client->poll_cb);
 
     log_debug("Message sent to %s: %s\n", (char *) link->dsId->data, data);
 
