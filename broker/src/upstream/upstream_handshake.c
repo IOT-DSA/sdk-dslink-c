@@ -290,7 +290,6 @@ void upstream_check_conn (uv_timer_t* handle) {
 
     upstreamPoll->dsId = dslink_strdup(dsId);
     upstreamPoll->connPoll->data = upstreamPoll;
-
     uv_poll_start(upstreamPoll->connPoll, UV_READABLE, connect_conn_callback);
     dslink_free(dsId);
 }

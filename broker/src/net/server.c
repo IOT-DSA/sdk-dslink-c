@@ -75,7 +75,7 @@ void broker_server_client_ready(uv_poll_t *poll,
         RemoteDSLink *link = client->sock_data;
         if (link) {
             if(!wslay_event_want_write(link->ws)) {
-                log_debug("Stopping WRITE poll on client\n");
+                log_debug("Stopping WRITE poll\n");
                 uv_poll_start(poll, UV_READABLE, broker_server_client_ready);
             } else {
                 log_debug("Enabling READ/WRITE poll on client\n");
@@ -84,7 +84,6 @@ void broker_server_client_ready(uv_poll_t *poll,
             }
         }
     }
-
 }
 
 static
