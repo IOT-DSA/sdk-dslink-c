@@ -26,6 +26,7 @@ ssize_t broker_want_read_cb(wslay_event_context_ptr ctx,
         if (errno == EAGAIN || ret == DSLINK_SOCK_WOULD_BLOCK) {
             wslay_event_set_error(ctx, WSLAY_ERR_WOULDBLOCK);
         } else {
+            link->pendingClose = 1;
             wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
         }
         return -1;
@@ -46,10 +47,15 @@ ssize_t broker_want_write_cb(wslay_event_context_ptr ctx,
 
     ssize_t written = -1;
     while((written = dslink_socket_write(link->client->sock, (char *) data, len)) < 0 && errno == EINTR);
-    if (written < 0) {
+    if (written == 0) {
+        link->pendingClose = 1;
+        wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
+        return -1;
+    } else if (written < 0) {
         if (errno == EAGAIN || written == DSLINK_SOCK_WOULD_BLOCK) {
             wslay_event_set_error(ctx, WSLAY_ERR_WOULDBLOCK);
         } else {
+            link->pendingClose = 1;
             wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
         }
         return -1;
