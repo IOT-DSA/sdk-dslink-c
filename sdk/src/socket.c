@@ -113,6 +113,10 @@ int dslink_socket_connect(Socket **sock,
 int dslink_socket_read(Socket *sock, char *buf, size_t len) {
     int r;
 
+    if(!sock) {
+        return DSLINK_SOCK_READ_ERR;
+    }
+
     if (sock->secure) {
         r = mbedtls_ssl_read(&((SslSocket *) sock)->ssl,
                              (unsigned char *) buf, len);
@@ -130,6 +134,10 @@ int dslink_socket_read(Socket *sock, char *buf, size_t len) {
 }
 
 int dslink_socket_write(Socket *sock, char *buf, size_t len) {
+    if(!sock) {
+        return DSLINK_SOCK_WRITE_ERR;
+    }
+
     int r = 0;
     if (sock->secure) {
         r = mbedtls_ssl_write(&((SslSocket *) sock)->ssl,

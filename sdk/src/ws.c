@@ -82,6 +82,7 @@ void io_handler(uv_poll_t *poll, int status, int events) {
         if(stat != 0) {
             log_debug("Stopping dslink loop...\n");
             uv_stop(&link->loop);
+            return;
         }
     }
 
@@ -92,7 +93,12 @@ void io_handler(uv_poll_t *poll, int status, int events) {
         } else {
             log_debug("Enabling READ/WRITE poll on link\n");
             uv_poll_start(poll, UV_READABLE | UV_WRITABLE, io_handler);
-            wslay_event_send(link->_ws);
+            int stat = wslay_event_send(link->_ws);
+            if(stat != 0) {
+                log_debug("Stopping dslink loop...\n");
+                uv_stop(&link->loop);
+                return;
+            }
         }
     }
 }
@@ -130,6 +136,9 @@ int dslink_ws_send_internal(wslay_event_context_ptr ctx, const char *data, uint8
     }
 
     DSLink *link = (DSLink*)ctx->user_data;
+    if(!link) {
+        return 1;
+    }
 
     // start polling on the socket, to trigger writes (We always want to poll reads)
     uv_poll_start(&(link->poll), UV_READABLE | UV_WRITABLE, io_handler);

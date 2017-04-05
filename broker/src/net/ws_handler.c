@@ -16,6 +16,19 @@ ssize_t broker_want_read_cb(wslay_event_context_ptr ctx,
     (void) flags;
 
     RemoteDSLink *link = user_data;
+    if (!link) {
+        wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
+        return -1;
+    } else if(!link->client) {
+        link->pendingClose = 1;
+        wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
+        return -1;
+    }  else if(!link->client->sock) {
+        link->pendingClose = 1;
+        wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
+        return -1;
+    }
+
     ssize_t ret = -1;
     while((ret = dslink_socket_read(link->client->sock, (char *) buf, len)) < 0 && errno == EINTR);
     if (ret == 0) {
@@ -39,8 +52,17 @@ ssize_t broker_want_write_cb(wslay_event_context_ptr ctx,
                       const uint8_t *data, size_t len,
                       int flags, void *user_data) {
     (void) flags;
+
     RemoteDSLink *link = user_data;
-    if (!link->client) {
+    if (!link) {
+        wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
+        return -1;
+    } else if(!link->client) {
+        link->pendingClose = 1;
+        wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
+        return -1;
+    }  else if(!link->client->sock) {
+        link->pendingClose = 1;
         wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
         return -1;
     }
@@ -81,6 +103,9 @@ void broker_on_ws_data(wslay_event_context_ptr ctx,
                 void *user_data) {
     (void) ctx;
     RemoteDSLink *link = user_data;
+    if (!link) {
+        return;
+    }
 
     if (!link->lastReceiveTime) {
         link->lastReceiveTime = dslink_malloc(sizeof(struct timeval));

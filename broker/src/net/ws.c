@@ -65,7 +65,7 @@ int broker_ws_send_obj(RemoteDSLink *link, json_t *obj) {
 }
 
 int broker_ws_send(RemoteDSLink *link, const char *data) {
-    if (!link->ws) {
+    if (!link->ws || !link->client) {
         return -1;
     }
     struct wslay_event_msg msg;
@@ -73,12 +73,18 @@ int broker_ws_send(RemoteDSLink *link, const char *data) {
     msg.msg_length = strlen(data);
     msg.opcode = WSLAY_TEXT_FRAME;
     wslay_event_queue_msg(link->ws, &msg);
-    uv_poll_start(link->client->poll, UV_READABLE | UV_WRITABLE, link->client->poll_cb);
 
-    log_debug("Message sent to %s: %s\n", (char *) link->dsId->data, data);
+    if(link->client->poll) {
+        uv_poll_start(link->client->poll, UV_READABLE | UV_WRITABLE, link->client->poll_cb);
 
-    return (int)msg.msg_length;
+        log_debug("Message sent to %s: %s\n", (char *) link->dsId->data, data);
+
+        return (int)msg.msg_length;
+    }
+
+    return -1;
 }
+
 
 int broker_ws_generate_accept_key(const char *buf, size_t bufLen,
                                   char *out, size_t outLen) {

@@ -147,6 +147,9 @@ void upstream_handshake_handle_ws(UpstreamPoll *upstreamPoll) {
     };
 
     RemoteDSLink *link = upstreamPoll->remoteDSLink;
+    if(!link) {
+        return;
+    }
 
     Client * client = dslink_calloc(1, sizeof(Client));
     link->client = client;
@@ -182,6 +185,10 @@ void connect_conn_callback(uv_poll_t *handle, int status, int events) {
     (void) status;
     (void) events;
     UpstreamPoll *upstreamPoll = handle->data;
+
+    if(!upstreamPoll) {
+        return;
+    }
 
     uv_poll_stop(handle);
     uv_close((uv_handle_t*)handle, broker_free_handle);
@@ -251,39 +258,41 @@ void connect_conn_callback(uv_poll_t *handle, int status, int events) {
 
 }
 
-void upstream_check_conn (uv_timer_t* handle) {
-    UpstreamPoll *upstreamPoll = handle->data;
-
-    if (connectConnCheck(upstreamPoll) != 0) {
-        if (errno != EALREADY) {
-            upstream_reconnect(upstreamPoll);
-        } else {
-            upstreamPoll->connCheckCount ++;
-            if (upstreamPoll->connCheckCount > 200) {
-                upstream_reconnect(upstreamPoll);
-            }
-        }
-
-        if (upstreamPoll->connCheckTimer) {
-            uv_timer_stop(upstreamPoll->connCheckTimer);
-            uv_close((uv_handle_t *)upstreamPoll->connCheckTimer, broker_free_handle);
-            upstreamPoll->connCheckTimer = NULL;
-        }
-
+/// This function disables the given timer and calls the provided callback.
+/// @param timer Pointer to the timer
+/// @param callback The callback that is called when the timer is closed
+void disable_timer(uv_timer_t* timer, uv_close_cb callback) {
+    if(!timer) {
         return;
     }
 
-    if (upstreamPoll->connCheckTimer) {
-        uv_timer_stop(upstreamPoll->connCheckTimer);
-        uv_close((uv_handle_t *)upstreamPoll->connCheckTimer, broker_free_handle);
-        upstreamPoll->connCheckTimer = NULL;
+    uv_timer_stop(timer);
+    uv_close((uv_handle_t *)timer, callback);
+}
+
+void upstream_check_conn (uv_timer_t* handle) {
+    UpstreamPoll *upstreamPoll = handle->data;
+    if(!upstreamPoll) {
+        return;
+    }
+
+    // If an error occurs upstream_reconnect will create the timer again.
+    disable_timer(upstreamPoll->connCheckTimer, broker_free_handle);
+    upstreamPoll->connCheckTimer = NULL;
+
+    if (connectConnCheck(upstreamPoll) != 0) {
+        upstream_reconnect(upstreamPoll);
+        return;
     }
 
     upstreamPoll->status = UPSTREAM_CONN;
     char *dsId;
     char *conndata = dslink_handshake_generate_req(upstreamPoll->clientDslink, &dsId);
 
-    dslink_socket_write(upstreamPoll->sock, conndata, strlen(conndata));
+    if(DSLINK_SOCK_WRITE_ERR == dslink_socket_write(upstreamPoll->sock, conndata, strlen(conndata))) {
+        upstream_reconnect(upstreamPoll);
+        return;
+    }
 
     upstreamPoll->connPoll = dslink_calloc(1, sizeof(uv_poll_t));
     uv_poll_init(mainLoop, upstreamPoll->connPoll, upstreamPoll->sock->socket_ctx.fd);
@@ -329,8 +338,7 @@ void upstream_connect_conn(UpstreamPoll *upstreamPoll) {
     upstreamPoll->connCheckTimer = dslink_malloc(sizeof(uv_timer_t));
     upstreamPoll->connCheckTimer->data = upstreamPoll;
     uv_timer_init(mainLoop, upstreamPoll->connCheckTimer);
-    uv_timer_start(upstreamPoll->connCheckTimer, upstream_check_conn, 0, 50);
-    upstreamPoll->connCheckCount = 0;
+    uv_timer_start(upstreamPoll->connCheckTimer, upstream_check_conn, 0, 0);
 }
 
 

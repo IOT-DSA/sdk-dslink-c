@@ -27,7 +27,6 @@ typedef struct UpstreamPoll {
     UpstreamPollStatus status;
     uv_poll_t *connPoll;
     uv_timer_t *connCheckTimer;
-    uint32_t connCheckCount;
     struct addrinfo *conCheckAddrList;
     uv_poll_t *wsPoll;
     char *brokerUrl;
@@ -51,12 +50,6 @@ void upstream_connect_conn(UpstreamPoll *upstreamPoll);
 void upstream_clear_poll(UpstreamPoll *upstreamPoll);
 
 void upstream_connect_ws();
-
-// disconnected from network
-void upstream_disconnected();
-
-// disconnect upstream when it's no longer needed
-void upstream_disconnect();
 
 void init_upstream_link(struct Broker *broker, UpstreamPoll *upstreamPoll);
 

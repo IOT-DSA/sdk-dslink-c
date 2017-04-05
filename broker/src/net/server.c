@@ -53,7 +53,9 @@ void broker_server_client_ready(uv_poll_t *poll,
     Client *client = poll->data;
     Server *server = client->server;
 
-    if (events & UV_READABLE) {
+    if (client &&
+        server &&
+        (events & UV_READABLE)) {
         server->data_ready(client, poll->loop->data);
         if (client->sock->socket_ctx.fd == -1) {
             broker_server_free_client(poll);
@@ -73,14 +75,18 @@ void broker_server_client_ready(uv_poll_t *poll,
 
     if (client && (events & UV_WRITABLE)) {
         RemoteDSLink *link = client->sock_data;
-        if (link) {
+        if (link && link->ws) {
             if(!wslay_event_want_write(link->ws)) {
                 log_debug("Stopping WRITE poll\n");
                 uv_poll_start(poll, UV_READABLE, broker_server_client_ready);
             } else {
                 log_debug("Enabling READ/WRITE poll on client\n");
                 uv_poll_start(poll, UV_READABLE | UV_WRITABLE, broker_server_client_ready);
-                wslay_event_send(link->ws);
+                int stat = wslay_event_send(link->ws);
+                if(stat != 0) {
+                    broker_close_link(link);
+                    client = NULL;
+                }
             }
         }
     }
@@ -95,14 +101,17 @@ void broker_ssl_server_client_ready(uv_poll_t *poll,
     SslServer *server = (SslServer*)client->server;
     SslSocket* sslSocket = (SslSocket*)client->sock;
 
-    if (events & UV_READABLE) {
+    if (client &&
+        server &&
+        sslSocket &&
+        (events & UV_READABLE)) {
         server->data_ready(client, poll->loop->data);
         if (sslSocket->socket_ctx.fd == -1) {
             broker_server_free_client(poll);
             client = NULL;
         }
     } else if (status == -EBADF && events ==0 && client) {
-        //broker_server_client_fail(poll);
+        // broker_server_client_fail(poll);
         // The callback closed the connection
         RemoteDSLink *link = client->sock_data;
         if (link) {
@@ -115,9 +124,13 @@ void broker_ssl_server_client_ready(uv_poll_t *poll,
 
     if (client && (events & UV_WRITABLE)) {
         RemoteDSLink *link = client->sock_data;
-        if (link) {
+        if (link && link->ws) {
             link->ws->write_enabled = 1;
-            wslay_event_send(link->ws);
+            int stat = wslay_event_send(link->ws);
+            if(stat != 0) {
+                broker_close_link(link);
+                client = NULL;
+            }
         }
     }
 
