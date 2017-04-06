@@ -37,7 +37,7 @@ BrokerNode *broker_node_get(BrokerNode *root,
         }
         node = ref->data;
         if (node && node->type == DOWNSTREAM_NODE) {
-            *out = end;
+            *out = end+1;
             return node;
         }
         return broker_node_get(node, end, out);
@@ -48,6 +48,11 @@ BrokerNode *broker_node_get(BrokerNode *root,
         ref_t *ref = dslink_map_get(node->children, (void *) path);
         if (!ref) {
             return NULL;
+        }
+        node = ref->data;
+        if (node && node->type == DOWNSTREAM_NODE) {
+            *out = (char*)path;
+            return node;
         }
         return ref->data;
     }
