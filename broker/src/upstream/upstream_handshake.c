@@ -203,7 +203,15 @@ void connect_conn_callback(uv_poll_t *handle, int status, int events) {
     while (1) {
         char buf[1024];
         int read = dslink_socket_read(upstreamPoll->sock, buf, sizeof(buf) - 1);
-        if (read <= 0) {
+        if(read == DSLINK_SOCK_WOULD_BLOCK) {
+            continue;
+        }
+        if (read != DSLINK_SOCK_WOULD_BLOCK && read <= 0) {
+            if(errno != EAGAIN) {
+                log_err("Error while reading from socket\n");
+                return;
+            }
+
             break;
         }
         if (resp == NULL) {
