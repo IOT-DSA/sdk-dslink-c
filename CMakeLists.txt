@@ -28,15 +28,16 @@ macro(ADD_C_FLAGS flags)
 endmacro()
 
 ##### Git Version Info ####
-
-set(GIT_DIR "${CMAKE_SOURCE_DIR}/.git")
-if (EXISTS "${GIT_DIR}" AND IS_DIRECTORY "${GIT_DIR}" AND NOT "${GIT_COMMIT_HASH}")
+set(C_SDK_GIT_DIR "${CMAKE_CURRENT_LIST_DIR}/.git")
+if (EXISTS "${C_SDK_GIT_DIR}" AND IS_DIRECTORY "${C_SDK_GIT_DIR}" AND NOT "${C_SDK_GIT_COMMIT_HASH}")
     execute_process(
         COMMAND git log -1 --format=%H
-        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-        OUTPUT_VARIABLE GIT_COMMIT_HASH
+        WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}"
+        OUTPUT_VARIABLE C_SDK_GIT_COMMIT_HASH
         OUTPUT_STRIP_TRAILING_WHITESPACE
     )
+else()
+    MESSAGE(ERROR "Found not git folder ${C_SDK_GIT_DIR}, unknown git commit hash :-(")
 endif()
 
 ##### Toolchain Configuration #####
@@ -222,12 +223,15 @@ if (DSLINK_BUILD_BROKER)
 
     install(DIRECTORY "broker/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev)
 
-    if (GIT_COMMIT_HASH)
+    if (C_SDK_GIT_COMMIT_HASH)
         set_source_files_properties(
-            "broker/src/broker.c"
+            "${BROKER_SRC_DIR}/broker.c"
             PROPERTIES
-            COMPILE_DEFINITIONS GIT_COMMIT_HASH="${GIT_COMMIT_HASH}"
+            COMPILE_DEFINITIONS C_SDK_GIT_COMMIT_HASH="${C_SDK_GIT_COMMIT_HASH}"
         )
+	MESSAGE(STATUS "Set broker git commit hash to ${C_SDK_GIT_COMMIT_HASH}")
+    else()
+        MESSAGE(ERROR "Unknown git commit hash for broker :-(")
     endif()
 
     add_library(sdk_broker_c-object OBJECT ${BROKER_SRC})
