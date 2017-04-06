@@ -255,6 +255,7 @@ void connect_conn_callback(uv_poll_t *handle, int status, int events) {
             upstream_reconnect(upstreamPoll);
             goto exit;
         } else {
+            log_info("Successfully connected to the upstream broker '%s'\n", upstreamPoll->name);
             log_info("Successfully connected to the broker\n");
         }
 
@@ -354,6 +355,7 @@ void upstream_connect_conn(UpstreamPoll *upstreamPoll) {
     upstreamPoll->connCheckTimer = dslink_malloc(sizeof(uv_timer_t));
     upstreamPoll->connCheckTimer->data = upstreamPoll;
     uv_timer_init(mainLoop, upstreamPoll->connCheckTimer);
+    uv_timer_start(upstreamPoll->connCheckTimer, upstream_check_conn, 500, 0);
     uv_timer_start(upstreamPoll->connCheckTimer, upstream_check_conn, 0, 0);
 }
 
