@@ -238,7 +238,7 @@ void connect_conn_callback(uv_poll_t *handle, int status, int events) {
 
         if ((dslink_handshake_connect_ws(upstreamPoll->clientDslink->config.broker_url, &upstreamPoll->clientDslink->key, uri,
                                          tKey, salt, upstreamPoll->dsId, NULL, &upstreamPoll->sock)) != 0) {
-            log_warn("Failed to connect to broker\n");
+            upstream_reconnect(upstreamPoll);
             goto exit;
         } else {
             log_info("Successfully connected to the broker\n");
@@ -251,7 +251,7 @@ void connect_conn_callback(uv_poll_t *handle, int status, int events) {
         upstreamPoll->reconnectInterval = 0;
     } else {
         upstreamPoll->status = UPSTREAM_NONE;
-        // TODO: reconnect?
+        upstream_reconnect(upstreamPoll);
     }
     exit:
     json_decref(handshake);
