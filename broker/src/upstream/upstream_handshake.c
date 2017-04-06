@@ -206,9 +206,12 @@ void connect_conn_callback(uv_poll_t *handle, int status, int events) {
         if(read == DSLINK_SOCK_WOULD_BLOCK) {
             continue;
         }
+        if(read == 0) {
+            break;
+        }
         if (read != DSLINK_SOCK_WOULD_BLOCK && read <= 0) {
             if(errno != EAGAIN) {
-                log_err("Error while reading from socket\n");
+                log_err("Error while reading from socket %d\n", errno);
                 return;
             }
 
