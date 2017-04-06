@@ -25,8 +25,8 @@
                     "Content-Length: %d\r\n" \
                     "\r\n%s\r\n"
 
-#ifndef C_SDK_GIT_COMMIT_HASH
-#define C_SDK_GIT_COMMIT_HASH "unknown"
+#ifndef IOT_DSA_C_SDK_GIT_COMMIT_HASH
+#define IOT_DSA_C_SDK_GIT_COMMIT_HASH "unknown"
 #endif
 
 uv_loop_t *mainLoop = NULL;
@@ -395,7 +395,7 @@ void broker_stop(Broker* broker) {
 }
 
 int broker_start() {
-    log_info("C-SDK git commit: %s\n", C_SDK_GIT_COMMIT_HASH);
+    log_info("IOT-DSA c-sdk git commit: %s\n", IOT_DSA_C_SDK_GIT_COMMIT_HASH);
 
     int ret = 0;
     json_t *config = broker_config_get();
