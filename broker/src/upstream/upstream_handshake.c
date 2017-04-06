@@ -309,6 +309,7 @@ void upstream_check_conn (uv_timer_t* handle) {
 
 void upstream_connect_conn(UpstreamPoll *upstreamPoll) {
     RemoteDSLink *link = dslink_malloc(sizeof(RemoteDSLink));
+    bzero(link, sizeof(RemoteDSLink));
     broker_remote_dslink_init(link);
     permission_groups_load(&link->permission_groups, "", upstreamPoll->group);
     link->isUpstream = 1;
@@ -320,6 +321,7 @@ void upstream_connect_conn(UpstreamPoll *upstreamPoll) {
     upstreamPoll->remoteDSLink = link;
 
     DSLink *clientDslink = dslink_malloc(sizeof(DSLink));
+    bzero(clientDslink, sizeof(DSLink));
     clientDslink->is_requester = 1;
     clientDslink->is_responder = 1;
     dslink_handle_key(clientDslink);

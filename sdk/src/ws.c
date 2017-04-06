@@ -358,11 +358,6 @@ void ping_timer_on_close(uv_handle_t *handle) {
     dslink_free(handle);
 }
 
-static
-void poll_on_close(uv_handle_t *handle) {
-    dslink_free(handle);
-}
-
 void dslink_handshake_handle_ws(DSLink *link, link_callback on_requester_ready_cb) {
     struct wslay_event_callbacks callbacks = {
         want_read_cb,
@@ -387,11 +382,10 @@ void dslink_handshake_handle_ws(DSLink *link, link_callback on_requester_ready_c
         uv_poll_start(&(link->poll), UV_READABLE, io_handler);
     }
 
-    uv_timer_t *ping = dslink_calloc(1, sizeof(uv_timer_t));
+    uv_timer_t *ping = dslink_malloc(sizeof(uv_timer_t));
     {
         uv_timer_init(&link->loop, ping);
         ping->data = link;
-        ping->close_cb = ping_timer_on_close;
         uv_timer_start(ping, ping_handler, 0, 30000);
     }
 
@@ -403,7 +397,7 @@ void dslink_handshake_handle_ws(DSLink *link, link_callback on_requester_ready_c
 
     uv_timer_stop(ping);
     uv_close((uv_handle_t *) ping, ping_timer_on_close);
-    uv_close((uv_handle_t *) &(link->poll), poll_on_close);
+    uv_close((uv_handle_t *) &(link->poll), NULL);
 
     wslay_event_context_free(ptr);
     link->_ws = NULL;

@@ -58,8 +58,6 @@ struct DSLink {
 
     json_t *link_data;
     json_t *dslink_json;
-
-    uv_sem_t ws_send_sem;
 };
 
 struct Responder {
