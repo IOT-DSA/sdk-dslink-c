@@ -103,13 +103,16 @@ void upstream_io_handler(uv_poll_t *poll, int status, int events) {
         return;
     }
     UpstreamPoll *upstreamPoll = poll->data;
+    if(!upstreamPoll || !upstreamPoll->ws) {
+        return;
+    }
 
-    if (upstreamPoll && (events & UV_READABLE)) {
+    if (events & UV_READABLE) {
         int stat = wslay_event_recv(upstreamPoll->ws);
         reconnect_if_error_occured(stat, upstreamPoll);
     }
 
-    if (upstreamPoll && (events & UV_WRITABLE)) {
+    if (events & UV_WRITABLE) {
         if(!wslay_event_want_write(upstreamPoll->ws)) {
             log_debug("Stopping WRITE poll on upstream node\n");
             uv_poll_start(poll, UV_READABLE, upstream_io_handler);

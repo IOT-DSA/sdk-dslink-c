@@ -161,8 +161,6 @@ void handle_subscribe(RemoteDSLink *link, json_t *sub) {
 
     DownstreamNode *reqNode = link->node;
 
-
-
     uint32_t sid = (uint32_t) json_integer_value(jSid);
 
     json_t *jQos = json_object_get(sub, "qos");

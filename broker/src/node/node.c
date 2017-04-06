@@ -17,12 +17,14 @@
 
 BrokerNode *broker_node_get(BrokerNode *root,
                             const char *path, char **out) {
+    uint8_t strippedLeadingSlash = 0;
     if (!root) {
         return NULL;
     } else if (strcmp(path, "/") == 0) {
         return root;
     } else if (*path == '/') {
         path++;
+        strippedLeadingSlash = 1;
     }
 
     BrokerNode *node = root;
@@ -37,7 +39,7 @@ BrokerNode *broker_node_get(BrokerNode *root,
         }
         node = ref->data;
         if (node && node->type == DOWNSTREAM_NODE) {
-            *out = end+1;
+            *out = end;
             return node;
         }
         return broker_node_get(node, end, out);
@@ -51,6 +53,10 @@ BrokerNode *broker_node_get(BrokerNode *root,
         }
         node = ref->data;
         if (node && node->type == DOWNSTREAM_NODE) {
+
+            if(strippedLeadingSlash) {
+                --(path);
+            }
             *out = (char*)path;
             return node;
         }
