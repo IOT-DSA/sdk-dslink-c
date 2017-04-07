@@ -73,7 +73,7 @@ void broker_server_client_ready(uv_poll_t *poll,
             client = NULL;
         }
 
-        if (events & UV_WRITABLE) {
+        if (client && (events & UV_WRITABLE)) {
             RemoteDSLink *link = client->sock_data;
             if (link && link->ws) {
                 if(!wslay_event_want_write(link->ws)) {
