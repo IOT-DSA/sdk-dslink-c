@@ -62,7 +62,11 @@ endif()
 ##### Configure Dependencies #####
 
 ADD_C_FLAGS("-fPIC")
-ADD_C_FLAGS("-fPIE")
+IF(CMAKE_BUILD_TYPE STREQUAL "Release")
+    MESSAGE(INFO, "Applying secure compiler and linker flags")
+    ADD_C_FLAGS("-pie -fPIE -D_FORTIFY_SOURCE=2")
+ENDIF()
+
 foreach(dep "mbed" "wslay" "argtable3" "jansson" "libuv")
     include("${CMAKE_CURRENT_LIST_DIR}/deps/${dep}/CMakeLists.txt")
 endforeach()
