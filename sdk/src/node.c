@@ -324,6 +324,8 @@ int dslink_node_set_meta(DSLink *link, DSNode *node,
         if (node->on_data_changed) {
             node->on_data_changed(link, node);
         }
+    } else {
+        return 0;
     }
     if (!link->_ws) {
         return 0;

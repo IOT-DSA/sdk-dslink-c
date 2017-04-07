@@ -51,41 +51,42 @@ void broker_server_client_ready(uv_poll_t *poll,
                                 int events) {
     (void) status;
     Client *client = poll->data;
-    Server *server = client->server;
+    if(client) {
+        Server *server = client->server;
 
-    if (client &&
-        server &&
-        (events & UV_READABLE)) {
-        server->data_ready(client, poll->loop->data);
-        if (client->sock->socket_ctx.fd == -1) {
-            broker_server_free_client(poll);
+        if (server &&
+            (events & UV_READABLE)) {
+            server->data_ready(client, poll->loop->data);
+            if (client->sock->socket_ctx.fd == -1) {
+                broker_server_free_client(poll);
+                client = NULL;
+            }
+        } else if (status == -EBADF && events ==0) {
+            //broker_server_client_fail(poll);
+            // The callback closed the connection
+            RemoteDSLink *link = client->sock_data;
+            if (link) {
+                broker_close_link(link);
+            } else {
+                broker_server_free_client(poll);
+            }
             client = NULL;
         }
-    } else if (status == -EBADF && events ==0 && client) {
-        //broker_server_client_fail(poll);
-        // The callback closed the connection
-        RemoteDSLink *link = client->sock_data;
-        if (link) {
-            broker_close_link(link);
-        } else {
-            broker_server_free_client(poll);
-        }
-        client = NULL;
-    }
 
-    if (client && (events & UV_WRITABLE)) {
-        RemoteDSLink *link = client->sock_data;
-        if (link && link->ws) {
-            if(!wslay_event_want_write(link->ws)) {
-                log_debug("Stopping WRITE poll\n");
-                uv_poll_start(poll, UV_READABLE, broker_server_client_ready);
-            } else {
-                log_debug("Enabling READ/WRITE poll on client\n");
-                uv_poll_start(poll, UV_READABLE | UV_WRITABLE, broker_server_client_ready);
-                int stat = wslay_event_send(link->ws);
-                if(stat != 0) {
-                    broker_close_link(link);
-                    client = NULL;
+        if (events & UV_WRITABLE) {
+            RemoteDSLink *link = client->sock_data;
+            if (link && link->ws) {
+                if(!wslay_event_want_write(link->ws)) {
+                    log_debug("Stopping WRITE poll\n");
+                    uv_poll_start(poll, UV_READABLE, broker_server_client_ready);
+                } else {
+                    log_debug("Enabling READ/WRITE poll on client\n");
+                    uv_poll_start(poll, UV_READABLE | UV_WRITABLE, broker_server_client_ready);
+                    int stat = wslay_event_send(link->ws);
+                    if(stat != 0) {
+                        broker_close_link(link);
+                        client = NULL;
+                    }
                 }
             }
         }

@@ -211,13 +211,13 @@ size_t dslink_create_ts(char *buf, size_t bufLen) {
     char msstr[4];
 
     if (ms > 99) {
-        snprintf(msstr, 4, "%d", ms);
+        snprintf(msstr, 4, "%u", ms);
         memcpy(buf+20, msstr, 3);
     } else if (ms > 9) {
-        snprintf(msstr, 4, "0%d", ms);
+        snprintf(msstr, 4, "0%u", ms);
         memcpy(buf+20, msstr, 3);
     } else if (ms > 0) {
-        snprintf(msstr, 4, "00%d", ms);
+        snprintf(msstr, 4, "00%u", ms);
         memcpy(buf+20, msstr, 3);
     }
     // change timezone format from ?+0000 to +00:00
