@@ -313,11 +313,16 @@ void io_handler(uv_poll_t *poll, int status, int events) {
     }
 
     DSLink *link = poll->data;
-    int stat = wslay_event_recv(link->_ws);
-    if (stat == 0 && (link->_ws->error == WSLAY_ERR_NO_MORE_MSG
-                        || link->_ws->error == WSLAY_ERR_CALLBACK_FAILURE
-                        || link->_ws->error == 0)) {
+    if(!link || !link->_ws) {
+        return;
+    }
 
+    int stat = wslay_event_recv(link->_ws);
+    //why is this implemented like this before?
+//    if (stat == 0 && (link->_ws->error == WSLAY_ERR_NO_MORE_MSG
+//                        || link->_ws->error == WSLAY_ERR_CALLBACK_FAILURE
+//                        || link->_ws->error == 0)) {
+    if(stat != 0){
         log_debug("Stopping dslink loop...\n");
         uv_stop(&link->loop);
     }
