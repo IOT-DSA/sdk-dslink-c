@@ -204,9 +204,10 @@ size_t dslink_create_ts(char *buf, size_t bufLen) {
     struct timeval now;
     gettimeofday(&now, NULL);
     time_t nowtime = now.tv_sec;
+    struct tm result;
 
     strftime(buf, bufLen,
-                    "%Y-%m-%dT%H:%M:%S.000?%z", localtime(&nowtime));
+                    "%Y-%m-%dT%H:%M:%S.000?%z", localtime_r(&nowtime, &result));
     unsigned ms = (unsigned)(now.tv_usec / 1000);
     char msstr[4];
 
