@@ -39,7 +39,7 @@ if (EXISTS "${IOT_DSA_C_SDK_GIT_DIR}" AND IS_DIRECTORY "${IOT_DSA_C_SDK_GIT_DIR}
     add_definitions(-DIOT_DSA_C_SDK_GIT_COMMIT_HASH="${IOT_DSA_C_SDK_GIT_COMMIT_HASH}")
     MESSAGE(STATUS "Set c-sdk git commit hash to ${IOT_DSA_C_SDK_GIT_COMMIT_HASH}")
 else()
-    MESSAGE(ERROR "Found not git folder ${IOT_DSA_C_SDK_GIT_DIR}, unknown git commit hash :-(")
+    MESSAGE(ERROR "Did not find git folder ${IOT_DSA_C_SDK_GIT_DIR}, unknown git commit hash :-(")
 endif()
 
 ##### Toolchain Configuration #####
