@@ -61,12 +61,13 @@ endif()
 
 ##### Configure Dependencies #####
 
+ADD_C_FLAGS("-fPIC")
+ADD_C_FLAGS("-fPIE")
 foreach(dep "mbed" "wslay" "argtable3" "jansson" "libuv")
     include("${CMAKE_CURRENT_LIST_DIR}/deps/${dep}/CMakeLists.txt")
 endforeach()
 
 include(ExternalProject)
-ADD_C_FLAGS("-fPIC")
 
 ##### Configure Flags #####
 
