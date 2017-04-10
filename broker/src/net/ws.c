@@ -10,6 +10,7 @@
 
 #include "broker/remote_dslink.h"
 #include "broker/net/ws.h"
+#include "broker/net/server.h"
 
 #include <dslink/utils.h>
 
@@ -62,42 +63,9 @@ int broker_ws_send_obj(RemoteDSLink *link, json_t *obj) {
     dslink_free(data);
     return 0;
 }
-#ifdef BROKER_WS_SEND_THREAD_MODE
-void broker_send_ws_thread(void *arg) {
-
-    int ret;
-    RemoteDSLink *link = (RemoteDSLink*)arg;
-    while(1) {
-        uv_sem_wait(&link->ws_send_sem);
-
-        dslink_sleep(100);
-
-        if(link->closing_send_thread ==1) {
-            log_debug("Closing ws send thread\n");
-            break;
-        }
-
-
-//        do {
-            ret = wslay_event_send(link->ws);
-            if (ret != 0) {
-                log_debug("Send error in thread: %d\n", ret);
-            } else {
-                log_debug("Message sent: %d\n", ret);
-            }
-
-        if(wslay_event_want_write(link->ws)) {
-            uv_sem_post(&link->ws_send_sem);
-        }
-
-//        } while(wslay_event_want_write(link->ws));
-    }
-}
-#endif
 
 int broker_ws_send(RemoteDSLink *link, const char *data) {
-//    int limiter=10;
-    if (!link->ws) {
+    if (!link->ws || !link->client) {
         return -1;
     }
     struct wslay_event_msg msg;
@@ -106,26 +74,17 @@ int broker_ws_send(RemoteDSLink *link, const char *data) {
     msg.opcode = WSLAY_TEXT_FRAME;
     wslay_event_queue_msg(link->ws, &msg);
 
-//#ifdef BROKER_WS_SEND_THREAD_MODE
-//    uv_sem_post(&link->ws_send_sem);
-//#else
-//    do {
-        int ret = wslay_event_send(link->ws);
-        if (ret != 0) {
-            log_debug("Send error: %d\n", ret);
-        }
-#ifdef BROKER_WS_SEND_THREAD_MODE
-    if(wslay_event_want_write(link->ws)) {
-        uv_sem_post(&link->ws_send_sem);
+    if(link->client->poll) {
+        uv_poll_start(link->client->poll, UV_READABLE | UV_WRITABLE, link->client->poll_cb);
+
+        log_debug("Message sent to %s: %s\n", (char *) link->dsId->data, data);
+
+        return (int)msg.msg_length;
     }
-#endif
-//    } while(wslay_event_want_write(link->ws)/* && (limiter-- >  0)*/);
-//#endif
 
-    log_debug("Message sent to %s: %s\n", (char *) link->dsId->data, data);
-
-    return (int)msg.msg_length;
+    return -1;
 }
+
 
 int broker_ws_generate_accept_key(const char *buf, size_t bufLen,
                                   char *out, size_t outLen) {

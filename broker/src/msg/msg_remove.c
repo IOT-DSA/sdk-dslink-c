@@ -46,10 +46,8 @@ int broker_msg_handle_remove(RemoteDSLink *link, json_t *req) {
         }
     }
 
-
-
     if (node && node->type == DOWNSTREAM_NODE) {
-        if (set_downstream_attribute(out + 1, (DownstreamNode*)node, name, NULL)) {
+        if (set_downstream_attribute(out, (DownstreamNode*)node, name, NULL)) {
             ref_t *ref = dslink_map_get(&((DownstreamNode*)node)->list_streams, out);
             if (ref) {
                 BrokerListStream *liststream = ref->data;

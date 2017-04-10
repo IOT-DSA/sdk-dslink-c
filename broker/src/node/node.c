@@ -17,12 +17,14 @@
 
 BrokerNode *broker_node_get(BrokerNode *root,
                             const char *path, char **out) {
+    uint8_t strippedLeadingSlash = 0;
     if (!root) {
         return NULL;
     } else if (strcmp(path, "/") == 0) {
         return root;
     } else if (*path == '/') {
         path++;
+        strippedLeadingSlash = 1;
     }
 
     BrokerNode *node = root;
@@ -48,6 +50,15 @@ BrokerNode *broker_node_get(BrokerNode *root,
         ref_t *ref = dslink_map_get(node->children, (void *) path);
         if (!ref) {
             return NULL;
+        }
+        node = ref->data;
+        if (node && node->type == DOWNSTREAM_NODE) {
+
+            if(strippedLeadingSlash) {
+                --(path);
+            }
+            *out = (char*)path;
+            return node;
         }
         return ref->data;
     }

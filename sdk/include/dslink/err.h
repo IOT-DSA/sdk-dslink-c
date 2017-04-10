@@ -18,6 +18,7 @@ extern "C" {
 #define DSLINK_SOCK_SSL_HANDSHAKE_ERR        -0x2004
 #define DSLINK_SOCK_READ_ERR                 -0x2005
 #define DSLINK_SOCK_WRITE_ERR                -0x2006
+#define DSLINK_SOCK_WOULD_BLOCK              -0x2007
 
 #define DSLINK_CRYPT_ENTROPY_SEED_ERR        -0x3000
 #define DSLINK_CRYPT_MISSING_CURVE           -0x3001

@@ -204,20 +204,21 @@ size_t dslink_create_ts(char *buf, size_t bufLen) {
     struct timeval now;
     gettimeofday(&now, NULL);
     time_t nowtime = now.tv_sec;
+    struct tm result;
 
     strftime(buf, bufLen,
-                    "%Y-%m-%dT%H:%M:%S.000?%z", localtime(&nowtime));
+                    "%Y-%m-%dT%H:%M:%S.000?%z", localtime_r(&nowtime, &result));
     unsigned ms = (unsigned)(now.tv_usec / 1000);
     char msstr[4];
 
     if (ms > 99) {
-        snprintf(msstr, 4, "%d", ms);
+        snprintf(msstr, 4, "%u", ms);
         memcpy(buf+20, msstr, 3);
     } else if (ms > 9) {
-        snprintf(msstr, 4, "0%d", ms);
+        snprintf(msstr, 4, "0%u", ms);
         memcpy(buf+20, msstr, 3);
     } else if (ms > 0) {
-        snprintf(msstr, 4, "00%d", ms);
+        snprintf(msstr, 4, "00%u", ms);
         memcpy(buf+20, msstr, 3);
     }
     // change timezone format from ?+0000 to +00:00

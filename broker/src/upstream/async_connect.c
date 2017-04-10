@@ -122,7 +122,7 @@ int mbedtls_net_connect_async(UpstreamPoll *upstreamPoll, const char *host, cons
     hints.ai_protocol = proto == MBEDTLS_NET_PROTO_UDP ? IPPROTO_UDP : IPPROTO_TCP;
 
     if( getaddrinfo( host, port, &hints, &addr_list ) != 0 )
-        return( MBEDTLS_ERR_NET_UNKNOWN_HOST );
+        return MBEDTLS_ERR_NET_UNKNOWN_HOST;
 
     /* Try the sockaddrs until a connection succeeds */
     ret = MBEDTLS_ERR_NET_UNKNOWN_HOST;
@@ -143,8 +143,7 @@ int mbedtls_net_connect_async(UpstreamPoll *upstreamPoll, const char *host, cons
         upstreamPoll->conCheckAddrList = addr_list;
         return 0;
     }
-
-
+    return ret;
 }
 
 static

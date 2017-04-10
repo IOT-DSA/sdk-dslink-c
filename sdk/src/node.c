@@ -172,6 +172,9 @@ DSNode *dslink_node_get_path(DSNode *root, const char *path) {
 }
 
 void dslink_node_tree_free_basic(DSLink *link, DSNode *root) {
+    if(!link || !root) {
+        return;
+    }
 
     // DONE: remove node from open_streams, list_subs, and value_path_subs: implemented
     dslink_map_remove(link->responder->value_path_subs, (void*)root->path);
@@ -221,13 +224,11 @@ void dslink_node_tree_free_basic(DSLink *link, DSNode *root) {
         dslink_free(root->meta_data);
     }
 
-
-
     dslink_free(root);
 }
 
 void dslink_node_tree_free(DSLink *link, DSNode *root) {
-    if (link && link->_ws && root->parent && root->parent->name) {
+    if (link && link->_ws && root && root->parent && root->parent->name) {
         ref_t *rrid = dslink_map_get(link->responder->list_subs,
                                        (void *) root->parent->path);
         if (!rrid) {
@@ -273,11 +274,13 @@ void dslink_node_tree_free(DSLink *link, DSNode *root) {
 cleanup:
     dslink_node_tree_free_basic(link, root);
 }
+
 int dslink_node_set_meta_new(struct DSLink *link, DSNode *node, const char *name, json_t *value) {
     int result = dslink_node_set_meta(link, node, name, value);
     json_decref(value);
     return result;
 }
+
 int dslink_node_set_meta(DSLink *link, DSNode *node,
                          const char *name, json_t *value) {
     assert(node);
@@ -321,6 +324,8 @@ int dslink_node_set_meta(DSLink *link, DSNode *node,
         if (node->on_data_changed) {
             node->on_data_changed(link, node);
         }
+    } else {
+        return 0;
     }
     if (!link->_ws) {
         return 0;

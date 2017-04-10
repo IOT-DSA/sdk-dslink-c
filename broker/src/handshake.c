@@ -39,7 +39,6 @@ int generate_salt(unsigned char *salt, size_t len) {
     return 0;
 }
 
-
 json_t *broker_handshake_handle_conn(Broker *broker,
                                      const char *dsId,
                                      const char *token,
@@ -66,7 +65,7 @@ json_t *broker_handshake_handle_conn(Broker *broker,
     }
 
     link->broker = broker;
-    link->auth = dslink_calloc(1, sizeof(RemoteAuth));
+    link->auth = dslink_malloc(sizeof(RemoteAuth));
     if (!link->auth) {
         goto fail;
     }
@@ -352,6 +351,7 @@ int broker_handshake_handle_ws(Broker *broker,
     link->node = node;
     node->dsId = oldDsId;
     client->sock_data = link;
+
     json_object_set_new_nocheck(node->meta, "$$dsId", json_string_nocheck(dsId));
 
     wslay_event_context_ptr ws;
@@ -380,6 +380,7 @@ int broker_handshake_handle_ws(Broker *broker,
     }
 
     log_info("DSLink `%s` has connected\n", dsId);
+
 exit:
     mbedtls_ecdh_free(&link->auth->tempKey);
     dslink_free((void *) link->auth->pubKey);

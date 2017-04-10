@@ -582,7 +582,8 @@ void dslink_async_run(uv_async_t *async_handle) {
 int dslink_init(int argc, char **argv,
                 const char *name, uint8_t isRequester,
                 uint8_t isResponder, DSLinkCallbacks *cbs) {
-    DSLink *link = dslink_calloc(1, sizeof(DSLink));
+    DSLink *link = dslink_malloc(sizeof(DSLink));
+    bzero(link, sizeof(DSLink));
     uv_loop_init(&link->loop);
     link->loop.data = link;
 

@@ -105,6 +105,10 @@ int dslink_ws_send_internal(wslay_event_context_ptr ctx, const char *data, uint8
 //    }
 
     DSLink *link = (DSLink*)ctx->user_data;
+    if(!link) {
+        return 1;
+    }
+
     uv_sem_post(&link->ws_send_sem);
 
     log_debug("Message queued to be sent: %s\n", data);
@@ -202,20 +206,20 @@ ssize_t want_read_cb(wslay_event_context_ptr ctx,
     (void) flags;
 
     DSLink *link = user_data;
-    int read = dslink_socket_read(link->_socket,
-                                  (char *) buf, len);
+    ssize_t read = -1;
+    while((read = dslink_socket_read(link->_socket, (char *) buf, len)) < 0 && errno == EINTR);
+
     if (read == 0) {
         wslay_event_set_error(ctx, WSLAY_ERR_NO_MORE_MSG);
         return -1;
     } else if (read == DSLINK_SOCK_READ_ERR) {
-        if (errno == MBEDTLS_ERR_SSL_WANT_READ
-            || errno == MBEDTLS_ERR_SSL_TIMEOUT) {
-            wslay_event_set_error(ctx, WSLAY_ERR_WOULDBLOCK);
-        } else {
-            wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
-        }
+        wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
+        return -1;
+    } else if (read == DSLINK_SOCK_WOULD_BLOCK) {
+        wslay_event_set_error(ctx, WSLAY_ERR_WOULDBLOCK);
         return -1;
     }
+
     return read;
 }
 
@@ -227,11 +231,11 @@ ssize_t want_write_cb(wslay_event_context_ptr ctx,
 
     DSLink *link = user_data;
 
-
-    int written = dslink_socket_write(link->_socket, (char *) data, len);
+    ssize_t written = -1;
+    while((written = dslink_socket_write(link->_socket, (char *) data, len)) < 0 && errno == EINTR);
     if (written < 0) {
-        if (errno == MBEDTLS_ERR_SSL_WANT_WRITE) {
-            wslay_event_set_error(ctx, WSLAY_ERR_WANT_WRITE);
+        if (errno == EAGAIN || written == DSLINK_SOCK_WOULD_BLOCK) {
+            wslay_event_set_error(ctx, WSLAY_ERR_WOULDBLOCK);
         } else {
             wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
         }

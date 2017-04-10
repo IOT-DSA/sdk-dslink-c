@@ -28,15 +28,18 @@ macro(ADD_C_FLAGS flags)
 endmacro()
 
 ##### Git Version Info ####
-
-set(GIT_DIR "${CMAKE_SOURCE_DIR}/.git")
-if (EXISTS "${GIT_DIR}" AND IS_DIRECTORY "${GIT_DIR}" AND NOT "${GIT_COMMIT_HASH}")
+set(IOT_DSA_C_SDK_GIT_DIR "${CMAKE_CURRENT_LIST_DIR}/.git")
+if (EXISTS "${IOT_DSA_C_SDK_GIT_DIR}" AND IS_DIRECTORY "${IOT_DSA_C_SDK_GIT_DIR}" AND NOT "${IOT_DSA_C_SDK_GIT_COMMIT_HASH}")
     execute_process(
         COMMAND git log -1 --format=%H
-        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-        OUTPUT_VARIABLE GIT_COMMIT_HASH
+        WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}"
+        OUTPUT_VARIABLE IOT_DSA_C_SDK_GIT_COMMIT_HASH
         OUTPUT_STRIP_TRAILING_WHITESPACE
     )
+    add_definitions(-DIOT_DSA_C_SDK_GIT_COMMIT_HASH="${IOT_DSA_C_SDK_GIT_COMMIT_HASH}")
+    MESSAGE(STATUS "Set c-sdk git commit hash to ${IOT_DSA_C_SDK_GIT_COMMIT_HASH}")
+else()
+    MESSAGE(ERROR "Did not find git folder ${IOT_DSA_C_SDK_GIT_DIR}, unknown git commit hash :-(")
 endif()
 
 ##### Toolchain Configuration #####
@@ -58,12 +61,17 @@ endif()
 
 ##### Configure Dependencies #####
 
+ADD_C_FLAGS("-fPIC")
+IF(CMAKE_BUILD_TYPE STREQUAL "Release")
+    MESSAGE(INFO, "Applying secure compiler and linker flags")
+    ADD_C_FLAGS("-pie -fPIE -D_FORTIFY_SOURCE=2")
+ENDIF()
+
 foreach(dep "mbed" "wslay" "argtable3" "jansson" "libuv")
     include("${CMAKE_CURRENT_LIST_DIR}/deps/${dep}/CMakeLists.txt")
 endforeach()
 
 include(ExternalProject)
-ADD_C_FLAGS("-fPIC")
 
 ##### Configure Flags #####
 
@@ -84,11 +92,11 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     ADD_C_FLAGS("-pthread")
 endif()
 
-string(TOUPPER "${CMAKE_BUILD_TYPE}" DSLINK_BUILD_TYPE)
-if (DSLINK_BUILD_TYPE STREQUAL DEBUG AND NOT USE_VALGRIND)
-    ADD_C_FLAGS("-fsanitize=address")
-    ADD_C_FLAGS("-fstack-protector-all")
-endif()
+# string(TOUPPER "${CMAKE_BUILD_TYPE}" DSLINK_BUILD_TYPE)
+# if (DSLINK_BUILD_TYPE STREQUAL DEBUG AND NOT USE_VALGRIND)
+#     ADD_C_FLAGS("-fsanitize=address")
+#     ADD_C_FLAGS("-fstack-protector-all")
+#  endif()
 
 ##### Configure Sources #####
 
@@ -221,14 +229,6 @@ if (DSLINK_BUILD_BROKER)
     include_directories("${CMAKE_CURRENT_LIST_DIR}/broker/include")
 
     install(DIRECTORY "broker/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev)
-
-    if (GIT_COMMIT_HASH)
-        set_source_files_properties(
-            "broker/src/broker.c"
-            PROPERTIES
-            COMPILE_DEFINITIONS GIT_COMMIT_HASH="${GIT_COMMIT_HASH}"
-        )
-    endif()
 
     add_library(sdk_broker_c-object OBJECT ${BROKER_SRC})
     target_include_directories(sdk_broker_c-object PUBLIC "broker/include")

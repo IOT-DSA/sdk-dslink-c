@@ -51,34 +51,46 @@ void broker_server_client_ready(uv_poll_t *poll,
                                 int events) {
     (void) status;
     Client *client = poll->data;
-    Server *server = client->server;
+    if(client) {
+        Server *server = client->server;
 
-    if (events & UV_READABLE) {
-        server->data_ready(client, poll->loop->data);
-        if (client->sock->socket_ctx.fd == -1) {
-            broker_server_free_client(poll);
+        if (server &&
+            (events & UV_READABLE)) {
+            server->data_ready(client, poll->loop->data);
+            if (client->sock->socket_ctx.fd == -1) {
+                broker_server_free_client(poll);
+                client = NULL;
+            }
+        } else if (status == -EBADF && events ==0) {
+            //broker_server_client_fail(poll);
+            // The callback closed the connection
+            RemoteDSLink *link = client->sock_data;
+            if (link) {
+                broker_close_link(link);
+            } else {
+                broker_server_free_client(poll);
+            }
             client = NULL;
         }
-    } else if (status == -EBADF && events ==0 && client) {
-        //broker_server_client_fail(poll);
-        // The callback closed the connection
-        RemoteDSLink *link = client->sock_data;
-        if (link) {
-            broker_close_link(link);
-        } else {
-            broker_server_free_client(poll);
-        }
-        client = NULL;
-    }
 
-    if (client && (events & UV_WRITABLE)) {
-        RemoteDSLink *link = client->sock_data;
-        if (link) {
-            link->ws->write_enabled = 1;
-            wslay_event_send(link->ws);
+        if (client && (events & UV_WRITABLE)) {
+            RemoteDSLink *link = client->sock_data;
+            if (link && link->ws) {
+                if(!wslay_event_want_write(link->ws)) {
+                    log_debug("Stopping WRITE poll\n");
+                    uv_poll_start(poll, UV_READABLE, broker_server_client_ready);
+                } else {
+                    log_debug("Enabling READ/WRITE poll on client\n");
+                    uv_poll_start(poll, UV_READABLE | UV_WRITABLE, broker_server_client_ready);
+                    int stat = wslay_event_send(link->ws);
+                    if(stat != 0) {
+                        broker_close_link(link);
+                        client = NULL;
+                    }
+                }
+            }
         }
     }
-
 }
 
 static
@@ -90,14 +102,17 @@ void broker_ssl_server_client_ready(uv_poll_t *poll,
     SslServer *server = (SslServer*)client->server;
     SslSocket* sslSocket = (SslSocket*)client->sock;
 
-    if (events & UV_READABLE) {
+    if (client &&
+        server &&
+        sslSocket &&
+        (events & UV_READABLE)) {
         server->data_ready(client, poll->loop->data);
         if (sslSocket->socket_ctx.fd == -1) {
             broker_server_free_client(poll);
             client = NULL;
         }
     } else if (status == -EBADF && events ==0 && client) {
-        //broker_server_client_fail(poll);
+        // broker_server_client_fail(poll);
         // The callback closed the connection
         RemoteDSLink *link = client->sock_data;
         if (link) {
@@ -110,12 +125,21 @@ void broker_ssl_server_client_ready(uv_poll_t *poll,
 
     if (client && (events & UV_WRITABLE)) {
         RemoteDSLink *link = client->sock_data;
-        if (link) {
-            link->ws->write_enabled = 1;
-            wslay_event_send(link->ws);
+        if (link && link->ws) {
+            if(!wslay_event_want_write(link->ws)) {
+                log_debug("Stopping WRITE poll on client\n");
+                uv_poll_start(poll, UV_READABLE, broker_ssl_server_client_ready);
+            } else {
+                log_debug("Enabling READ/WRITE poll on client\n");
+                uv_poll_start(poll, UV_READABLE | UV_WRITABLE, broker_ssl_server_client_ready);
+                int stat = wslay_event_send(link->ws);
+                if(stat != 0) {
+                    broker_close_link(link);
+                    client = NULL;
+                }
+            }
         }
     }
-
 }
 
 static
@@ -157,7 +181,8 @@ void broker_server_new_client(uv_poll_t *poll,
 
     clientPoll->data = client;
     client->poll = clientPoll;
-    uv_poll_start(clientPoll, UV_READABLE, broker_server_client_ready);
+    client->poll_cb = broker_server_client_ready;
+    uv_poll_start(clientPoll, UV_READABLE | UV_WRITABLE, client->poll_cb);
 
     log_debug("Accepted a client connection\n");
     return;
@@ -275,7 +300,8 @@ void broker_ssl_server_new_client(uv_poll_t *poll,
 
     clientPoll->data = client;
     client->poll = clientPoll;
-    uv_poll_start(clientPoll, UV_READABLE, broker_ssl_server_client_ready);
+    client->poll_cb = broker_ssl_server_client_ready;
+    uv_poll_start(clientPoll, UV_READABLE, client->poll_cb);
 
     log_debug("Accepted a client connection\n");
     return;
@@ -337,7 +363,7 @@ int start_https_server(SslServer *server, const char *host,
         log_fatal("Failed to bind to %s:%s\n", host, port);
         return 0;
     } else {
-        log_info("HTTP server bound to %s:%s\n", host, port);
+        log_info("HTTPS server bound to %s:%s\n", host, port);
     }
 
 
