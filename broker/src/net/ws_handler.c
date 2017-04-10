@@ -83,7 +83,7 @@ ssize_t broker_want_write_cb(wslay_event_context_ptr ctx,
         return -1;
     }
 
-    struct timeval *time = dslink_malloc(sizeof(struct timeval*));
+    struct timeval *time = dslink_malloc(sizeof(struct timeval));
     int ret = gettimeofday(time, NULL);
 
     if (ret == 0) {
