@@ -144,7 +144,7 @@ int dslink_ws_send_internal(wslay_event_context_ptr ctx, const char *data, uint8
     }
 
     // start polling on the socket, to trigger writes (We always want to poll reads)
-    uv_poll_start(&(link->poll), UV_READABLE | UV_WRITABLE, io_handler);
+    uv_poll_start(link->poll, UV_READABLE | UV_WRITABLE, io_handler);
 
     log_debug("Message queued to be sent: %s\n", data);
     return 0;
@@ -358,6 +358,11 @@ void ping_timer_on_close(uv_handle_t *handle) {
     dslink_free(handle);
 }
 
+static
+void poll_on_close(uv_handle_t *handle) {
+    dslink_free(handle);
+}
+
 void dslink_handshake_handle_ws(DSLink *link, link_callback on_requester_ready_cb) {
     struct wslay_event_callbacks callbacks = {
         want_read_cb,
@@ -374,12 +379,13 @@ void dslink_handshake_handle_ws(DSLink *link, link_callback on_requester_ready_c
         return;
     }
     link->_ws = ptr;
+    link->poll = dslink_malloc(sizeof(uv_poll_t));
 
     mbedtls_net_set_nonblock(&link->_socket->socket_ctx);
     {
-        uv_poll_init(&link->loop, &(link->poll), link->_socket->socket_ctx.fd);
-        link->poll.data = link;
-        uv_poll_start(&(link->poll), UV_READABLE, io_handler);
+        uv_poll_init(&link->loop, link->poll, link->_socket->socket_ctx.fd);
+        link->poll->data = link;
+        uv_poll_start(link->poll, UV_READABLE, io_handler);
     }
 
     uv_timer_t *ping = dslink_malloc(sizeof(uv_timer_t));
@@ -397,7 +403,7 @@ void dslink_handshake_handle_ws(DSLink *link, link_callback on_requester_ready_c
 
     uv_timer_stop(ping);
     uv_close((uv_handle_t *) ping, ping_timer_on_close);
-    uv_close((uv_handle_t *) &(link->poll), NULL);
+    uv_close((uv_handle_t *) link->poll, poll_on_close);
 
     wslay_event_context_free(ptr);
     link->_ws = NULL;
