@@ -113,6 +113,10 @@ int dslink_socket_connect(Socket **sock,
 int dslink_socket_read(Socket *sock, char *buf, size_t len) {
     int r;
 
+    if(!sock) {
+        return DSLINK_SOCK_READ_ERR;
+    }
+
     if (sock->secure) {
         r = mbedtls_ssl_read(&((SslSocket *) sock)->ssl,
                              (unsigned char *) buf, len);
@@ -120,14 +124,21 @@ int dslink_socket_read(Socket *sock, char *buf, size_t len) {
         r = mbedtls_net_recv(&sock->socket_ctx, (unsigned char *) buf, len);
     }
     if (r < 0) {
-        errno = r;
+        if(r == MBEDTLS_ERR_SSL_WANT_READ) {
+            return DSLINK_SOCK_WOULD_BLOCK;
+        }
+
         return DSLINK_SOCK_READ_ERR;
     }
     return r;
 }
 
 int dslink_socket_write(Socket *sock, char *buf, size_t len) {
-    int r;
+    if(!sock) {
+        return DSLINK_SOCK_WRITE_ERR;
+    }
+
+    int r = 0;
     if (sock->secure) {
         r = mbedtls_ssl_write(&((SslSocket *) sock)->ssl,
                               (unsigned char *) buf, len);
@@ -135,6 +146,10 @@ int dslink_socket_write(Socket *sock, char *buf, size_t len) {
         r = mbedtls_net_send(&sock->socket_ctx, (unsigned char *) buf, len);
     }
     if (r < 0) {
+        if(r == MBEDTLS_ERR_SSL_WANT_WRITE) {
+            return DSLINK_SOCK_WOULD_BLOCK;
+        }
+
         return DSLINK_SOCK_WRITE_ERR;
     }
     return r;

@@ -16,15 +16,30 @@ ssize_t broker_want_read_cb(wslay_event_context_ptr ctx,
     (void) flags;
 
     RemoteDSLink *link = user_data;
-    int ret = dslink_socket_read(link->client->sock, (char *) buf, len);
+    if (!link) {
+        wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
+        return -1;
+    } else if(!link->client) {
+        link->pendingClose = 1;
+        wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
+        return -1;
+    }  else if(!link->client->sock) {
+        link->pendingClose = 1;
+        wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
+        return -1;
+    }
+
+    ssize_t ret = -1;
+    while((ret = dslink_socket_read(link->client->sock, (char *) buf, len)) < 0 && errno == EINTR);
     if (ret == 0) {
         link->pendingClose = 1;
         wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
         return -1;
-    } else if (ret == DSLINK_SOCK_READ_ERR) {
-        if (errno == MBEDTLS_ERR_SSL_WANT_READ) {
+    } else if (ret < 0) {
+        if (errno == EAGAIN || ret == DSLINK_SOCK_WOULD_BLOCK) {
             wslay_event_set_error(ctx, WSLAY_ERR_WOULDBLOCK);
         } else {
+            link->pendingClose = 1;
             wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
         }
         return -1;
@@ -39,18 +54,30 @@ ssize_t broker_want_write_cb(wslay_event_context_ptr ctx,
     (void) flags;
 
     RemoteDSLink *link = user_data;
-    if (!link->client) {
+    if (!link) {
+        wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
+        return -1;
+    } else if(!link->client) {
+        link->pendingClose = 1;
+        wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
+        return -1;
+    }  else if(!link->client->sock) {
+        link->pendingClose = 1;
         wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
         return -1;
     }
 
-    int written = dslink_socket_write(link->client->sock, (char *) data, len);
-    if (written < 0) {
-        if (errno == EAGAIN) {
+    ssize_t written = -1;
+    while((written = dslink_socket_write(link->client->sock, (char *) data, len)) < 0 && errno == EINTR);
+    if (written == 0) {
+        link->pendingClose = 1;
+        wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
+        return -1;
+    } else if (written < 0) {
+        if (errno == EAGAIN || written == DSLINK_SOCK_WOULD_BLOCK) {
             wslay_event_set_error(ctx, WSLAY_ERR_WOULDBLOCK);
-        } else if (errno == MBEDTLS_ERR_SSL_WANT_WRITE) {
-            wslay_event_set_error(ctx, WSLAY_ERR_WANT_WRITE);
         } else {
+            link->pendingClose = 1;
             wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
         }
         return -1;
@@ -76,6 +103,9 @@ void broker_on_ws_data(wslay_event_context_ptr ctx,
                 void *user_data) {
     (void) ctx;
     RemoteDSLink *link = user_data;
+    if (!link) {
+        return;
+    }
 
     if (!link->lastReceiveTime) {
         link->lastReceiveTime = dslink_malloc(sizeof(struct timeval));

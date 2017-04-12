@@ -289,7 +289,7 @@ int broker_msg_handle_list(RemoteDSLink *link, json_t *req) {
             broker_list_self(link, node, rid);
         } else if (node->type == DOWNSTREAM_NODE) {
             uint32_t reqRid = (uint32_t) json_integer_value(rid);
-            if (out == NULL) {
+            if(*out == '/' && strcmp(node->name, out+1) == 0) {
                 out = "/";
             }
             broker_list_dslink(link, (DownstreamNode *) node, out, reqRid);

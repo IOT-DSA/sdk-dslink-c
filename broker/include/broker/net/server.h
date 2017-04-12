@@ -20,6 +20,7 @@ typedef struct Client {
     Socket *sock;
     void *sock_data;
     uv_poll_t *poll;
+    uv_poll_cb poll_cb;
 } Client;
 
 

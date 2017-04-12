@@ -31,7 +31,8 @@ int dslink_log_set_lvl(const char *level) {
 void dslink_log_print_time() {
     char buf[20];
     time_t now = time(NULL);
-    strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", localtime(&now));
+    struct tm result;
+    strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", localtime_r(&now, &result));
     printf("%s", buf);
     fflush(stdout);
 }
