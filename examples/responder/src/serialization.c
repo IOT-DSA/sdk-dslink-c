@@ -15,7 +15,8 @@ void save_node(uv_timer_t* timer) {
 }
 
 static
-uv_timer_t save_timer = {0};
+uv_timer_t save_timer;
+
 static
 void on_node_changed(DSLink *link, DSNode *node) {
     if (save_timer.data){
@@ -37,6 +38,7 @@ void load_node(DSLink *link, DSNode *node) {
 }
 
 void responder_init_serialization(DSLink *link, DSNode *root) {
+    bzero(&save_timer, 0);
     DSNode *node = dslink_node_create(root, "saved", "node");
 
     // data for serialization testing

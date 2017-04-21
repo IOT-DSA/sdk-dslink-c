@@ -1,8 +1,8 @@
 #if defined(__linux__)
 #include <stdint.h>
-#include <stdio.h>
 #endif
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "dslink/mem/mem.h"
