@@ -37,7 +37,7 @@ SubRequester *broker_create_sub_requester(DownstreamNode * node, const char *pat
     if (qosQueue) {
         req->qosQueue = qosQueue;
         json_incref(qosQueue);
-    } else if (qos > 0) {
+    } else if (qos > 1) {
         req->qosQueue = json_array();
     }
     req->path = dslink_strdup(path);
@@ -86,7 +86,7 @@ void broker_free_sub_requester(SubRequester *req) {
             broker_stream_free((BrokerStream *)req->stream);
         }
     }
-    if (req->qos & 2) {
+    if (req->qos > 2) {
         serialize_qos_queue(req, 1);
         dslink_storage_store(((Broker *)mainLoop->data)->storage, req->reqNode->path, req->path, NULL, NULL, NULL);
     }
@@ -149,21 +149,19 @@ void broker_update_sub_req(SubRequester *subReq, json_t *varray) {
         broker_ws_send_obj(subReq->reqNode->link, top);
 
         json_decref(top);
-    } else if (subReq->qos > 0){
+    } else if (subReq->qos > 1){
         // add to qos queue
         if (!subReq->qosQueue) {
             subReq->qosQueue = json_array();
         }
-        if ((subReq->qos & 1) == 0) {
-            clear_qos_queue(subReq, 0);
-        } else if (json_array_size(subReq->qosQueue) >= broker_max_qos_queue_size) {
+        if (json_array_size(subReq->qosQueue) >= broker_max_qos_queue_size) {
             // destroy qos queue when exceed max queue size
             clear_qos_queue(subReq, 1);
             subReq->qos = 0;
             return;
         }
         json_array_append(subReq->qosQueue, varray);
-        if (subReq->qos & 2) {
+        if (subReq->qos > 2) {
             serialize_qos_queue(subReq, 0);
         }
     }
@@ -209,7 +207,9 @@ void broker_update_stream_qos(BrokerSubStream *stream) {
         // recalculate remoteQos;
         dslink_map_foreach(&stream->reqSubs) {
             SubRequester *reqSub = entry->value->data;
-            maxQos |= reqSub->qos;
+            if (maxQos < reqSub->qos) {
+                maxQos = reqSub->qos;
+            }
         }
         if (maxQos != stream->respQos && ((DownstreamNode*)stream->respNode)->link) {
             stream->respQos = maxQos;
@@ -221,16 +221,16 @@ void broker_update_sub_qos(SubRequester *req, uint8_t qos) {
     if (req->qos != qos) {
         uint8_t oldqos = req->qos;
         req->qos = qos;
-        if (oldqos & 2 && !(qos & 2)) {
+        if (oldqos > 2 && qos <= 2) {
             // delete qos file
             serialize_qos_queue(req, 1);
         }
 
-        if (req->qos > 0 && !(req->qosQueue)) {
+        if (req->qos > 1 && !(req->qosQueue)) {
             req->qosQueue = json_array();
         }
         broker_update_stream_qos(req->stream);
-        if (qos & 2 && !(oldqos & 2)) {
+        if (qos > 2 && oldqos <= 2) {
             // save qos file
             serialize_qos_queue(req, 0);
         }
