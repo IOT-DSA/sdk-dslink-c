@@ -53,6 +53,10 @@ struct DSLink {
     uv_async_t async_get; // async get value
     uv_async_t async_set; // async set value
     uv_async_t async_run; // async run
+    uv_sem_t async_set_data_sem;
+    uv_sem_t async_get_data_sem;
+    uv_sem_t async_run_data_sem;
+    int async_close;
     uv_poll_t*  poll;
     DSLinkConfig config; // Configuration
     uint32_t *msg;

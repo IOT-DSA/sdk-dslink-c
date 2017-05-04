@@ -562,9 +562,28 @@ int dslink_node_update_value_safe(struct DSLink *link, char* path, json_t *value
     async_data->callback_data = callback_data;
 
     if(link) {
-        link->async_set.data = (void*)async_data;
-        uv_async_send(&link->async_set);
+        if(!link->async_close) {
+            uv_sem_wait(&link->async_set_data_sem);
+            if (!link->async_close) {
+                link->async_set.data = (void *) async_data;
+                uv_async_send(&link->async_set);
+            } else {
+                //free async_data
+                dslink_free(async_data->node_path);
+                json_decref(async_data->set_value);
+                dslink_free(async_data);
+                return -1;
+            }
+        }  else {
+            //free async_data
+            dslink_free(async_data->node_path);
+            json_decref(async_data->set_value);
+            dslink_free(async_data);
+            return -1;
+        }
     }
+
+
 
 
     return 0;
@@ -582,8 +601,23 @@ int dslink_node_get_value_safe(struct DSLink *link, char* path,  void (*callback
     async_data->callback_data = callback_data;
 
     if(link) {
-        link->async_get.data = (void*)async_data;
-        uv_async_send(&link->async_get);
+        if(!link->async_close) {
+            uv_sem_wait(&link->async_get_data_sem);
+            if (!link->async_close) {
+                link->async_get.data = (void *) async_data;
+                uv_async_send(&link->async_get);
+            } else {
+                //free async_data
+                dslink_free(async_data->node_path);
+                dslink_free(async_data);
+                return -1;
+            }
+        }  else {
+            //free async_data
+            dslink_free(async_data->node_path);
+            dslink_free(async_data);
+            return -1;
+        }
     }
 
     return 0;
@@ -599,8 +633,21 @@ int dslink_run_safe(struct DSLink *link, void (*callback)(struct DSLink *link, v
     async_data->callback_data = callback_data;
 
     if(link) {
-        link->async_run.data = (void*)async_data;
-        uv_async_send(&link->async_run);
+        if(!link->async_close) {
+            uv_sem_wait(&link->async_run_data_sem);
+            if (!link->async_close) {
+                link->async_run.data = (void *) async_data;
+                uv_async_send(&link->async_run);
+            } else {
+                //free async_data
+                dslink_free(async_data);
+                return -1;
+            }
+        }  else {
+            //free async_data
+            dslink_free(async_data);
+            return -1;
+        }
     }
 
     return 0;
