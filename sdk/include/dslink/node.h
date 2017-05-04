@@ -94,6 +94,9 @@ void dslink_node_deserialize(struct DSLink *link, DSNode *node, json_t *data);
  * @param path           path to the node
  * @param callback       a callback when the update is done, will be called from dslink's thread, parameters pass back in the callback will be (error, callback_data)
  * @param callback_data  a data that will be passed back to callback
+ * @return  0 if async call is successfully sent
+ *          -1 if async handling is closed (dslink disconnected)
+ *          otherwise check error no
  */
 int dslink_node_update_value_safe(struct DSLink *link, char* path, json_t *value,  void (*callback)(int, void*), void * callback_data);
 
@@ -101,6 +104,9 @@ int dslink_node_update_value_safe(struct DSLink *link, char* path, json_t *value
  * @param path           path to the node
  * @param callback       a callback when the update is done, will be called from dslink's thread, parameters pass back in the callback will be (value, callback_data)
  * @param callback_data  a data that will be passed back to callback
+ * @return  0 if async call is successfully sent
+ *          -1 if async handling is closed (dslink disconnected)
+ *          otherwise check error no
  */
 int dslink_node_get_value_safe(struct DSLink *link, char* path,  void (*callback)(json_t *, void*), void * callback_data);
 
@@ -109,6 +115,9 @@ int dslink_node_get_value_safe(struct DSLink *link, char* path,  void (*callback
  *
  * @param callback       a callback when the update is done, will be called from dslink's thread, parameters pass back in the callback will be (link, callback_data)
  * @param callback_data  a data that will be passed back to callback
+ * @return  0 if async call is successfully sent
+ *          -1 if async handling is closed (dslink disconnected)
+ *          otherwise check error no
  */
 int dslink_run_safe(struct DSLink *link, void (*callback)(struct DSLink *link, void*), void * callback_data);
 
