@@ -67,6 +67,45 @@ uint32_t dslink_incr_msg(DSLink *link) {
     return ++(*link->msg);
 }
 
+static
+void io_handler(uv_poll_t *poll, int status, int events) {
+
+    (void) events;
+    if (status < 0) {
+        return;
+    }
+
+    DSLink* link = poll->data;
+    if(!link || !link->_ws) {
+        return;
+    }
+
+    if (events & UV_READABLE) {
+        int stat = wslay_event_recv(link->_ws);
+        if(stat != 0) {
+            log_debug("Stopping dslink loop...\n");
+            uv_stop(&link->loop);
+            return;
+        }
+    }
+
+    if (events & UV_WRITABLE) {
+        if(!wslay_event_want_write(link->_ws)) {
+            log_debug("Stopping WRITE poll on link\n");
+            uv_poll_start(poll, UV_READABLE, io_handler);
+        } else {
+            log_debug("Enabling READ/WRITE poll on link\n");
+            uv_poll_start(poll, UV_READABLE | UV_WRITABLE, io_handler);
+            int stat = wslay_event_send(link->_ws);
+            if(stat != 0) {
+                log_debug("Stopping dslink loop...\n");
+                uv_stop(&link->loop);
+                return;
+            }
+        }
+    }
+}
+
 int dslink_ws_send_obj(wslay_event_context_ptr ctx, json_t *obj) {
     DSLink *link = ctx->user_data;
     uint32_t msg = dslink_incr_msg(link);
@@ -99,17 +138,17 @@ int dslink_ws_send_internal(wslay_event_context_ptr ctx, const char *data, uint8
         return 1;
     }
 
-    // sending is moved to the thread: dslink_send_ws_thread
-//    if (wslay_event_send(ctx) != 0) {
-//        return 1;
-//    }
-
     DSLink *link = (DSLink*)ctx->user_data;
     if(!link) {
         return 1;
     }
 
+#ifdef DSLINK_WS_SEND_THREADED
     uv_sem_post(&link->ws_send_sem);
+#else
+    // start polling on the socket, to trigger writes (We always want to poll reads)
+    uv_poll_start(link->poll, UV_READABLE | UV_WRITABLE, io_handler);
+#endif
 
     log_debug("Message queued to be sent: %s\n", data);
     return 0;
@@ -309,30 +348,6 @@ void recv_frame_cb(wslay_event_context_ptr ctx,
 }
 
 static
-void io_handler(uv_poll_t *poll, int status, int events) {
-
-    (void) events;
-    if (status < 0) {
-        return;
-    }
-
-    DSLink *link = poll->data;
-    if(!link || !link->_ws) {
-        return;
-    }
-
-    int stat = wslay_event_recv(link->_ws);
-    //why is this implemented like this before?
-//    if (stat == 0 && (link->_ws->error == WSLAY_ERR_NO_MORE_MSG
-//                        || link->_ws->error == WSLAY_ERR_CALLBACK_FAILURE
-//                        || link->_ws->error == 0)) {
-    if(stat != 0){
-        log_debug("Stopping dslink loop...\n");
-        uv_stop(&link->loop);
-    }
-}
-
-static
 void ping_handler(uv_timer_t *timer) {
     log_debug("Pinging...\n");
 
@@ -352,6 +367,7 @@ void poll_on_close(uv_handle_t *handle) {
     dslink_free(handle);
 }
 
+#ifdef DSLINK_WS_SEND_THREADED
 void dslink_send_ws_thread(void *arg) {
 
     int ret;
@@ -371,10 +387,8 @@ void dslink_send_ws_thread(void *arg) {
             log_debug("Message sent: %d\n",ret);
         }
     }
-
-
-
 }
+#endif
 
 void dslink_handshake_handle_ws(DSLink *link, link_callback on_requester_ready_cb) {
     struct wslay_event_callbacks callbacks = {
@@ -392,17 +406,16 @@ void dslink_handshake_handle_ws(DSLink *link, link_callback on_requester_ready_c
         return;
     }
     link->_ws = ptr;
+    link->poll = dslink_malloc(sizeof(uv_poll_t));
 
     mbedtls_net_set_nonblock(&link->_socket->socket_ctx);
-
-    uv_poll_t *poll = dslink_calloc(1, sizeof(uv_poll_t));
     {
-        uv_poll_init(&link->loop, poll, link->_socket->socket_ctx.fd);
-        poll->data = link;
-        uv_poll_start(poll, UV_READABLE, io_handler);
+        uv_poll_init(&link->loop, link->poll, link->_socket->socket_ctx.fd);
+        link->poll->data = link;
+        uv_poll_start(link->poll, UV_READABLE, io_handler);
     }
 
-    uv_timer_t *ping = dslink_calloc(1, sizeof(uv_timer_t));
+    uv_timer_t *ping = dslink_malloc(sizeof(uv_timer_t));
     {
         uv_timer_init(&link->loop, ping);
         ping->data = link;
@@ -414,21 +427,25 @@ void dslink_handshake_handle_ws(DSLink *link, link_callback on_requester_ready_c
         on_requester_ready_cb(link);
     }
 
+#ifdef DSLINK_WS_SEND_THREADED
     link->closingSendThread = 0;
     uv_sem_init(&link->ws_send_sem,0);
     uv_thread_t send_ws_thread_id;
     uv_thread_create(&send_ws_thread_id, dslink_send_ws_thread, link);
+#endif
 
     uv_run(&link->loop, UV_RUN_DEFAULT);
 
     uv_timer_stop(ping);
     uv_close((uv_handle_t *) ping, ping_timer_on_close);
-    uv_close((uv_handle_t *) poll, poll_on_close);
+    uv_close((uv_handle_t *) link->poll, poll_on_close);
 
+#ifdef DSLINK_WS_SEND_THREADED
     link->closingSendThread = 1;
     uv_sem_post(&link->ws_send_sem);
     uv_thread_join(&send_ws_thread_id);
     uv_sem_destroy(&link->ws_send_sem);
+#endif
 
     wslay_event_context_free(ptr);
     link->_ws = NULL;

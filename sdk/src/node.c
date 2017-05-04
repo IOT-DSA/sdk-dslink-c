@@ -569,6 +569,7 @@ int dslink_node_update_value_safe(struct DSLink *link, char* path, json_t *value
 
     return 0;
 }
+
 int dslink_node_get_value_safe(struct DSLink *link, char* path,  void (*callback)(json_t *, void*), void * callback_data) {
 
     DSLinkAsyncGetData *async_data = dslink_malloc(sizeof(DSLinkAsyncGetData));

@@ -12,6 +12,8 @@ extern "C" {
 #include "node.h"
 #include "url.h"
 
+//#define DSLINK_WS_SEND_THREADED
+
 typedef struct DSLinkCallbacks DSLinkCallbacks;
 typedef struct DSLinkConfig DSLinkConfig;
 typedef struct DSLink DSLink;
@@ -40,7 +42,6 @@ struct DSLink {
     uint8_t is_responder;
 
     int closing;
-    int closingSendThread;
 
     struct wslay_event_context *_ws; // Event context for WSLay
     Socket *_socket; // Socket for the _ws connection
@@ -52,13 +53,18 @@ struct DSLink {
     uv_async_t async_get; // async get value
     uv_async_t async_set; // async set value
     uv_async_t async_run; // async run
+    uv_poll_t*  poll;
     DSLinkConfig config; // Configuration
     uint32_t *msg;
 
     json_t *link_data;
     json_t *dslink_json;
 
+#ifdef DSLINK_WS_SEND_THREADED
     uv_sem_t ws_send_sem;
+    int closingSendThread;
+#endif
+
 };
 
 struct Responder {
