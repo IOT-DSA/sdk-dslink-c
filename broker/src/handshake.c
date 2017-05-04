@@ -180,25 +180,30 @@ json_t *broker_handshake_handle_conn(Broker *broker,
             if (tokenNode) {
                 DownstreamNode *node = nodeExists == 1 ? downstreamNodeNow : broker_init_downstream_node(broker->downstream, name);
 
-                json_object_set_new_nocheck(node->meta, "$$token", json_string_nocheck(tokenNode->name));
+                if (node) {
+                    json_object_set_new_nocheck(node->meta, "$$token", json_string_nocheck(tokenNode->name));
 
-                node->dsId = dslink_str_ref(dsId);
-                if (broker->downstream->list_stream) {
-                    node->link = link;
-                    update_list_child(broker->downstream,
-                                      broker->downstream->list_stream,
-                                      name);
-                    node->link = NULL;
+                    node->dsId = dslink_str_ref(dsId);
+                    if (broker->downstream->list_stream) {
+                        node->link = link;
+                        update_list_child(broker->downstream,
+                                          broker->downstream->list_stream,
+                                          name);
+                        node->link = NULL;
+                    }
+
+                    json_t *group = json_object_get(tokenNode->meta, "$$group");
+                    if (json_is_string(group)) {
+                        json_object_set_nocheck(node->meta, "$$group", group);
+                    }
+
+                    token_used(tokenNode);
+
+                    broker_downstream_nodes_changed(broker);
+                } else {
+                    log_err("No node found");
+                    goto fail;
                 }
-
-                json_t *group = json_object_get(tokenNode->meta, "$$group");
-                if (json_is_string(group)) {
-                    json_object_set_nocheck(node->meta, "$$group", group);
-                }
-
-                token_used(tokenNode);
-
-                broker_downstream_nodes_changed(broker);
             } else {
                 log_err("Invalid token: %s\n", token);
                 goto fail;
