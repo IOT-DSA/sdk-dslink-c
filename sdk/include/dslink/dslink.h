@@ -12,7 +12,7 @@ extern "C" {
 #include "node.h"
 #include "url.h"
 
-//#define DSLINK_WS_SEND_THREADED
+#define DSLINK_WS_SEND_THREADED
 
 typedef struct DSLinkCallbacks DSLinkCallbacks;
 typedef struct DSLinkConfig DSLinkConfig;
@@ -66,6 +66,7 @@ struct DSLink {
 
 #ifdef DSLINK_WS_SEND_THREADED
     uv_sem_t ws_send_sem;
+    uv_sem_t ws_queue_sem;
     int closingSendThread;
 #endif
 

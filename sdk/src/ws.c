@@ -134,15 +134,18 @@ int dslink_ws_send_internal(wslay_event_context_ptr ctx, const char *data, uint8
     msg.msg = (const uint8_t *) data;
     msg.msg_length = strlen(data);
     msg.opcode = WSLAY_TEXT_FRAME;
-    if (wslay_event_queue_msg(ctx, &msg) != 0) {
-        return 1;
-    }
 
     DSLink *link = (DSLink*)ctx->user_data;
     if(!link) {
         return 1;
     }
 
+#ifdef DSLINK_WS_SEND_THREADED
+    uv_sem_wait(&link->ws_queue_sem);
+#endif
+    if (wslay_event_queue_msg(ctx, &msg) != 0) {
+        return 1;
+    }
 #ifdef DSLINK_WS_SEND_THREADED
     uv_sem_post(&link->ws_send_sem);
 #else
@@ -386,6 +389,7 @@ void dslink_send_ws_thread(void *arg) {
         } else {
             log_debug("Message sent: %d\n",ret);
         }
+        uv_sem_post(&link->ws_queue_sem);
     }
 }
 #endif
@@ -430,6 +434,7 @@ void dslink_handshake_handle_ws(DSLink *link, link_callback on_requester_ready_c
 #ifdef DSLINK_WS_SEND_THREADED
     link->closingSendThread = 0;
     uv_sem_init(&link->ws_send_sem,0);
+    uv_sem_init(&link->ws_queue_sem,1);
     uv_thread_t send_ws_thread_id;
     uv_thread_create(&send_ws_thread_id, dslink_send_ws_thread, link);
 #endif
@@ -445,6 +450,7 @@ void dslink_handshake_handle_ws(DSLink *link, link_callback on_requester_ready_c
     uv_sem_post(&link->ws_send_sem);
     uv_thread_join(&send_ws_thread_id);
     uv_sem_destroy(&link->ws_send_sem);
+    uv_sem_destroy(&link->ws_queue_sem);
 #endif
 
     wslay_event_context_free(ptr);
