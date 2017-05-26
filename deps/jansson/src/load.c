@@ -815,10 +815,19 @@ static json_t *parse_value(lex_t *lex, size_t flags, json_error_t *error)
                 }
             }
 
-            json = jsonp_stringn_nocheck_own(value, len);
-            if(json) {
-                lex->value.string.val = NULL;
-                lex->value.string.len = 0;
+            //if there is binary prefix, parse as JSON_BINARY
+            if(json_check_binary_prefix(value)) {
+                json = jsonp_binaryn_nocheck_own(value, len);
+                if(json) {
+                    lex->value.string.val = NULL;
+                    lex->value.string.len = 0;
+                }
+            } else {
+                json = jsonp_stringn_nocheck_own(value, len);
+                if (json) {
+                    lex->value.string.val = NULL;
+                    lex->value.string.len = 0;
+                }
             }
             break;
         }

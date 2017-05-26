@@ -39,6 +39,7 @@ extern "C" {
 typedef enum {
     JSON_OBJECT,
     JSON_ARRAY,
+    JSON_BINARY,
     JSON_STRING,
     JSON_INTEGER,
     JSON_REAL,
@@ -78,6 +79,7 @@ typedef long json_int_t;
 #define json_boolean_value     json_is_true
 #define json_is_boolean(json)  (json_is_true(json) || json_is_false(json))
 #define json_is_null(json)     ((json) && json_typeof(json) == JSON_NULL)
+#define json_is_binary(json)   ((json) && json_typeof(json) == JSON_BINARY)
 
 /* construction, destruction, reference counting */
 
@@ -93,6 +95,10 @@ json_t *json_true(void);
 json_t *json_false(void);
 #define json_boolean(val)      ((val) ? json_true() : json_false())
 json_t *json_null(void);
+json_t *json_binary(const char *value);
+json_t *json_binaryn(const char *value, size_t len);
+json_t *json_binary_nocheck(const char *value);
+json_t *json_binaryn_nocheck(const char *value, size_t len);
 
 static JSON_INLINE
 json_t *json_incref(json_t *json)
@@ -214,6 +220,11 @@ size_t json_string_length(const json_t *string);
 json_int_t json_integer_value(const json_t *integer);
 double json_real_value(const json_t *real);
 double json_number_value(const json_t *json);
+/* base64 decode and return */
+size_t json_binary_value(const json_t *string, char* dec_bin);
+const char *json_binary_value_raw(const json_t *binary);
+size_t json_binary_length_raw(const json_t *binary);
+int json_check_binary_prefix(const char *value);
 
 int json_string_set(json_t *string, const char *value);
 int json_string_setn(json_t *string, const char *value, size_t len);
@@ -221,6 +232,10 @@ int json_string_set_nocheck(json_t *string, const char *value);
 int json_string_setn_nocheck(json_t *string, const char *value, size_t len);
 int json_integer_set(json_t *integer, json_int_t value);
 int json_real_set(json_t *real, double value);
+int json_binary_set(json_t *string, const char *value);
+int json_binary_setn(json_t *string, const char *value, size_t len);
+int json_binary_set_nocheck(json_t *string, const char *value);
+int json_binary_setn_nocheck(json_t *string, const char *value, size_t len);
 
 /* pack, unpack */
 

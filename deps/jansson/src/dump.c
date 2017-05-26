@@ -226,6 +226,9 @@ static int do_dump(const json_t *json, size_t flags, int depth,
         case JSON_STRING:
             return dump_string(json_string_value(json), json_string_length(json), dump, data, flags);
 
+        case JSON_BINARY:
+            return dump_string(json_binary_value_raw(json), json_binary_length_raw(json), dump, data, flags);
+
         case JSON_ARRAY:
         {
             size_t n;

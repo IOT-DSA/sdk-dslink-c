@@ -54,6 +54,12 @@ typedef struct {
 
 typedef struct {
     json_t json;
+    char *value;
+    size_t length;
+} json_binary_t;
+
+typedef struct {
+    json_t json;
     double value;
 } json_real_t;
 
@@ -62,14 +68,24 @@ typedef struct {
     json_int_t value;
 } json_integer_t;
 
+#define JSON_BINARY_PREFIX_LEN 7 //"\u001Bbytes:"
+#define JSON_BINARY_PREFIX_1 0x1B
+#define JSON_BINARY_PREFIX_REMAINING "bytes:"
+#define JSON_BINARY_PREFIX_REMAINING_LEN 6
+
+
 #define json_to_object(json_)  container_of(json_, json_object_t, json)
 #define json_to_array(json_)   container_of(json_, json_array_t, json)
 #define json_to_string(json_)  container_of(json_, json_string_t, json)
 #define json_to_real(json_)    container_of(json_, json_real_t, json)
 #define json_to_integer(json_) container_of(json_, json_integer_t, json)
+#define json_to_binary(json_)  container_of(json_, json_binary_t, json)
 
 /* Create a string by taking ownership of an existing buffer */
 json_t *jsonp_stringn_nocheck_own(const char *value, size_t len);
+
+/* Create a binary by taking ownership of an existing buffer */
+json_t *jsonp_binaryn_nocheck_own(const char *value, size_t len);
 
 /* Error message formatting */
 void jsonp_error_init(json_error_t *error, const char *source);

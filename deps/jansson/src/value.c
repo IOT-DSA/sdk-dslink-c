@@ -27,6 +27,8 @@
 #include "jansson_private.h"
 #include "utf.h"
 
+#include "dslink/base64_url.h"
+
 /* Work around nonstandard isnan() and isinf() implementations */
 #ifndef isnan
 #ifndef __sun
@@ -927,6 +929,226 @@ json_t *json_null(void)
 }
 
 
+/*** binary ***/
+int json_check_binary_prefix(const char *value){
+
+    if(strlen(value) < JSON_BINARY_PREFIX_LEN)
+        return 0;
+
+    if(value[0] == JSON_BINARY_PREFIX_1 && !strncmp(value+1, JSON_BINARY_PREFIX_REMAINING, JSON_BINARY_PREFIX_REMAINING_LEN))
+        return 1;
+    else
+        return 0;
+}
+
+static json_t *binary_create(const char *value, size_t len, int own)
+{
+    char *v;
+    json_binary_t *binary;
+    size_t olen;
+
+    if(!value)
+        return NULL;
+
+    if(own) {
+        //only acceptable when there is prefix and base64 coded
+        if (!json_check_binary_prefix(value))
+            return NULL;
+
+        v = (char *) value;
+    } else {
+        //if there is prefix, that means it is raw and base64 coded
+        if(json_check_binary_prefix(value)) {
+
+            v = jsonp_strndup(value, len);
+            if(!v)
+                return NULL;
+        } else {
+            //if prefix does not exist, it should be added and the payload should be coded base64
+            v = jsonp_malloc(len * 2);
+            if(!v)
+                return NULL;
+            v[0] = JSON_BINARY_PREFIX_1;
+            strncpy(v+1,JSON_BINARY_PREFIX_REMAINING,JSON_BINARY_PREFIX_REMAINING_LEN);
+
+            //base64 encode and write to memory
+            if(dslink_base64_url_encode((unsigned char*)(v+JSON_BINARY_PREFIX_LEN),(len*2)-JSON_BINARY_PREFIX_LEN,&olen,(unsigned char*)value,len)) {
+                jsonp_free(v);
+                return NULL;
+            }
+
+            v[olen + JSON_BINARY_PREFIX_LEN] = '\0';
+            len = olen + JSON_BINARY_PREFIX_LEN;
+        }
+
+    }
+
+    binary = jsonp_malloc(sizeof(json_binary_t));
+    if(!binary) {
+        if(!own)
+            jsonp_free(v);
+        return NULL;
+    }
+    json_init(&binary->json, JSON_BINARY);
+    binary->value = v;
+    binary->length = len;
+
+    return &binary->json;
+}
+
+json_t *json_binary_nocheck(const char *value)
+{
+    if(!value)
+        return NULL;
+
+    return binary_create(value, strlen(value),0);
+}
+
+json_t *json_binaryn_nocheck(const char *value, size_t len)
+{
+    return binary_create(value, len,0);
+}
+
+/* this is private; "steal" is not a public API concept */
+json_t *jsonp_binaryn_nocheck_own(const char *value, size_t len)
+{
+    return binary_create(value, len, 1);
+}
+
+json_t *json_binary(const char *value)
+{
+    if(!value)
+        return NULL;
+
+    return json_binaryn(value, strlen(value));
+}
+
+json_t *json_binaryn(const char *value, size_t len)
+{
+    if(!value)
+        return NULL;
+
+    return json_binaryn_nocheck(value, len);
+}
+
+size_t json_binary_value(const json_t *json, char *dec_bin)
+{
+    if(!json_is_binary(json))
+        return 0;
+
+    //base64 decode and return
+    int i;
+    const char *raw_bin = json_binary_value_raw(json) + JSON_BINARY_PREFIX_LEN;
+
+    size_t olen;
+    char *bin_copy = (char*)jsonp_malloc(strlen(raw_bin) + 4);
+    strcpy(bin_copy,raw_bin);
+    int padding = 4-(strlen(raw_bin) % 4);
+    if(padding < 4) {
+        for (i = 0; i < padding; i++) {
+            bin_copy[strlen(raw_bin) + i] = '=';
+        }
+        bin_copy[strlen(raw_bin) + padding] = '\0';
+    }
+
+    if(dslink_base64_url_decode((unsigned char*)dec_bin,strlen(bin_copy),&olen,(const unsigned char*)bin_copy,strlen(bin_copy))) {
+        jsonp_free(bin_copy);
+        return 0;
+    }
+
+    jsonp_free(bin_copy);
+    return olen;
+}
+const char *json_binary_value_raw(const json_t *json)
+{
+    if(!json_is_binary(json))
+        return NULL;
+
+    return json_to_binary(json)->value;
+}
+
+size_t json_binary_length_raw(const json_t *json)
+{
+    if(!json_is_binary(json))
+        return 0;
+
+    return json_to_binary(json)->length;
+}
+
+int json_binary_set_nocheck(json_t *json, const char *value)
+{
+    if(!value)
+        return -1;
+
+    return json_binary_setn_nocheck(json, value, strlen(value));
+}
+
+int json_binary_setn_nocheck(json_t *json, const char *value, size_t len)
+{
+    char *dup;
+    json_binary_t *binary;
+
+    if(!json_is_binary(json) || !value)
+        return -1;
+
+    dup = jsonp_strndup(value, len);
+    if(!dup)
+        return -1;
+
+    binary = json_to_binary(json);
+    jsonp_free(binary->value);
+    binary->value = dup;
+    binary->length = len;
+
+    return 0;
+}
+
+int json_binary_set(json_t *json, const char *value)
+{
+    if(!value)
+        return -1;
+
+    return json_binary_setn(json, value, strlen(value));
+}
+
+int json_binary_setn(json_t *json, const char *value, size_t len)
+{
+    if(!value || !json_check_binary_prefix(value))
+        return -1;
+
+    return json_binary_setn_nocheck(json, value, len);
+}
+
+static void json_delete_binary(json_binary_t *binary)
+{
+    jsonp_free(binary->value);
+    jsonp_free(binary);
+}
+
+static int json_binary_equal(json_t *binary1, json_t *binary2)
+{
+    json_binary_t *b1, *b2;
+
+    if(!json_is_binary(binary1) || !json_is_binary(binary2))
+        return 0;
+
+    b1 = json_to_binary(binary1);
+    b2 = json_to_binary(binary2);
+    return b1->length == b2->length && !memcmp(b1->value, b2->value, b1->length);
+}
+
+static json_t *json_binary_copy(const json_t *binary)
+{
+    json_binary_t *b;
+
+    if(!json_is_binary(binary))
+        return NULL;
+
+    b = json_to_binary(binary);
+    return json_binaryn_nocheck(b->value, b->length);
+}
+
+
 /*** deletion ***/
 
 void json_delete(json_t *json)
@@ -943,6 +1165,9 @@ void json_delete(json_t *json)
             break;
         case JSON_STRING:
             json_delete_string(json_to_string(json));
+            break;
+        case JSON_BINARY:
+            json_delete_binary(json_to_binary(json));
             break;
         case JSON_INTEGER:
             json_delete_integer(json_to_integer(json));
@@ -979,6 +1204,8 @@ int json_equal(json_t *json1, json_t *json2)
             return json_array_equal(json1, json2);
         case JSON_STRING:
             return json_string_equal(json1, json2);
+        case JSON_BINARY:
+            return json_binary_equal(json1, json2);
         case JSON_INTEGER:
             return json_integer_equal(json1, json2);
         case JSON_REAL:
@@ -1003,6 +1230,8 @@ json_t *json_copy(json_t *json)
             return json_array_copy(json);
         case JSON_STRING:
             return json_string_copy(json);
+        case JSON_BINARY:
+            return json_binary_copy(json);
         case JSON_INTEGER:
             return json_integer_copy(json);
         case JSON_REAL:
@@ -1032,6 +1261,8 @@ json_t *json_deep_copy(const json_t *json)
                shallow copying */
         case JSON_STRING:
             return json_string_copy(json);
+        case JSON_BINARY:
+            return json_binary_copy(json);
         case JSON_INTEGER:
             return json_integer_copy(json);
         case JSON_REAL:
