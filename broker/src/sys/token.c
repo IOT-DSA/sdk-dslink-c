@@ -457,8 +457,8 @@ int load_tokens() {
     uv_fs_poll_init(mainLoop, &newTokenFileHandler);
     uv_fs_poll_start(&newTokenFileHandler, new_file_token_changed, newTokenPath, 1000);
 
-    dslink_free((void *) base);
-
+    dslink_free((void*) base);
+    dslink_free((void*) newTokenPath);
 
     return 0;
 }
