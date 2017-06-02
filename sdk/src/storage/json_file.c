@@ -397,9 +397,7 @@ void json_storage_recall(StorageProvider *provider, const char **rkey, storage_r
 static
 void json_storage_destroy(StorageProvider *provider) {
     JsonStore *store = provider->data;
-
     if (store->timer_setup != 0) {
-        dslink_free(store->save_timer);
         uv_timer_stop(store->save_timer);
         uv_close((uv_handle_t *) store->save_timer, nop_close_uv);
         store->timer_setup = 0;
@@ -407,6 +405,8 @@ void json_storage_destroy(StorageProvider *provider) {
 
     json_delete(store->root);
     json_delete(store->save_queue);
+
+    dslink_free(store->save_timer);
     dslink_free(store);
 }
 
