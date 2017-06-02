@@ -451,12 +451,11 @@ int load_tokens() {
 
             json_decref(val);
         }
-    }
+    } 
 
     char *newTokenPath = (char*)broker_pathcat(base, "append");
     uv_fs_poll_init(mainLoop, &newTokenFileHandler);
     uv_fs_poll_start(&newTokenFileHandler, new_file_token_changed, newTokenPath, 1000);
-    newTokenFileHandler.data = newTokenPath;
 
     dslink_free((void *) base);
 
