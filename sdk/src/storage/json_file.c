@@ -403,6 +403,9 @@ void json_storage_destroy(StorageProvider *provider) {
         store->timer_setup = 0;
     }
 
+    json_decref(store->root);
+    json_decref(store->save_queue);
+
     dslink_free(store->save_timer);
     dslink_free(store);
 }
