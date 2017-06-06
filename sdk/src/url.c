@@ -69,7 +69,7 @@ Url *dslink_url_parse(const char *address) {
             len = 0;
         } else if ((c == ']') && state == 3) {
             // Parse the IPv6 host
-            len -= 2; // Rewind a character
+            len -= 2; // Rewind
             address += 1;
             URL_ADDRESS_SUBSTRING_COPY(url->host, len)
             address += 1;
