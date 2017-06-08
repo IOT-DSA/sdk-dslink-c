@@ -30,7 +30,7 @@
 #include MBEDTLS_CONFIG_FILE
 #endif
 
-#if defined(MBEDTLS_SHA1_C)
+//#if defined(MBEDTLS_SHA1_C)
 
 #include "mbedtls/sha1.h"
 
@@ -445,4 +445,4 @@ exit:
 
 #endif /* MBEDTLS_SELF_TEST */
 
-#endif /* MBEDTLS_SHA1_C */
+//#endif /* MBEDTLS_SHA1_C */
