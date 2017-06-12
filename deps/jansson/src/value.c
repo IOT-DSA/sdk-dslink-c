@@ -27,7 +27,7 @@
 #include "jansson_private.h"
 #include "utf.h"
 
-#include "dslink/base64_url.h"
+#include "base64_url.h"
 
 /* Work around nonstandard isnan() and isinf() implementations */
 #ifndef isnan
@@ -972,7 +972,7 @@ static json_t *binary_create(const char *value, size_t len, int own)
             strncpy(v+1,JSON_BINARY_PREFIX_REMAINING,JSON_BINARY_PREFIX_REMAINING_LEN);
 
             //base64 encode and write to memory
-            if(dslink_base64_url_encode((unsigned char*)(v+JSON_BINARY_PREFIX_LEN),(len*2)-JSON_BINARY_PREFIX_LEN,&olen,(unsigned char*)value,len)) {
+            if(json_base64_url_encode((unsigned char*)(v+JSON_BINARY_PREFIX_LEN),(len*2)-JSON_BINARY_PREFIX_LEN,&olen,(unsigned char*)value,len)) {
                 jsonp_free(v);
                 return NULL;
             }
@@ -1051,7 +1051,7 @@ size_t json_binary_value(const json_t *json, char *dec_bin)
         bin_copy[strlen(raw_bin) + padding] = '\0';
     }
 
-    if(dslink_base64_url_decode((unsigned char*)dec_bin,strlen(bin_copy),&olen,(const unsigned char*)bin_copy,strlen(bin_copy))) {
+    if(json_base64_url_decode((unsigned char*)dec_bin,strlen(bin_copy),&olen,(const unsigned char*)bin_copy,strlen(bin_copy))) {
         jsonp_free(bin_copy);
         return 0;
     }
