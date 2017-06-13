@@ -144,10 +144,14 @@ int dslink_ws_send_internal(wslay_event_context_ptr ctx, const char *data, uint8
     }
 
     // start polling on the socket, to trigger writes (We always want to poll reads)
-    uv_poll_start(link->poll, UV_READABLE | UV_WRITABLE, io_handler);
+    if(link->poll && !uv_is_closing((uv_handle_t*)link->poll)) {
+        uv_poll_start(link->poll, UV_READABLE | UV_WRITABLE, io_handler);
 
-    log_debug("Message queued to be sent: %s\n", data);
-    return 0;
+        log_debug("Message queued to be sent: %s\n", data);
+        return 0;
+    }
+
+    return -1;
 }
 
 int dslink_ws_send(struct wslay_event_context* ctx, const char* data) {

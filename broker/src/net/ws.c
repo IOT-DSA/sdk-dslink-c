@@ -74,7 +74,7 @@ int broker_ws_send(RemoteDSLink *link, const char *data) {
     msg.opcode = WSLAY_TEXT_FRAME;
     wslay_event_queue_msg(link->ws, &msg);
 
-    if(link->client->poll) {
+    if(link->client->poll && !uv_is_closing((uv_handle_t*)link->client->poll)) {
         uv_poll_start(link->client->poll, UV_READABLE | UV_WRITABLE, link->client->poll_cb);
 
         log_debug("Message sent to %s: %s\n", (char *) link->dsId->data, data);
