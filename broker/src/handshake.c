@@ -268,7 +268,7 @@ void dslink_handle_ping(uv_timer_t* handle) {
         gettimeofday(&current_time, NULL);
         long time_diff = current_time.tv_sec - link->lastReceiveTime->tv_sec;
         if (time_diff >= 90) {
-            broker_close_link(link);
+            link->pendingClose = 1;
         }
     }
 }
