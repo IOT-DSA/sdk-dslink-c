@@ -20,6 +20,7 @@ int broker_handshake_handle_ws(Broker *broker,
 
 DownstreamNode *broker_init_downstream_node(BrokerNode *parentNode, const char *name);
 
+int dslink_generic_ping_handler(RemoteDSLink *link);
 void dslink_handle_ping(uv_timer_t* handle);
 
 #ifdef __cplusplus

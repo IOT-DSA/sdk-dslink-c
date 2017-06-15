@@ -250,8 +250,10 @@ fail:
     return NULL;
 }
 
-void dslink_handle_ping(uv_timer_t* handle) {
-    RemoteDSLink *link = handle->data;
+int dslink_generic_ping_handler(RemoteDSLink *link) {
+    if(!link)
+        return 0;
+
     if (link->lastWriteTime) {
         struct timeval current_time;
         gettimeofday(&current_time, NULL);
@@ -267,9 +269,19 @@ void dslink_handle_ping(uv_timer_t* handle) {
         struct timeval current_time;
         gettimeofday(&current_time, NULL);
         long time_diff = current_time.tv_sec - link->lastReceiveTime->tv_sec;
-        if (time_diff >= 90) {
-            link->pendingClose = 1;
+        if (time_diff >= 60) {
+            link->pendingClose=1;
+            return 0;
         }
+    }
+    return 1;
+}
+
+void dslink_handle_ping(uv_timer_t* handle) {
+    RemoteDSLink *link = handle->data;
+
+    if(!dslink_generic_ping_handler(link)) {
+        log_debug("Remote dslink problem while pinging!\n");
     }
 }
 

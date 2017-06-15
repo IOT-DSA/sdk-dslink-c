@@ -27,7 +27,7 @@ DownstreamNode *create_upstream_node(Broker *broker, const char *name) {
     return node;
 }
 
-void init_upstream_node(Broker *broker, UpstreamPoll *upstreamPoll) {
+void init_upstream_node(Broker *broker, UpstreamPoll *upstreamPoll, uv_timer_cb upstream_ping_handler) {
     DownstreamNode *node = create_upstream_node(broker, upstreamPoll->name);
 
     node->upstreamPoll = upstreamPoll;
@@ -39,9 +39,15 @@ void init_upstream_node(Broker *broker, UpstreamPoll *upstreamPoll) {
     link->node = node;
 
     uv_timer_t *ping_timer = dslink_malloc(sizeof(uv_timer_t));
-    ping_timer->data = link;
     uv_timer_init(mainLoop, ping_timer);
-    uv_timer_start(ping_timer, dslink_handle_ping, 1000, 30000);
+
+    if(!upstream_ping_handler) {
+        ping_timer->data = link;
+        uv_timer_start(ping_timer, dslink_handle_ping, 1000, 10000);
+    } else {
+        ping_timer->data = upstreamPoll;
+        uv_timer_start(ping_timer, upstream_ping_handler, 1000, 10000);
+    }
     link->pingTimerHandle = ping_timer;
 
     // set the ->link and update all existing stream

@@ -143,6 +143,18 @@ int gen_mask_cb(wslay_event_context_ptr ctx,
     return 0;
 }
 
+void upstream_handle_ping(uv_timer_t *handle) {
+    UpstreamPoll *upstreamPoll = handle->data;
+    if(upstreamPoll) {
+        RemoteDSLink *link = upstreamPoll->remoteDSLink;
+
+        if (!dslink_generic_ping_handler(link)) {
+            log_debug("Remote dslink problem while pinging\n");
+            upstream_reconnect(upstreamPoll);
+        }
+    }
+}
+
 static
 void upstream_handshake_handle_ws(UpstreamPoll *upstreamPoll) {
     static const struct wslay_event_callbacks callbacks = {
@@ -186,7 +198,7 @@ void upstream_handshake_handle_ws(UpstreamPoll *upstreamPoll) {
     client->poll_cb = upstream_io_handler;
     uv_poll_start(upstreamPoll->wsPoll, UV_READABLE, upstream_io_handler);
 
-    init_upstream_node(mainLoop->data, upstreamPoll);
+    init_upstream_node(mainLoop->data, upstreamPoll, upstream_handle_ping);
 }
 
 static
