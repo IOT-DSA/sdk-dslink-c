@@ -12,6 +12,12 @@
 
 #define SECONDS_TO_MILLIS(count) count * 1000
 
+#define DSLINK_CONNECT_FATAL_ERROR 0
+#define DSLINK_COULDNT_CONNECT 2
+#define DSLINK_DISCONNECTED 3
+#define DSLINK_DISCONNECTED_ONPURPOSE 4
+
+
 #define DSLINK_RESPONDER_MAP_INIT(var, type) \
     responder->var = dslink_calloc(1, sizeof(Map)); \
     if (!responder->var) { \
@@ -265,16 +271,8 @@ void dslink_link_clear(DSLink *link) {
         wslay_event_context_free(link->_ws);
     }
 
-    if (link->msg) {
-        dslink_free(link->msg);
-    }
-
     if (link->link_data) {
         json_decref(link->link_data);
-    }
-
-    if (link->dslink_json) {
-        json_decref(link->dslink_json);
     }
 }
 
@@ -344,16 +342,14 @@ static
 int dslink_init_do(DSLink *link, DSLinkCallbacks *cbs) {
     link->closing = 0;
 
-    link->msg = dslink_malloc(sizeof(uint32_t));
     *link->msg = 0;
 
     json_t *handshake = NULL;
     char *dsId = NULL;
     Socket *sock = NULL;
 
-    int ret = 0;
+    int ret = DSLINK_CONNECT_FATAL_ERROR;
     if (dslink_handle_key(link) != 0) {
-        ret = 1;
         goto exit;
     }
 
@@ -384,8 +380,6 @@ int dslink_init_do(DSLink *link, DSLinkCallbacks *cbs) {
         }
     }
 
-    link->dslink_json = dslink_read_dslink_json();
-
     if (cbs->init_cb) {
         cbs->init_cb(link);
     }
@@ -393,7 +387,7 @@ int dslink_init_do(DSLink *link, DSLinkCallbacks *cbs) {
 
     if ((ret = dslink_handshake_generate(link, &handshake, &dsId)) != 0) {
         log_fatal("Handshake failed: %d\n", ret);
-        ret = 2;
+        ret = DSLINK_COULDNT_CONNECT;
         goto exit;
     }
 
@@ -404,14 +398,14 @@ int dslink_init_do(DSLink *link, DSLinkCallbacks *cbs) {
     if (!(uri && ((tKey && salt) || link->config.token))) {
         log_fatal("Handshake didn't return the "
                       "necessary parameters to complete\n");
-        ret = 2;
+        ret = DSLINK_COULDNT_CONNECT;
         goto exit;
     }
 
     if ((ret = dslink_handshake_connect_ws(link->config.broker_url, &link->key, uri,
                                            tKey, salt, dsId, link->config.token, &sock)) != 0) {
         log_fatal("Failed to connect to the broker: %d\n", ret);
-        ret = 2;
+        ret = DSLINK_COULDNT_CONNECT;
         goto exit;
     } else {
         log_info("Successfully connected to the broker\n");
@@ -445,7 +439,9 @@ int dslink_init_do(DSLink *link, DSLinkCallbacks *cbs) {
     uv_sem_destroy(&link->async_run_data_sem);
 
     if (link->closing != 1) {
-        ret = 2;
+        ret = DSLINK_DISCONNECTED;
+    } else {
+        ret = DSLINK_DISCONNECTED_ONPURPOSE;
     }
 
     exit:
@@ -629,17 +625,37 @@ int dslink_init(int argc, char **argv,
         return 1;
     }
 
+    link->msg = dslink_malloc(sizeof(uint32_t));
+
+    link->dslink_json = dslink_read_dslink_json();
+
     int ret = 0;
     while (1) {
+
         ret = dslink_init_do(link, cbs);
-        if (ret != 2) {
-            log_info("%i\n", ret);
+        if(ret == DSLINK_CONNECT_FATAL_ERROR) {
+            log_warn("Error occurred while connecting to broker!\n");
             break;
+        } else if(ret == DSLINK_DISCONNECTED_ONPURPOSE) {
+            log_info("DSLink closed on purpose\n");
+            break;
+        } else if(ret == DSLINK_DISCONNECTED) {
+            log_info("DSLink disconnected from broker\n");
+        } else /*means DSLINK_COULDNT_CONNECT*/ {
+            log_info("DSLink couldn't connect to broker!\n");
         }
-        
+
         dslink_link_clear(link);
         dslink_sleep(SECONDS_TO_MILLIS(5));
         log_info("Attempting to reconnect...\n");
+    }
+
+    if (link->dslink_json) {
+        json_decref(link->dslink_json);
+    }
+
+    if (link->msg) {
+        dslink_free(link->msg);
     }
 
     uv_close((uv_handle_t*)&link->async_set,NULL);
