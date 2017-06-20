@@ -466,6 +466,7 @@ int dslink_init_do(DSLink *link, DSLinkCallbacks *cbs) {
     if (cbs->on_connected_cb) {
         cbs->on_connected_cb(link);
     }
+    link->first_conn = 1;
 
     dslink_handshake_handle_ws(link, cbs->on_requester_ready_cb);
 
@@ -646,6 +647,7 @@ int dslink_init(int argc, char **argv,
     uv_loop_init(&link->loop);
     link->loop.data = link;
     link->initialized = 0;
+    link->first_conn = 0;
 
     //thread-safe API async handle set
     if(uv_async_init(&link->loop, &link->async_get, dslink_async_get_node_value)) {

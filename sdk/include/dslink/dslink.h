@@ -70,6 +70,7 @@ struct DSLink {
     int closingSendThread;
 #endif
     int initialized;
+    int first_conn;
 };
 
 struct Responder {
