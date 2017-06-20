@@ -69,7 +69,7 @@ struct DSLink {
     uv_sem_t ws_queue_sem;
     int closingSendThread;
 #endif
-
+    int initialized;
 };
 
 struct Responder {
@@ -136,6 +136,8 @@ json_t *dslink_json_get_config(DSLink *link, const char *key);
 void dslink_close(DSLink *link);
 
 int dslink_handle_key(DSLink *link);
+
+int dslink_reset_responder_node_tree(DSLink *link);
 
 #ifdef __cplusplus
 }

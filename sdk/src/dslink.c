@@ -160,11 +160,27 @@ exit:
 }
 
 static
-int dslink_init_responder(Responder *responder) {
+int dslink_init_responder_node_tree(Responder *responder) {
     responder->super_root = dslink_node_create(NULL, "/", "node");
     if (!responder->super_root) {
-        goto cleanup;
+        return DSLINK_ALLOC_ERR;
     }
+    return 0;
+}
+
+int dslink_reset_responder_node_tree(DSLink *link) {
+    if(!(link->is_responder && link->responder))
+        return 1;
+
+    if (link->responder->super_root) {
+        dslink_node_tree_free(link, link->responder->super_root);
+    }
+
+    return dslink_init_responder_node_tree(link->responder);
+}
+
+static
+int dslink_init_responder_maps(Responder *responder) {
 
     DSLINK_RESPONDER_MAP_INIT(open_streams, uint32)
     DSLINK_RESPONDER_MAP_INIT(list_subs, str)
@@ -174,20 +190,52 @@ int dslink_init_responder(Responder *responder) {
 cleanup:
     if (responder->open_streams) {
         dslink_map_free(responder->open_streams);
+        dslink_free(responder->open_streams);
     }
     if (responder->list_subs) {
         dslink_map_free(responder->list_subs);
+        dslink_free(responder->list_subs);
     }
     if (responder->value_path_subs) {
         dslink_map_free(responder->value_path_subs);
+        dslink_free(responder->value_path_subs);
     }
     if (responder->value_sid_subs) {
         dslink_map_free(responder->value_sid_subs);
-    }
-    if (responder->super_root) {
-        dslink_node_tree_free(NULL, responder->super_root);
+        dslink_free(responder->value_sid_subs);
     }
     return DSLINK_ALLOC_ERR;
+}
+
+static
+void dslink_destroy_responder(DSLink *link) {
+    if (link->is_responder) {
+        if (link->responder->super_root) {
+            dslink_node_tree_free(link, link->responder->super_root);
+        }
+
+        if (link->responder->open_streams) {
+            dslink_map_free(link->responder->open_streams);
+            dslink_free(link->responder->open_streams);
+        }
+
+        if (link->responder->list_subs) {
+            dslink_map_free(link->responder->list_subs);
+            dslink_free(link->responder->list_subs);
+        }
+
+        if (link->responder->value_path_subs) {
+            dslink_map_free(link->responder->value_path_subs);
+            dslink_free(link->responder->value_path_subs);
+        }
+
+        if (link->responder->value_sid_subs) {
+            dslink_map_free(link->responder->value_sid_subs);
+            dslink_free(link->responder->value_sid_subs);
+        }
+
+        dslink_free(link->responder);
+    }
 }
 
 static
@@ -206,14 +254,17 @@ int dslink_init_requester(Requester *requester) {
     cleanup:
     if (requester->open_streams) {
         dslink_map_free(requester->open_streams);
+        dslink_free(requester->open_streams);
     }
 
     if (requester->list_subs) {
         dslink_map_free(requester->list_subs);
+        dslink_free(requester->list_subs);
     }
 
     if (requester->value_handlers) {
         dslink_map_free(requester->value_handlers);
+        dslink_free(requester->value_handlers);
     }
 
     if (requester->rid) {
@@ -354,15 +405,8 @@ int dslink_init_do(DSLink *link, DSLinkCallbacks *cbs) {
     }
 
     if (link->is_responder) {
-        link->responder = dslink_calloc(1, sizeof(Responder));
-
-        if (!link->responder) {
-            log_fatal("Failed to create responder\n");
-            goto exit;
-        }
-
-        if (dslink_init_responder(link->responder) != 0) {
-            log_fatal("Failed to initialize responder\n");
+        if (dslink_init_responder_maps(link->responder) != 0) {
+            log_fatal("Failed to initialize responder maps\n");
             goto exit;
         }
     }
@@ -384,6 +428,7 @@ int dslink_init_do(DSLink *link, DSLinkCallbacks *cbs) {
         cbs->init_cb(link);
     }
 
+    link->initialized = 1;
 
     if ((ret = dslink_handshake_generate(link, &handshake, &dsId)) != 0) {
         log_fatal("Handshake failed: %d\n", ret);
@@ -446,10 +491,6 @@ int dslink_init_do(DSLink *link, DSLinkCallbacks *cbs) {
 
     exit:
     if (link->is_responder) {
-        if (link->responder->super_root) {
-            dslink_node_tree_free(link, link->responder->super_root);
-        }
-
         if (link->responder->open_streams) {
             dslink_map_free(link->responder->open_streams);
             dslink_free(link->responder->open_streams);
@@ -469,8 +510,6 @@ int dslink_init_do(DSLink *link, DSLinkCallbacks *cbs) {
             dslink_map_free(link->responder->value_sid_subs);
             dslink_free(link->responder->value_sid_subs);
         }
-
-        dslink_free(link->responder);
     }
 
     if (link->is_requester) {
@@ -606,6 +645,7 @@ int dslink_init(int argc, char **argv,
     bzero(link, sizeof(DSLink));
     uv_loop_init(&link->loop);
     link->loop.data = link;
+    link->initialized = 0;
 
     //thread-safe API async handle set
     if(uv_async_init(&link->loop, &link->async_get, dslink_async_get_node_value)) {
@@ -625,11 +665,26 @@ int dslink_init(int argc, char **argv,
         return 1;
     }
 
+
+    int ret = 0;
     link->msg = dslink_malloc(sizeof(uint32_t));
 
     link->dslink_json = dslink_read_dslink_json();
 
-    int ret = 0;
+    if (link->is_responder) {
+        link->responder = dslink_calloc(1, sizeof(Responder));
+
+        if (!link->responder) {
+            log_fatal("Failed to create responder\n");
+            goto exit;
+        }
+
+        if (dslink_init_responder_node_tree(link->responder) != 0) {
+            log_fatal("Failed to initialize responder node tree\n");
+            goto exit;
+        }
+    }
+
     while (1) {
 
         ret = dslink_init_do(link, cbs);
@@ -649,6 +704,9 @@ int dslink_init(int argc, char **argv,
         dslink_sleep(SECONDS_TO_MILLIS(5));
         log_info("Attempting to reconnect...\n");
     }
+
+exit:
+    dslink_destroy_responder(link);
 
     if (link->dslink_json) {
         json_decref(link->dslink_json);
