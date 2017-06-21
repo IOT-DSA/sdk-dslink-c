@@ -1,6 +1,12 @@
 cmake_minimum_required(VERSION 3.0.0 FATAL_ERROR)
 project(sdk_dslink_c C)
 
+# 
+#   Build example, broker without `tools/build.sh`
+#   
+set(DSLINK_BUILD_EXAMPLES ON)
+set(DSLINK_BUILD_BROKER ON)
+
 option(USE_CCACHE "Enable CCache Support" ON)
 option(DSLINK_BUILD_BROKER "Whether to build the broker" OFF)
 option(DSLINK_BUILD_EXAMPLES "Whether to build the examples" OFF)
