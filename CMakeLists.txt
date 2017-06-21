@@ -1,11 +1,30 @@
 cmake_minimum_required(VERSION 3.0.0 FATAL_ERROR)
 project(sdk_dslink_c C)
 
+
 option(USE_CCACHE "Enable CCache Support" ON)
 option(DSLINK_BUILD_BROKER "Whether to build the broker" OFF)
 option(DSLINK_BUILD_EXAMPLES "Whether to build the examples" OFF)
 option(DSLINK_TEST "Whether to enable tests" OFF)
 option(TOOLCHAIN_DYNAMIC_LINK_ENABLE "Enable Dynamic Linking for Toolchain" ON)
+
+
+##### Define Macros #####
+
+macro(ADD_C_FLAGS flags)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${flags}")
+endmacro()
+
+#   for #ifdef MYDBG
+ADD_C_FLAGS("-DMYDBG")
+ADD_C_FLAGS("-g")
+
+
+# 
+#   Build example, broker without `tools/build.sh`
+#   
+set(DSLINK_BUILD_EXAMPLES ON)
+set(DSLINK_BUILD_BROKER ON)
 
 ##### Configure CMake Modules #####
 
@@ -21,11 +40,7 @@ if ("${CMAKE_GENERATOR}" STREQUAL "Ninja" AND DSLINK_TEST)
     set(DSLINK_TEST OFF)
 endif()
 
-##### Define Macros #####
 
-macro(ADD_C_FLAGS flags)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${flags}")
-endmacro()
 
 ##### Git Version Info ####
 set(IOT_DSA_C_SDK_GIT_DIR "${CMAKE_CURRENT_LIST_DIR}/.git")
@@ -248,7 +263,7 @@ endif()
 ###### Configure Examples ######
 
 if (DSLINK_BUILD_EXAMPLES)
-    foreach(example "responder" "requester" "storage")
+    foreach(example "responder" "requester" "eip-responder" "eip-requester" "storage")
         include("${CMAKE_CURRENT_LIST_DIR}/examples/${example}/CMakeLists.txt")
         add_executable(${example} ${EXAMPLE_SRC})
         target_link_libraries(${example} sdk_dslink_c-static)
