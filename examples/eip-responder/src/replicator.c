@@ -86,6 +86,16 @@ void create_node(uv_timer_t *timer) {
         }
         dslink_node_add_child(link, child);
     }
+if (!(parent->children && dslink_map_contains(parent->children, buf))) {
+        DSNode *child = dslink_node_create(parent, buf, "node");
+        if (!child) {
+            dslink_free(num);
+            dslink_free(data);
+            uv_timer_stop(timer);
+            return;
+        }
+        dslink_node_add_child(link, child);
+    }
 
     if (++(*num) > NODE_COUNT) {
         dslink_free(num);
