@@ -249,6 +249,10 @@ void invoke_send_streaming_numbers(DSLink *link, DSNode *node,
 
 void responder_init_invoke(DSLink *link, DSNode *root) {
     {
+        //
+        //  /string/getOneRow 노드를 생성한다. 
+        //      `invoke` 명령 핸들러를 등록한다 (https://github.com/IOT-DSA/docs/wiki/Methods#invoke)
+        //
         DSNode *getOneRow = dslink_node_create(root, "getOneRow", "node");
         if (!getOneRow) {
             log_warn("Failed to create get one row action node\n");
@@ -274,6 +278,10 @@ void responder_init_invoke(DSLink *link, DSNode *root) {
     }
 
     {
+        //
+        //  /string/getMultipleRows 노드를 생성한다. 
+        //      `invoke` 명령 핸들러를 등록한다 (https://github.com/IOT-DSA/docs/wiki/Methods#invoke)
+        //        
         DSNode *getMultipleRows = dslink_node_create(root, "getMultipleRows", "node");
         if (!getMultipleRows) {
             log_warn("Failed to create get multiple row action node\n");
@@ -301,6 +309,10 @@ void responder_init_invoke(DSLink *link, DSNode *root) {
     }
 
     {
+        //
+        //  /string/getMultipleRowsUpdates 노드를 생성한다. 
+        //      `invoke` 명령 핸들러를 등록한다 (https://github.com/IOT-DSA/docs/wiki/Methods#invoke)
+        //
         DSNode *getMultipleRowsUpdates = dslink_node_create(root, "getMultipleRowsUpdates", "node");
         if (!getMultipleRowsUpdates) {
             log_warn("Failed to create get multiple row action node\n");
@@ -328,6 +340,10 @@ void responder_init_invoke(DSLink *link, DSNode *root) {
     }
 
     {
+        //
+        //  /string/getStreamNow 노드를 생성한다. 
+        //      `invoke` 명령 핸들러를 등록한다 (https://github.com/IOT-DSA/docs/wiki/Methods#invoke)
+        //        
         DSNode *getStreamNow = dslink_node_create(root, "getStreamNow", "node");
         if (!getStreamNow) {
             log_warn("Failed to create get stream now action node\n");
@@ -355,6 +371,10 @@ void responder_init_invoke(DSLink *link, DSNode *root) {
     }
 
     {
+        //
+        //  /string/echo 노드를 생성한다. 
+        //      `invoke` 명령 핸들러를 등록한다 (https://github.com/IOT-DSA/docs/wiki/Methods#invoke)
+        //       
         DSNode *echoNode = dslink_node_create(root, "echo", "node");
         if (!echoNode) {
             log_warn("Failed to create echo action node\n");

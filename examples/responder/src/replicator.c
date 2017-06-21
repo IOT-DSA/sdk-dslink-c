@@ -114,6 +114,10 @@ void list_closed(DSLink *link, DSNode *node, void *stream) {
 }
 
 void responder_init_replicator(DSLink *link, DSNode *root) {
+    //
+    //  `/string/replicator` 노드를 생성한다. 
+    //      `list` 명령에 대한 핸들러를 등록한다 (https://github.com/IOT-DSA/docs/wiki/Methods#list)
+    //
     DSNode *rep = dslink_node_create(root, "replicator", "node");
     if (!rep) {
         log_warn("Failed to create the replicator node\n");
@@ -129,6 +133,11 @@ void responder_init_replicator(DSLink *link, DSNode *root) {
         return;
     }
 
+
+    //
+    //  `/string/replicator/reset` 노드를 생성한다. 
+    //      `invoke` 명령 핸들러를 등록한다 (https://github.com/IOT-DSA/docs/wiki/Methods#invoke)
+    //
     DSNode *reset = dslink_node_create(rep, "reset", "node");
     if (!reset) {
         log_warn("Failed to create reset action node\n");

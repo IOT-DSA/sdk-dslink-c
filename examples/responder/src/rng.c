@@ -47,6 +47,10 @@ void responder_rng_unsubbed(DSLink *link, DSNode *node) {
 }
 
 void responder_init_rng(DSLink *link, DSNode *root) {
+    //
+    //  /string/rng 노드를 생성한다. 
+    //      - subscribe 명령 핸들러를 등록한다 (https://github.com/IOT-DSA/docs/wiki/Methods#subscribe)
+    //
     DSNode *num = dslink_node_create(root, "rng", "node");
     if (!num) {
         log_warn("Failed to create the rng node\n");
