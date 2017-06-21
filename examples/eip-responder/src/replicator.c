@@ -9,7 +9,6 @@
 static
 void delete_nodes(DSLink *link, DSNode *node,
                   json_t *rid, json_t *params, ref_t *stream) {
-    (void) params;
     (void) stream;
     json_t *top = json_object();
     if (!top) {
@@ -31,6 +30,19 @@ void delete_nodes(DSLink *link, DSNode *node,
 
     json_object_set_nocheck(resp, "rid", rid);
     json_object_set_new_nocheck(resp, "stream", json_string("closed"));
+
+    #ifdef MYDBG
+    {
+        char *data = json_dumps(params, JSON_INDENT(2));
+        log_info("params = \n%s \n", data);
+        dslink_free(data);
+
+        data = json_dumps(resp, JSON_INDENT(2));
+        log_info ("resps = \n%s \n", data);
+        dslink_free(data);
+    }
+    #endif//MYDBG
+
     dslink_ws_send_obj((struct wslay_event_context *) link->_ws, top);
     json_delete(top);
 
@@ -114,6 +126,10 @@ void list_closed(DSLink *link, DSNode *node, void *stream) {
 }
 
 void responder_init_replicator(DSLink *link, DSNode *root) {
+    //
+    //  `/replicator` 노드를 생성한다. 
+    //      `list` 명령에 대한 핸들러를 등록한다 (https://github.com/IOT-DSA/docs/wiki/Methods#list)
+    //
     DSNode *rep = dslink_node_create(root, "replicator", "node");
     if (!rep) {
         log_warn("Failed to create the replicator node\n");
@@ -129,6 +145,11 @@ void responder_init_replicator(DSLink *link, DSNode *root) {
         return;
     }
 
+
+    //
+    //  `/replicator/reset` 노드를 생성한다. 
+    //      `invoke` 명령 핸들러를 등록한다 (https://github.com/IOT-DSA/docs/wiki/Methods#invoke)
+    //
     DSNode *reset = dslink_node_create(rep, "reset", "node");
     if (!reset) {
         log_warn("Failed to create reset action node\n");

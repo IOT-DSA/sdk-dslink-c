@@ -73,6 +73,19 @@ void invoke_send_echo(DSLink *link, DSNode *node,
 
     json_object_set_new_nocheck(resp, "stream", json_string("closed"));
     json_object_set_nocheck(resp, "rid", rid);
+
+    #ifdef MYDBG
+    {
+        char *data = json_dumps(params, JSON_INDENT(2));
+        log_info("params = \n%s \n", data);
+        dslink_free(data);
+
+        data = json_dumps(resp, JSON_INDENT(2));
+        log_info ("resps = \n%s \n", data);
+        dslink_free(data);
+    }
+    #endif//MYDBG
+
     dslink_ws_send_obj((struct wslay_event_context *) link->_ws, top);
     json_delete(top);
 }
@@ -249,6 +262,10 @@ void invoke_send_streaming_numbers(DSLink *link, DSNode *node,
 
 void responder_init_invoke(DSLink *link, DSNode *root) {
     {
+        //
+        //  /string/getOneRow 노드를 생성한다. 
+        //      `invoke` 명령 핸들러를 등록한다 (https://github.com/IOT-DSA/docs/wiki/Methods#invoke)
+        //
         DSNode *getOneRow = dslink_node_create(root, "getOneRow", "node");
         if (!getOneRow) {
             log_warn("Failed to create get one row action node\n");
@@ -274,6 +291,10 @@ void responder_init_invoke(DSLink *link, DSNode *root) {
     }
 
     {
+        //
+        //  /string/getMultipleRows 노드를 생성한다. 
+        //      `invoke` 명령 핸들러를 등록한다 (https://github.com/IOT-DSA/docs/wiki/Methods#invoke)
+        //        
         DSNode *getMultipleRows = dslink_node_create(root, "getMultipleRows", "node");
         if (!getMultipleRows) {
             log_warn("Failed to create get multiple row action node\n");
@@ -301,6 +322,10 @@ void responder_init_invoke(DSLink *link, DSNode *root) {
     }
 
     {
+        //
+        //  /string/getMultipleRowsUpdates 노드를 생성한다. 
+        //      `invoke` 명령 핸들러를 등록한다 (https://github.com/IOT-DSA/docs/wiki/Methods#invoke)
+        //
         DSNode *getMultipleRowsUpdates = dslink_node_create(root, "getMultipleRowsUpdates", "node");
         if (!getMultipleRowsUpdates) {
             log_warn("Failed to create get multiple row action node\n");
@@ -328,6 +353,10 @@ void responder_init_invoke(DSLink *link, DSNode *root) {
     }
 
     {
+        //
+        //  /string/getStreamNow 노드를 생성한다. 
+        //      `invoke` 명령 핸들러를 등록한다 (https://github.com/IOT-DSA/docs/wiki/Methods#invoke)
+        //        
         DSNode *getStreamNow = dslink_node_create(root, "getStreamNow", "node");
         if (!getStreamNow) {
             log_warn("Failed to create get stream now action node\n");
@@ -355,6 +384,10 @@ void responder_init_invoke(DSLink *link, DSNode *root) {
     }
 
     {
+        //
+        //  /string/echo 노드를 생성한다. 
+        //      `invoke` 명령 핸들러를 등록한다 (https://github.com/IOT-DSA/docs/wiki/Methods#invoke)
+        //       
         DSNode *echoNode = dslink_node_create(root, "echo", "node");
         if (!echoNode) {
             log_warn("Failed to create echo action node\n");
@@ -365,18 +398,22 @@ void responder_init_invoke(DSLink *link, DSNode *root) {
         dslink_node_set_meta(link, echoNode, "$name", json_string("Echo"));
         dslink_node_set_meta(link, echoNode, "$invokable", json_string("read"));
 
+        // 
+        //  action 의 response stream 구조를 정의한다. 
+        //  
         json_t *columns = json_array();
         json_t *message_row = json_object();
         json_object_set_new(message_row, "name", json_string("message"));
         json_object_set_new(message_row, "type", json_string("string"));
-
-        json_t *message_param = json_object();
-        json_object_set_new(message_param, "name", json_string("input"));
-        json_object_set_new(message_param, "type", json_string("string"));
-
         json_array_append_new(columns, message_row);
 
+        //
+        //  invoke 파라미터를 정의한다. 
+        // 
         json_t *params = json_array();
+        json_t *message_param = json_object();
+        json_object_set_new(message_param, "name", json_string("input"));
+        json_object_set_new(message_param, "type", json_string("string"));        
         json_array_append_new(params, message_param);
 
         dslink_node_set_meta(link, echoNode, "$columns", columns);

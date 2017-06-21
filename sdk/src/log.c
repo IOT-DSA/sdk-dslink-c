@@ -4,7 +4,10 @@
 #include "dslink/log.h"
 #include "dslink/utils.h"
 
+
+
 int dslink_log_lvl = LOG_LVL_INFO;
+
 
 int dslink_log_set_lvl(const char *level) {
     if (dslink_strcasecmp(level, "off") == 0
