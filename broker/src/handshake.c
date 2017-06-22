@@ -282,6 +282,7 @@ void dslink_handle_ping(uv_timer_t* handle) {
 
     if(!dslink_generic_ping_handler(link)) {
         log_debug("Remote dslink problem while pinging!\n");
+        broker_close_link(link);
     }
 }
 
