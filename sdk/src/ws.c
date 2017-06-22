@@ -427,10 +427,6 @@ void dslink_handshake_handle_ws(DSLink *link, link_callback on_requester_ready_c
         uv_timer_start(ping, ping_handler, 0, 30000);
     }
 
-    if (on_requester_ready_cb) {
-        on_requester_ready_cb(link);
-    }
-
 #ifdef DSLINK_WS_SEND_THREADED
     link->closingSendThread = 0;
     uv_sem_init(&link->ws_send_sem,0);
@@ -439,6 +435,10 @@ void dslink_handshake_handle_ws(DSLink *link, link_callback on_requester_ready_c
     uv_thread_create(&send_ws_thread_id, dslink_send_ws_thread, link);
 #endif
 
+    if (on_requester_ready_cb) {
+        on_requester_ready_cb(link);
+    }
+    
     uv_run(&link->loop, UV_RUN_DEFAULT);
 
     uv_timer_stop(ping);
