@@ -189,6 +189,9 @@ exit:
 
 static
 int dslink_map_rehash_table(Map *map) {
+    if(!map)
+        return 1;
+
     size_t oldCapacity = map->capacity;
     MapNode **oldTable = map->table;
 
@@ -227,7 +230,7 @@ int dslink_map_rehash_table(Map *map) {
 }
 
 int dslink_map_set(Map *map, ref_t *key, ref_t *value) {
-    if (!(key && value)) {
+    if (!(map && key && value)) {
         return 1;
     }
     int ret;
@@ -307,6 +310,9 @@ int dslink_map_contains(Map *map, void *key) {
 }
 
 int dslink_map_containsl(Map *map, void *key, size_t len) {
+    if(!map || !key)
+        return 0;
+
     size_t index = dslink_map_index_of_key(map, key, len);
     for (MapNode *node = map->table[index]; node != NULL; node = node->next) {
         if (map->cmp(node->entry->key->data, key, len) == 0) {
@@ -317,11 +323,17 @@ int dslink_map_containsl(Map *map, void *key, size_t len) {
 }
 
 ref_t *dslink_map_get(Map *map, void *key) {
+    if(!map || !key)
+        return NULL;
+
     size_t len = map->key_len_calc(key);
     return dslink_map_getl(map, key, len);
 }
 
 ref_t *dslink_map_getl(Map *map, void *key, size_t len) {
+    if(!map || !key)
+        return NULL;
+
     size_t index = dslink_map_index_of_key(map, key, len);
     for (MapNode *node = map->table[index]; node != NULL; node = node->next) {
         if (map->cmp(node->entry->key->data, key, len) == 0) {
