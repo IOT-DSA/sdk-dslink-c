@@ -51,6 +51,10 @@ void dslink_print_help() {
     printf("See --help for usage\n");
 }
 
+void dslink_free_handle(uv_handle_t *handle) {
+    dslink_free(handle);
+}
+
 static
 int dslink_parse_opts(int argc,
                       char **argv,
@@ -179,6 +183,29 @@ int dslink_reset_responder_node_tree(DSLink *link) {
     return dslink_init_responder_node_tree(link->responder);
 }
 
+static void dslink_destroy_responder_maps(Responder *responder) {
+    if (responder->open_streams) {
+        dslink_map_free(responder->open_streams);
+        dslink_free(responder->open_streams);
+        responder->open_streams = NULL;
+    }
+    if (responder->list_subs) {
+        dslink_map_free(responder->list_subs);
+        dslink_free(responder->list_subs);
+        responder->list_subs = NULL;
+    }
+    if (responder->value_path_subs) {
+        dslink_map_free(responder->value_path_subs);
+        dslink_free(responder->value_path_subs);
+        responder->value_path_subs = NULL;
+    }
+    if (responder->value_sid_subs) {
+        dslink_map_free(responder->value_sid_subs);
+        dslink_free(responder->value_sid_subs);
+        responder->value_sid_subs = NULL;
+    }
+}
+
 static
 int dslink_init_responder_maps(Responder *responder) {
 
@@ -188,22 +215,7 @@ int dslink_init_responder_maps(Responder *responder) {
     DSLINK_RESPONDER_MAP_INIT(value_sid_subs, uint32)
     return 0;
 cleanup:
-    if (responder->open_streams) {
-        dslink_map_free(responder->open_streams);
-        dslink_free(responder->open_streams);
-    }
-    if (responder->list_subs) {
-        dslink_map_free(responder->list_subs);
-        dslink_free(responder->list_subs);
-    }
-    if (responder->value_path_subs) {
-        dslink_map_free(responder->value_path_subs);
-        dslink_free(responder->value_path_subs);
-    }
-    if (responder->value_sid_subs) {
-        dslink_map_free(responder->value_sid_subs);
-        dslink_free(responder->value_sid_subs);
-    }
+    dslink_destroy_responder_maps(responder);
     return DSLINK_ALLOC_ERR;
 }
 
@@ -214,27 +226,10 @@ void dslink_destroy_responder(DSLink *link) {
             dslink_node_tree_free(link, link->responder->super_root);
         }
 
-        if (link->responder->open_streams) {
-            dslink_map_free(link->responder->open_streams);
-            dslink_free(link->responder->open_streams);
-        }
-
-        if (link->responder->list_subs) {
-            dslink_map_free(link->responder->list_subs);
-            dslink_free(link->responder->list_subs);
-        }
-
-        if (link->responder->value_path_subs) {
-            dslink_map_free(link->responder->value_path_subs);
-            dslink_free(link->responder->value_path_subs);
-        }
-
-        if (link->responder->value_sid_subs) {
-            dslink_map_free(link->responder->value_sid_subs);
-            dslink_free(link->responder->value_sid_subs);
-        }
+        dslink_destroy_responder_maps(link->responder);
 
         dslink_free(link->responder);
+        link->responder = NULL;
     }
 }
 
@@ -255,24 +250,29 @@ int dslink_init_requester(Requester *requester) {
     if (requester->open_streams) {
         dslink_map_free(requester->open_streams);
         dslink_free(requester->open_streams);
+        requester->open_streams = NULL;
     }
 
     if (requester->list_subs) {
         dslink_map_free(requester->list_subs);
         dslink_free(requester->list_subs);
+        requester->list_subs = NULL;
     }
 
     if (requester->value_handlers) {
         dslink_map_free(requester->value_handlers);
         dslink_free(requester->value_handlers);
+        requester->value_handlers = NULL;
     }
 
     if (requester->rid) {
         dslink_free(requester->rid);
+        requester->rid = NULL;
     }
 
     if (requester->sid) {
         dslink_free(requester->sid);
+        requester->sid = NULL;
     }
 
     return DSLINK_ALLOC_ERR;
@@ -458,11 +458,6 @@ int dslink_init_do(DSLink *link, DSLinkCallbacks *cbs) {
 
     link->_socket = sock;
 
-    link->async_close = 0;
-    uv_sem_init(&link->async_set_data_sem,1);
-    uv_sem_init(&link->async_get_data_sem,1);
-    uv_sem_init(&link->async_run_data_sem,1);
-
     if (cbs->on_connected_cb) {
         cbs->on_connected_cb(link);
     }
@@ -470,19 +465,10 @@ int dslink_init_do(DSLink *link, DSLinkCallbacks *cbs) {
 
     dslink_handshake_handle_ws(link, cbs->on_requester_ready_cb);
 
-    link->async_close = 1;
-    uv_sem_post(&link->async_set_data_sem);
-    uv_sem_post(&link->async_get_data_sem);
-    uv_sem_post(&link->async_run_data_sem);
-
     log_warn("Disconnected from the broker\n")
     if (cbs->on_disconnected_cb) {
         cbs->on_disconnected_cb(link);
     }
-
-    uv_sem_destroy(&link->async_set_data_sem);
-    uv_sem_destroy(&link->async_get_data_sem);
-    uv_sem_destroy(&link->async_run_data_sem);
 
     if (link->closing != 1) {
         ret = DSLINK_DISCONNECTED;
@@ -492,57 +478,46 @@ int dslink_init_do(DSLink *link, DSLinkCallbacks *cbs) {
 
     exit:
     if (link->is_responder) {
-        if (link->responder->open_streams) {
-            dslink_map_free(link->responder->open_streams);
-            dslink_free(link->responder->open_streams);
-        }
-
-        if (link->responder->list_subs) {
-            dslink_map_free(link->responder->list_subs);
-            dslink_free(link->responder->list_subs);
-        }
-
-        if (link->responder->value_path_subs) {
-            dslink_map_free(link->responder->value_path_subs);
-            dslink_free(link->responder->value_path_subs);
-        }
-
-        if (link->responder->value_sid_subs) {
-            dslink_map_free(link->responder->value_sid_subs);
-            dslink_free(link->responder->value_sid_subs);
-        }
+        dslink_destroy_responder_maps(link->responder);
     }
 
     if (link->is_requester) {
         if (link->requester->list_subs) {
             dslink_map_free(link->requester->list_subs);
             dslink_free(link->requester->list_subs);
+            link->requester->list_subs = NULL;
         }
 
         if (link->requester->request_handlers) {
             dslink_map_free(link->requester->request_handlers);
             dslink_free(link->requester->request_handlers);
+            link->requester->request_handlers = NULL;
         }
 
         if (link->requester->open_streams) {
             dslink_map_free(link->requester->open_streams);
             dslink_free(link->requester->open_streams);
+            link->requester->open_streams = NULL;
         }
 
         if (link->requester->value_handlers) {
             dslink_map_free(link->requester->value_handlers);
             dslink_free(link->requester->value_handlers);
+            link->requester->value_handlers = NULL;
         }
 
         if (link->requester->rid) {
             dslink_free(link->requester->rid);
+            link->requester->rid = NULL;
         }
 
         if (link->requester->sid) {
             dslink_free(link->requester->sid);
+            link->requester->sid = NULL;
         }
 
         dslink_free(link->requester);
+        link->requester = NULL;
     }
 
     mbedtls_ecdh_free(&link->key);
@@ -639,6 +614,11 @@ void dslink_async_run(uv_async_t *async_handle) {
     }
 }
 
+void dslink_handle_reconnect(uv_timer_t* handle) {
+    DSLink *link = handle->data;
+    uv_stop(&link->loop);
+}
+
 int dslink_init(int argc, char **argv,
                 const char *name, uint8_t isRequester,
                 uint8_t isResponder, DSLinkCallbacks *cbs) {
@@ -659,6 +639,11 @@ int dslink_init(int argc, char **argv,
     if(uv_async_init(&link->loop, &link->async_run, dslink_async_run)) {
         log_warn("Async handle init error\n");
     }
+
+    link->async_close = 0;
+    uv_sem_init(&link->async_set_data_sem,1);
+    uv_sem_init(&link->async_get_data_sem,1);
+    uv_sem_init(&link->async_run_data_sem,1);
 
     link->is_responder = isResponder;
     link->is_requester = isRequester;
@@ -687,27 +672,42 @@ int dslink_init(int argc, char **argv,
         }
     }
 
-    while (1) {
-
+    link->reconnectTimer = dslink_calloc(1, sizeof(uv_timer_t));
+    link->reconnectTimer->data = link;
+    uv_timer_init(&link->loop, link->reconnectTimer);
+    while(1) {
         ret = dslink_init_do(link, cbs);
-        if(ret == DSLINK_CONNECT_FATAL_ERROR) {
+        if (ret == DSLINK_CONNECT_FATAL_ERROR) {
             log_warn("Error occurred while connecting to broker!\n");
-            break;
-        } else if(ret == DSLINK_DISCONNECTED_ONPURPOSE) {
+            goto exit;
+        } else if (ret == DSLINK_DISCONNECTED_ONPURPOSE) {
             log_info("DSLink closed on purpose\n");
-            break;
-        } else if(ret == DSLINK_DISCONNECTED) {
+            goto exit;
+        } else if (ret == DSLINK_DISCONNECTED) {
             log_info("DSLink disconnected from broker\n");
         } else /*means DSLINK_COULDNT_CONNECT*/ {
             log_info("DSLink couldn't connect to broker!\n");
         }
 
         dslink_link_clear(link);
-        dslink_sleep(SECONDS_TO_MILLIS(5));
+        uv_timer_start(link->reconnectTimer, dslink_handle_reconnect, 5000, 0);
+        uv_run(&link->loop,UV_RUN_DEFAULT);
         log_info("Attempting to reconnect...\n");
     }
 
+
 exit:
+    if(link->reconnectTimer) {
+        uv_timer_stop(link->reconnectTimer);
+        uv_close((uv_handle_t *)link->reconnectTimer, dslink_free_handle);
+        link->reconnectTimer = NULL;
+    }
+
+    link->async_close = 1;
+    uv_sem_post(&link->async_set_data_sem);
+    uv_sem_post(&link->async_get_data_sem);
+    uv_sem_post(&link->async_run_data_sem);
+
     dslink_destroy_responder(link);
 
     if (link->dslink_json) {
@@ -717,6 +717,10 @@ exit:
     if (link->msg) {
         dslink_free(link->msg);
     }
+
+    uv_sem_destroy(&link->async_set_data_sem);
+    uv_sem_destroy(&link->async_get_data_sem);
+    uv_sem_destroy(&link->async_run_data_sem);
 
     uv_close((uv_handle_t*)&link->async_set,NULL);
     uv_close((uv_handle_t*)&link->async_get,NULL);

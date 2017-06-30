@@ -71,6 +71,7 @@ struct DSLink {
 #endif
     int initialized;
     int first_conn;
+    uv_timer_t * reconnectTimer;
 };
 
 struct Responder {
