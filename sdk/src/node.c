@@ -554,6 +554,34 @@ void dslink_node_deserialize(DSLink *link, DSNode *node, json_t *data) {
 // Thread-safe API
 int dslink_node_update_value_safe(struct DSLink *link, char* path, json_t *value,  void (*callback)(int, void*), void * callback_data) {
 
+    if(!link || !path || !value)
+        return -2;
+
+    //if it is main thread, call directly
+    if(uv_thread_self() == link->main_thread_id) {
+        DSNode *node = dslink_node_get_path(link->responder->super_root, path);
+        int ret;
+        if (node) {
+            //json value's ref count must be 1 and should not be used in the other thread anymore
+            if (dslink_node_update_value(link, node, value) == 0)
+                ret = 0;
+            else
+                ret = -2;
+        } else {
+            ret = -2;
+        }
+
+        if (callback) {
+            callback(ret, callback_data);
+        }
+
+        if(path) {
+            dslink_free(path);
+        }
+        json_decref(value);
+        return ret;
+    }
+
     DSLinkAsyncSetData *async_data = dslink_malloc(sizeof(DSLinkAsyncSetData));
 
     if (!async_data) {
@@ -586,13 +614,30 @@ int dslink_node_update_value_safe(struct DSLink *link, char* path, json_t *value
         }
     }
 
-
-
-
     return 0;
 }
 
 int dslink_node_get_value_safe(struct DSLink *link, char* path,  void (*callback)(json_t *, void*), void * callback_data) {
+
+    if(!link || !path)
+        return -2;
+
+    //if it is main thread, call directly
+    if(uv_thread_self() == link->main_thread_id) {
+        int ret = 0;
+        DSNode *node = dslink_node_get_path(link->responder->super_root, path);
+        if (node) {
+            if (callback) {
+                callback(json_copy(node->value), callback_data);
+            }
+        } else {
+            ret = -2;
+        }
+        if(path) {
+            dslink_free(path);
+        }
+        return ret;
+    }
 
     DSLinkAsyncGetData *async_data = dslink_malloc(sizeof(DSLinkAsyncGetData));
 
@@ -626,6 +671,17 @@ int dslink_node_get_value_safe(struct DSLink *link, char* path,  void (*callback
     return 0;
 }
 int dslink_run_safe(struct DSLink *link, void (*callback)(struct DSLink *link, void*), void * callback_data) {
+
+    if(!link)
+        return -2;
+
+    //if it is main thread, call directly
+    if(uv_thread_self() == link->main_thread_id) {
+        if (callback) {
+            callback(link, callback_data);
+        }
+        return 0;
+    }
 
     DSLinkAsyncRunData *async_data = dslink_malloc(sizeof(DSLinkAsyncRunData));
 

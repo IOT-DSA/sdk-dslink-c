@@ -629,6 +629,8 @@ int dslink_init(int argc, char **argv,
     link->initialized = 0;
     link->first_conn = 0;
 
+    link->main_thread_id = uv_thread_self();
+
     //thread-safe API async handle set
     if(uv_async_init(&link->loop, &link->async_get, dslink_async_get_node_value)) {
         log_warn("Async handle init error\n");
