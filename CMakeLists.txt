@@ -254,17 +254,13 @@ if (DSLINK_BUILD_BROKER)
     target_include_directories(sdk_broker_c PUBLIC "broker/include")
     set_target_properties(sdk_broker_c PROPERTIES VERSION ${VERSION} SOVERSION ${VERSION_MAJOR} )
 
-    add_library(sdk_broker_c-static STATIC ${BROKER_SRC})
-    target_link_libraries(sdk_broker_c-static sdk_dslink_c-static)
-    target_include_directories(sdk_broker_c-static PUBLIC "broker/include")
-
     add_executable(broker "${BROKER_SRC_DIR}/main.c")
     target_link_libraries(broker sdk_broker_c)
 
     install(TARGETS broker
         RUNTIME DESTINATION "${DSLINK_INSTALL_BIN_DIR}" COMPONENT bin)
     install(TARGETS sdk_broker_c
-        LIBRARY DESTINATION "${DSLINK_INSTALL_LIB_DIR}" COMPONENT lib)
+        LIBRARY DESTINATION "${DSLINK_INSTALL_LIB_DIR}" COMPONENT bin)
 endif()
 
 ###### Configure Tests #####
@@ -304,11 +300,14 @@ SET(CPACK_PACKAGE_VERSION_PATCH "${VERSION_PATCH}")
 SET(CPACK_PACKAGE_INSTALL_DIRECTORY "sdk-dslink-c")
 SET(CPACK_PACKAGE_DEFAULT_LOCATION "/")
 SET(CPACK_COMPONENTS_ALL bin lib dev)
+set(CPACK_COMPONENT_BIN_DEPENDS lib)
+set(CPACK_COMPONENT_DEV_DEPENDS lib)
 SET(CPACK_INSTALL_CMAKE_PROJECTS "${CMAKE_BINARY_DIR};${CMAKE_PROJECT_NAME};ALL;/")
 SET(PACKAGING_REPLACES "")
 SET(PACKAGING_CONFLICTS "")
 
 # some general seetings for the packaging process
+set(CPACK_DEB_COMPONENT_INSTALL ON)
 SET(CPACK_COMPONENTS_ALL_SET_BY_USER "TRUE")
 SET(CPACK_COMPONENTS_GROUPING "IGNORE")
 SET(CPACK_COMPONENT_UNSPECIFIED_HIDDEN "TRUE")
