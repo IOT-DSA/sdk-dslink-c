@@ -97,6 +97,7 @@ static
 void broker_ssl_server_client_ready(uv_poll_t *poll,
                                 int status,
                                 int events) {
+
     (void) status;
     Client *client = poll->data;
     SslServer *server = (SslServer*)client->server;
@@ -145,8 +146,11 @@ void broker_ssl_server_client_ready(uv_poll_t *poll,
 static
 void broker_server_new_client(uv_poll_t *poll,
                               int status, int events) {
+
     (void) status;
     (void) events;
+
+    int ret;
 
     Server *server = poll->data;
     Client *client = dslink_calloc(1, sizeof(Client));
@@ -154,6 +158,7 @@ void broker_server_new_client(uv_poll_t *poll,
         goto fail;
     }
 
+    client->is_local = 0;
     client->server = server;
     client->sock = dslink_socket_init(0);
     if (!client->sock) {
@@ -161,11 +166,28 @@ void broker_server_new_client(uv_poll_t *poll,
         goto fail;
     }
 
-    if (mbedtls_net_accept(&server->srv, &client->sock->socket_ctx,
-                           NULL, 0, NULL) != 0) {
+    //TODO: (ali) consider ipV6?
+    in_addr_t client_ip;
+    size_t ip_len;
+
+    ret = mbedtls_net_accept(&server->srv, &client->sock->socket_ctx,
+                             &client_ip, sizeof( in_addr_t ), &ip_len);
+
+    if (ret == MBEDTLS_ERR_NET_BUFFER_TOO_SMALL) {
+        log_warn("Client IP address couldn't get properly\n");
+    } else if (ret != 0) {
         log_warn("Failed to accept a client connection\n");
         goto fail_poll_setup;
+    } else {
+        char str[INET_ADDRSTRLEN];
+        inet_ntop( AF_INET, &client_ip, str, INET_ADDRSTRLEN );
+
+        if(client_ip == inet_addr("127.0.0.1")) {
+            client->is_local = 1;
+        }
     }
+
+
 
     uv_poll_t *clientPoll = dslink_malloc(sizeof(uv_poll_t));
     if (!clientPoll) {

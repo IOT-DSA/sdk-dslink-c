@@ -61,6 +61,15 @@ typedef struct RemoteDSLink {
     Map responder_streams;
 
     PermissionGroups permission_groups;
+
+    // Map<char *, SubRequester *>
+    Map req_sub_paths;
+
+    // Map<uint32_t *, SubRequester *>
+    Map req_sub_sids;
+
+    uint32_t rid;
+
 } RemoteDSLink;
 
 int broker_remote_dslink_init(RemoteDSLink *link);

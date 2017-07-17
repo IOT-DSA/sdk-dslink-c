@@ -20,6 +20,13 @@ int broker_remote_dslink_init(RemoteDSLink *link) {
 
         return 1;
     }
+    if (dslink_map_init(&link->req_sub_paths, dslink_map_str_cmp,
+                           dslink_map_str_key_len_cal, dslink_map_hash_key) != 0
+        || dslink_map_init(&link->req_sub_sids, dslink_map_uint32_cmp,
+                           dslink_map_uint32_key_len_cal, dslink_map_hash_key) != 0
+            ) {
+        return 1;
+    }
     permission_groups_init(&link->permission_groups);
     return 0;
 }
@@ -49,28 +56,31 @@ void broker_remote_dslink_free(RemoteDSLink *link) {
     List req_sub_to_remove;
     list_init(&req_sub_to_remove);
 
-    if (link->node) {
-        dslink_map_foreach(&link->node->req_sub_paths) {
-            // find all subscription that doesn't use qos
-            SubRequester *subreq = entry->value->data;
-            if (subreq->qos == 0) {
-                dslink_list_insert(&req_sub_to_remove, subreq);
-            }
+    dslink_map_foreach(&link->req_sub_paths) {
+        // find all subscription that doesn't use qos
+        SubRequester *subreq = entry->value->data;
+        if (subreq->qos == 0) {
+            dslink_list_insert(&req_sub_to_remove, subreq);
         }
+    }
+    dslink_map_foreach(&link->req_sub_paths) {
+        // find all subscription that doesn't use qos
+        SubRequester *subreq = entry->value->data;
+        subreq->reqSid = 0xFFFFFFFF;
+        broker_free_sub_requester(subreq);
+    }
+    dslink_map_clear(&link->req_sub_sids);
+
+    dslink_map_free(&link->req_sub_sids);
+    dslink_map_free(&link->req_sub_paths);
+
+    if (link->node) {
         dslink_list_foreach(&req_sub_to_remove) {
             // clear non-qos subscription
             SubRequester *subreq = ((ListNode *)node)->value;
             broker_free_sub_requester(subreq);
         }
         dslink_list_free_all_nodes(&req_sub_to_remove);
-
-        dslink_map_foreach(&link->node->req_sub_paths) {
-            // find all subscription that doesn't use qos
-            SubRequester *subreq = entry->value->data;
-            subreq->reqSid = 0xFFFFFFFF;
-        }
-
-        dslink_map_clear(&link->node->req_sub_sids);
     }
 
     dslink_map_free(&link->requester_streams);

@@ -36,7 +36,7 @@ void send_list_request(BrokerListStream *stream,
     json_object_set_new_nocheck(req, "method", json_string_nocheck("list"));
     json_object_set_new_nocheck(req, "path", json_string_nocheck(path));
 
-    uint32_t rid = broker_node_incr_rid(node);
+    uint32_t rid = broker_node_incr_rid(node->link);
 
     json_object_set_new_nocheck(req, "rid",
                                 json_integer(rid));

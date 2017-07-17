@@ -21,6 +21,7 @@ typedef struct Client {
     void *sock_data;
     uv_poll_t *poll;
     uv_poll_cb poll_cb;
+    int is_local;
 } Client;
 
 

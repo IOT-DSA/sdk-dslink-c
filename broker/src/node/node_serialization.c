@@ -284,7 +284,8 @@ int broker_load_qos_storage(Broker *broker) {
 
                 char *resqPath = dslink_str_unescape(key2);
 
-                SubRequester *subreq = broker_create_sub_requester((DownstreamNode*)node, resqPath, 0, qos, qosQueue);
+                DownstreamNode *downstreamNode = (DownstreamNode*)node;
+                SubRequester *subreq = broker_create_sub_requester(downstreamNode->link, resqPath, 0, qos, qosQueue);
                 broker_add_new_subscription(broker, subreq);
 
                 dslink_free(resqPath);

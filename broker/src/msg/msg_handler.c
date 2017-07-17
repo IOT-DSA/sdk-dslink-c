@@ -96,6 +96,9 @@ void broker_handle_resp(RemoteDSLink *link, json_t *resp) {
         size_t index;
         json_t *update;
         json_array_foreach(json_object_get(resp, "updates"), index, update) {
+            if(!link->node)
+                continue;
+
             if (json_is_array(update)) {
                 json_t *jSid = json_array_get(update, 0);
                 if (!jSid) {

@@ -10,7 +10,7 @@ extern "C" {
 
 typedef struct SubRequester {
     char *path;
-    DownstreamNode *reqNode;
+    RemoteDSLink *reqLink;
     DownstreamNode *respNode;
     BrokerSubStream *stream;
     uint32_t reqSid;
@@ -22,12 +22,12 @@ typedef struct SubRequester {
     ListNode *pendingNode;
 } SubRequester;
 
-void send_subscribe_request(DownstreamNode *node,
+void send_subscribe_request(RemoteDSLink *link,
                             const char *path,
                             uint32_t sid,
                             uint8_t qos);
+SubRequester *broker_create_sub_requester(RemoteDSLink * link, const char *path, uint32_t reqSid, uint8_t qos, json_t *qosQueue);
 
-SubRequester *broker_create_sub_requester(DownstreamNode * node, const char *path, uint32_t reqSid, uint8_t qos, json_t *qosQueue);
 void broker_free_sub_requester(SubRequester *req);
 
 void clear_qos_queue(SubRequester *subReq, uint8_t serialize);

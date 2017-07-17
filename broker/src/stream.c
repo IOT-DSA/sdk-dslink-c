@@ -32,18 +32,16 @@ uint32_t broker_map_dslink_hash(void *key, size_t len) {
     return dslink_map_hash_key(key, len);
 }
 
-
 static
-int broker_map_node_cmp(void *key, void *other, size_t len) {
+int broker_map_link_cmp(void *key, void *other, size_t len) {
     (void) len;
-    BrokerNode *a = key;
-    BrokerNode *b = other;
+    RemoteDSLink *a = key;
+    RemoteDSLink *b = other;
     return strcmp(a->path, b->path);
 }
-
 static
-size_t broker_map_node_len(void *key) {
-    BrokerNode *a = key;
+size_t broker_map_link_len(void *key) {
+    RemoteDSLink *a = key;
 
     if (!a->path) {
         return 0;
@@ -51,13 +49,11 @@ size_t broker_map_node_len(void *key) {
 
     return strlen(a->path);
 }
-
 static
-uint32_t broker_map_node_hash(void *key, size_t len) {
-    key = (void*)((BrokerNode *) key)->path;
+uint32_t broker_map_link_hash(void *key, size_t len) {
+    key = (void*)((RemoteDSLink *) key)->path;
     return dslink_map_hash_key(key, len);
 }
-
 
 BrokerListStream *broker_stream_list_init(void *node) {
     BrokerListStream *stream = dslink_calloc(1, sizeof(BrokerListStream));
@@ -90,8 +86,8 @@ BrokerSubStream *broker_stream_sub_init() {
 
     stream->type = SUBSCRIPTION_STREAM;
 
-    if (dslink_map_init(&stream->reqSubs, broker_map_node_cmp,
-                        broker_map_node_len, broker_map_node_hash) != 0) {
+    if (dslink_map_init(&stream->reqSubs, broker_map_link_cmp,
+                        broker_map_link_len, broker_map_link_hash) != 0) {
         dslink_free(stream);
         return NULL;
     }
@@ -250,7 +246,7 @@ void broker_stream_list_reset_remote_cache(BrokerListStream *stream,
             if (link->linkData) {
                 json_object_set_nocheck(stream->updates_cache, "$linkData", link->linkData);
             }
-            if (link->node->groups) {
+            if (link->node && link->node->groups) {
                 json_object_set_nocheck(stream->updates_cache, "$$group", link->node->groups);
             }
             const char *key;

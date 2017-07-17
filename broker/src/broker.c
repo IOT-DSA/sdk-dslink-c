@@ -101,10 +101,19 @@ int handle_ws(Broker *broker, HttpRequest *req, Client *client) {
     dsId = dslink_str_unescape(broker_http_param_get(&req->uri, "dsId"));
     const char *auth = broker_http_param_get(&req->uri, "auth");
     if (!(dsId && auth)) {
-        goto fail;
-    }
+        if(client->is_local) {
+            const char *perm_group = dslink_str_unescape(broker_http_param_get(&req->uri, "group"));
+            const char *session = broker_http_param_get(&req->uri, "session");
+            const char *format = broker_http_param_get(&req->uri, "format");
 
-    if (broker_handshake_handle_ws(broker, client, dsId,
+            if(broker_local_handle_ws(broker, client, accept, perm_group+1, session) != 0) {
+                printf("broker_local_handle_ws failed\n");
+                goto fail;
+            }
+        } else {
+            goto fail;
+        }
+    } else if (broker_handshake_handle_ws(broker, client, dsId,
                                    auth, accept) != 0) {
         goto fail;
     }
@@ -189,7 +198,6 @@ void broker_https_on_data_callback(Client *client, void *data) {
 }
 
 void broker_on_data_callback(Client *client, void *data) {
-
     Broker *broker = data;
     RemoteDSLink *link = client->sock_data;
     if (link) {
