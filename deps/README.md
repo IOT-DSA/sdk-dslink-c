@@ -26,6 +26,7 @@ ArgTable3:
 
 Libuv:
 
-  - Commit: c8a373c
+  - Commit: d989902
+  - Version: v1.9.1
   - Source: https://github.com/libuv/libuv
   - License: MIT
