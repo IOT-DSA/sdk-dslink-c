@@ -156,6 +156,10 @@ int dslink_socket_write(Socket *sock, char *buf, size_t len) {
 }
 
 void dslink_socket_close_nofree(Socket *sock) {
+    if(!sock) {
+        return;
+    }
+
     if (sock->secure) {
         SslSocket *s = (SslSocket *) sock;
         mbedtls_ssl_close_notify(&s->ssl);
@@ -164,6 +168,7 @@ void dslink_socket_close_nofree(Socket *sock) {
         mbedtls_ssl_free(&s->ssl);
         mbedtls_ssl_config_free(&s->conf);
     }
+
     mbedtls_net_free(&sock->socket_ctx);
 }
 
