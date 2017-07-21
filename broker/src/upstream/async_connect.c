@@ -101,7 +101,11 @@ static int net_prepare( void )
 }
 
 int connectConnCheck(UpstreamPoll *upstreamPoll) {
-    return connect( upstreamPoll->sock->socket_ctx.fd, upstreamPoll->conCheckAddrList->ai_addr, MSVC_INT_CAST upstreamPoll->conCheckAddrList->ai_addrlen );
+    int ret = connect( upstreamPoll->sock->socket_ctx.fd, upstreamPoll->conCheckAddrList->ai_addr, MSVC_INT_CAST upstreamPoll->conCheckAddrList->ai_addrlen );
+    if(ret != 0 && errno != EISCONN) {
+        return -1;
+    }
+    return 0;
 }
 
 static
@@ -135,7 +139,7 @@ int mbedtls_net_connect_async(UpstreamPoll *upstreamPoll, const char *host, cons
     } else  {
         mbedtls_net_set_nonblock(ctx);
         if (connect( ctx->fd, addr_list->ai_addr, MSVC_INT_CAST addr_list->ai_addrlen ) != 0) {
-            if (errno != 115 && errno != 114) {
+            if (errno != EALREADY && errno != EINPROGRESS) {
                 freeaddrinfo( addr_list );
                 return MBEDTLS_ERR_NET_SOCKET_FAILED;
             }

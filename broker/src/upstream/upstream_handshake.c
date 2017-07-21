@@ -343,7 +343,7 @@ void upstream_connect_conn(UpstreamPoll *upstreamPoll) {
 
     upstreamPoll->clientDslink = clientDslink;
 
-    log_debug("Trying to connect to %s", clientDslink->config.broker_url->host);
+    log_debug("Trying to connect to %s\n", clientDslink->config.broker_url->host);
     if (dslink_socket_connect_async(upstreamPoll, clientDslink->config.broker_url->host,
                               clientDslink->config.broker_url->port,
                               clientDslink->config.broker_url->secure) != 0) {
