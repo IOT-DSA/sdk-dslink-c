@@ -4,3 +4,6 @@
 [submodule "deps/mbedtls"]
 	path = deps/mbedtls
 	url = https://github.com/ARMmbed/mbedtls.git
+[submodule "deps/jansson"]
+	path = deps/jansson
+	url = https://github.com/akheron/jansson.git
