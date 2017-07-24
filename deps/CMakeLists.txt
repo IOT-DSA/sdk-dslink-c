@@ -1,4 +1,4 @@
-set(LIBUV_DIR "${CMAKE_CURRENT_LIST_DIR}")
+set(LIBUV_DIR "${CMAKE_CURRENT_LIST_DIR}/libuv")
 set(LIBUV_SRC_DIR "${LIBUV_DIR}/src")
 include_directories("${LIBUV_DIR}/include" "${LIBUV_SRC_DIR}")
 
