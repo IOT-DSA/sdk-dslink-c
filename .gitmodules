@@ -1,6 +1,6 @@
 [submodule "deps/libuv"]
 	path = deps/libuv
-	url = https://github.com/libuv/libuv
+	url = https://github.com/libuv/libuv.git
 [submodule "deps/mbedtls"]
 	path = deps/mbedtls
 	url = https://github.com/ARMmbed/mbedtls.git
