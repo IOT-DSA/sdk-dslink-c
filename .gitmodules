@@ -10,3 +10,6 @@
 [submodule "deps/wslay"]
 	path = deps/wslay
 	url = https://github.com/tatsuhiro-t/wslay.git
+[submodule "deps/argtable3"]
+	path = deps/argtable3
+	url = https://github.com/argtable/argtable3.git

@@ -71,13 +71,11 @@ IF(CMAKE_BUILD_TYPE STREQUAL "Release")
     ENDIF()
 ENDIF()
 
-foreach(dep "argtable3")
-    include("${CMAKE_CURRENT_LIST_DIR}/deps/${dep}/CMakeLists.txt")
-endforeach()
-##### This is the libuv, mbed CMakeLists.txt file
+##### This is the libuv, mbed, jansson, wslay and artable3 build files
 include("${CMAKE_CURRENT_LIST_DIR}/deps/CMakeLists.txt")
 include("${CMAKE_CURRENT_LIST_DIR}/deps/CMakeLists_jansson.txt")
 include("${CMAKE_CURRENT_LIST_DIR}/deps/CMakeLists_wslay.txt")
+include("${CMAKE_CURRENT_LIST_DIR}/deps/CMakeLists_argtable3.txt")
 
 include(ExternalProject)
 
