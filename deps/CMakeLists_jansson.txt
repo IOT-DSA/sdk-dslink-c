@@ -9,7 +9,7 @@ if (MSVC)
 endif ()
 
 set(JANSSON_DIR "${CMAKE_CURRENT_LIST_DIR}/jansson")
-include_directories("${JANSSON_DIR}/include")
+include_directories("${JANSSON_DIR}/src")
 include ("${JANSSON_DIR}/cmake/CheckFunctionKeywords.cmake")
 include (CheckCSourceCompiles)
 include (CheckFunctionExists)
