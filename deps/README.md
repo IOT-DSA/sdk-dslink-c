@@ -9,8 +9,8 @@ MBed:
   
 Jansson:
 
-  - Commit: 012c5f0
-  - Version: 2.8
+  - Commit:  b02db47
+  - Version: 2.9
   - Source: https://github.com/akheron/jansson
   - License: MIT
 
