@@ -250,7 +250,7 @@ if (DSLINK_BUILD_BROKER)
     target_include_directories(sdk_broker_c-static PUBLIC "broker/include")
 
     add_executable(broker "${BROKER_SRC_DIR}/main.c")
-    target_link_libraries(broker sdk_broker_c-static)
+    target_link_libraries(broker sdk_broker_c)
 endif()
 
 ###### Configure Examples ######
