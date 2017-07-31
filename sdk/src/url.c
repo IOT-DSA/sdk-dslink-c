@@ -1,9 +1,9 @@
 #if defined(__linux__)
 #include <stdint.h>
-#include <stdio.h>
 #endif
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include "dslink/mem/mem.h"
 #include "dslink/url.h"
