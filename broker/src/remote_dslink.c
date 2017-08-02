@@ -28,10 +28,12 @@ int broker_remote_dslink_init(RemoteDSLink *link) {
         return 1;
     }
     permission_groups_init(&link->permission_groups);
+
     return 0;
 }
 
 void broker_remote_dslink_free(RemoteDSLink *link) {
+
     if (link->auth) {
         mbedtls_ecdh_free(&link->auth->tempKey);
         DSLINK_CHECKED_EXEC(free, (void *) link->auth->pubKey);
@@ -63,35 +65,34 @@ void broker_remote_dslink_free(RemoteDSLink *link) {
             dslink_list_insert(&req_sub_to_remove, subreq);
         }
     }
+    dslink_list_foreach(&req_sub_to_remove) {
+        // clear non-qos subscription
+        SubRequester *subreq = ((ListNode *)node)->value;
+        broker_free_sub_requester(subreq);
+    }
+    dslink_list_free_all_nodes(&req_sub_to_remove);
+
     dslink_map_foreach(&link->req_sub_paths) {
         // find all subscription that doesn't use qos
         SubRequester *subreq = entry->value->data;
         subreq->reqSid = 0xFFFFFFFF;
-        broker_free_sub_requester(subreq);
     }
-    dslink_map_clear(&link->req_sub_sids);
+    //TODO: (ali) check freeing all subreq
 
     dslink_map_free(&link->req_sub_sids);
     dslink_map_free(&link->req_sub_paths);
-
-    if (link->node) {
-        dslink_list_foreach(&req_sub_to_remove) {
-            // clear non-qos subscription
-            SubRequester *subreq = ((ListNode *)node)->value;
-            broker_free_sub_requester(subreq);
-        }
-        dslink_list_free_all_nodes(&req_sub_to_remove);
-    }
 
     dslink_map_free(&link->requester_streams);
     dslink_map_free(&link->responder_streams);
 
     permission_groups_free(&link->permission_groups);
 
+#ifndef BROKER_PING_THREAD
     if (link->pingTimerHandle) {
         uv_timer_stop(link->pingTimerHandle);
         uv_close((uv_handle_t *) link->pingTimerHandle, broker_free_handle);
     }
+#endif
 
     dslink_free((void *) link->path);
     dslink_free(link->lastWriteTime);

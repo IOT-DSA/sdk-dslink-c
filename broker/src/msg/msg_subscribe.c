@@ -25,7 +25,7 @@ void broker_handle_local_subscribe(BrokerNode *respNode,
     subreq->stream = respNode->sub_stream;
     dslink_map_set(&respNode->sub_stream->reqSubs, dslink_ref(reqLink, NULL), dslink_ref(subreq, NULL));
     if (respNode->sub_stream->last_value) {
-        broker_update_sub_req(subreq, respNode->sub_stream->last_value);
+        broker_update_sub_req(subreq, respNode->sub_stream->last_value, 1);
     }
 }
 
@@ -54,7 +54,7 @@ void broker_subscribe_remote(DownstreamNode *respNode, SubRequester *subreq,
 
     broker_update_stream_qos(bss);
     if (bss->last_value) {
-        broker_update_sub_req(subreq, bss->last_value);
+        broker_update_sub_req(subreq, bss->last_value, 1);
     }
 }
 
@@ -199,7 +199,7 @@ void handle_subscribe(RemoteDSLink *link, json_t *sub) {
             // send qos data
             broker_update_sub_req_qos(reqsub);
         } else if (reqsub->stream && reqsub->stream->last_value) {
-            broker_update_sub_req(reqsub, reqsub->stream->last_value);
+            broker_update_sub_req(reqsub, reqsub->stream->last_value ,1);
         }
         return;
     }

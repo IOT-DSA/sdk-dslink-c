@@ -92,11 +92,11 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     ADD_C_FLAGS("-pthread")
 endif()
 
-# string(TOUPPER "${CMAKE_BUILD_TYPE}" DSLINK_BUILD_TYPE)
-# if (DSLINK_BUILD_TYPE STREQUAL DEBUG AND NOT USE_VALGRIND)
-#     ADD_C_FLAGS("-fsanitize=address")
-#     ADD_C_FLAGS("-fstack-protector-all")
-#  endif()
+ string(TOUPPER "${CMAKE_BUILD_TYPE}" DSLINK_BUILD_TYPE)
+ if (DSLINK_BUILD_TYPE STREQUAL DEBUG AND NOT USE_VALGRIND)
+     ADD_C_FLAGS("-fsanitize=address")
+     ADD_C_FLAGS("-fstack-protector-all")
+  endif()
 
 ##### Configure Sources #####
 

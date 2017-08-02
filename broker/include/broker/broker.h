@@ -5,6 +5,7 @@
 extern "C" {
 #endif
 
+
 #include <wslay/wslay.h>
 
 #include <dslink/storage/storage.h>
@@ -30,6 +31,9 @@ typedef struct Broker {
     // Map<char *name, RemoteDSLink *>
     Map client_connecting;
 
+    // Map<char *name, RemoteDSLink *>
+    Map client_connected;
+
     // Map<char *dslinkPath, List<SubRequester *> *>
     Map remote_pending_sub;
 
@@ -39,6 +43,20 @@ typedef struct Broker {
     uv_timer_t *saveConnsHandler;
 
     uv_timer_t *saveDataHandler;
+
+#ifdef BROKER_WS_SEND_THREAD_MODE
+    uv_sem_t ws_send_sem;
+    uv_sem_t ws_queue_sem;
+    int closing_send_thread;
+    uv_thread_t ws_send_thread_id;
+    RemoteDSLink *currLink;
+#endif
+
+#ifdef BROKER_PING_THREAD
+    uv_thread_t ping_thread_id;
+    int closing_ping_thread;
+#endif
+
 } Broker;
 
 extern uv_loop_t *mainLoop;

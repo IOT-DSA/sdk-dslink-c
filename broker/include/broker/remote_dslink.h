@@ -17,6 +17,15 @@ extern "C" {
 #include "broker/net/server.h"
 #include "broker/permission/permission.h"
 
+//comment out to disable sending ws messages in thread
+#define BROKER_WS_SEND_THREAD_MODE
+//#define BROKER_DROP_MESSAGE
+//#define BROKER_WS_SEND_HYBRID_MODE // DO NOT USE!
+//#define BROKER_WS_DIRECT_SEND
+
+//#define BROKER_PING_THREAD // DO NOT USE!
+
+
 typedef struct RemoteAuth {
 
     char salt[48];
@@ -34,7 +43,9 @@ typedef struct RemoteDSLink {
     uint32_t msgId;
 
     struct timeval *lastWriteTime;
+
     uv_timer_t *pingTimerHandle;
+
     struct timeval *lastReceiveTime;
 
     wslay_event_context_ptr ws;
@@ -67,6 +78,8 @@ typedef struct RemoteDSLink {
 
     // Map<uint32_t *, SubRequester *>
     Map req_sub_sids;
+
+    json_t* updates;
 
     uint32_t rid;
 

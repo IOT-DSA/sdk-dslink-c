@@ -82,11 +82,17 @@ void broker_server_client_ready(uv_poll_t *poll,
                 } else {
                     log_debug("Enabling READ/WRITE poll on client\n");
                     uv_poll_start(poll, UV_READABLE | UV_WRITABLE, broker_server_client_ready);
+#ifdef BROKER_WS_SEND_THREAD_MODE
+                    uv_sem_wait(&link->broker->ws_queue_sem);
+                    link->broker->currLink = link;
+                    uv_sem_post(&link->broker->ws_send_sem);
+#else
                     int stat = wslay_event_send(link->ws);
                     if(stat != 0) {
                         broker_close_link(link);
                         client = NULL;
                     }
+#endif
                 }
             }
         }
@@ -133,11 +139,19 @@ void broker_ssl_server_client_ready(uv_poll_t *poll,
             } else {
                 log_debug("Enabling READ/WRITE poll on client\n");
                 uv_poll_start(poll, UV_READABLE | UV_WRITABLE, broker_ssl_server_client_ready);
+
+#ifdef BROKER_WS_SEND_THREAD_MODE
+                    uv_sem_wait(&link->broker->ws_queue_sem);
+                    link->broker->currLink = link;
+                    uv_sem_post(&link->broker->ws_send_sem);
+#else
                 int stat = wslay_event_send(link->ws);
                 if(stat != 0) {
                     broker_close_link(link);
                     client = NULL;
                 }
+#endif
+                
             }
         }
     }

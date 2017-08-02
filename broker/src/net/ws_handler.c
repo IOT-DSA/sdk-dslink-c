@@ -116,7 +116,7 @@ void broker_on_ws_data(wslay_event_context_ptr ctx,
         if (arg->msg_length == 2
             && arg->msg[0] == '{'
             && arg->msg[1] == '}') {
-            broker_ws_send(link, "{}");
+            broker_ws_send(link, "{}", BROKER_MESSAGE_NOT_DROPPABLE);
             return;
         }
 

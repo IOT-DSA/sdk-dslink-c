@@ -107,7 +107,7 @@ void clear_managed_link(const char * name){
             dslink_map_foreach(&broker->downstream->list_stream->requester_links) {
                 uint32_t *rid = entry->value->data;
                 json_object_set_new_nocheck(resp, "rid", json_integer(*rid));
-                broker_ws_send_obj(entry->key->data, top);
+                broker_ws_send_obj(entry->key->data, top, BROKER_MESSAGE_DROPPABLE);
             }
         }
         dslink_map_clear(broker->downstream->children);
@@ -285,7 +285,7 @@ void add_token_invoke(RemoteDSLink *link,
         json_array_append_new(row, json_string_nocheck(tokenName));
         json_object_set_new_nocheck(resp, "updates", updates);
 
-        broker_ws_send_obj(link, top);
+        broker_ws_send_obj(link, top, BROKER_MESSAGE_DROPPABLE);
         json_decref(top);
     }
 

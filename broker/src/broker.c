@@ -202,9 +202,11 @@ void broker_on_data_callback(Client *client, void *data) {
     Broker *broker = data;
     RemoteDSLink *link = client->sock_data;
     if (link) {
+        int ret;
         link->ws->read_enabled = 1;
-        wslay_event_recv(link->ws);
-        if (link->pendingClose) {
+        ret = wslay_event_recv(link->ws);
+        if (ret || link->pendingClose) {
+            log_info("Error in ws receive: %d\n",ret);
             // clear the poll now, so it won't get cleared twice
             link->client->poll = NULL;
             broker_close_link(link);
@@ -256,6 +258,28 @@ exit:
     dslink_socket_close_nofree(client->sock);
 }
 
+#ifdef BROKER_PING_THREAD
+void broker_handle_ping_thread(void *arg) {
+
+    Broker *broker = (Broker*)arg;
+    while(1) {
+
+        dslink_map_foreach(&broker->client_connected) {
+            RemoteDSLink *connLink = (RemoteDSLink *) entry->value->data;
+            if (!dslink_generic_ping_handler(connLink)) {
+                log_debug("Remote dslink problem while pinging!\n");
+                broker_close_link(connLink);
+            }
+        }
+
+        dslink_sleep(10000);
+        if(broker->closing_ping_thread == 1)
+            break;
+    }
+
+}
+#endif
+
 void broker_close_link(RemoteDSLink *link) {
     if (!link) {
         return;
@@ -272,6 +296,9 @@ void broker_close_link(RemoteDSLink *link) {
     } else {
         log_info("DSLink `%s` has disconnected\n", (char *) link->name);
     }
+
+    dslink_map_remove(&link->broker->client_connected,
+                      link->dsId->data);
 
     ref_t *ref;
     if (link->isUpstream) {
@@ -301,6 +328,8 @@ void broker_free(Broker *broker) {
     dslink_map_free(&broker->client_connecting);
     dslink_map_free(&broker->remote_pending_sub);
     dslink_map_free(&broker->local_pending_sub);
+    dslink_map_free(&broker->client_connected);
+
     memset(broker, 0, sizeof(Broker));
 }
 
@@ -366,6 +395,11 @@ int broker_init(Broker *broker, json_t *defaultPermission) {
         goto fail;
     }
 
+    if (dslink_map_init(&broker->client_connected, dslink_map_str_cmp,
+                        dslink_map_str_key_len_cal, dslink_map_hash_key) != 0) {
+        goto fail;
+    }
+
     if (dslink_map_init(&broker->remote_pending_sub, dslink_map_str_cmp,
                         dslink_map_str_key_len_cal, dslink_map_hash_key) != 0) {
         goto fail;
@@ -376,6 +410,19 @@ int broker_init(Broker *broker, json_t *defaultPermission) {
         goto fail;
     }
 
+#ifdef BROKER_WS_SEND_THREAD_MODE
+    broker->closing_send_thread = 0;
+    uv_sem_init(&broker->ws_send_sem,0);
+    uv_sem_init(&broker->ws_queue_sem,1);
+    uv_thread_create(&broker->ws_send_thread_id, broker_send_ws_thread, broker);
+    broker->currLink = NULL;
+#endif
+
+#ifdef BROKER_PING_THREAD
+    broker->closing_ping_thread = 0;
+    uv_thread_create(&broker->ping_thread_id, broker_handle_ping_thread, broker);
+#endif
+
     return 0;
 fail:
     broker_free(broker);
@@ -383,6 +430,12 @@ fail:
 }
 
 void broker_stop(Broker* broker) {
+
+#ifdef BROKER_WS_SEND_THREAD_MODE
+    broker->closing_send_thread = 1;
+    uv_sem_post(&broker->ws_send_sem);
+#endif
+
     dslink_map_foreach(broker->downstream->children) {
         DownstreamNode *node = entry->value->data;
 
@@ -401,6 +454,17 @@ void broker_stop(Broker* broker) {
             broker_remote_dslink_free(link);
         }
     }
+
+#ifdef BROKER_WS_SEND_THREAD_MODE
+    uv_thread_join(&broker->ws_send_thread_id);
+    uv_sem_destroy(&broker->ws_send_sem);
+    uv_sem_destroy(&broker->ws_queue_sem);
+#endif
+
+#ifdef BROKER_PING_THREAD
+    broker->closing_ping_thread = 1;
+    uv_thread_join(&broker->ping_thread_id);
+#endif
 }
 
 int broker_start() {

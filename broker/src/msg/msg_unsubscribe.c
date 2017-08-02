@@ -29,7 +29,7 @@ void broker_msg_send_unsubscribe(BrokerSubStream *bss, RemoteDSLink *link) {
         json_object_set_new_nocheck(req, "sids", sids);
     }
 
-    broker_ws_send_obj(((DownstreamNode*)bss->respNode)->link, top);
+    broker_ws_send_obj(((DownstreamNode*)bss->respNode)->link, top, BROKER_MESSAGE_DROPPABLE);
     json_decref(top);
 }
 
