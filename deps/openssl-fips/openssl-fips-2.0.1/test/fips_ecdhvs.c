@@ -1,1 +1,0 @@
-../fips/ecdh/fips_ecdhvs.c
