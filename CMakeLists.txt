@@ -202,12 +202,11 @@ endif()
 ###### Configure Libraries #####
 
 set(CMAKE_MACOSX_RPATH 1)
-add_library(sdk_dslink_c-object OBJECT ${LIBRARY_SRC})
 
-add_library(sdk_dslink_c-static STATIC $<TARGET_OBJECTS:sdk_dslink_c-object>)
+add_library(sdk_dslink_c-static STATIC ${LIBRARY_SRC})
 target_link_libraries(sdk_dslink_c-static jansson libuv)
 
-add_library(sdk_dslink_c SHARED $<TARGET_OBJECTS:sdk_dslink_c-object>)
+add_library(sdk_dslink_c SHARED ${LIBRARY_SRC})
 target_link_libraries(sdk_dslink_c jansson libuv)
 
 set(DSLINK_INSTALL_LIB_DIR lib CACHE PATH "Installation directory for libraries")
@@ -237,14 +236,11 @@ if (DSLINK_BUILD_BROKER)
 
     install(DIRECTORY "broker/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev)
 
-    add_library(sdk_broker_c-object OBJECT ${BROKER_SRC})
-    target_include_directories(sdk_broker_c-object PUBLIC "broker/include")
-
-    add_library(sdk_broker_c SHARED $<TARGET_OBJECTS:sdk_broker_c-object>)
+    add_library(sdk_broker_c SHARED ${BROKER_SRC})
     target_link_libraries(sdk_broker_c sdk_dslink_c)
     target_include_directories(sdk_broker_c PUBLIC "broker/include")
 
-    add_library(sdk_broker_c-static STATIC $<TARGET_OBJECTS:sdk_broker_c-object>)
+    add_library(sdk_broker_c-static STATIC ${BROKER_SRC})
     target_link_libraries(sdk_broker_c-static sdk_dslink_c-static)
     target_include_directories(sdk_broker_c-static PUBLIC "broker/include")
 

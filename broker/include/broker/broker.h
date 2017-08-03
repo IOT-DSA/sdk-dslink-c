@@ -39,6 +39,8 @@ typedef struct Broker {
     uv_timer_t *saveConnsHandler;
 
     uv_timer_t *saveDataHandler;
+
+    uv_lib_t *extension;
 } Broker;
 
 extern uv_loop_t *mainLoop;

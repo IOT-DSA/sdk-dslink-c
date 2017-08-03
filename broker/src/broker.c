@@ -1,4 +1,7 @@
+#include <dlfcn.h>
+#include <libgen.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <wslay_event.h>
 
@@ -342,7 +345,6 @@ int broker_init(Broker *broker, json_t *defaultPermission) {
         goto fail;
     }
 
-
     BrokerNode *node = broker_node_create("defs", "static");
     if (!(node && json_object_set_new_nocheck(node->meta,
                                               "$hidden",
@@ -366,6 +368,8 @@ int broker_init(Broker *broker, json_t *defaultPermission) {
                         dslink_map_str_key_len_cal, dslink_map_hash_key) != 0) {
         goto fail;
     }
+
+    broker->extension = NULL;
 
     return 0;
 fail:
@@ -392,6 +396,50 @@ void broker_stop(Broker* broker) {
             broker_remote_dslink_free(link);
         }
     }
+    if(broker->extension) {
+        uv_dlclose(broker->extension);
+    }
+}
+
+typedef int (*init_ds_extension)(BrokerNode* sysNode);
+
+int broker_init_extensions(Broker* broker, json_t *config) {
+    json_t *jsonDSMan = json_object_get(config, "extensions_path");
+    const char *str = "./extensions";
+    if (json_is_string(jsonDSMan)) {
+        str = json_string_value(jsonDSMan);
+    }
+    if(access(str, F_OK) == 0) {
+        broker->extension = (uv_lib_t*) malloc(sizeof(uv_lib_t));
+        log_info("Loading extensions\n");
+        char buf[1024];
+        getcwd(buf, 1024);
+        strcat(buf, &str[1]);
+#ifdef __linux__
+        strcat(buf, "/libdsmanager");
+#elif defined __APPLE__ && __MACH__
+        strcat(buf, "/libdsmanager.dylib");
+#else
+#error "Not defined for this platform
+#endif
+
+        if (uv_dlopen(buf, broker->extension)) {
+            log_err("Could not load extension: '%s': %s\n", buf, uv_dlerror(broker->extension));
+        } else {
+            init_ds_extension init_function;
+            if(uv_dlsym(broker->extension, "init_ds_extension", (void **) &init_function)) {
+                log_err("Could not load extension: '%s': %s\n", buf, uv_dlerror(broker->extension));
+            } else {
+                if(init_function(broker->sys) == 0) {
+                    log_info("Loaded extension '%s'\n", basename(buf));
+                } else {
+                    log_err("Could not load extension: '%s': initialization failed\n", buf);
+                }
+            }
+        }
+    }
+
+    return 0;
 }
 
 int broker_start() {
@@ -422,6 +470,8 @@ int broker_start() {
         ret = 1;
         goto exit;
     }
+
+    broker_init_extensions(&broker, config);
 
     ret = broker_start_server(config);
 exit:
