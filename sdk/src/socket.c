@@ -1,177 +1,293 @@
 #include <stddef.h>
 #include <stdlib.h>
+
 #include <errno.h>
+#define LOG_TAG "socket"
+#include <dslink/log.h>
+
 
 #include "dslink/mem/mem.h"
 #include "dslink/socket_private.h"
 #include "dslink/socket.h"
 #include "dslink/err.h"
 
+
 Socket *dslink_socket_init(uint_fast8_t secure) {
-    if (secure) {
-        SslSocket *s = dslink_malloc(sizeof(SslSocket));
-        if (!s) {
-            return NULL;
-        }
+    Socket *s = dslink_malloc(sizeof(Socket));
+    if(!s)
+        return NULL;
+
+    s->fd = socket(PF_INET, SOCK_STREAM, 0);
+    bzero(&s->addr, sizeof(s->addr));
+    s->addr.sin_family = AF_INET;
+    s->secure = 0;
+
+    if(secure)
+    {
+        INITIALIZE_OPENSSL();
+
+        s->ssl = NULL;
+        s->ssl_ctx = NULL;
         s->secure = 1;
-        mbedtls_net_init(&s->socket_ctx);
-        mbedtls_entropy_init(&s->entropy);
-        mbedtls_ctr_drbg_init(&s->drbg);
-        mbedtls_ssl_init(&s->ssl);
-        mbedtls_ssl_config_init(&s->conf);
-        return (Socket *) s;
-    } else {
-        Socket *s = dslink_malloc(sizeof(Socket));
-        if (!s) {
+
+        //s->ssl_ctx = SSL_CTX_new(SSLv3_method());
+        s->ssl_ctx = SSL_CTX_new(TLSv1_method());
+
+        if ( !s->ssl_ctx )
+        {
+            log_err("Failed to create SSL Context because %s\n", ERR_reason_error_string(errno));
             return NULL;
         }
-        s->secure = 0;
-        mbedtls_net_init(&s->socket_ctx);
-        return s;
     }
+
+    return s;
 }
 
-static
-int dslink_socket_connect_secure(SslSocket *sock,
-                                 const char *address,
-                                 unsigned short port) {
-    if ((errno = mbedtls_ctr_drbg_seed(&sock->drbg, mbedtls_entropy_func,
-                                       &sock->entropy, NULL, 0)) != 0) {
-        return DSLINK_CRYPT_ENTROPY_SEED_ERR;
-    }
-
-    char num[6];
-    snprintf(num, sizeof(num), "%d", port);
-    if ((errno = mbedtls_net_connect(&sock->socket_ctx, address,
-                                     num, MBEDTLS_NET_PROTO_TCP)) != 0) {
-        return DSLINK_SOCK_CONNECT_ERR;
-    }
-
-    if ((errno = mbedtls_ssl_config_defaults(&sock->conf,
-                                             MBEDTLS_SSL_IS_CLIENT,
-                                             MBEDTLS_SSL_TRANSPORT_STREAM,
-                                             MBEDTLS_SSL_PRESET_DEFAULT)) != 0) {
-        return DSLINK_SOCK_SSL_CONFIG_ERR;
-    }
-    mbedtls_ssl_conf_authmode(&sock->conf, MBEDTLS_SSL_VERIFY_NONE);
-    mbedtls_ssl_conf_rng(&sock->conf, mbedtls_ctr_drbg_random, &sock->drbg);
-
-    if ((errno = mbedtls_ssl_setup(&sock->ssl, &sock->conf)) != 0) {
-        return DSLINK_SOCK_SSL_SETUP_ERR;
-    }
-
-    if ((errno = mbedtls_ssl_set_hostname(&sock->ssl, "_")) != 0) {
-        return DSLINK_SOCK_SSL_HOSTNAME_SET_ERR;
-    }
-
-    mbedtls_ssl_set_bio(&sock->ssl, &sock->socket_ctx,
-                        mbedtls_net_send, mbedtls_net_recv, NULL);
-
-    int stat;
-    while ((stat = mbedtls_ssl_handshake(&sock->ssl)) != 0) {
-        if (stat != MBEDTLS_ERR_SSL_WANT_READ
-            && stat != MBEDTLS_ERR_SSL_WANT_WRITE) {
-            errno = stat;
-            return DSLINK_SOCK_SSL_HANDSHAKE_ERR;
-        }
-    }
-
-    return 0;
-}
-
-static
-int dslink_socket_connect_insecure(Socket *sock,
-                                   const char *address,
-                                   unsigned short port) {
-    mbedtls_net_init(&sock->socket_ctx);
-    char num[6];
-    snprintf(num, sizeof(num), "%d", port);
-    if ((errno = mbedtls_net_connect(&sock->socket_ctx, address,
-                                     num, MBEDTLS_NET_PROTO_TCP)) != 0) {
-        return DSLINK_SOCK_CONNECT_ERR;
-    }
-    return 0;
-}
-
+// WARN: in .h file function says "param: an initialized socket" but function initialized socket itself
 int dslink_socket_connect(Socket **sock,
                           const char *address,
                           unsigned short port,
                           uint_fast8_t secure) {
     *sock = dslink_socket_init(secure);
-    mbedtls_net_set_nonblock(&(*sock)->socket_ctx);
     if (!(*sock)) {
         return DSLINK_ALLOC_ERR;
     }
-    if (secure) {
-        SslSocket *s = (SslSocket *) *sock;
-        return dslink_socket_connect_secure(s, address, port);
-    } else {
-        return dslink_socket_connect_insecure(*sock, address, port);
+
+    Socket *socket = *sock;
+
+    socket->addr.sin_port = htons(port);
+
+    struct hostent *host;
+    if ( (host = gethostbyname(address)) == NULL )
+        return DSLINK_SOCK_HOSTNAME_SET_ERR;
+
+    socket->addr.sin_addr.s_addr = *(long*)(host->h_addr);
+
+    if ( connect(socket->fd, (struct sockaddr *)&socket->addr, sizeof(socket->addr)) != 0 )
+    {
+        return DSLINK_SOCK_CONNECT_ERR;
     }
+
+    if(socket->secure)
+    {
+        INITIALIZE_OPENSSL();
+        socket->ssl = SSL_new(socket->ssl_ctx);     // create new SSL connection state
+        if(!socket->ssl)
+            return DSLINK_SOCK_SSL_SETUP_ERR;
+
+        if(SSL_set_fd(socket->ssl, socket->fd) != 1)
+            return DSLINK_SOCK_SSL_CONFIG_ERR;
+
+        int ret = SSL_connect(socket->ssl);
+        if ( ret != 1 )
+        {
+            log_err("Failed to accept a secure connection %s\n", ERR_reason_error_string(ERR_get_error()));
+            return DSLINK_SOCK_SSL_SETUP_ERR;
+        }
+    }
+
+    return 0;
+}
+
+int dslink_socket_bind(Socket *socket, const char *address, unsigned short port) {
+    socket->addr.sin_port = htons(port);
+
+    struct hostent *host;
+    if ( (host = gethostbyname(address)) == NULL )
+        return DSLINK_SOCK_HOSTNAME_SET_ERR;
+
+    socket->addr.sin_addr.s_addr = *(long*)(host->h_addr);
+
+    int yes=1;
+    if (setsockopt(socket->fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) == -1)
+        return DSLINK_SOCK_BIND_ERR;
+
+    if (  bind(socket->fd, (struct sockaddr *)&socket->addr, sizeof(socket->addr)) != 0 )
+        return DSLINK_SOCK_BIND_ERR;
+
+    if ( listen(socket->fd, 10) != 0 )
+        return DSLINK_SOCK_BIND_ERR;
+
+    return 1;
+}
+
+int dslink_socket_accept(Socket *server_socket, Socket **client_socket) {
+    *client_socket = dslink_calloc(1, sizeof(Socket));
+    if (!*client_socket) {
+        goto fail;
+    }
+
+    Socket *client = *client_socket;
+
+    int len = sizeof(struct sockaddr_in);
+    client->fd = accept(server_socket->fd, &client->addr, (socklen_t*)&len);
+
+    if(client->fd == -1)
+    {
+        log_err("Failed to accept a client connection %d\n", errno);
+        return -1;
+    }
+
+    client->secure = server_socket->secure;
+    if(client->secure)
+    {
+        client->ssl = NULL;
+        client->ssl_ctx = NULL;
+
+        client->ssl = SSL_new(server_socket->ssl_ctx);
+        SSL_set_fd(client->ssl, client->fd);
+
+        if ( SSL_accept(client->ssl) == -1 )
+        {
+            log_err("Failed to accept a client connection as SSL %d\n", errno);
+            return -1;
+        }
+    }
+
+    log_debug("Accepted a client connection\n");
+    return 1;
+
+    fail:
+    {
+        struct sockaddr_in addr;
+        int len = sizeof(struct sockaddr_in);
+        int client_fd = accept(server_socket->fd, &addr, (socklen_t*)&len);
+        close(client_fd);
+    }
+
+    return -1;
 }
 
 int dslink_socket_read(Socket *sock, char *buf, size_t len) {
+    if(!sock) return DSLINK_SOCK_READ_ERR;
+
     int r;
 
-    if(!sock) {
-        return DSLINK_SOCK_READ_ERR;
-    }
+    if (sock->secure)
+        r = SSL_read(sock->ssl, (unsigned char *) buf, len);
+    else
+        r = recv(sock->fd , (unsigned char *) buf, len , 0);
 
-    if (sock->secure) {
-        r = mbedtls_ssl_read(&((SslSocket *) sock)->ssl,
-                             (unsigned char *) buf, len);
-    } else {
-        r = mbedtls_net_recv(&sock->socket_ctx, (unsigned char *) buf, len);
-    }
     if (r < 0) {
-        if(r == MBEDTLS_ERR_SSL_WANT_READ) {
+        if(errno == EAGAIN)
             return DSLINK_SOCK_WOULD_BLOCK;
-        }
 
         return DSLINK_SOCK_READ_ERR;
     }
+
     return r;
 }
 
+
 int dslink_socket_write(Socket *sock, char *buf, size_t len) {
-    if(!sock) {
-        return DSLINK_SOCK_WRITE_ERR;
-    }
+    if(!sock) return DSLINK_SOCK_WRITE_ERR;
 
-    int r = 0;
-    if (sock->secure) {
-        r = mbedtls_ssl_write(&((SslSocket *) sock)->ssl,
-                              (unsigned char *) buf, len);
-    } else {
-        r = mbedtls_net_send(&sock->socket_ctx, (unsigned char *) buf, len);
-    }
-    if (r < 0) {
-        if(r == MBEDTLS_ERR_SSL_WANT_WRITE) {
+    int r;
+
+    if (sock->secure)
+        r = SSL_write(sock->ssl, (unsigned char *) buf, len);
+    else
+        r = send(sock->fd , (unsigned char *) buf , len , 0);
+
+    if (r < 0)
+    {
+        if(errno == EAGAIN)
             return DSLINK_SOCK_WOULD_BLOCK;
-        }
 
         return DSLINK_SOCK_WRITE_ERR;
     }
+
     return r;
 }
 
 void dslink_socket_close_nofree(Socket *sock) {
+    if(!sock) return;
+
     if (sock->secure) {
-        SslSocket *s = (SslSocket *) sock;
-        mbedtls_ssl_close_notify(&s->ssl);
-        mbedtls_entropy_free(&s->entropy);
-        mbedtls_ctr_drbg_free(&s->drbg);
-        mbedtls_ssl_free(&s->ssl);
-        mbedtls_ssl_config_free(&s->conf);
+        if(sock->ssl)
+            SSL_shutdown(sock->ssl);
     }
-    mbedtls_net_free(&sock->socket_ctx);
+
+    if(sock->fd >= 0) {
+        int ret = shutdown(sock->fd, SHUT_RDWR);
+
+        if(ret != 0){
+            log_err("Socket cannot be closed!\n");
+        }
+
+        sock->fd = -1;
+    }
 }
+
+void dslink_socket_free(Socket *sock) {
+    if(!sock) return;
+
+    if (sock->secure) {
+        if(sock->ssl)
+            SSL_free(sock->ssl);
+        sock->ssl = NULL;
+
+        if (sock->ssl_ctx)
+            SSL_CTX_free(sock->ssl_ctx);
+        sock->ssl_ctx = NULL;
+    }
+    dslink_free(sock);
+}
+
 
 void dslink_socket_close(Socket *sock) {
     dslink_socket_close_nofree(sock);
     dslink_socket_free(sock);
 }
 
-void dslink_socket_free(Socket *sock) {
-    dslink_free(sock);
+static int __OPEN_SSL_INITIALIZED = 0;
+
+void INITIALIZE_OPENSSL(){
+    if(!__OPEN_SSL_INITIALIZED)
+    {
+        SSL_library_init();            // SSL BUG
+
+        OpenSSL_add_all_algorithms();
+        SSL_load_error_strings();
+
+        __OPEN_SSL_INITIALIZED = 1;
+    }
+}
+
+#include <fcntl.h>
+
+int dslink_socket_set_nonblock(Socket *socket)
+{
+#if ( defined(_WIN32) || defined(_WIN32_WCE) ) && !defined(EFIX64) && \
+    !defined(EFI32)
+    u_long n = 1;
+    return( ioctlsocket( socket->fd, FIONBIO, &n ) );
+#else
+    return( fcntl( socket->fd, F_SETFL, fcntl( socket->fd, F_GETFL ) | O_NONBLOCK ) );
+#endif
+}
+
+int dslink_socket_set_block(Socket *socket)
+{
+#if ( defined(_WIN32) || defined(_WIN32_WCE) ) && !defined(EFIX64) && \
+    !defined(EFI32)
+    u_long n = 0;
+    return( ioctlsocket( socket->fd, FIONBIO, &n ) );
+#else
+    return( fcntl( socket->fd, F_SETFL, fcntl( socket->fd, F_GETFL ) & ~O_NONBLOCK ) );
+#endif
+}
+
+int dslink_check_connection(Socket *socket)
+{
+    int error_code;
+    int error_code_size = sizeof(error_code);
+    getsockopt(socket->fd, SOL_SOCKET, SO_ERROR, &error_code, &error_code_size);
+
+    if (error_code != 0) {
+        /* there was a problem getting the error code */
+        log_warn("socket error code: %s\n", strerror(error_code));
+        return -1;
+    }
+    return 0;
 }

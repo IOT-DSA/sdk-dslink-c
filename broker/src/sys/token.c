@@ -1,18 +1,20 @@
 #include <string.h>
+
 #include <broker/sys/token.h>
 #include <broker/utils.h>
-#include "broker/msg/msg_invoke.h"
-#include <dslink/base64_url.h>
+#include <broker/msg/msg_invoke.h>
 #include <broker/net/ws.h>
-#include <mbedtls/entropy.h>
-#include <mbedtls/sha256.h>
-
-#define LOG_TAG "token"
-#include <dslink/log.h>
 #include <broker/config.h>
 #include <broker/broker.h>
 #include <broker/stream.h>
+
+#include <dslink/base64_url.h>
 #include <dslink/utils.h>
+#include <dslink/crypto.h>
+
+
+#define LOG_TAG "token"
+#include <dslink/log.h>
 
 static
 BrokerNode *tokenRootNode;
@@ -20,23 +22,17 @@ BrokerNode *tokenRootNode;
 static
 unsigned char get_random_byte() {
     // reuse the entropy
-    static mbedtls_entropy_context ent;
     static unsigned char buffer[32];
-    static int buffer_pos = -1;
-    if (buffer_pos < 0) {
-        mbedtls_entropy_init(&ent);
-    }
-    ++buffer_pos;
-    if (buffer_pos >= (int)sizeof(buffer)) {
+    static int buffer_pos = 0;
+
+    if (buffer_pos >= (int)sizeof(buffer))
         buffer_pos = 0;
-    }
-    if (buffer_pos == 0) {
-        mbedtls_entropy_func(&ent, buffer, sizeof(buffer));
-    }
+
+    if (buffer_pos == 0)
+        dslink_crypto_random(buffer, sizeof(buffer));
 
     return (unsigned char)(buffer[buffer_pos] & 0x7F);
 }
-
 static
 unsigned char get_random_char() {
     while(1) {
@@ -345,7 +341,7 @@ BrokerNode *get_token_node(const char *hashedToken, const char *dsId) {
     *(in + id_len + 48) = '\0';
 
     unsigned char auth[32];
-    mbedtls_sha256((unsigned char *) in, id_len + 48, auth, 0);
+    dslink_crypto_sha256((unsigned char *) in, id_len + 48, auth);
     dslink_free(in);
 
     if (memcmp(auth, hashBinary, 32) == 0) {

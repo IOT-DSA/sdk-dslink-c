@@ -1,13 +1,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <mbedtls/base64.h>
-#include <mbedtls/ecdh.h>
-#include <mbedtls/net.h>
-
 #include <wslay/wslay.h>
 #include <wslay_event.h>
 #include <dslink/socket_private.h>
+#include <dslink/base64_url.h>
 
 #include "dslink/msg/request_handler.h"
 #include "dslink/msg/response_handler.h"
@@ -51,7 +48,7 @@ int gen_ws_key(char *buf, size_t bufLen) {
     }
 
     size_t len = 0;
-    if ((errno = mbedtls_base64_encode((unsigned char *) buf, bufLen,
+    if ((errno = dslink_base64_encode((unsigned char *) buf, bufLen,
                                        &len, rnd, sizeof(rnd))) != 0) {
         return DSLINK_CRYPT_BASE64_URL_ENCODE_ERR;
     }
@@ -162,7 +159,7 @@ int dslink_ws_send(struct wslay_event_context* ctx, const char* data) {
 }
 
 int dslink_handshake_connect_ws(Url *url,
-                                mbedtls_ecdh_context *key,
+                                dslink_ecdh_context *key,
                                 const char *uri,
                                 const char *tempKey,
                                 const char *salt,
@@ -205,7 +202,6 @@ int dslink_handshake_connect_ws(Url *url,
 
     if ((ret = dslink_socket_connect(sock, url->host,
                                      url->port, url->secure)) != 0) {
-        *sock = NULL;
         goto exit;
     }
 
@@ -412,9 +408,9 @@ void dslink_handshake_handle_ws(DSLink *link, link_callback on_requester_ready_c
     link->_ws = ptr;
     link->poll = dslink_malloc(sizeof(uv_poll_t));
 
-    mbedtls_net_set_nonblock(&link->_socket->socket_ctx);
+    dslink_socket_set_nonblock(link->_socket);
     {
-        uv_poll_init(&link->loop, link->poll, link->_socket->socket_ctx.fd);
+        uv_poll_init(&link->loop, link->poll, link->_socket->fd);
         link->poll->data = link;
         uv_poll_start(link->poll, UV_READABLE, io_handler);
     }

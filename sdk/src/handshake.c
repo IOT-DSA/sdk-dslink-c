@@ -1,10 +1,8 @@
-#include <mbedtls/sha256.h>
 #include <errno.h>
 #include <string.h>
-#include <mbedtls/ecp.h>
-#include <mbedtls/ecdh.h>
-#include <mbedtls/entropy.h>
+#include <dslink/crypto.h>
 
+#include "dslink/crypto.h"
 #include "dslink/base64_url.h"
 #include "dslink/handshake.h"
 #include "dslink/err.h"
@@ -16,32 +14,16 @@
     "Content-Length: %d\r\n\r\n" \
     "%s\r\n"
 
-int dslink_handshake_get_group(mbedtls_ecp_group *grp) {
-    mbedtls_ecp_group_init(grp);
-    const mbedtls_ecp_curve_info *info
-        = mbedtls_ecp_curve_info_from_grp_id(MBEDTLS_ECP_DP_SECP256R1);
-    if (!info) {
-        return DSLINK_CRYPT_MISSING_CURVE;
-    }
 
-    if ((errno = mbedtls_ecp_group_load(grp, info->grp_id)) != 0) {
-        return DSLINK_CRYPT_GROUP_LOAD_ERR;
-    }
-
-    return 0;
-}
-
-int dslink_handshake_encode_pub_key(mbedtls_ecdh_context *key, char *buf,
+int dslink_handshake_encode_pub_key(dslink_ecdh_context *key, char *buf,
                                     size_t bufLen, size_t *encLen) {
     int ret = 0;
     unsigned char pubKeyBin[65];
     size_t pubKeyBinLen = 0;
 
-    if ((errno = mbedtls_ecp_point_write_binary(&key->grp,
-                                                &key->Q,
-                                                MBEDTLS_ECP_PF_UNCOMPRESSED,
+    if (dslink_crypto_ecp_point_write_binary(key->grp, key->Q,
                                                 &pubKeyBinLen, pubKeyBin,
-                                                sizeof(pubKeyBin))) != 0) {
+                                                sizeof(pubKeyBin)) < 0) {
         ret = DSLINK_CRYPT_KEY_ENCODE_ERR;
         goto exit;
     }
@@ -56,7 +38,8 @@ exit:
     return ret;
 }
 
-int dslink_handshake_gen_auth_key(mbedtls_ecdh_context *key,
+
+int dslink_handshake_gen_auth_key(dslink_ecdh_context *key,
                                   const char *tempKey,
                                   const char *salt,
                                   unsigned char *buf,
@@ -70,14 +53,22 @@ int dslink_handshake_gen_auth_key(mbedtls_ecdh_context *key,
         goto exit;
     }
 
-    if ((errno = mbedtls_ecp_point_read_binary(&key->grp, &key->Qp,
+    EC_POINT* temp_key = EC_POINT_new(key->grp);
+    if ((errno = dslink_crypto_ecp_point_read_binary(key->grp, temp_key,
                                                buf, olen)) != 0) {
+        EC_POINT_free(temp_key);
         ret = DSLINK_HANDSHAKE_INVALID_TMP_KEY;
         goto exit;
     }
 
-    if ((errno = mbedtls_ecdh_calc_secret(key, &olen, buf,
-                                          bufLen, NULL, NULL)) != 0) {
+    if ((errno = dslink_crypto_ecdh_set_peer_public_key(key, temp_key)) != 0) {
+        ret = DSLINK_HANDSHAKE_INVALID_TMP_KEY;
+    }
+
+    EC_POINT_free(temp_key);
+    if(ret != 0) goto exit;
+
+    if ((errno = dslink_crypto_ecdh_calc_secret(key, &olen, buf, bufLen)) != 0) {
         ret = DSLINK_HANDSHAKE_INVALID_TMP_KEY;
         goto exit;
     }
@@ -95,7 +86,7 @@ int dslink_handshake_gen_auth_key(mbedtls_ecdh_context *key,
         *(in + len) = '\0';
 
         unsigned char auth[32];
-        mbedtls_sha256((unsigned char *) in, len, auth, 0);
+        dslink_crypto_sha256((unsigned char *) in, len, auth);
         dslink_free(in);
 
         if ((errno = dslink_base64_url_encode(buf, bufLen, &olen, auth,
@@ -107,7 +98,13 @@ exit:
     return ret;
 }
 
-int dslink_handshake_key_pair_fs(mbedtls_ecdh_context *key,
+/*
+ *
+ * Try to import key from file
+ * if not available, generate it and save into a file
+ *
+ */
+int dslink_handshake_key_pair_fs(dslink_ecdh_context *key,
                                  const char *fileName) {
     int ret = 0;
     FILE *f = fopen(fileName, "r");
@@ -128,8 +125,7 @@ int dslink_handshake_key_pair_fs(mbedtls_ecdh_context *key,
 
         char buf[1024];
         int len;
-        if ((len = dslink_handshake_store_key_pair(key, buf,
-                                                   sizeof(buf))) > 0) {
+        if ((len = dslink_handshake_store_key_pair(key, buf, sizeof(buf))) > 0) {
             f = fopen(fileName, "w");
             if (f) {
                 fprintf(f, "%s", buf);
@@ -145,105 +141,91 @@ exit:
     return ret;
 }
 
-int dslink_handshake_store_key_pair(mbedtls_ecdh_context *key,
+// write key into a file
+int dslink_handshake_store_key_pair(dslink_ecdh_context *key,
                                     char *buf, size_t bufLen) {
-    unsigned char dEnc[45];
-    char qEnc[90];
-    size_t dEncLen = 0;
-    size_t qEncLen = 0;
-    {
-        unsigned char dBin[33];
-        if ((errno = mbedtls_mpi_write_binary(&key->d,
-                                              dBin, sizeof(dBin))) != 0) {
-            return DSLINK_CRYPT_KEY_ENCODE_ERR;
-        }
 
-        if (dslink_base64_url_encode(dEnc, sizeof(dEnc), &dEncLen,
-                                     dBin, sizeof(dBin)) != 0) {
-            return DSLINK_CRYPT_BASE64_URL_ENCODE_ERR;
-        }
-    }
+    unsigned char* private_key_char = BN_bn2hex(key->d);
+    int private_key_len = strlen(private_key_char);
 
-    {
-        int ret;
-        if ((ret = dslink_handshake_encode_pub_key(key, qEnc, sizeof(qEnc),
-                                                   &qEncLen)) != 0) {
-            return ret;
-        }
-    }
+    unsigned char* public_key_char = EC_POINT_point2hex(
+            key->grp, key->Q, POINT_CONVERSION_UNCOMPRESSED, NULL);
+    int public_key_len = strlen(public_key_char);
 
     size_t bufSize;
     {
         // Add additional size for the space separator and null terminator
-        bufSize = dEncLen + qEncLen + 1;
+        bufSize = private_key_len + public_key_len + 1;
         if (bufLen < bufSize) {
             return DSLINK_BUF_TOO_SMALL;
         }
-        memcpy(buf, dEnc, dEncLen);
-        memset(buf + dEncLen, ' ', 1);
-        memcpy(buf + dEncLen + 1, qEnc, qEncLen);
+        memcpy(buf, private_key_char, private_key_len);
+        memset(buf + private_key_len, ' ', 1);
+        memcpy(buf + private_key_len + 1, public_key_char, public_key_len);
         *(buf + bufSize) = '\0';
     }
+
+    dslink_free(public_key_char);
+    dslink_free(private_key_char);
 
     return (int) bufSize;
 }
 
-int dslink_handshake_read_key_pair(mbedtls_ecdh_context *ctx, char *buf) {
-    mbedtls_ecdh_init(ctx);
-    dslink_handshake_get_group(&ctx->grp);
-    char *q = strchr(buf, ' ');
-    if (!q || *(q + 1) == '\0') {
-        errno = 0;
-        return DSLINK_CRYPT_KEY_DECODE_ERR;
-    }
-
-    size_t len = (q - buf);
-    unsigned char dec[90];
-    size_t decLen = 0;
-    if (dslink_base64_url_decode(dec, sizeof(dec), &decLen,
-                                 (unsigned char *) buf, len) != 0) {
-        return DSLINK_CRYPT_BASE64_URL_DECODE_ERR;
-    }
-
-    if ((errno = mbedtls_mpi_read_binary(&ctx->d, dec, decLen)) != 0) {
-        return DSLINK_CRYPT_KEY_DECODE_ERR;
-    }
-
-    len = strlen(buf) - len - 1;
-    if (dslink_base64_url_decode(dec, sizeof(dec), &decLen,
-                                 (unsigned char *) (q + 1), len) != 0) {
-        return DSLINK_CRYPT_BASE64_URL_DECODE_ERR;
-    }
-
-    if ((errno = mbedtls_ecp_point_read_binary(&ctx->grp, &ctx->Q,
-                                               dec, decLen)) != 0) {
-        return DSLINK_CRYPT_KEY_DECODE_ERR;
-    }
-
-    return 0;
-}
-
-int dslink_handshake_generate_key_pair(mbedtls_ecdh_context *ctx) {
-
-    mbedtls_entropy_context ent;
-    mbedtls_entropy_init(&ent);
-    mbedtls_ecdh_init(ctx);
+// ctx from buff
+int dslink_handshake_read_key_pair(dslink_ecdh_context *ctx, char *buf) {
+    unsigned char* private_key_char = NULL;
+    unsigned char* public_key_char = NULL;
+    BIGNUM* private_key = NULL;
+    EC_POINT *public_key = NULL;
 
     int ret = 0;
-    if ((ret = dslink_handshake_get_group(&ctx->grp)) != 0) {
+
+    char *q = strchr(buf, ' ');
+    if (!q) {
+        ret = DSLINK_CRYPT_KEY_DECODE_ERR;
         goto exit;
     }
 
-    if ((errno = mbedtls_ecp_gen_keypair(&ctx->grp,
-                                         &ctx->d,
-                                         &ctx->Q,
-                                         mbedtls_entropy_func, &ent)) != 0) {
+    size_t private_key_len = q - buf;
+    if(!(private_key_char = dslink_malloc(private_key_len+1))) goto error;
+    private_key_char[private_key_len] = NULL;
+    size_t public_key_len = strlen(buf) - private_key_len - 1;
+    if(!(public_key_char = dslink_malloc(public_key_len+1))) goto error;
+    public_key_char[public_key_len] = NULL;
+
+    memcpy(private_key_char, buf, private_key_len);
+    memcpy(public_key_char, q+1, public_key_len);
+
+    private_key = BN_new();
+    int is_success = BN_hex2bn(&private_key, private_key_char);
+    if(is_success == 0) goto error;
+
+    public_key = EC_POINT_hex2point(ctx->grp, public_key_char, NULL, NULL);
+    if(!public_key) goto error;
+
+    if(dslink_crypto_ecdh_set_keys(ctx, private_key, public_key) != 0) goto error;
+
+    exit:
+    if(private_key_char) dslink_free(private_key_char);
+    if(public_key_char) dslink_free(public_key_char);
+    if(private_key) BN_free(private_key);
+    if(public_key) EC_POINT_free(public_key);
+
+    return ret;
+
+    error:
+    ret = DSLINK_CRYPT_KEY_DECODE_ERR;
+    goto exit;
+}
+
+// generate ctx
+int dslink_handshake_generate_key_pair(dslink_ecdh_context *ctx) {
+    int ret = 0;
+
+    if (dslink_crypto_ecdh_generate_keys(ctx) != 1) {
         ret = DSLINK_CRYPT_KEY_PAIR_GEN_ERR;
-        goto exit;
     }
 
-exit:
-    mbedtls_entropy_free(&ent);
     return ret;
 }
 
@@ -265,21 +247,18 @@ char *dslink_handshake_generate_req(DSLink *link, char **dsId) {
 
     unsigned char pubKey[90];
     size_t pubKeyLen = 0;
-    if (!(mbedtls_ecp_point_write_binary(&link->key.grp, &link->key.Q,
-                                       MBEDTLS_ECP_PF_UNCOMPRESSED,
-                                       &pubKeyBinLen, pubKeyBin,
-                                       sizeof(pubKeyBin)) == 0
-        && dslink_base64_url_encode(pubKey,
-                                    sizeof(pubKey),
-                                    &pubKeyLen,
-                                    pubKeyBin,
-                                    pubKeyBinLen) == 0)) {
-        goto fail;
-    }
+
+    if(dslink_crypto_ecp_point_write_binary(link->key.grp, link->key.Q,
+                                            &pubKeyBinLen, pubKeyBin,
+                                            sizeof(pubKeyBin)) < 0) goto fail;
+
+    if(dslink_base64_url_encode(pubKey, sizeof(pubKey),
+                                &pubKeyLen, pubKeyBin,
+                                pubKeyBinLen) != 0) goto fail;
 
     { // Generate dsId
         unsigned char sha[32];
-        mbedtls_sha256(pubKeyBin, pubKeyBinLen, sha, 0);
+        dslink_crypto_sha256(pubKeyBin, pubKeyBinLen, sha);
 
         unsigned char tmp[45];
         size_t tmpLen = 0;
@@ -333,7 +312,7 @@ char *dslink_handshake_generate_req(DSLink *link, char **dsId) {
             *(in + id_len + 48) = '\0';
 
             unsigned char auth[32];
-            mbedtls_sha256((unsigned char *) in, id_len + 48, auth, 0);
+            dslink_crypto_sha256((unsigned char *) in, id_len + 48, auth);
             dslink_free(in);
 
             size_t outlen;
@@ -415,13 +394,19 @@ int dslink_handshake_generate(DSLink *link,
         goto exit;
     }
 
-    if ((ret = dslink_socket_connect(&sock, link->config.broker_url->host,
-                                     link->config.broker_url->port,
-                                     link->config.broker_url->secure)) != 0) {
+    ret = dslink_socket_connect(&sock,
+                                link->config.broker_url->host,
+                                link->config.broker_url->port,
+                                link->config.broker_url->secure);
+    if (ret != 0) {
         goto exit;
     }
 
-    dslink_socket_write(sock, req, strlen(req));
+    if(dslink_socket_write(sock, req, strlen(req)) < 0)
+    {
+        ret = DSLINK_SOCK_WRITE_ERR;
+        goto exit;
+    }
 
     int respLen = 0;
     while (1) {

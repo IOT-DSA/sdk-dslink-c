@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-#include <mbedtls/ecdh.h>
+#include "crypto.h"
 #include <uv.h>
 
 #include "socket.h"
@@ -48,7 +48,7 @@ struct DSLink {
 
     Requester *requester;
     Responder *responder; // Responder, only initialized for responder DSLinks
-    mbedtls_ecdh_context key; // ECDH key
+    dslink_ecdh_context key; // ECDH key
     uv_loop_t loop; // Primary event loop
     uv_async_t async_get; // async get value
     uv_async_t async_set; // async set value

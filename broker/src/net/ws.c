@@ -1,18 +1,16 @@
 #include <string.h>
-#include <mbedtls/sha1.h>
-#include <mbedtls/base64.h>
 
 #define LOG_TAG "ws"
 #include <dslink/log.h>
 #include <dslink/err.h>
-#include <broker/sys/throughput.h>
 #include <wslay_event.h>
 
+#include "broker/sys/throughput.h"
 #include "broker/remote_dslink.h"
 #include "broker/net/ws.h"
-#include "broker/net/server.h"
 
-#include <dslink/utils.h>
+#include <dslink/base64_url.h>
+#include <dslink/crypto.h>
 
 #define BROKER_WS_RESP "HTTP/1.1 101 Switching Protocols\r\n" \
                             "Upgrade: websocket\r\n" \
@@ -93,7 +91,7 @@ int broker_ws_generate_accept_key(const char *buf, size_t bufLen,
     int len = snprintf(data, sizeof(data), "%.*s%s", (int) bufLen, buf,
                        "258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
     unsigned char sha1[20];
-    mbedtls_sha1((unsigned char *) data, (size_t) len, sha1);
-    return mbedtls_base64_encode((unsigned char *) out, outLen,
+    dslink_crypto_sha1((unsigned char *) data, (size_t) len, sha1);
+    return dslink_base64_encode((unsigned char *) out, outLen,
                                  &outLen, sha1, sizeof(sha1));
 }

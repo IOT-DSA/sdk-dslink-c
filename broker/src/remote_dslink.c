@@ -7,6 +7,7 @@
 #include <broker/subscription.h>
 
 #include <broker/net/ws.h>
+#include <dslink/crypto.h>
 
 int broker_remote_dslink_init(RemoteDSLink *link) {
     memset(link, 0, sizeof(RemoteDSLink));
@@ -26,7 +27,7 @@ int broker_remote_dslink_init(RemoteDSLink *link) {
 
 void broker_remote_dslink_free(RemoteDSLink *link) {
     if (link->auth) {
-        mbedtls_ecdh_free(&link->auth->tempKey);
+        dslink_crypto_ecdh_deinit_context(&link->auth->tempKey);
         DSLINK_CHECKED_EXEC(free, (void *) link->auth->pubKey);
         dslink_free(link->auth);
     }

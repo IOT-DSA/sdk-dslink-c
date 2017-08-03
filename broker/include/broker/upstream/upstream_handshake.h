@@ -27,7 +27,7 @@ typedef struct UpstreamPoll {
     UpstreamPollStatus status;
     uv_poll_t *connPoll;
     uv_timer_t *connCheckTimer;
-    struct addrinfo *conCheckAddrList;
+    //struct addrinfo *conCheckAddrList; // why require?
     uv_poll_t *wsPoll;
     char *brokerUrl;
     char *dsId;

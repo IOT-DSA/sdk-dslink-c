@@ -49,9 +49,6 @@ void broker_stop(Broker* broker);
 
 void broker_on_data_callback(Client *client, void *data);
 
-void broker_https_on_data_callback(Client *client, void *data);
-
-
 #ifdef __cplusplus
 }
 #endif

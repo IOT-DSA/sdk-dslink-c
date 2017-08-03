@@ -47,6 +47,8 @@ void dslink_socket_close(Socket *sock);
 void dslink_socket_close_nofree(Socket *sock);
 void dslink_socket_free(Socket *sock);
 
+int dslink_check_connection(Socket *socket);
+
 #ifdef __cplusplus
 }
 #endif

@@ -25,11 +25,20 @@ extern int dslink_log_lvl;
 #define LOG_LVL_INFO  400
 #define LOG_LVL_DEBUG 500
 
-#define log_fatal(...) DSLINK_DO_LOG(LOG_LVL_FATAL, "FATAL", __VA_ARGS__)
-#define log_err(...) DSLINK_DO_LOG(LOG_LVL_ERR, "ERROR", __VA_ARGS__)
-#define log_warn(...) DSLINK_DO_LOG(LOG_LVL_WARN, "WARN", __VA_ARGS__)
-#define log_info(...) DSLINK_DO_LOG(LOG_LVL_INFO, "INFO", __VA_ARGS__)
-#define log_debug(...) DSLINK_DO_LOG(LOG_LVL_DEBUG, "DEBUG", __VA_ARGS__)
+#define ANSI_COLOR_RED     "\x1b[31m"
+#define ANSI_COLOR_GREEN   "\x1b[32m"
+#define ANSI_COLOR_YELLOW  "\x1b[33m"
+#define ANSI_COLOR_BLUE    "\x1b[34m"
+#define ANSI_COLOR_MAGENTA "\x1b[35m"
+#define ANSI_COLOR_CYAN    "\x1b[36m"
+#define ANSI_COLOR_RESET   "\x1b[0m"
+
+#define log_fatal(...) DSLINK_DO_LOG(LOG_LVL_FATAL, ANSI_COLOR_RED "FATAL" ANSI_COLOR_RESET, __VA_ARGS__)
+#define log_err(...) DSLINK_DO_LOG(LOG_LVL_ERR,     ANSI_COLOR_MAGENTA "ERROR" ANSI_COLOR_RESET, __VA_ARGS__)
+#define log_warn(...) DSLINK_DO_LOG(LOG_LVL_WARN,   ANSI_COLOR_YELLOW "WARN" ANSI_COLOR_RESET, __VA_ARGS__)
+#define log_info(...) DSLINK_DO_LOG(LOG_LVL_INFO,   ANSI_COLOR_RESET "INFO" ANSI_COLOR_RESET, __VA_ARGS__)
+#define log_debug(...) DSLINK_DO_LOG(LOG_LVL_DEBUG, ANSI_COLOR_CYAN "DEBUG" ANSI_COLOR_RESET, __VA_ARGS__)
+
 
 int dslink_log_set_lvl(const char *level);
 void dslink_log_print_time();

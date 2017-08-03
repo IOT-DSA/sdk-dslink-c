@@ -14,14 +14,13 @@
 #include <broker/handshake.h>
 #include <broker/utils.h>
 #include <string.h>
-#include <mbedtls/net.h>
 
 static
 void upstream_free_dslink(DSLink *link) {
     if (!link) {
         return;
     }
-    mbedtls_ecdh_free(&link->key);
+    dslink_crypto_ecdh_deinit_context(&link->key);
     dslink_url_free(link->config.broker_url);
     dslink_free((char *) link->config.name);
     dslink_free(link);
@@ -51,9 +50,9 @@ void upstream_clear_poll(UpstreamPoll *upstreamPoll) {
         uv_close((uv_handle_t *)upstreamPoll->reconnectTimer, broker_free_handle);
         upstreamPoll->reconnectTimer = NULL;
     }
-    if (upstreamPoll->conCheckAddrList) {
-        freeaddrinfo( upstreamPoll->conCheckAddrList );
-    }
+//    if (upstreamPoll->conCheckAddrList) {
+//        freeaddrinfo( upstreamPoll->conCheckAddrList );
+//    }
     broker_close_link(upstreamPoll->remoteDSLink);
     upstream_free_dslink(upstreamPoll->clientDslink);
     upstreamPoll->clientDslink = NULL;
@@ -190,9 +189,9 @@ void upstream_handshake_handle_ws(UpstreamPoll *upstreamPoll) {
     upstreamPoll->ws = ptr;
     link->ws = ptr;
 
-    mbedtls_net_set_nonblock(&upstreamPoll->clientDslink->_socket->socket_ctx);
+    dslink_socket_set_nonblock(upstreamPoll->clientDslink->_socket);
 
-    uv_poll_init(mainLoop, upstreamPoll->wsPoll, upstreamPoll->clientDslink->_socket->socket_ctx.fd);
+    uv_poll_init(mainLoop, upstreamPoll->wsPoll, upstreamPoll->clientDslink->_socket->fd);
     upstreamPoll->wsPoll->data = upstreamPoll;
 
     client->poll_cb = upstream_io_handler;
@@ -313,7 +312,7 @@ void upstream_check_conn (uv_timer_t* handle) {
     disable_timer(upstreamPoll->connCheckTimer, broker_free_handle);
     upstreamPoll->connCheckTimer = NULL;
 
-    if (connectConnCheck(upstreamPoll) != 0) {
+    if (dslink_check_connection(upstreamPoll->sock) != 0) {
         upstream_reconnect(upstreamPoll);
         return;
     }
@@ -328,7 +327,7 @@ void upstream_check_conn (uv_timer_t* handle) {
     }
 
     upstreamPoll->connPoll = dslink_calloc(1, sizeof(uv_poll_t));
-    uv_poll_init(mainLoop, upstreamPoll->connPoll, upstreamPoll->sock->socket_ctx.fd);
+    uv_poll_init(mainLoop, upstreamPoll->connPoll, upstreamPoll->sock->fd);
 
     upstreamPoll->dsId = dslink_strdup(dsId);
     upstreamPoll->connPoll->data = upstreamPoll;
@@ -361,13 +360,18 @@ void upstream_connect_conn(UpstreamPoll *upstreamPoll) {
 
     upstreamPoll->clientDslink = clientDslink;
 
-    log_debug("Trying to connect to %s", clientDslink->config.broker_url->host);
-    if (dslink_socket_connect_async(upstreamPoll, clientDslink->config.broker_url->host,
+    log_debug("Trying to connect to %s:%d\n",
+              clientDslink->config.broker_url->host,
+              clientDslink->config.broker_url->port);
+
+    if (dslink_socket_connect(&upstreamPoll->sock, clientDslink->config.broker_url->host,
                               clientDslink->config.broker_url->port,
                               clientDslink->config.broker_url->secure) != 0) {
         upstream_reconnect(upstreamPoll);
         return;
     }
+    dslink_socket_set_nonblock(upstreamPoll->sock);
+
     upstreamPoll->status = UPSTREAM_CONN_CHECK;
 
     upstreamPoll->connCheckTimer = dslink_malloc(sizeof(uv_timer_t));

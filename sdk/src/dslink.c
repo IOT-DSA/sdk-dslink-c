@@ -5,6 +5,7 @@
 #include <string.h>
 #include <wslay/wslay.h>
 #include <jansson.h>
+#include <openssl/err.h>
 
 #include "dslink/handshake.h"
 #include "dslink/utils.h"
@@ -295,16 +296,20 @@ int handle_config(DSLinkConfig *config, const char *name, int argc, char **argv)
 }
 
 int dslink_handle_key(DSLink *link) {
-    int ret;
-    if ((ret = dslink_handshake_key_pair_fs(&link->key, ".key")) != 0) {
-        if (ret == DSLINK_CRYPT_KEY_DECODE_ERR) {
-            log_fatal("Failed to decode existing key\n");
-        } else if (ret == DSLINK_OPEN_FILE_ERR) {
-            log_fatal("Failed to write generated key to disk\n");
-        } else if (ret == DSLINK_CRYPT_KEY_PAIR_GEN_ERR) {
-            log_fatal("Failed to generated key\n");
-        } else {
-            log_fatal("Unknown error occurred during key handling: %d\n", ret);
+    int ret = 0;
+    if((ret = dslink_crypto_ecdh_init_context(&link->key)) != 0){
+        log_fatal("Failed to init key");
+    } else{
+        if ((ret = dslink_handshake_key_pair_fs(&link->key, ".key")) != 0) {
+            if (ret == DSLINK_CRYPT_KEY_DECODE_ERR) {
+                log_fatal("Failed to decode existing key\n");
+            } else if (ret == DSLINK_OPEN_FILE_ERR) {
+                log_fatal("Failed to write generated key to disk\n");
+            } else if (ret == DSLINK_CRYPT_KEY_PAIR_GEN_ERR) {
+                log_fatal("Failed to generated key\n");
+            } else {
+                log_fatal("Unknown error occurred during key handling: %d\n", ret);
+            }
         }
     }
     return ret;
@@ -449,11 +454,16 @@ int dslink_init_do(DSLink *link, DSLinkCallbacks *cbs) {
 
     if ((ret = dslink_handshake_connect_ws(link->config.broker_url, &link->key, uri,
                                            tKey, salt, dsId, link->config.token, &sock)) != 0) {
-        log_fatal("Failed to connect to the broker: %d\n", ret);
+        log_fatal("Failed to connect to the broker: %s:%d with error code %d\n",
+                  link->config.broker_url->host,
+                  link->config.broker_url->port,ret);
+
         ret = DSLINK_COULDNT_CONNECT;
         goto exit;
     } else {
-        log_info("Successfully connected to the broker\n");
+        log_info("Successfully connected to the broker: %s:%d\n",
+                 link->config.broker_url->host,
+                 link->config.broker_url->port);
     }
 
     link->_socket = sock;
@@ -520,7 +530,7 @@ int dslink_init_do(DSLink *link, DSLinkCallbacks *cbs) {
         link->requester = NULL;
     }
 
-    mbedtls_ecdh_free(&link->key);
+    dslink_crypto_ecdh_deinit_context(&link->key);
     DSLINK_CHECKED_EXEC(dslink_socket_close, sock);
     DSLINK_CHECKED_EXEC(dslink_free, dsId);
     DSLINK_CHECKED_EXEC(json_delete, handshake);
@@ -631,6 +641,9 @@ int dslink_init(int argc, char **argv,
 
     link->main_thread_id = uv_thread_self();
 
+    dslink_crypto_fips_mode_set(1);
+
+    fflush(stdout);
     //thread-safe API async handle set
     if(uv_async_init(&link->loop, &link->async_get, dslink_async_get_node_value)) {
         log_warn("Async handle init error\n");

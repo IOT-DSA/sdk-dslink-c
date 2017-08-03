@@ -2,8 +2,8 @@ cmake_minimum_required(VERSION 3.0.0 FATAL_ERROR)
 project(sdk_dslink_c C)
 
 option(USE_CCACHE "Enable CCache Support" ON)
-option(DSLINK_BUILD_BROKER "Whether to build the broker" OFF)
-option(DSLINK_BUILD_EXAMPLES "Whether to build the examples" OFF)
+option(DSLINK_BUILD_BROKER "Whether to build the broker" ON)
+option(DSLINK_BUILD_EXAMPLES "Whether to build the examples" ON)
 option(DSLINK_TEST "Whether to enable tests" OFF)
 option(TOOLCHAIN_DYNAMIC_LINK_ENABLE "Enable Dynamic Linking for Toolchain" ON)
 
@@ -67,22 +67,52 @@ IF(CMAKE_BUILD_TYPE STREQUAL "Release")
     ADD_C_FLAGS("-pie -fPIE -D_FORTIFY_SOURCE=2")
 ENDIF()
 
-foreach(dep "mbed" "wslay" "argtable3" "jansson" "libuv")
+foreach(dep "wslay" "argtable3" "jansson" "libuv")
     include("${CMAKE_CURRENT_LIST_DIR}/deps/${dep}/CMakeLists.txt")
 endforeach()
 
 include(ExternalProject)
+
+##### OpenSSL #####
+#in order to use from system libraries in linux
+#find_package(OpenSSL)
+#set(OPENSSL_SSL_LIBRARY "/usr/local/ssl/lib/libcrypto.so")
+#set(OPENSSL_CRYPTO_LIBRARY "/usr/local/ssl/lib/libssl.so")
+#set(OPENSSL_INCLUDE_DIR "/usr/local/ssl/include")
+
+
+add_custom_command(
+        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/openssl/lib/libcrypto.so
+        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/openssl/lib/libssl.so
+        COMMAND make FIPS_DIR=${CMAKE_CURRENT_BINARY_DIR}/openssl/fips2.0 OPENSSL_DIR=${CMAKE_CURRENT_BINARY_DIR}/openssl all
+        WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/deps/openssl-fips/
+)
+add_custom_target(
+        openssl_lib
+        DEPENDS  ${CMAKE_CURRENT_BINARY_DIR}/openssl/lib/libcrypto.so
+        DEPENDS  ${CMAKE_CURRENT_BINARY_DIR}/openssl/lib/libssl.so
+)
+
+set(OPENSSL_SSL_LIBRARY "${CMAKE_CURRENT_BINARY_DIR}/openssl/lib/libssl.so")
+set(OPENSSL_CRYPTO_LIBRARY "${CMAKE_CURRENT_BINARY_DIR}/openssl/lib/libcrypto.so")
+set(OPENSSL_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/openssl/include")
+
+message("${OPENSSL_VERSION}")
+message("${OPENSSL_SSL_LIBRARY}")
+message("${OPENSSL_CRYPTO_LIBRARY}")
+message("${OPENSSL_INCLUDE_DIR}")
 
 ##### Configure Flags #####
 
 ADD_C_FLAGS("-std=gnu99")
 ADD_C_FLAGS("-Wno-tautological-compare")
 
-if (NOT NO_WARNINGS)
-    ADD_C_FLAGS("-Wall -Wextra -Werror")
-    ADD_C_FLAGS("-Wno-overlength-strings")
-    ADD_C_FLAGS("-pedantic")
-endif()
+
+#if (NOT NO_WARNINGS)
+#    ADD_C_FLAGS("-Wall -Wextra -Werror")
+#    ADD_C_FLAGS("-Wno-overlength-strings")
+#    ADD_C_FLAGS("-pedantic")
+#endif()
 
 if (${CMAKE_C_COMPILER_ID} STREQUAL "Clang")
     ADD_C_FLAGS("-Qunused-arguments")
@@ -103,6 +133,7 @@ endif()
 include_directories("${CMAKE_CURRENT_BINARY_DIR}/include")
 include_directories("${JANSSON_DIR}/include")
 include_directories("${CMAKE_CURRENT_LIST_DIR}/sdk/include")
+include_directories("${OPENSSL_INCLUDE_DIR}")
 
 set(DSLINK_SRC_DIR "${CMAKE_CURRENT_LIST_DIR}/sdk/src")
 set(DSLINK_SRC
@@ -131,12 +162,11 @@ set(DSLINK_SRC
     "${DSLINK_SRC_DIR}/utils.c"
     "${DSLINK_SRC_DIR}/ws.c"
     "${DSLINK_SRC_DIR}/requester.c"
-)
+    "${DSLINK_SRC_DIR}/crypto.c")
 
 set(LIBRARY_SRC
     "${ARGTABLE_SRC}"
     "${DSLINK_SRC}"
-    "${MBED_SRC}"
     "${WSLAY_SRC}"
 )
 
@@ -177,7 +207,6 @@ set(BROKER_SRC
     "${BROKER_SRC_DIR}/permission/permission.c"
     "${BROKER_SRC_DIR}/sys/clear_conns.c"
     "${BROKER_SRC_DIR}/upstream/upstream_handshake.c"
-    "${BROKER_SRC_DIR}/upstream/async_connect.c"
     "${BROKER_SRC_DIR}/node/node_serialization.c"
     "${BROKER_SRC_DIR}/sys/permission_action.c"
     "${BROKER_SRC_DIR}/msg/sub_stream.c"
@@ -200,6 +229,9 @@ add_library(sdk_dslink_c-object OBJECT ${LIBRARY_SRC})
 
 add_library(sdk_dslink_c-static STATIC $<TARGET_OBJECTS:sdk_dslink_c-object>)
 target_link_libraries(sdk_dslink_c-static jansson libuv)
+target_link_libraries(sdk_dslink_c-static ${OPENSSL_SSL_LIBRARY})
+target_link_libraries(sdk_dslink_c-static ${OPENSSL_CRYPTO_LIBRARY})
+add_dependencies(sdk_dslink_c-static openssl_lib)
 
 add_library(sdk_dslink_c SHARED $<TARGET_OBJECTS:sdk_dslink_c-object>)
 target_link_libraries(sdk_dslink_c jansson libuv)
@@ -219,9 +251,9 @@ install(TARGETS sdk_dslink_c
         RUNTIME DESTINATION "${DSLINK_INSTALL_BIN_DIR}" COMPONENT lib)
 
 install(DIRECTORY "sdk/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev)
-install(DIRECTORY "deps/mbed/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev)
 install(DIRECTORY "deps/wslay/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev)
 install(DIRECTORY "deps/jansson/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev)
+install(DIRECTORY "${OPENSSL_INCLUDE_DIR}" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev)
 
 ####### Configure Broker #######
 
@@ -238,11 +270,18 @@ if (DSLINK_BUILD_BROKER)
     target_include_directories(sdk_broker_c PUBLIC "broker/include")
 
     add_library(sdk_broker_c-static STATIC $<TARGET_OBJECTS:sdk_broker_c-object>)
-    target_link_libraries(sdk_broker_c-static sdk_dslink_c-static)
+    target_link_libraries(sdk_broker_c-static )
     target_include_directories(sdk_broker_c-static PUBLIC "broker/include")
 
     add_executable(broker "${BROKER_SRC_DIR}/main.c")
     target_link_libraries(broker sdk_broker_c-static)
+    target_link_libraries(broker sdk_dslink_c-static)
+    target_link_libraries(broker jansson libuv)
+    target_link_libraries(broker ${OPENSSL_SSL_LIBRARY})
+    target_link_libraries(broker ${OPENSSL_CRYPTO_LIBRARY})
+
+    add_dependencies(broker openssl_lib)
+
 endif()
 
 ###### Configure Examples ######
@@ -252,5 +291,6 @@ if (DSLINK_BUILD_EXAMPLES)
         include("${CMAKE_CURRENT_LIST_DIR}/examples/${example}/CMakeLists.txt")
         add_executable(${example} ${EXAMPLE_SRC})
         target_link_libraries(${example} sdk_dslink_c-static)
+        add_dependencies(${example} openssl_lib)
     endforeach()
 endif()

@@ -1,12 +1,17 @@
 #include <string.h>
 #include <assert.h>
-#include <mbedtls/ecdh.h>
-#include <mbedtls/base64.h>
-#include "mbedtls/aes.h"
+
+#include <dslink/crypto.h>
+#include <openssl/bn.h>
+
+#define LOG_TAG "node"
+#include <dslink/log.h>
+
 #include "dslink/mem/mem.h"
 #include "dslink/ws.h"
 #include "dslink/msg/list_response.h"
 #include "dslink/msg/sub_response.h"
+#include "dslink/base64_url.h"
 #include "dslink/utils.h"
 
 
@@ -455,31 +460,30 @@ json_t *dslink_node_serialize(DSLink *link, DSNode *node) {
                 && strcmp(name + strlen(name) - 8, "password") == 0
                 && json_is_string(value) ) {
                 // encrypt $$xxxpassword
-                mbedtls_aes_context aes;
 
-                unsigned char key[32];
-                unsigned char iv[16] = {0};
+                // First extract prikey
+                unsigned char key[32] = {0};
+                if( dslink_crypto_bn_write_binary(link->key.d, key, 32) < 0)
+                    log_fatal("cannot write private key into binary");
 
+                // Extract data from json
                 unsigned char input[128]= {0};
-                unsigned char output[128];
+                size_t input_len = strlen(json_string_value(value));
+                memcpy(input, json_string_value(value), input_len);
+
+                // ENCRYPT it
+                unsigned char output[128] = {0};
+                unsigned char iv[16] = {0};
+                size_t output_len = dslink_crypto_aes_encrypt(input, input_len, key, iv, output);
+
+                // Convert base64
                 char base64[256] = {0};
                 base64[0] = 0x1b;
                 base64[1] = 'p';
                 base64[2] = 'w';
                 base64[3] = ':';
-
-                size_t input_len = strlen(json_string_value(value));
                 size_t base64_len = 0;
-
-                memcpy(input, json_string_value(value), input_len);
-                size_t output_len =  (input_len + 15) & 0xF0; // length needs to be 16x
-
-                memcpy(key, link->key.d.p, 32);
-                mbedtls_aes_setkey_enc( &aes, key, 256 );
-                mbedtls_aes_crypt_cbc( &aes, MBEDTLS_AES_ENCRYPT, output_len, iv, input, output);
-
-
-                mbedtls_base64_encode((unsigned char*)base64+4,
+                dslink_base64_url_encode((unsigned char*)base64+4,
                                       sizeof(base64)-4, &base64_len,
                                       output, output_len);
 
@@ -510,7 +514,7 @@ void dslink_node_deserialize(DSLink *link, DSNode *node, json_t *data) {
         node->value = NULL;
     }
 
-    const char *key;
+    const char *key = NULL;
     json_t *value;
 
     json_object_foreach(data, key, value) {
@@ -522,24 +526,24 @@ void dslink_node_deserialize(DSLink *link, DSNode *node, json_t *data) {
                 && json_is_string(value) && memcmp("\x1bpw:", json_string_value(value), 4) == 0) {
                 // decrypt password
 
-                mbedtls_aes_context aes;
-
+                // GET KEY
                 unsigned char deckey[32];
-                unsigned char iv[16] = {0};
+                if( dslink_crypto_bn_write_binary(link->key.d, deckey, 32) < 0)
+                    log_fatal("cannot private key into binary");
 
+                // BASE64 DECODE
                 unsigned char input[128]= {0};
-                unsigned char output[128] = {0};
-
                 size_t input_len;
 
                 const char *base64 = json_string_value(value);
-                mbedtls_base64_decode(input,
-                                      sizeof(input), &input_len,
-                                      (const unsigned char *)base64+4, strlen(base64)-4);
+                dslink_base64_url_decode(input,
+                                     sizeof(input), &input_len,
+                                     (const unsigned char *)base64+4, strlen(base64)-4);
 
-                memcpy(deckey, link->key.d.p, 32);
-                mbedtls_aes_setkey_dec( &aes, deckey, 256 );
-                mbedtls_aes_crypt_cbc( &aes, MBEDTLS_AES_DECRYPT, input_len, iv, input, output);
+                // DECRYPT IT
+                unsigned char output[128] = {0};
+                unsigned char iv[16] = {0};
+                dslink_crypto_aes_decrypt(input, input_len, deckey, iv, output);
 
                 dslink_map_set(node->meta_data, dslink_ref(name, free),
                                dslink_ref(json_string((const char *)output), (free_callback) json_decref));

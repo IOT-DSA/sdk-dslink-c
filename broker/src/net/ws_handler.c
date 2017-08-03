@@ -1,5 +1,4 @@
 #include <wslay/wslay.h>
-#include <mbedtls/ssl.h>
 
 #define LOG_TAG "ws_handler"
 #include <dslink/log.h>

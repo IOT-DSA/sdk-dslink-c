@@ -7,12 +7,12 @@ extern "C" {
 
 #include <stdint.h>
 #include <jansson.h>
-#include <mbedtls/ecdh.h>
 #include <wslay/wslay.h>
 
 #include <dslink/col/map.h>
 #include <dslink/col/listener.h>
 #include <dslink/socket.h>
+#include <dslink/crypto.h>
 
 #include "broker/net/server.h"
 #include "broker/permission/permission.h"
@@ -20,7 +20,7 @@ extern "C" {
 typedef struct RemoteAuth {
 
     char salt[48];
-    mbedtls_ecdh_context tempKey;
+    dslink_ecdh_context tempKey;
     const char *pubKey;
 
 } RemoteAuth;

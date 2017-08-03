@@ -1,14 +1,13 @@
 #include <string.h>
 
-#include <mbedtls/entropy.h>
-#include <mbedtls/base64.h>
 
 #define LOG_TAG "handshake"
 #include <dslink/log.h>
+
 #include <dslink/handshake.h>
 #include <dslink/utils.h>
-#include <wslay_event.h>
-#include <sys/time.h>
+#include <dslink/base64_url.h>
+#include <dslink/crypto.h>
 
 #include "broker/config.h"
 #include "broker/sys/token.h"
@@ -18,19 +17,16 @@
 #include "broker/msg/msg_list.h"
 #include "broker/handshake.h"
 
+#include <wslay_event.h>
+#include <sys/time.h>
+
 static
 int generate_salt(unsigned char *salt, size_t len) {
     unsigned char buf[32];
-    mbedtls_entropy_context ent;
-    mbedtls_entropy_init(&ent);
-    if (mbedtls_entropy_func(&ent, buf,
-                             sizeof(buf)) != 0) {
-        mbedtls_entropy_free(&ent);
-        return -1;
-    }
-    mbedtls_entropy_free(&ent);
 
-    if (mbedtls_base64_encode(salt,
+    dslink_crypto_random(&buf, sizeof(buf));
+
+    if (dslink_base64_encode(salt,
                               len, &len,
                               buf, sizeof(buf)) != 0) {
         return -1;
@@ -69,6 +65,8 @@ json_t *broker_handshake_handle_conn(Broker *broker,
     if (!link->auth) {
         goto fail;
     }
+
+    dslink_crypto_ecdh_init_context(&link->auth->tempKey);
 
     if (dslink_handshake_generate_key_pair(&link->auth->tempKey) != 0) {
         log_err("Failed to create temporary key for DSLink\n");
@@ -402,7 +400,7 @@ int broker_handshake_handle_ws(Broker *broker,
     log_info("DSLink `%s` has connected\n", dsId);
 
 exit:
-    mbedtls_ecdh_free(&link->auth->tempKey);
+    dslink_crypto_ecdh_deinit_context(&link->auth->tempKey);
     dslink_free((void *) link->auth->pubKey);
     dslink_free(link->auth);
     link->auth = NULL;

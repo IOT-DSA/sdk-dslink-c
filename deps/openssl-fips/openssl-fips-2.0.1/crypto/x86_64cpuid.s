@@ -1,0 +1,313 @@
+
+.hidden	fips_openssl_cpuid_setup
+.section	.init
+	call	fips_openssl_cpuid_setup
+
+.hidden	fips_openssl_ia32cap_p
+.comm	fips_openssl_ia32cap_p,8
+
+.text	
+
+.globl	fips_openssl_atomic_add
+.type	fips_openssl_atomic_add,@function
+.align	16
+fips_openssl_atomic_add:
+	movl	(%rdi),%eax
+.Lspin:	leaq	(%rsi,%rax,1),%r8
+.byte	0xf0		
+	cmpxchgl	%r8d,(%rdi)
+	jne	.Lspin
+	movl	%r8d,%eax
+.byte	0x48,0x98	
+	.byte	0xf3,0xc3
+.size	fips_openssl_atomic_add,.-fips_openssl_atomic_add
+
+.globl	fips_openssl_rdtsc
+.type	fips_openssl_rdtsc,@function
+.align	16
+fips_openssl_rdtsc:
+	rdtsc
+	shlq	$32,%rdx
+	orq	%rdx,%rax
+	.byte	0xf3,0xc3
+.size	fips_openssl_rdtsc,.-fips_openssl_rdtsc
+
+.globl	fips_openssl_ia32_cpuid
+.type	fips_openssl_ia32_cpuid,@function
+.align	16
+fips_openssl_ia32_cpuid:
+	movq	%rbx,%r8
+
+	xorl	%eax,%eax
+	cpuid
+	movl	%eax,%r11d
+
+	xorl	%eax,%eax
+	cmpl	$1970169159,%ebx
+	setne	%al
+	movl	%eax,%r9d
+	cmpl	$1231384169,%edx
+	setne	%al
+	orl	%eax,%r9d
+	cmpl	$1818588270,%ecx
+	setne	%al
+	orl	%eax,%r9d
+	jz	.Lintel
+
+	cmpl	$1752462657,%ebx
+	setne	%al
+	movl	%eax,%r10d
+	cmpl	$1769238117,%edx
+	setne	%al
+	orl	%eax,%r10d
+	cmpl	$1145913699,%ecx
+	setne	%al
+	orl	%eax,%r10d
+	jnz	.Lintel
+
+
+	movl	$2147483648,%eax
+	cpuid
+	cmpl	$2147483649,%eax
+	jb	.Lintel
+	movl	%eax,%r10d
+	movl	$2147483649,%eax
+	cpuid
+	orl	%ecx,%r9d
+	andl	$2049,%r9d
+
+	cmpl	$2147483656,%r10d
+	jb	.Lintel
+
+	movl	$2147483656,%eax
+	cpuid
+	movzbq	%cl,%r10
+	incq	%r10
+
+	movl	$1,%eax
+	cpuid
+	btl	$28,%edx
+	jnc	.Lgeneric
+	shrl	$16,%ebx
+	cmpb	%r10b,%bl
+	ja	.Lgeneric
+	andl	$4026531839,%edx
+	jmp	.Lgeneric
+
+.Lintel:
+	cmpl	$4,%r11d
+	movl	$-1,%r10d
+	jb	.Lnocacheinfo
+
+	movl	$4,%eax
+	movl	$0,%ecx
+	cpuid
+	movl	%eax,%r10d
+	shrl	$14,%r10d
+	andl	$4095,%r10d
+
+.Lnocacheinfo:
+	movl	$1,%eax
+	cpuid
+	andl	$3220176895,%edx
+	cmpl	$0,%r9d
+	jne	.Lnotintel
+	orl	$1073741824,%edx
+	andb	$15,%ah
+	cmpb	$15,%ah
+	jne	.Lnotintel
+	orl	$1048576,%edx
+.Lnotintel:
+	btl	$28,%edx
+	jnc	.Lgeneric
+	andl	$4026531839,%edx
+	cmpl	$0,%r10d
+	je	.Lgeneric
+
+	orl	$268435456,%edx
+	shrl	$16,%ebx
+	cmpb	$1,%bl
+	ja	.Lgeneric
+	andl	$4026531839,%edx
+.Lgeneric:
+	andl	$2048,%r9d
+	andl	$4294965247,%ecx
+	orl	%ecx,%r9d
+
+	movl	%edx,%r10d
+	btl	$27,%r9d
+	jnc	.Lclear_avx
+	xorl	%ecx,%ecx
+.byte	0x0f,0x01,0xd0		
+	andl	$6,%eax
+	cmpl	$6,%eax
+	je	.Ldone
+.Lclear_avx:
+	movl	$4026525695,%eax
+	andl	%eax,%r9d
+.Ldone:
+	shlq	$32,%r9
+	movl	%r10d,%eax
+	movq	%r8,%rbx
+	orq	%r9,%rax
+	.byte	0xf3,0xc3
+.size	fips_openssl_ia32_cpuid,.-fips_openssl_ia32_cpuid
+
+.globl	FIPS_openssl_cleanse
+.type	FIPS_openssl_cleanse,@function
+.align	16
+FIPS_openssl_cleanse:
+	xorq	%rax,%rax
+	cmpq	$15,%rsi
+	jae	.Lot
+	cmpq	$0,%rsi
+	je	.Lret
+.Little:
+	movb	%al,(%rdi)
+	subq	$1,%rsi
+	leaq	1(%rdi),%rdi
+	jnz	.Little
+.Lret:
+	.byte	0xf3,0xc3
+.align	16
+.Lot:
+	testq	$7,%rdi
+	jz	.Laligned
+	movb	%al,(%rdi)
+	leaq	-1(%rsi),%rsi
+	leaq	1(%rdi),%rdi
+	jmp	.Lot
+.Laligned:
+	movq	%rax,(%rdi)
+	leaq	-8(%rsi),%rsi
+	testq	$-8,%rsi
+	leaq	8(%rdi),%rdi
+	jnz	.Laligned
+	cmpq	$0,%rsi
+	jne	.Little
+	.byte	0xf3,0xc3
+.size	FIPS_openssl_cleanse,.-FIPS_openssl_cleanse
+.globl	fips_openssl_wipe_cpu
+.type	fips_openssl_wipe_cpu,@function
+.align	16
+fips_openssl_wipe_cpu:
+	pxor	%xmm0,%xmm0
+	pxor	%xmm1,%xmm1
+	pxor	%xmm2,%xmm2
+	pxor	%xmm3,%xmm3
+	pxor	%xmm4,%xmm4
+	pxor	%xmm5,%xmm5
+	pxor	%xmm6,%xmm6
+	pxor	%xmm7,%xmm7
+	pxor	%xmm8,%xmm8
+	pxor	%xmm9,%xmm9
+	pxor	%xmm10,%xmm10
+	pxor	%xmm11,%xmm11
+	pxor	%xmm12,%xmm12
+	pxor	%xmm13,%xmm13
+	pxor	%xmm14,%xmm14
+	pxor	%xmm15,%xmm15
+	xorq	%rcx,%rcx
+	xorq	%rdx,%rdx
+	xorq	%rsi,%rsi
+	xorq	%rdi,%rdi
+	xorq	%r8,%r8
+	xorq	%r9,%r9
+	xorq	%r10,%r10
+	xorq	%r11,%r11
+	leaq	8(%rsp),%rax
+	.byte	0xf3,0xc3
+.size	fips_openssl_wipe_cpu,.-fips_openssl_wipe_cpu
+.globl	fips_openssl_instrument_bus
+.type	fips_openssl_instrument_bus,@function
+.align	16
+fips_openssl_instrument_bus:
+	movq	%rdi,%r10
+	movq	%rsi,%rcx
+	movq	%rsi,%r11
+
+	rdtsc
+	movl	%eax,%r8d
+	movl	$0,%r9d
+	clflush	(%r10)
+.byte	0xf0		
+	addl	%r9d,(%r10)
+	jmp	.Loop
+.align	16
+.Loop:	rdtsc
+	movl	%eax,%edx
+	subl	%r8d,%eax
+	movl	%edx,%r8d
+	movl	%eax,%r9d
+	clflush	(%r10)
+.byte	0xf0		
+	addl	%eax,(%r10)
+	leaq	4(%r10),%r10
+	subq	$1,%rcx
+	jnz	.Loop
+
+	movq	%r11,%rax
+	.byte	0xf3,0xc3
+.size	fips_openssl_instrument_bus,.-fips_openssl_instrument_bus
+
+.globl	fips_openssl_instrument_bus2
+.type	fips_openssl_instrument_bus2,@function
+.align	16
+fips_openssl_instrument_bus2:
+	movq	%rdi,%r10
+	movq	%rsi,%rcx
+	movq	%rdx,%r11
+	movq	%rcx,8(%rsp)
+
+	rdtsc
+	movl	%eax,%r8d
+	movl	$0,%r9d
+
+	clflush	(%r10)
+.byte	0xf0		
+	addl	%r9d,(%r10)
+
+	rdtsc
+	movl	%eax,%edx
+	subl	%r8d,%eax
+	movl	%edx,%r8d
+	movl	%eax,%r9d
+.Loop2:
+	clflush	(%r10)
+.byte	0xf0		
+	addl	%eax,(%r10)
+
+	subq	$1,%r11
+	jz	.Ldone2
+
+	rdtsc
+	movl	%eax,%edx
+	subl	%r8d,%eax
+	movl	%edx,%r8d
+	cmpl	%r9d,%eax
+	movl	%eax,%r9d
+	movl	$0,%edx
+	setne	%dl
+	subq	%rdx,%rcx
+	leaq	(%r10,%rdx,4),%r10
+	jnz	.Loop2
+
+.Ldone2:
+	movq	8(%rsp),%rax
+	subq	%rcx,%rax
+	.byte	0xf3,0xc3
+.size	fips_openssl_instrument_bus2,.-fips_openssl_instrument_bus2
+.globl	fips_openssl_ia32_rdrand
+.type	fips_openssl_ia32_rdrand,@function
+.align	16
+fips_openssl_ia32_rdrand:
+	movl	$8,%ecx
+.Loop_rdrand:
+.byte	72,15,199,240
+	jc	.Lbreak_rdrand
+	loop	.Loop_rdrand
+.Lbreak_rdrand:
+	cmpq	$0,%rax
+	cmoveq	%rcx,%rax
+	.byte	0xf3,0xc3
+.size	fips_openssl_ia32_rdrand,.-fips_openssl_ia32_rdrand

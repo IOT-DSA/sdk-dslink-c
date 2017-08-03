@@ -5,7 +5,6 @@
 extern "C" {
 #endif
 
-#include <mbedtls/ecdh.h>
 #include <jansson.h>
 
 #include "dslink/dslink.h"
@@ -14,7 +13,7 @@ extern "C" {
 #include "dslink/url.h"
 
 int dslink_handshake_connect_ws(Url *url,
-                                mbedtls_ecdh_context *key,
+                                dslink_ecdh_context *key,
                                 const char *uri,
                                 const char *tempKey,
                                 const char *salt,
