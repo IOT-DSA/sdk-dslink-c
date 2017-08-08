@@ -14,6 +14,10 @@ extern "C" {
 
 struct uv_loop_t;
 
+struct ExtensionConfig {
+    char* brokerUrl;
+};
+
 typedef struct Broker {
     StorageProvider *storage;
 
@@ -41,6 +45,8 @@ typedef struct Broker {
     uv_timer_t *saveDataHandler;
 
     uv_lib_t *extension;
+
+    struct ExtensionConfig extensionConfig;
 } Broker;
 
 extern uv_loop_t *mainLoop;
