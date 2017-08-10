@@ -34,6 +34,9 @@
 
 uv_loop_t *mainLoop = NULL;
 
+typedef int (*init_ds_extension)(BrokerNode* sysNode, const struct ExtensionConfig* config);
+typedef int (*deinit_ds_extension)();
+
 static
 void handle_conn(Broker *broker, HttpRequest *req, Socket *sock) {
     json_error_t err;
@@ -397,27 +400,36 @@ void broker_stop(Broker* broker) {
         }
     }
     if(broker->extension) {
+        log_info("Deinitializing extensions\n");
+        deinit_ds_extension deinit_function;
+        if(uv_dlsym(broker->extension, "deinit_ds_extention", (void **) &deinit_function) == 0) {
+            if(deinit_function() == 0) {
+                log_info("Deinitialized extension\n");
+            } else {
+                log_err("Could not deinitialize extension\n");
+            }
+        } else {
+            log_debug("No deinitializing function found for extension\n");
+        }
+
         uv_dlclose(broker->extension);
         dslink_free(broker->extensionConfig.brokerUrl);
     }
 }
 
-
-typedef int (*init_ds_extension)(BrokerNode* sysNode, const struct ExtensionConfig* config);
-
-int broker_init_extensions(Broker* broker, json_t *config) {
-    json_t *jsonDSMan = json_object_get(config, "extensions_path");
+int broker_init_extensions(Broker* broker, json_t* config) {
+    json_t* jsonDSMan = json_object_get(config, "extensions_path");
     char buf[1024];
     memset(buf, 0, 1024);
     if (json_is_string(jsonDSMan)) {
-        const char *str = json_string_value(jsonDSMan);
+        const char* str = json_string_value(jsonDSMan);
         memcpy(buf, str, strlen(str));
     } else {
         getcwd(buf, 1024);
         strcat(buf, "/extensions");
     }
     if(access(buf, F_OK) == 0) {
-        // TODO lfuerste: refactor into function
+        // TODO lfuerste: refactor into a function
         const char *httpHost = NULL;
         char httpPort[8];
         memset(httpPort, 0, sizeof(httpPort));
@@ -443,6 +455,7 @@ int broker_init_extensions(Broker* broker, json_t *config) {
         }
         ///
 
+        // TODO lfuerste: we should also be able to use https here
         broker->extensionConfig.brokerUrl = dslink_malloc(strlen(httpHost)+strlen(httpPort)+12+1);
         strcpy(broker->extensionConfig.brokerUrl, "http://");
         strcat(broker->extensionConfig.brokerUrl, httpHost);
@@ -450,27 +463,28 @@ int broker_init_extensions(Broker* broker, json_t *config) {
         strcat(broker->extensionConfig.brokerUrl, httpPort);
         strcat(broker->extensionConfig.brokerUrl, "/conn");
 
-        broker->extension = (uv_lib_t*) malloc(sizeof(uv_lib_t));
+        broker->extension = (uv_lib_t*)malloc(sizeof(uv_lib_t));
         log_info("Loading extensions from '%s'\n", buf);
 #ifdef __linux__
         strcat(buf, "/libdsmanager");
 #elif defined __APPLE__ && __MACH__
         strcat(buf, "/libdsmanager.dylib");
 #else
-#error "Not defined for this platform
+#error Not defined for this platform
 #endif
 
         if (uv_dlopen(buf, broker->extension)) {
             log_err("Could not load extension: '%s': %s\n", buf, uv_dlerror(broker->extension));
         } else {
             init_ds_extension init_function;
-            if(uv_dlsym(broker->extension, "init_ds_extension", (void **) &init_function)) {
-                log_err("Could not load extension: '%s': %s\n", buf, uv_dlerror(broker->extension));
+            if(uv_dlsym(broker->extension, "init_ds_extension", (void **)&init_function) != 0) {
+                log_debug("Not an extension: '%s'\n", buf);
             } else {
                 if(init_function(broker->sys, &broker->extensionConfig) == 0) {
                     log_info("Loaded extension '%s'\n", basename(buf));
                 } else {
                     log_err("Could not load extension: '%s': initialization failed\n", buf);
+                  uv_dlclose(broker->extension);
                 }
             }
         }
