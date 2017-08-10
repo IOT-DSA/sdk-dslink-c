@@ -16,6 +16,7 @@ struct uv_loop_t;
 
 struct ExtensionConfig {
     char* brokerUrl;
+    uv_loop_t* loop;
 };
 
 typedef struct Broker {

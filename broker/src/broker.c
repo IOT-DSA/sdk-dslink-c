@@ -463,6 +463,8 @@ int broker_init_extensions(Broker* broker, json_t* config) {
         strcat(broker->extensionConfig.brokerUrl, httpPort);
         strcat(broker->extensionConfig.brokerUrl, "/conn");
 
+        broker->extensionConfig.loop = mainLoop;
+
         broker->extension = (uv_lib_t*)malloc(sizeof(uv_lib_t));
         log_info("Loading extensions from '%s'\n", buf);
 #ifdef __linux__
