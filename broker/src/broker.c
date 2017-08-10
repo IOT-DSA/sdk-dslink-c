@@ -425,7 +425,9 @@ int broker_init_extensions(Broker* broker, json_t* config) {
         const char* str = json_string_value(jsonDSMan);
         memcpy(buf, str, strlen(str));
     } else {
-        getcwd(buf, 1024);
+        if(!getcwd(buf, 1024)) {
+            buf[0] = '.';
+        }
         strcat(buf, "/extensions");
     }
     if(access(buf, F_OK) == 0) {

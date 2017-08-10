@@ -71,7 +71,7 @@ IF(CMAKE_BUILD_TYPE STREQUAL "Release")
     ENDIF()
 ENDIF()
 
-##### This is the libuv, mbed, jansson, wslay and artable3 build files
+##### This are the libuv, mbed, jansson, wslay and argtable3 build files
 include("${CMAKE_CURRENT_LIST_DIR}/deps/CMakeLists.txt")
 include("${CMAKE_CURRENT_LIST_DIR}/deps/CMakeLists_jansson.txt")
 include("${CMAKE_CURRENT_LIST_DIR}/deps/CMakeLists_wslay.txt")
@@ -203,11 +203,15 @@ endif()
 
 set(CMAKE_MACOSX_RPATH 1)
 
+if(NOT APPLE AND UNIX)
+    set(DSLINK_PLATFORM_LIBS dl)
+endif()
+
 add_library(sdk_dslink_c-static STATIC ${LIBRARY_SRC})
-target_link_libraries(sdk_dslink_c-static jansson libuv)
+target_link_libraries(sdk_dslink_c-static jansson libuv ${DSLINK_PLATFORM_LIBS})
 
 add_library(sdk_dslink_c SHARED ${LIBRARY_SRC})
-target_link_libraries(sdk_dslink_c jansson libuv)
+target_link_libraries(sdk_dslink_c jansson libuv ${DSLINK_PLATFORM_LIBS})
 
 set(DSLINK_INSTALL_LIB_DIR lib CACHE PATH "Installation directory for libraries")
 set(DSLINK_INSTALL_BIN_DIR bin CACHE PATH "Installation directory for executables")
@@ -232,6 +236,7 @@ install(DIRECTORY "deps/jansson/src/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}
 ####### Configure Broker #######
 
 if (DSLINK_BUILD_BROKER)
+    MESSAGE(INFO, "Configured for broker build")
     include_directories("${CMAKE_CURRENT_LIST_DIR}/broker/include")
 
     install(DIRECTORY "broker/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev)
