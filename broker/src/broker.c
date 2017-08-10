@@ -470,7 +470,7 @@ int broker_init_extensions(Broker* broker, json_t* config) {
         broker->extension = (uv_lib_t*)malloc(sizeof(uv_lib_t));
         log_info("Loading extensions from '%s'\n", buf);
 #ifdef __linux__
-        strcat(buf, "/libdsmanager");
+        strcat(buf, "/libdsmanager.so");
 #elif defined __APPLE__ && __MACH__
         strcat(buf, "/libdsmanager.dylib");
 #else
