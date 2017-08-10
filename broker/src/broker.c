@@ -450,7 +450,7 @@ int broker_init_extensions(Broker* broker, json_t* config) {
                         httpPort[len] = '\0';
                     }
                 } else {
-                    log_err("Cannot load extensions. http has to be enabled.");
+                    log_err("Cannot load extensions. At least http has to be enabled.");
                     return -1;
                 }
             }
@@ -458,7 +458,7 @@ int broker_init_extensions(Broker* broker, json_t* config) {
         ///
 
         // TODO lfuerste: we should also be able to use https here
-        broker->extensionConfig.brokerUrl = dslink_malloc(strlen(httpHost)+strlen(httpPort)+12+1);
+        broker->extensionConfig.brokerUrl = dslink_malloc(strlen(httpHost)+strlen(httpPort)+13+1);
         strcpy(broker->extensionConfig.brokerUrl, "http://");
         strcat(broker->extensionConfig.brokerUrl, httpHost);
         strcat(broker->extensionConfig.brokerUrl, ":");
@@ -467,7 +467,7 @@ int broker_init_extensions(Broker* broker, json_t* config) {
 
         broker->extensionConfig.loop = mainLoop;
 
-        broker->extension = (uv_lib_t*)malloc(sizeof(uv_lib_t));
+        broker->extension = (uv_lib_t*)dslink_malloc(sizeof(uv_lib_t));
         log_info("Loading extensions from '%s'\n", buf);
 #ifdef __linux__
         strcat(buf, "/libdsmanager.so");
