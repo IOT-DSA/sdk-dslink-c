@@ -45,7 +45,7 @@ typedef struct Broker {
 
     uv_timer_t *saveDataHandler;
 
-    uv_lib_t *extension;
+    List extensions;
 
     struct ExtensionConfig extensionConfig;
 } Broker;

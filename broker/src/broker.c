@@ -1,3 +1,4 @@
+#include <dirent.h>
 #include <dlfcn.h>
 #include <libgen.h>
 #include <string.h>
@@ -372,8 +373,6 @@ int broker_init(Broker *broker, json_t *defaultPermission) {
         goto fail;
     }
 
-    broker->extension = NULL;
-
     return 0;
 fail:
     broker_free(broker);
@@ -399,34 +398,70 @@ void broker_stop(Broker* broker) {
             broker_remote_dslink_free(link);
         }
     }
-    if(broker->extension) {
+    if(list_is_not_empty(&(broker->extensions))) {
         log_info("Deinitializing extensions\n");
-        deinit_ds_extension deinit_function;
-        if(uv_dlsym(broker->extension, "deinit_ds_extention", (void **) &deinit_function) == 0) {
-            if(deinit_function() == 0) {
-                log_info("Deinitialized extension\n");
-            } else {
-                log_err("Could not deinitialize extension\n");
-            }
-        } else {
-            log_debug("No deinitializing function found for extension\n");
-        }
+        dslink_list_foreach(&(broker->extensions)) {
+            deinit_ds_extension deinit_function;
 
-        uv_dlclose(broker->extension);
+            uv_lib_t* extension = ((ListNode*)node)->value;
+
+            if(uv_dlsym(extension, "deinit_ds_extention", (void **) &deinit_function) == 0) {
+                if(deinit_function() == 0) {
+                    log_info("Deinitialized extension\n");
+                } else {
+                    log_err("Could not deinitialize extension\n");
+                }
+            } else {
+                log_debug("No deinitializing function found for extension\n");
+            }
+
+            uv_dlclose(extension);
+            dslink_free(extension);
+        }
         dslink_free(broker->extensionConfig.brokerUrl);
     }
 }
 
+// only load shared objects
+static int extensionsFilter(const struct dirent* entry)
+{
+#ifdef __linux__
+    const char* ext = ".so";
+#elif defined __APPLE__ && __MACH__
+    const char* ext = ".dylib";
+#else
+#error Not defined for this platform
+#endif
+    if(strlen(entry->d_name) <= 2) {
+        // probably . or ..
+        return 0;
+    }
+
+    if(entry->d_type == DT_REG) {
+        const char* dot = strrchr(entry->d_name, '.');
+        if(dot && strcmp(dot, ext) == 0) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+#define MAX_PATH_LEN 4096
+
 int broker_init_extensions(Broker* broker, json_t* config) {
-    json_t* jsonDSMan = json_object_get(config, "extensions_path");
-    char buf[1024];
-    memset(buf, 0, 1024);
-    if (json_is_string(jsonDSMan)) {
-        const char* str = json_string_value(jsonDSMan);
-        memcpy(buf, str, strlen(str));
+    list_init(&(broker->extensions));
+
+    json_t* extensions_path = json_object_get(config, "extensions_path");
+    char buf[MAX_PATH_LEN];
+    memset(buf, 0, MAX_PATH_LEN);
+    if (json_is_string(extensions_path)) {
+        const char* str = json_string_value(extensions_path);
+        strncat(buf, str, MAX_PATH_LEN);
     } else {
-        if(!getcwd(buf, 1024)) {
+        if(!getcwd(buf, MAX_PATH_LEN)) {
             buf[0] = '.';
+            buf[1] = '\0';
         }
         strcat(buf, "/extensions");
     }
@@ -467,31 +502,49 @@ int broker_init_extensions(Broker* broker, json_t* config) {
 
         broker->extensionConfig.loop = mainLoop;
 
-        broker->extension = (uv_lib_t*)dslink_malloc(sizeof(uv_lib_t));
         log_info("Loading extensions from '%s'\n", buf);
-#ifdef __linux__
-        strcat(buf, "/libdsmanager.so");
-#elif defined __APPLE__ && __MACH__
-        strcat(buf, "/libdsmanager.dylib");
-#else
-#error Not defined for this platform
-#endif
 
-        if (uv_dlopen(buf, broker->extension)) {
-            log_err("Could not load extension: '%s': %s\n", buf, uv_dlerror(broker->extension));
-        } else {
-            init_ds_extension init_function;
-            if(uv_dlsym(broker->extension, "init_ds_extension", (void **)&init_function) != 0) {
-                log_debug("Not an extension: '%s'\n", buf);
+        // scan the extensions directory for extensions
+        struct dirent **extensions;
+        int n;
+
+        n = scandir(buf, &extensions, extensionsFilter, alphasort);
+        if (n == -1) {
+            log_err("Could not load extensions: %s", strerror(errno));
+            return -1;
+        }
+
+        char path[MAX_PATH_LEN];
+        while(n--) {
+            uv_lib_t* extension = (uv_lib_t*)dslink_malloc(sizeof(uv_lib_t));
+
+            memset(path, 0, MAX_PATH_LEN);
+            strcat(path, buf);
+            strcat(path, "/");
+            strcat(path, extensions[n]->d_name);
+
+            if (uv_dlopen(path, extension)) {
+                log_err("Could not load extension: '%s': %s\n", extensions[n]->d_name, uv_dlerror(extension));
+                dslink_free(extension);
             } else {
-                if(init_function(broker->sys, &broker->extensionConfig) == 0) {
-                    log_info("Loaded extension '%s'\n", basename(buf));
+                init_ds_extension init_function;
+                if(uv_dlsym(extension, "init_ds_extension", (void **)&init_function) != 0) {
+                    log_debug("Not an extension: '%s'\n", extensions[n]->d_name);
+                    dslink_free(extension);
                 } else {
-                    log_err("Could not load extension: '%s': initialization failed\n", buf);
-                  uv_dlclose(broker->extension);
+                    if(init_function(broker->sys, &broker->extensionConfig) == 0) {
+                        log_info("Loaded extension '%s'\n", basename(extensions[n]->d_name));
+                        dslink_list_insert(&(broker->extensions), extension);
+                    } else {
+                        log_err("Could not load extension: '%s': initialization failed\n", extensions[n]->d_name);
+                        uv_dlclose(extension);
+                        dslink_free(extension);
+                    }
                 }
             }
+            free(extensions[n]);
         }
+        free(extensions);
     }
 
     return 0;
