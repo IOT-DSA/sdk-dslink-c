@@ -12,7 +12,6 @@ extern "C" {
 
 #include <broker/node.h>
 
-struct uv_loop_t;
 
 struct ExtensionConfig {
     char* brokerUrl;
