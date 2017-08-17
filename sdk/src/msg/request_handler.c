@@ -99,11 +99,11 @@ int dslink_request_handle(DSLink *link, json_t *req) {
                 node = dslink_node_get_path(link->responder->super_root, stream->path);
             }
 
-            if (stream->on_close != NULL) {
-                stream->on_close(link, node, stream);
-            }
-
             if (stream->type == LIST_STREAM) {
+                if (stream->on_close != NULL) {
+                    stream->on_close(link, node, stream);
+                }
+
                 dslink_map_remove(link->responder->list_subs, (void *) stream->path);
             }
 
