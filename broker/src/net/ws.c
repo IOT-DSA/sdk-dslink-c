@@ -62,7 +62,10 @@ int broker_ws_send_obj_link_id(struct Broker* broker, const char *link_name, jso
     }
 
     DownstreamNode *node = ref->data;
-    return broker_ws_send_obj(node->link, obj);
+    if(node && node->link) {
+        return broker_ws_send_obj(node->link, obj);
+    }
+    return -1;
 }
 
 int broker_ws_send_obj(RemoteDSLink *link, json_t *obj) {
