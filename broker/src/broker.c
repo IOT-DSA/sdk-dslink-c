@@ -457,7 +457,7 @@ int broker_init_extensions(Broker* broker, json_t* config) {
     memset(buf, 0, MAX_PATH_LEN);
     if (json_is_string(extensions_path)) {
         const char* str = json_string_value(extensions_path);
-        strncat(buf, str, MAX_PATH_LEN);
+        strncat(buf, str, MAX_PATH_LEN-1);
     } else {
         if(!getcwd(buf, MAX_PATH_LEN)) {
             buf[0] = '.';

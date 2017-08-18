@@ -63,7 +63,7 @@ endif()
 
 ADD_C_FLAGS("-fPIC")
 IF(CMAKE_BUILD_TYPE STREQUAL "Release")
-    MESSAGE(INFO, "Applying secure compiler and linker flags")
+    MESSAGE(INFO "Applying secure compiler and linker flags")
     IF(${CMAKE_C_COMPILER_ID} STREQUAL "Clang")
         ADD_C_FLAGS("-Wl,-pie -fPIE -D_FORTIFY_SOURCE=2")
     ELSE()
@@ -236,7 +236,7 @@ install(DIRECTORY "deps/jansson/src/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}
 ####### Configure Broker #######
 
 if (DSLINK_BUILD_BROKER)
-    MESSAGE(INFO, "Configured for broker build")
+    MESSAGE(INFO "Configured for broker build")
     include_directories("${CMAKE_CURRENT_LIST_DIR}/broker/include")
 
     install(DIRECTORY "broker/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev)
