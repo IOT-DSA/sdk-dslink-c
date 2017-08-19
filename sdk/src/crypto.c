@@ -120,7 +120,7 @@ int dslink_crypto_bn_read_binary(BIGNUM *X, const unsigned char *buf, size_t buf
 
 int dslink_crypto_bn_write_binary( const BIGNUM *X, unsigned char *buf, size_t buflen )
 {
-    if(BN_num_bytes(X) > buflen) return -1;
+    if((size_t)BN_num_bytes(X) > buflen) return -1;
 
     memset(buf, 0, buflen);
 
@@ -186,7 +186,7 @@ int dslink_crypto_ecdh_calc_secret(dslink_ecdh_context *ctx, size_t *olen,
         return DSLINK_CRYPT_MISSING_KEYS_ERR;
 
     // calculate it and write into struct
-    int secret_len = (EC_GROUP_get_degree(ctx->grp) + 7) / 8;
+    size_t secret_len = (EC_GROUP_get_degree(ctx->grp) + 7) / 8;
 
     if(secret_len > blen)
         return DSLINK_CRYPT_INSUFFICIENT_BUFFER_ERR;
@@ -216,7 +216,7 @@ int dslink_crypto_sha256( const unsigned char *input, size_t ilen, unsigned char
 
     if(1 != EVP_DigestUpdate(mdctx, input, ilen)) goto error;
 
-    int needed_size = EVP_MD_size(EVP_sha256());
+    unsigned int needed_size = EVP_MD_size(EVP_sha256());
 
     if(1 != EVP_DigestFinal_ex(mdctx, output, &needed_size)) goto error;
 
@@ -241,7 +241,7 @@ int dslink_crypto_sha1( const unsigned char *input, size_t ilen, unsigned char o
 
     if(1 != EVP_DigestUpdate(mdctx, input, ilen)) goto error;
 
-    int needed_size = EVP_MD_size(EVP_sha1());
+    unsigned int needed_size = EVP_MD_size(EVP_sha1());
 
     if(1 != EVP_DigestFinal_ex(mdctx, output, &needed_size)) goto error;
 
@@ -326,7 +326,7 @@ int dslink_crypto_aes_decrypt(unsigned char *ciphertext, int ciphertext_len, uns
     EVP_CIPHER_CTX_free(ctx);
 
     // Clear other non sense data.
-    for(int i = plaintext_len; i < ciphertext_len; i++ ) plaintext[i] = NULL;
+    for(int i = plaintext_len; i < ciphertext_len; i++ ) plaintext[i] = '\0';
 
     return plaintext_len;
 

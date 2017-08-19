@@ -12,10 +12,10 @@ extern "C" {
 
 #include "broker/net/http.h"
 
-typedef struct Client Client;
+struct Client;
+
 typedef void (*DataReadyCallback)(struct Client *client, void *data);
 typedef void (*ClientErrorCallback)(void *socketData);
-
 
 typedef struct Server {
     Socket *sock;
@@ -30,7 +30,8 @@ typedef struct Client {
 
     uv_poll_t *poll;
     uv_poll_cb poll_cb;
-} Client;
+}Client;
+
 
 int broker_start_server(json_t *config);
 

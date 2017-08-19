@@ -40,6 +40,9 @@ int dslink_socket_connect(Socket **sock,
                           unsigned short port,
                           uint_fast8_t secure);
 
+int dslink_socket_bind(Socket *socket, const char *address, unsigned short port);
+int dslink_socket_accept(Socket *server_socket, Socket **client_socket);
+
 int dslink_socket_read(Socket *sock, char *buf, size_t len);
 int dslink_socket_write(Socket *sock, char *buf, size_t len);
 
@@ -47,7 +50,14 @@ void dslink_socket_close(Socket *sock);
 void dslink_socket_close_nofree(Socket *sock);
 void dslink_socket_free(Socket *sock);
 
+int dslink_socket_set_nonblock(Socket *socket);
+int dslink_socket_set_block(Socket *socket);
 int dslink_check_connection(Socket *socket);
+
+void INITIALIZE_OPENSSL();
+
+
+
 
 #ifdef __cplusplus
 }

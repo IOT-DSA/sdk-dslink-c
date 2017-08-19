@@ -28,7 +28,6 @@ void stop_server_handler(uv_signal_t* handle, int signum) {
     } else if (signum == SIGTERM) {
         sig = "SIGTERM";
     } else {
-        log_warn("Received %s, unknown...\n", sig);
         // Ignore unknown signal
         return;
     }

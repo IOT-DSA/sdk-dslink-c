@@ -4,6 +4,7 @@
 #include <errno.h>
 #define LOG_TAG "socket"
 #include <dslink/log.h>
+#include <memory.h>
 
 
 #include "dslink/mem/mem.h"
@@ -30,7 +31,7 @@ Socket *dslink_socket_init(uint_fast8_t secure) {
         s->ssl_ctx = NULL;
         s->secure = 1;
 
-        //s->ssl_ctx = SSL_CTX_new(SSLv3_method());
+        //TODO: It is deprecated???? change it
         s->ssl_ctx = SSL_CTX_new(TLSv1_method());
 
         if ( !s->ssl_ctx )
@@ -120,7 +121,7 @@ int dslink_socket_accept(Socket *server_socket, Socket **client_socket) {
     Socket *client = *client_socket;
 
     int len = sizeof(struct sockaddr_in);
-    client->fd = accept(server_socket->fd, &client->addr, (socklen_t*)&len);
+    client->fd = accept(server_socket->fd, (__SOCKADDR_ARG) &client->addr, (socklen_t*)&len);
 
     if(client->fd == -1)
     {
@@ -151,7 +152,7 @@ int dslink_socket_accept(Socket *server_socket, Socket **client_socket) {
     {
         struct sockaddr_in addr;
         int len = sizeof(struct sockaddr_in);
-        int client_fd = accept(server_socket->fd, &addr, (socklen_t*)&len);
+        int client_fd = accept(server_socket->fd, (__SOCKADDR_ARG) &addr, (socklen_t*)&len);
         close(client_fd);
     }
 
@@ -281,7 +282,7 @@ int dslink_socket_set_block(Socket *socket)
 int dslink_check_connection(Socket *socket)
 {
     int error_code;
-    int error_code_size = sizeof(error_code);
+    socklen_t error_code_size = sizeof(error_code);
     getsockopt(socket->fd, SOL_SOCKET, SO_ERROR, &error_code, &error_code_size);
 
     if (error_code != 0) {

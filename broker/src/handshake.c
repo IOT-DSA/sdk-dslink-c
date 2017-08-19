@@ -24,7 +24,7 @@ static
 int generate_salt(unsigned char *salt, size_t len) {
     unsigned char buf[32];
 
-    dslink_crypto_random(&buf, sizeof(buf));
+    dslink_crypto_random(buf, sizeof(buf));
 
     if (dslink_base64_encode(salt,
                               len, &len,

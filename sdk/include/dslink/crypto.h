@@ -19,8 +19,8 @@ typedef struct{
 //    BIGNUM *z;                   /*!<  shared secret                                 */
 //
 //    // These are just ptr in eckey DO NOT FREE THEM
-    BIGNUM *d;                   /*!<  our secret value (private key)                */
-    EC_POINT *Q;                 /*!<  our public value (public key)                 */
+    const BIGNUM *d;                   /*!<  our secret value (private key)                */
+    const EC_POINT *Q;                 /*!<  our public value (public key)                 */
 
 }dslink_ecdh_context;
 

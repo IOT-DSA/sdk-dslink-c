@@ -145,12 +145,12 @@ exit:
 int dslink_handshake_store_key_pair(dslink_ecdh_context *key,
                                     char *buf, size_t bufLen) {
 
-    unsigned char* private_key_char = BN_bn2hex(key->d);
-    int private_key_len = strlen(private_key_char);
+    unsigned char* private_key_char = (unsigned char*) BN_bn2hex(key->d);
+    size_t private_key_len = strlen((const char*)private_key_char);
 
-    unsigned char* public_key_char = EC_POINT_point2hex(
+    char* public_key_char = EC_POINT_point2hex(
             key->grp, key->Q, POINT_CONVERSION_UNCOMPRESSED, NULL);
-    int public_key_len = strlen(public_key_char);
+    size_t public_key_len = strlen(public_key_char);
 
     size_t bufSize;
     {
@@ -173,8 +173,8 @@ int dslink_handshake_store_key_pair(dslink_ecdh_context *key,
 
 // ctx from buff
 int dslink_handshake_read_key_pair(dslink_ecdh_context *ctx, char *buf) {
-    unsigned char* private_key_char = NULL;
-    unsigned char* public_key_char = NULL;
+    char* private_key_char = NULL;
+    char* public_key_char = NULL;
     BIGNUM* private_key = NULL;
     EC_POINT *public_key = NULL;
 
@@ -188,10 +188,10 @@ int dslink_handshake_read_key_pair(dslink_ecdh_context *ctx, char *buf) {
 
     size_t private_key_len = q - buf;
     if(!(private_key_char = dslink_malloc(private_key_len+1))) goto error;
-    private_key_char[private_key_len] = NULL;
+    private_key_char[private_key_len] = '\0';
     size_t public_key_len = strlen(buf) - private_key_len - 1;
     if(!(public_key_char = dslink_malloc(public_key_len+1))) goto error;
-    public_key_char[public_key_len] = NULL;
+    public_key_char[public_key_len] = '\0';
 
     memcpy(private_key_char, buf, private_key_len);
     memcpy(public_key_char, q+1, public_key_len);
