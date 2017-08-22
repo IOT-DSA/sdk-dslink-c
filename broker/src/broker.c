@@ -17,6 +17,7 @@
 #include <broker/utils.h>
 #include <broker/net/ws.h>
 #include <dslink/socket_private.h>
+#include "uv-common.h"
 
 #define CONN_RESP "HTTP/1.1 200 OK\r\n" \
                     "Connection: close\r\n" \
@@ -134,9 +135,11 @@ void broker_https_on_data_callback(Client *client, void *data) {
     Broker *broker = data;
     RemoteDSLink *link = client->sock_data;
     if (link) {
+        int ret;
         link->ws->read_enabled = 1;
-        wslay_event_recv(link->ws);
-        if (link->pendingClose) {
+        ret = wslay_event_recv(link->ws);
+        if (ret || link->pendingClose) {
+            log_info("Error in ws receive: %d\n",ret);
             // clear the poll now, so it won't get cleared twice
             link->client->poll = NULL;
             broker_close_link(link);
@@ -292,13 +295,20 @@ void broker_close_link(RemoteDSLink *link) {
         dslink_socket_close_nofree(link->client->sock);
     }
     if (link->dsId) {
-        log_info("DSLink `%s` has disconnected\n", (char *) link->dsId->data);
+        log_info("DSLink `%s` has disconnected  %s\n", (char *) link->dsId->data, link->name);
     } else {
         log_info("DSLink `%s` has disconnected\n", (char *) link->name);
     }
 
-    dslink_map_remove(&link->broker->client_connected,
-                      link->dsId->data);
+    ref_t *link_ref;
+    if(link->dsId) {
+        link_ref = dslink_map_remove_get(&link->broker->client_connected,
+                          link->dsId->data);
+        if(link_ref) {
+            RemoteDSLink *rm_link = link_ref->data;
+            log_debug("DSLink %s has been removed from connected list\n", rm_link->name);
+        }
+    }
 
     ref_t *ref;
     if (link->isUpstream) {
@@ -479,6 +489,7 @@ int broker_start() {
 
     Broker broker;
     memset(&broker, 0, sizeof(Broker));
+    broker.pendingActionUpstreamPoll = NULL;
 
     mainLoop = dslink_calloc(1, sizeof(uv_loop_t));
     uv_loop_init(mainLoop);
@@ -499,6 +510,11 @@ int broker_start() {
     ret = broker_start_server(config);
 exit:
     broker_free(&broker);
+#if defined(__unix__) || defined(__APPLE__)
+    if (mainLoop && mainLoop->watchers) {
+        uv__free(mainLoop->watchers);
+    }
+#endif
     dslink_free(mainLoop);
     return ret;
 }

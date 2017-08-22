@@ -22,7 +22,7 @@ int broker_msg_handle_close(RemoteDSLink *link, json_t *req) {
 
     ref_t *ref = dslink_map_remove_get(&link->requester_streams, &rid);
 
-    if (ref) {
+    if (ref && ref->data) {
         requester_stream_closed(ref->data, link);
         dslink_decref(ref);
     }
@@ -213,15 +213,7 @@ void broker_msg_handle(RemoteDSLink *link,
         }
     }
 
-    if (link->isRequester && reqs) {
-        json_t *req;
-        size_t index = 0;
-        json_array_foreach(reqs, index, req) {
-            broker_handle_req(link, req);
-        }
-    }
-
-    if (link->isResponder && resps) {
+    if (link && link->isResponder && resps) {
         json_t *resp;
         size_t index = 0;
         json_array_foreach(resps, index, resp) {
@@ -229,5 +221,16 @@ void broker_msg_handle(RemoteDSLink *link,
         }
     }
 
+
+    if (link && link->isRequester && reqs) {
+        json_t *req;
+        size_t index = 0;
+        json_array_foreach(reqs, index, req) {
+            broker_handle_req(link, req);
+        }
+    }
+
+
     json_decref(data);
+
 }

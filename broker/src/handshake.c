@@ -506,8 +506,7 @@ int broker_local_handle_ws(Broker *broker,
         goto fail;
     }
     // add to connected map with the dsid
-    if (dslink_map_set(&broker->client_connected,
-                       link->dsId,
+    if (dslink_map_set(&broker->client_connected,tmp,
                        dslink_ref(link, NULL)) != 0) {
         log_warn("DSLink %s couldn't be added to list\n",link->name);
         dslink_free(tmp);

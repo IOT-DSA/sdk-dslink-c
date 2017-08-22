@@ -65,7 +65,6 @@ void broker_list_dslink(RemoteDSLink *reqLink,
                                 (char *) path);
     if (ref) {
         BrokerListStream *stream = ref->data;
-
         broker_add_requester_list_stream(reqLink, stream, reqRid);
         send_list_updates(reqLink, stream, reqRid);
         return;

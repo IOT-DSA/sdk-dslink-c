@@ -82,29 +82,32 @@ void broker_send_ws_thread(void *arg) {
             break;
         }
 
-        ret = wslay_event_send(broker->currLink->ws);
-        if (ret != 0) {
-            log_debug("Send error in thread: %d\n", ret);
-        } else {
-            log_debug("Message sent: %s\n", broker->currLink->name);
-        }
+        if(broker->currLink) {
+            ret = wslay_event_send(broker->currLink->ws);
+            if (ret != 0) {
+                log_debug("Send error in thread: %d\n", ret);
+            } else {
+                log_debug("Message sent: %s\n", broker->currLink->name);
+            }
 
 #ifdef BROKER_WS_SEND_HYBRID_MODE
-        if (wslay_event_want_write(broker->currLink->ws)) {
-            uv_poll_start(broker->currLink->client->poll, UV_READABLE | UV_WRITABLE, broker->currLink->client->poll_cb);
-        }
-        else {
-            uv_poll_start(broker->currLink->client->poll, UV_READABLE, broker->currLink->client->poll_cb);
-            uv_sem_post(&broker->ws_queue_sem);
-        }
+            if (wslay_event_want_write(broker->currLink->ws)) {
+                uv_poll_start(broker->currLink->client->poll, UV_READABLE | UV_WRITABLE, broker->currLink->client->poll_cb);
+            }
+            else {
+                uv_poll_start(broker->currLink->client->poll, UV_READABLE, broker->currLink->client->poll_cb);
+                uv_sem_post(&broker->ws_queue_sem);
+            }
 #else
-        if (wslay_event_want_write(broker->currLink->ws)) {
-            uv_sem_post(&broker->ws_send_sem);
-        }
-        else {
+            if (wslay_event_want_write(broker->currLink->ws)) {
+                uv_sem_post(&broker->ws_send_sem);
+            } else {
+                uv_sem_post(&broker->ws_queue_sem);
+            }
+#endif
+        } else {
             uv_sem_post(&broker->ws_queue_sem);
         }
-#endif
 
     }
 }

@@ -546,11 +546,11 @@ int broker_start_server(json_t *config) {
     }
 
     uv_loop_close(mainLoop);
-#if defined(__unix__) || defined(__APPLE__)
-    if (mainLoop && mainLoop->watchers) {
-        uv__free(mainLoop->watchers);
-    }
-#endif
+//#if defined(__unix__) || defined(__APPLE__)
+//    if (mainLoop && mainLoop->watchers) {
+//        uv__free(mainLoop->watchers);
+//    }
+//#endif
 
     json_decref(config);
     return 0;
