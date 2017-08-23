@@ -57,7 +57,7 @@ typedef struct Broker {
     int closing_ping_thread;
 #endif
 
-    struct UpstreamPoll *pendingActionUpstreamPoll;
+    struct UpstreamPoll **pendingActionUpstreamPoll;
 
 } Broker;
 

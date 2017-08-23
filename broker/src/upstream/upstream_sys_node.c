@@ -139,14 +139,15 @@ void delete_upstream(UpstreamPoll *upstreamPoll) {
         upstream_clear_poll(upstreamPoll);
         dslink_free(upstreamPoll);
         upstreamNode->upstreamPoll = NULL;
-        broker_node_free((BrokerNode *) upstreamNode);
 
         if(action == UPSTREAM_ACTION_DELETE) {
+            broker_node_free((BrokerNode *) upstreamNode);
             delete_upstream_file(sysUpstreamNode->name);
             broker_node_free(sysUpstreamNode);
         }
 
         if(action == UPSTREAM_ACTION_RESET) {
+            broker_node_free((BrokerNode *) upstreamNode);
             json_t* nameJson = json_deep_copy(((BrokerNode *)dslink_map_get(sysUpstreamNode->children, "name")->data)->value);
             json_t* brokerNameJson = json_deep_copy(((BrokerNode *)dslink_map_get(sysUpstreamNode->children, "brokerName")->data)->value);
             json_t* urlJson = json_deep_copy(((BrokerNode *)dslink_map_get(sysUpstreamNode->children, "url")->data)->value);
@@ -158,16 +159,12 @@ void delete_upstream(UpstreamPoll *upstreamPoll) {
             delete_upstream_file(sysUpstreamNode->name);
             broker_node_free(sysUpstreamNode);
 
-            BrokerNode *upstreamNode = add_new_upstream(parentNode,nameJson,brokerNameJson,urlJson,tokenJson,groupJson,enabledJson);
-            if(upstreamNode) {
-                save_upstream_node(upstreamNode);
+            BrokerNode *newUpstreamNode = add_new_upstream(parentNode,nameJson,brokerNameJson,urlJson,tokenJson,groupJson,enabledJson);
+            if(newUpstreamNode) {
+                save_upstream_node(newUpstreamNode);
             }
         }
     }
-
-//    if((action == UPSTREAM_ACTION_RESET)) {
-//        start_upstream_newsettings(sysUpstreamNode);
-//    }
 }
 
 void delete_upstream_file(const char* name) {
@@ -202,7 +199,7 @@ void delete_upstream_invoke(RemoteDSLink *link,
         DownstreamNode *upstreamNode = ref->data;
         if (upstreamNode->upstreamPoll) {
 
-            broker->pendingActionUpstreamPoll = upstreamNode->upstreamPoll;
+            broker->pendingActionUpstreamPoll = &upstreamNode->upstreamPoll;
             upstreamNode->upstreamPoll->pendingActionNode = parentNode;
             upstreamNode->upstreamPoll->pendingDelete = UPSTREAM_ACTION_DELETE;
 
@@ -217,6 +214,10 @@ void delete_upstream_invoke(RemoteDSLink *link,
                 delete_upstream(upstreamNode->upstreamPoll);
                 broker->pendingActionUpstreamPoll = NULL;
             }
+        } else {
+            broker_node_free((BrokerNode *) upstreamNode);
+            delete_upstream_file(parentNode->name);
+            broker_node_free(parentNode);
         }
     }
 }
@@ -225,22 +226,33 @@ int upstream_prop_changed(Listener * listener, void * node) {
     (void)listener;
     BrokerNode *propNode = node;
     BrokerNode *parentNode = propNode->parent;
-    BrokerNode *enabledNode = (BrokerNode*)dslink_map_get(parentNode->children,"enabled")->data;
 
-    if (enabledNode && json_is_true(enabledNode->value))  {
-        Broker *broker = mainLoop->data;
-        ref_t *ref = dslink_map_get(broker->upstream->children, (void*)parentNode->name);
-        if (ref) {
-            DownstreamNode *upstreamNode = ref->data;
-            if (upstreamNode->upstreamPoll) {
+    Broker *broker = mainLoop->data;
+    ref_t *ref = dslink_map_get(broker->upstream->children, (void*)parentNode->name);
+    if (ref) {
+        DownstreamNode *upstreamNode = ref->data;
+        if (upstreamNode->upstreamPoll) {
+            broker->pendingActionUpstreamPoll = &upstreamNode->upstreamPoll;
+            upstreamNode->upstreamPoll->pendingActionNode = parentNode;
+            upstreamNode->upstreamPoll->pendingDelete = UPSTREAM_ACTION_RESET;
+        } else { // means upstream not enabled (there is no upstreamPoll), still update upstream node with new properties
+            broker_node_free((BrokerNode*)upstreamNode);
+            json_t* nameJson = json_deep_copy(((BrokerNode *)dslink_map_get(parentNode->children, "name")->data)->value);
+            json_t* brokerNameJson = json_deep_copy(((BrokerNode *)dslink_map_get(parentNode->children, "brokerName")->data)->value);
+            json_t* urlJson = json_deep_copy(((BrokerNode *)dslink_map_get(parentNode->children, "url")->data)->value);
+            json_t* groupJson = json_deep_copy(((BrokerNode *)dslink_map_get(parentNode->children, "group")->data)->value);
+            json_t* enabledJson = json_deep_copy(((BrokerNode *)dslink_map_get(parentNode->children, "enabled")->data)->value);
+            json_t* tokenJson = json_deep_copy(((BrokerNode *)dslink_map_get(parentNode->children, "token")->data)->value);
+            BrokerNode *topUpstreamNode = parentNode->parent;
+            delete_upstream_file(parentNode->name);
+            broker_node_free(parentNode);
 
-                broker->pendingActionUpstreamPoll = upstreamNode->upstreamPoll;
-                upstreamNode->upstreamPoll->pendingActionNode = parentNode;
-                upstreamNode->upstreamPoll->pendingDelete = UPSTREAM_ACTION_RESET;
+            BrokerNode *newUpstreamNode = add_new_upstream(topUpstreamNode,nameJson,brokerNameJson,urlJson,tokenJson,groupJson,enabledJson);
+            if(newUpstreamNode) {
+                save_upstream_node(newUpstreamNode);
             }
         }
     }
-    save_upstream_node(parentNode);
     return 0;
 }
 
@@ -256,7 +268,7 @@ int upstream_enable_changed(Listener * listener, void * node) {
             DownstreamNode *upstreamNode = ref->data;
             if (upstreamNode->upstreamPoll) {
 
-                broker->pendingActionUpstreamPoll = upstreamNode->upstreamPoll;
+                broker->pendingActionUpstreamPoll = &upstreamNode->upstreamPoll;
                 upstreamNode->upstreamPoll->pendingActionNode = parentNode;
                 upstreamNode->upstreamPoll->pendingDelete = UPSTREAM_ACTION_STOP;
             }

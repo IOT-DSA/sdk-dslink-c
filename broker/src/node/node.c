@@ -226,6 +226,7 @@ void broker_node_free(BrokerNode *node) {
     if (!node) {
         return;
     }
+
     if (node->children) {
         dslink_map_foreach_nonext(node->children) {
             {

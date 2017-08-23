@@ -124,7 +124,7 @@ void upstream_io_handler(uv_poll_t *poll, int status, int events) {
 
         Broker *broker = mainLoop->data;
         if(broker->pendingActionUpstreamPoll/*upstreamPoll->pendingDelete*/) {
-            delete_upstream(broker->pendingActionUpstreamPoll);
+            delete_upstream(*broker->pendingActionUpstreamPoll);
             broker->pendingActionUpstreamPoll = NULL;
         }
     }

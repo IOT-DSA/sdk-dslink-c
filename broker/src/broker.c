@@ -334,6 +334,7 @@ void broker_free(Broker *broker) {
         dslink_storage_destroy(broker->storage);
     }
 
+    broker_node_free(broker->upstream); // in order to remove upstream before sys to avoid crash caused by throughput nodes
     broker_node_free(broker->root);
     dslink_map_free(&broker->client_connecting);
     dslink_map_free(&broker->remote_pending_sub);
