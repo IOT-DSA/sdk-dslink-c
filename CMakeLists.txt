@@ -80,12 +80,15 @@ include(ExternalProject)
 #set(OPENSSL_CRYPTO_LIBRARY "/usr/local/ssl/lib/libssl.so")
 #set(OPENSSL_INCLUDE_DIR "/usr/local/ssl/include")
 
-
+execute_process(
+        COMMAND cp -r ./openssl-fips ${CMAKE_CURRENT_BINARY_DIR}/
+        WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/deps/
+)
 add_custom_command(
         OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/openssl/lib/libcrypto.so
         OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/openssl/lib/libssl.so
         COMMAND make FIPS_DIR=${CMAKE_CURRENT_BINARY_DIR}/openssl/fips2.0 OPENSSL_DIR=${CMAKE_CURRENT_BINARY_DIR}/openssl all
-        WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/deps/openssl-fips/
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/openssl-fips/
 )
 add_custom_target(
         openssl_lib
