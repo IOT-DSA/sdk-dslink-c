@@ -628,7 +628,7 @@ int dslink_init(int argc, char **argv,
     link->loop.data = link;
     link->initialized = 0;
     link->first_conn = 0;
-
+    link->cbs = cbs;
     link->main_thread_id = uv_thread_self();
 
     //thread-safe API async handle set

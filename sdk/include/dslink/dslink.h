@@ -26,6 +26,7 @@ typedef struct DSLinkAsyncRunData DSLinkAsyncRunData;
 
 
 typedef void (*link_callback)(DSLink *link);
+typedef void (*link_node_callback)(DSLink *link, const char* node_path);
 //thread-safe API callback definitions
 typedef void (*async_set_callback)(int, void*);
 typedef void (*async_get_callback)(json_t *, void*);
@@ -40,7 +41,7 @@ struct DSLinkConfig {
 struct DSLink {
     uint8_t is_requester;
     uint8_t is_responder;
-
+    DSLinkCallbacks *cbs;
     int closing;
 
     struct wslay_event_context *_ws; // Event context for WSLay
@@ -109,6 +110,7 @@ struct DSLinkCallbacks {
     link_callback on_connected_cb;
     link_callback on_disconnected_cb;
     link_callback on_requester_ready_cb;
+    link_node_callback node_not_found_cb;
 };
 
 //thread-safe API async data structures

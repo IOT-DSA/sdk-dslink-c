@@ -92,6 +92,9 @@ int dslink_response_sub(DSLink *link, json_t *paths, json_t *rid) {
         const char *path = json_string_value(json_object_get(value, "path"));
         DSNode *node = dslink_node_get_path(root, path);
         if (!node) {
+            if(link->cbs->node_not_found_cb) {
+                link->cbs->node_not_found_cb(link, path);
+            }
             continue;
         }
         uint32_t *sid = dslink_malloc(sizeof(uint32_t));
@@ -136,7 +139,11 @@ int dslink_response_unsub(DSLink *link, json_t *sids, json_t *rid) {
             dslink_decref(ref);
             DSNode *node = dslink_node_get_path(link->responder->super_root,
                                                 path);
-            if (node && node->on_unsubscribe) {
+            if(!node) {
+                if(link->cbs->node_not_found_cb) {
+                    link->cbs->node_not_found_cb(link,path);
+                }
+            } else if (node && node->on_unsubscribe) {
                 node->on_unsubscribe(link, node);
             }
             dslink_map_remove(link->responder->value_path_subs, path);
