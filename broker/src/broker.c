@@ -35,8 +35,25 @@
 
 uv_loop_t *mainLoop = NULL;
 
-typedef int (*init_ds_extension)(BrokerNode* sysNode, const struct ExtensionConfig* config);
+typedef void (*extension_link_connect_callback)(DownstreamNode* node);
+typedef void (*extension_link_disconnect_callback)(DownstreamNode* node);
+
+struct ExtensionCallbacks
+{
+    extension_link_connect_callback connect_callback;
+    extension_link_disconnect_callback disconnect_callback;
+};
+
+typedef int (*init_ds_extension)(BrokerNode* sysNode, const struct ExtensionConfig* config, struct ExtensionCallbacks* callbacks);
 typedef int (*deinit_ds_extension)();
+
+
+struct Extension
+{
+    uv_lib_t* handle;
+    struct ExtensionCallbacks callbacks;
+};
+
 
 static
 void handle_conn(Broker *broker, HttpRequest *req, Socket *sock) {
@@ -302,6 +319,46 @@ void broker_free(Broker *broker) {
     memset(broker, 0, sizeof(Broker));
 }
 
+static int extension_on_link_connected(Listener *listener, void *node)
+{
+    Broker* broker = listener->data;
+    DownstreamNode *link = node;
+
+    if(list_is_not_empty(&(broker->extensions))) {
+        dslink_list_foreach(&(broker->extensions)) {
+            struct Extension* extension = ((ListNode*)node)->value;
+            if(extension->callbacks.connect_callback) {
+                extension->callbacks.connect_callback(link);
+            }
+        }
+    }
+    return 0;
+}
+
+static int extension_on_link_disconnected(Listener *listener, void *node)
+{
+    Broker* broker = listener->data;
+    DownstreamNode *link = node;
+
+    if(list_is_not_empty(&(broker->extensions))) {
+        dslink_list_foreach(&(broker->extensions)) {
+            struct Extension* extension = ((ListNode*)node)->value;
+            if(extension->callbacks.disconnect_callback) {
+                extension->callbacks.disconnect_callback(link);
+            }
+        }
+    }
+    return 0;
+}
+
+static int extension_on_child_added(Listener *listener, void *node)
+{
+    DownstreamNode* link = node;
+    listener_add(&link->on_link_connected, extension_on_link_connected, listener->data);
+    listener_add(&link->on_link_disconnected, extension_on_link_disconnected, listener->data);
+    return 0;
+}
+
 static
 int broker_init(Broker *broker, json_t *defaultPermission) {
     broker->root = broker_node_create("", "node");
@@ -342,6 +399,9 @@ int broker_init(Broker *broker, json_t *defaultPermission) {
         broker_node_free(broker->downstream);
         goto fail;
     }
+
+    listener_add(&broker->downstream->on_child_added, extension_on_child_added, broker);
+
     broker_load_downstream_nodes(broker);
     broker_load_qos_storage(broker);
 
@@ -379,6 +439,7 @@ fail:
     return 1;
 }
 
+
 void broker_stop(Broker* broker) {
     dslink_map_foreach(broker->downstream->children) {
         DownstreamNode *node = entry->value->data;
@@ -403,9 +464,9 @@ void broker_stop(Broker* broker) {
         dslink_list_foreach(&(broker->extensions)) {
             deinit_ds_extension deinit_function;
 
-            uv_lib_t* extension = ((ListNode*)node)->value;
+            struct Extension* extension = ((ListNode*)node)->value;
 
-            if(uv_dlsym(extension, "deinit_ds_extention", (void **) &deinit_function) == 0) {
+            if(uv_dlsym(extension->handle, "deinit_ds_extention", (void **) &deinit_function) == 0) {
                 if(deinit_function() == 0) {
                     log_info("Deinitialized extension\n");
                 } else {
@@ -415,7 +476,7 @@ void broker_stop(Broker* broker) {
                 log_debug("No deinitializing function found for extension\n");
             }
 
-            uv_dlclose(extension);
+            uv_dlclose(extension->handle);
             dslink_free(extension);
         }
         dslink_free(broker->extensionConfig.brokerUrl);
@@ -448,6 +509,7 @@ static int extensionsFilter(const struct dirent* entry)
 }
 
 #define MAX_PATH_LEN 4096
+
 
 int broker_init_extensions(Broker* broker, json_t* config) {
     list_init(&(broker->extensions));
@@ -516,28 +578,31 @@ int broker_init_extensions(Broker* broker, json_t* config) {
 
         char path[MAX_PATH_LEN];
         while(n--) {
-            uv_lib_t* extension = (uv_lib_t*)dslink_malloc(sizeof(uv_lib_t));
+            struct Extension* extension = dslink_malloc(sizeof(struct Extension));
+            extension->handle = (uv_lib_t*)dslink_malloc(sizeof(uv_lib_t));
+            extension->callbacks.connect_callback = NULL;
+            extension->callbacks.disconnect_callback = NULL;
 
             memset(path, 0, MAX_PATH_LEN);
             strcat(path, buf);
             strcat(path, "/");
             strcat(path, extensions[n]->d_name);
 
-            if (uv_dlopen(path, extension)) {
-                log_err("Could not load extension: '%s': %s\n", extensions[n]->d_name, uv_dlerror(extension));
+            if (uv_dlopen(path, extension->handle)) {
+                log_err("Could not load extension: '%s': %s\n", extensions[n]->d_name, uv_dlerror(extension->handle));
                 dslink_free(extension);
             } else {
                 init_ds_extension init_function;
-                if(uv_dlsym(extension, "init_ds_extension", (void **)&init_function) != 0) {
+                if(uv_dlsym(extension->handle, "init_ds_extension", (void **)&init_function) != 0) {
                     log_debug("Not an extension: '%s'\n", extensions[n]->d_name);
                     dslink_free(extension);
                 } else {
-                    if(init_function(broker->sys, &broker->extensionConfig) == 0) {
+                    if(init_function(broker->sys, &broker->extensionConfig, &extension->callbacks) == 0) {
                         log_info("Loaded extension '%s'\n", basename(extensions[n]->d_name));
                         dslink_list_insert(&(broker->extensions), extension);
                     } else {
                         log_err("Could not load extension: '%s': initialization failed\n", extensions[n]->d_name);
-                        uv_dlclose(extension);
+                        uv_dlclose(extension->handle);
                         dslink_free(extension);
                     }
                 }
