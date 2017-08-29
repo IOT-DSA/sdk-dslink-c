@@ -77,7 +77,7 @@ void handle_conn(Broker *broker, HttpRequest *req, Socket *sock) {
     if (!dsId) {
         goto exit;
     }
-    log_info("%s connecting \n", dsId);
+    log_info("%s connecting\n", dsId);
     const char *token = broker_http_param_get(&req->uri, "token");
     json_t *resp = broker_handshake_handle_conn(broker, dsId, token, body);
     json_decref(body);
@@ -616,6 +616,9 @@ int broker_init_extensions(Broker* broker, json_t* config) {
 }
 
 int broker_start() {
+    // onyl allow an uv threadpool of max one thread
+    putenv("UV_THREADPOOL_SIZE=1");
+
     log_info("IOT-DSA c-sdk git commit: %s\n", IOT_DSA_C_SDK_GIT_COMMIT_HASH);
 
     int ret = 0;
