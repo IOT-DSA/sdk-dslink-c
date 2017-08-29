@@ -247,7 +247,7 @@ exit:
     return ret;
 }
 
-int dslink_generate_dsid(mbedtls_ecdh_context *key, char* name, char **dsId) {
+int dslink_generate_dsid(mbedtls_ecdh_context *key, const char* name, char **dsId) {
   *dsId = NULL;
   unsigned char pubKeyBin[65];
   size_t pubKeyBinLen = 0;
