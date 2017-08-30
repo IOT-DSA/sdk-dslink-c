@@ -213,6 +213,7 @@ void connect_conn_callback(uv_poll_t *handle, int status, int events) {
             if(errno != EAGAIN) {
                 dslink_free(resp);
                 log_err("Error while reading from socket %d\n", errno);
+                upstream_reconnect(upstreamPoll);
                 return;
             }
 
