@@ -529,6 +529,8 @@ int broker_init_extensions(Broker* broker, json_t* config) {
     }
     if(access(buf, F_OK) == 0) {
         // TODO lfuerste: refactor into a function
+        int httpEnabled = 0;
+        int httpsEnabled = 0;
         const char *httpHost = NULL;
         char httpPort[8];
         memset(httpPort, 0, sizeof(httpPort));
@@ -537,6 +539,7 @@ int broker_init_extensions(Broker* broker, json_t* config) {
             if (http) {
                 json_t *enabled = json_object_get(http, "enabled");
                 if(enabled && json_boolean_value(enabled)) {
+                    httpEnabled = 1;
                     httpHost = json_string_value(json_object_get(http, "host"));
 
                     json_t *jsonPort = json_object_get(http, "port");
@@ -546,21 +549,51 @@ int broker_init_extensions(Broker* broker, json_t* config) {
                                            "%" JSON_INTEGER_FORMAT, p);
                         httpPort[len] = '\0';
                     }
-                } else {
-                    log_err("Cannot load extensions. At least http has to be enabled.");
-                    return -1;
                 }
             }
         }
+
+        const char *httpsHost = NULL;
+        char httpsPort[8];
+        memset(httpsPort, 0, sizeof(httpsPort));
+        {
+            json_t *https = json_object_get(config, "https");
+            if (https) {
+                json_t *enabled = json_object_get(https, "enabled");
+                if (enabled && json_boolean_value(enabled)) {
+                    httpsEnabled = 1;
+                    httpsHost = json_string_value(json_object_get(https, "host"));
+
+                    json_t *jsonPort = json_object_get(https, "port");
+                    if (jsonPort) {
+                        json_int_t p = json_integer_value(jsonPort);
+                        int len = snprintf(httpsPort, sizeof(httpsPort) - 1, "%" JSON_INTEGER_FORMAT, p);
+                        httpsPort[len] = '\0';
+                    }
+                }
+            }
+        }
+
         ///
 
-        // TODO lfuerste: we should also be able to use https here
-        broker->extensionConfig.brokerUrl = dslink_malloc(strlen(httpHost)+strlen(httpPort)+13+1);
-        strcpy(broker->extensionConfig.brokerUrl, "http://");
-        strcat(broker->extensionConfig.brokerUrl, httpHost);
-        strcat(broker->extensionConfig.brokerUrl, ":");
-        strcat(broker->extensionConfig.brokerUrl, httpPort);
-        strcat(broker->extensionConfig.brokerUrl, "/conn");
+        json_t* extensions_https = json_object_get(config, "extensions_https");
+        if(extensions_https && json_boolean_value(extensions_https)) {
+            if(!httpsEnabled) {
+                log_err("Cannot load extensions. At least https has to be enabled.");
+                return -1;
+            }
+
+            broker->extensionConfig.brokerUrl = dslink_malloc(strlen(httpsHost)+strlen(httpsPort)+14+1);
+            sprintf(broker->extensionConfig.brokerUrl, "https://%s:%s/conn", httpsHost, httpsPort);
+        } else {
+            if(!httpEnabled) {
+                log_err("Cannot load extensions. At least http has to be enabled.");
+                return -1;
+            }
+
+            broker->extensionConfig.brokerUrl = dslink_malloc(strlen(httpHost)+strlen(httpPort)+13+1);
+            sprintf(broker->extensionConfig.brokerUrl, "http://%s:%s/conn", httpHost, httpPort);
+        }
 
         broker->extensionConfig.loop = mainLoop;
 
