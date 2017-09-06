@@ -371,7 +371,7 @@ int broker_handshake_handle_ws(Broker *broker,
     link->client = client;
     link->dsId = oldDsId;
     link->node = node;
-    node->dsId = oldDsId;
+    node->dsId = dslink_incref(oldDsId);
     client->sock_data = link;
 
     json_object_set_new_nocheck(node->meta, "$$dsId", json_string_nocheck(dsId));

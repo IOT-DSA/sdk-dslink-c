@@ -325,6 +325,12 @@ void broker_close_link(RemoteDSLink *link) {
         broker_dslink_disconnect(node);
     }
 
+#ifdef BROKER_WS_SEND_THREAD_MODE
+    if(link->broker && (link->broker->currLink == link)) {
+        link->broker->currLink = NULL;
+    }
+#endif
+    dslink_decref(link->dsId);
     dslink_free(link);
 }
 
@@ -451,7 +457,7 @@ void broker_stop(Broker* broker) {
         DownstreamNode *node = entry->value->data;
 
         // Ensure the dsId is freed
-        node->dsId->count = 1;
+//        node->dsId->count = 1; //causes seg fault below
         dslink_decref(node->dsId);
         node->dsId = NULL;
 
@@ -462,8 +468,45 @@ void broker_stop(Broker* broker) {
                      broker_free_handle);
             dslink_free(link->client);
             link->client = NULL;
+
+            ref_t *link_ref;
+            if(link->dsId) {
+                link_ref = dslink_map_remove_get(&link->broker->client_connected,
+                                                 link->dsId->data);
+                if(link_ref) {
+                    RemoteDSLink *rm_link = link_ref->data;
+                    log_debug("DSLink %s has been removed from connected list\n", rm_link->name);
+                }
+            }
             broker_remote_dslink_free(link);
+            dslink_decref(link->dsId);
         }
+    }
+
+    //For the links that does not have downstream node
+    dslink_map_foreach_nonext(&broker->client_connected) {
+        RemoteDSLink* link = (RemoteDSLink*)entry->value->data;
+
+        dslink_socket_close(link->client->sock);
+        uv_close((uv_handle_t *) link->client->poll,
+                 broker_free_handle);
+        dslink_free(link->client);
+        link->client = NULL;
+
+        MapEntry *tmp = entry->next;
+
+        ref_t *link_ref;
+        if(link->dsId) {
+            link_ref = dslink_map_remove_get(&link->broker->client_connected,
+                                             link->dsId->data);
+            if(link_ref) {
+                RemoteDSLink *rm_link = link_ref->data;
+                log_debug("DSLink %s has been removed from connected list\n", rm_link->name);
+            }
+        }
+        broker_remote_dslink_free(link);
+        dslink_decref(link->dsId);
+        entry = tmp;
     }
 
 #ifdef BROKER_WS_SEND_THREAD_MODE
