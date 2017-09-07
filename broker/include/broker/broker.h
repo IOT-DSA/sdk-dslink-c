@@ -13,7 +13,6 @@ extern "C" {
 #include <broker/extension.h>
 
 
-
 typedef struct Broker {
     StorageProvider *storage;
 

@@ -22,8 +22,8 @@ extern "C" {
         extension_link_disconnect_callback disconnect_callback;
     };
 
-    typedef int (*init_ds_extension)(BrokerNode* sysNode, const struct ExtensionConfig* config, struct ExtensionCallbacks* callbacks);
-    typedef int (*deinit_ds_extension)();
+    typedef int (*init_ds_extension_type)(BrokerNode* sysNode, const struct ExtensionConfig* config, struct ExtensionCallbacks* callbacks);
+    typedef int (*deinit_ds_extension_type)();
 
 #ifdef __cplusplus
 }

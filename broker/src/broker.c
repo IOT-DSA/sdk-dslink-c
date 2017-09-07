@@ -450,7 +450,7 @@ void broker_stop(Broker* broker) {
     if(list_is_not_empty(&broker->extensions)) {
         log_info("Deinitializing extensions\n");
         dslink_list_foreach(&broker->extensions) {
-            deinit_ds_extension deinit_function;
+            deinit_ds_extension_type deinit_function;
 
             struct Extension* extension = ((ListNode*)node)->value;
 
@@ -616,7 +616,7 @@ int broker_init_extensions(Broker* broker, json_t* config) {
                 dslink_free(extension->handle);
                 dslink_free(extension);
             } else {
-                init_ds_extension init_function;
+                init_ds_extension_type init_function;
                 if(uv_dlsym(extension->handle, "init_ds_extension", (void **)&init_function) != 0) {
                     log_debug("Not an extension: '%s'\n", extensions[n]->d_name);
                     uv_dlclose(extension->handle);
