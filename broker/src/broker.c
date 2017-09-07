@@ -35,19 +35,6 @@
 
 uv_loop_t *mainLoop = NULL;
 
-typedef void (*extension_link_connect_callback)(DownstreamNode* node);
-typedef void (*extension_link_disconnect_callback)(DownstreamNode* node);
-
-struct ExtensionCallbacks
-{
-    extension_link_connect_callback connect_callback;
-    extension_link_disconnect_callback disconnect_callback;
-};
-
-typedef int (*init_ds_extension)(BrokerNode* sysNode, const struct ExtensionConfig* config, struct ExtensionCallbacks* callbacks);
-typedef int (*deinit_ds_extension)();
-
-
 struct Extension
 {
     uv_lib_t* handle;
@@ -300,6 +287,7 @@ void broker_close_link(RemoteDSLink *link) {
     // so link need to be freed before disconnected from node
     if (ref) {
         DownstreamNode *node = ref->data;
+        node->link = NULL;
         broker_dslink_disconnect(node);
     }
 
@@ -459,9 +447,9 @@ void broker_stop(Broker* broker) {
             broker_remote_dslink_free(link);
         }
     }
-    if(list_is_not_empty(&(broker->extensions))) {
+    if(list_is_not_empty(&broker->extensions)) {
         log_info("Deinitializing extensions\n");
-        dslink_list_foreach(&(broker->extensions)) {
+        dslink_list_foreach(&broker->extensions) {
             deinit_ds_extension deinit_function;
 
             struct Extension* extension = ((ListNode*)node)->value;
@@ -477,10 +465,12 @@ void broker_stop(Broker* broker) {
             }
 
             uv_dlclose(extension->handle);
+            dslink_free(extension->handle);
             dslink_free(extension);
         }
-        dslink_free(broker->extensionConfig.brokerUrl);
     }
+    dslink_free(broker->extensionConfig.brokerUrl);
+    dslink_list_free_all_nodes(&broker->extensions);
 }
 
 // only load shared objects
@@ -512,7 +502,7 @@ static int extensionsFilter(const struct dirent* entry)
 
 
 int broker_init_extensions(Broker* broker, json_t* config) {
-    list_init(&(broker->extensions));
+    list_init(&broker->extensions);
 
     json_t* extensions_path = json_object_get(config, "extensions_path");
     char buf[MAX_PATH_LEN];
@@ -525,7 +515,7 @@ int broker_init_extensions(Broker* broker, json_t* config) {
             buf[0] = '.';
             buf[1] = '\0';
         }
-        strcat(buf, "/extensions");
+        strncat(buf, "/extensions", MAX_PATH_LEN-2);
     }
     if(access(buf, F_OK) == 0) {
         // TODO lfuerste: refactor into a function
@@ -583,16 +573,18 @@ int broker_init_extensions(Broker* broker, json_t* config) {
                 return -1;
             }
 
-            broker->extensionConfig.brokerUrl = dslink_malloc(strlen(httpsHost)+strlen(httpsPort)+14+1);
-            sprintf(broker->extensionConfig.brokerUrl, "https://%s:%s/conn", httpsHost, httpsPort);
+            int len = strlen(httpsHost)+strlen(httpsPort)+14+1;
+            broker->extensionConfig.brokerUrl = dslink_malloc(len);
+            snprintf(broker->extensionConfig.brokerUrl, len, "https://%s:%s/conn", httpsHost, httpsPort);
         } else {
             if(!httpEnabled) {
                 log_err("Cannot load extensions. At least http has to be enabled.");
                 return -1;
             }
 
-            broker->extensionConfig.brokerUrl = dslink_malloc(strlen(httpHost)+strlen(httpPort)+13+1);
-            sprintf(broker->extensionConfig.brokerUrl, "http://%s:%s/conn", httpHost, httpPort);
+            int len = strlen(httpHost)+strlen(httpPort)+13+1;
+            broker->extensionConfig.brokerUrl = dslink_malloc(len);
+            snprintf(broker->extensionConfig.brokerUrl, len, "http://%s:%s/conn", httpHost, httpPort);
         }
 
         broker->extensionConfig.loop = mainLoop;
@@ -617,17 +609,18 @@ int broker_init_extensions(Broker* broker, json_t* config) {
             extension->callbacks.disconnect_callback = NULL;
 
             memset(path, 0, MAX_PATH_LEN);
-            strcat(path, buf);
-            strcat(path, "/");
-            strcat(path, extensions[n]->d_name);
+            snprintf(path, MAX_PATH_LEN, "%s/%s", buf, extensions[n]->d_name);
 
             if (uv_dlopen(path, extension->handle)) {
                 log_err("Could not load extension: '%s': %s\n", extensions[n]->d_name, uv_dlerror(extension->handle));
+                dslink_free(extension->handle);
                 dslink_free(extension);
             } else {
                 init_ds_extension init_function;
                 if(uv_dlsym(extension->handle, "init_ds_extension", (void **)&init_function) != 0) {
                     log_debug("Not an extension: '%s'\n", extensions[n]->d_name);
+                    uv_dlclose(extension->handle);
+                    dslink_free(extension->handle);
                     dslink_free(extension);
                 } else {
                     if(init_function(broker->sys, &broker->extensionConfig, &extension->callbacks) == 0) {
@@ -636,6 +629,7 @@ int broker_init_extensions(Broker* broker, json_t* config) {
                     } else {
                         log_err("Could not load extension: '%s': initialization failed\n", extensions[n]->d_name);
                         uv_dlclose(extension->handle);
+                        dslink_free(extension->handle);
                         dslink_free(extension);
                     }
                 }

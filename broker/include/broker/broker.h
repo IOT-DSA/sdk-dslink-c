@@ -10,13 +10,9 @@ extern "C" {
 #include <dslink/storage/storage.h>
 #include <dslink/socket.h>
 
-#include <broker/node.h>
+#include <broker/extension.h>
 
 
-struct ExtensionConfig {
-    char* brokerUrl;
-    uv_loop_t* loop;
-};
 
 typedef struct Broker {
     StorageProvider *storage;

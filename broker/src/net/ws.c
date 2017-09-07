@@ -49,11 +49,12 @@ int broker_count_json_msg(json_t *json) {
     return messages;
 }
 
-int broker_ws_send_obj_link_id(struct Broker* broker, const char *link_name, json_t *obj)
+int broker_ws_send_obj_link_id(struct Broker* broker, const char *link_name, int upstream, json_t *obj)
 {
     ref_t *ref;
-    ref = dslink_map_get(broker->upstream->children, (void *) link_name);
-    if(!ref) {
+    if(upstream) {
+        ref = dslink_map_get(broker->upstream->children, (void *) link_name);
+    } else {
         ref = dslink_map_get(broker->downstream->children, (void *) link_name);
     }
 

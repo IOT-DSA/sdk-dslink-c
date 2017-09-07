@@ -342,7 +342,6 @@ void broker_dslink_disconnect(DownstreamNode *node) {
 
     listener_dispatch_message(&node->on_link_disconnected, node);
 
-    node->link = NULL;
     char disconnectedTs[32];
     dslink_create_ts(disconnectedTs, 32);
     json_object_set_new_nocheck(node->meta, "$disconnectedTs", json_string_nocheck(disconnectedTs));
