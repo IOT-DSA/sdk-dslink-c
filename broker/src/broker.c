@@ -287,6 +287,13 @@ void broker_close_link(RemoteDSLink *link) {
     if (!link) {
         return;
     }
+
+#ifdef BROKER_WS_SEND_THREAD_MODE
+    if(link->broker && (link->broker->currLink == link)) {
+        link->broker->currLink = NULL;
+    }
+#endif
+
     if (link->client) {
         if (link->client->poll) {
             uv_close((uv_handle_t *) link->client->poll,
@@ -325,11 +332,6 @@ void broker_close_link(RemoteDSLink *link) {
         broker_dslink_disconnect(node);
     }
 
-#ifdef BROKER_WS_SEND_THREAD_MODE
-    if(link->broker && (link->broker->currLink == link)) {
-        link->broker->currLink = NULL;
-    }
-#endif
     dslink_decref(link->dsId);
     dslink_free(link);
 }
