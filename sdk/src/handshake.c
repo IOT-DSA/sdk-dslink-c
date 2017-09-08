@@ -248,6 +248,8 @@ exit:
 }
 
 int dslink_generate_dsid(mbedtls_ecdh_context *key, const char* name, char **dsId) {
+    // if you change this code, you also have to change the code below in dslink_handshake_generate_req
+    // TODO refactor dslink_generate_dsid and dslink_handshake_generate_req to include below code only once
   *dsId = NULL;
   unsigned char pubKeyBin[65];
   size_t pubKeyBinLen = 0;
@@ -299,6 +301,7 @@ fail:
 }
 
 char *dslink_handshake_generate_req(DSLink *link, char **dsId) {
+    // if you change this code, you also have to change the code above in dslink_generate_dsid
     const size_t reqSize = 512;
     json_t *obj = json_object();
     char *req = dslink_malloc(reqSize);

@@ -190,7 +190,7 @@ DownstreamNode *broker_init_downstream_node(BrokerNode *parentNode, const char *
     broker_node_update_child(parentNode, name);
     return node;
 
-    fail:
+fail:
     dslink_map_free(&node->list_streams);
     DSLINK_CHECKED_EXEC(dslink_free, (char *) node->name);
     json_decref(node->meta);

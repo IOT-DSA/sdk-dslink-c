@@ -454,14 +454,15 @@ void broker_stop(Broker* broker) {
 
             struct Extension* extension = ((ListNode*)node)->value;
 
-            if(uv_dlsym(extension->handle, "deinit_ds_extention", (void **) &deinit_function) == 0) {
-                if(deinit_function() == 0) {
+            if(uv_dlsym(extension->handle, "deinit_ds_extension", (void **) &deinit_function) == 0) {
+                int ret = deinit_function();
+                if(ret == 0) {
                     log_info("Deinitialized extension\n");
                 } else {
-                    log_err("Could not deinitialize extension\n");
+                    log_err("Could not deinitialize extension: %d\n", ret);
                 }
             } else {
-                log_debug("No deinitializing function found for extension\n");
+                log_warn("No deinitializing function found for extension\n");
             }
 
             uv_dlclose(extension->handle);
@@ -473,51 +474,36 @@ void broker_stop(Broker* broker) {
     dslink_list_free_all_nodes(&broker->extensions);
 }
 
-// only load shared objects
-static int extensionsFilter(const struct dirent* entry)
-{
-#ifdef __linux__
-    const char* ext = ".so";
-#elif defined __APPLE__ && __MACH__
-    const char* ext = ".dylib";
-#else
-#error Not defined for this platform
-#endif
-    if(strlen(entry->d_name) <= 2) {
-        // probably . or ..
-        return 0;
-    }
-
-    if(entry->d_type == DT_REG) {
-        const char* dot = strrchr(entry->d_name, '.');
-        if(dot && strcmp(dot, ext) == 0) {
-            return 1;
-        }
-    }
-
-    return 0;
-}
-
-#define MAX_PATH_LEN 4096
-
 
 int broker_init_extensions(Broker* broker, json_t* config) {
     list_init(&broker->extensions);
 
-    json_t* extensions_path = json_object_get(config, "extensions_path");
-    char buf[MAX_PATH_LEN];
-    memset(buf, 0, MAX_PATH_LEN);
-    if (json_is_string(extensions_path)) {
-        const char* str = json_string_value(extensions_path);
-        strncat(buf, str, MAX_PATH_LEN-1);
-    } else {
-        if(!getcwd(buf, MAX_PATH_LEN)) {
-            buf[0] = '.';
-            buf[1] = '\0';
-        }
-        strncat(buf, "/extensions", MAX_PATH_LEN-2);
+    const char* extension_library_name = "libdsmanager.so";
+    json_t* extension_library = json_object_get(config, "extension_library");
+    if (extension_library && json_is_string(extension_library)) {
+        extension_library_name = json_string_value(extension_library);
     }
-    if(access(buf, F_OK) == 0) {
+
+    struct Extension* extension = dslink_malloc(sizeof(struct Extension));
+    extension->handle = (uv_lib_t*)dslink_malloc(sizeof(uv_lib_t));
+    extension->callbacks.connect_callback = NULL;
+    extension->callbacks.disconnect_callback = NULL;
+
+    if (uv_dlopen(extension_library_name, extension->handle)) {
+        log_err("Could not load extension: '%s': %s\n", extension_library_name, uv_dlerror(extension->handle));
+        dslink_free(extension->handle);
+        dslink_free(extension);
+        return -1;
+    } else {
+        init_ds_extension_type init_function;
+        if(uv_dlsym(extension->handle, "init_ds_extension", (void **)&init_function) != 0) {
+            log_debug("Not an extension: '%s' %s\n", extension_library_name, uv_dlerror(extension->handle));
+            uv_dlclose(extension->handle);
+            dslink_free(extension->handle);
+            dslink_free(extension);
+            return -1;
+        }
+
         // TODO lfuerste: refactor into a function
         int httpEnabled = 0;
         int httpsEnabled = 0;
@@ -589,54 +575,16 @@ int broker_init_extensions(Broker* broker, json_t* config) {
 
         broker->extensionConfig.loop = mainLoop;
 
-        log_info("Loading extensions from '%s'\n", buf);
-
-        // scan the extensions directory for extensions
-        struct dirent **extensions;
-        int n;
-
-        n = scandir(buf, &extensions, extensionsFilter, alphasort);
-        if (n == -1) {
-            log_err("Could not load extensions: %s", strerror(errno));
+        if(init_function(broker->sys, &broker->extensionConfig, &extension->callbacks) == 0) {
+            log_info("Loaded extension '%s'\n", extension_library_name);
+            dslink_list_insert(&(broker->extensions), extension);
+        } else {
+            log_err("Could not load extension: '%s': initialization failed\n", extension_library_name);
+            uv_dlclose(extension->handle);
+            dslink_free(extension->handle);
+            dslink_free(extension);
             return -1;
         }
-
-        char path[MAX_PATH_LEN];
-        while(n--) {
-            struct Extension* extension = dslink_malloc(sizeof(struct Extension));
-            extension->handle = (uv_lib_t*)dslink_malloc(sizeof(uv_lib_t));
-            extension->callbacks.connect_callback = NULL;
-            extension->callbacks.disconnect_callback = NULL;
-
-            memset(path, 0, MAX_PATH_LEN);
-            snprintf(path, MAX_PATH_LEN, "%s/%s", buf, extensions[n]->d_name);
-
-            if (uv_dlopen(path, extension->handle)) {
-                log_err("Could not load extension: '%s': %s\n", extensions[n]->d_name, uv_dlerror(extension->handle));
-                dslink_free(extension->handle);
-                dslink_free(extension);
-            } else {
-                init_ds_extension_type init_function;
-                if(uv_dlsym(extension->handle, "init_ds_extension", (void **)&init_function) != 0) {
-                    log_debug("Not an extension: '%s'\n", extensions[n]->d_name);
-                    uv_dlclose(extension->handle);
-                    dslink_free(extension->handle);
-                    dslink_free(extension);
-                } else {
-                    if(init_function(broker->sys, &broker->extensionConfig, &extension->callbacks) == 0) {
-                        log_info("Loaded extension '%s'\n", basename(extensions[n]->d_name));
-                        dslink_list_insert(&(broker->extensions), extension);
-                    } else {
-                        log_err("Could not load extension: '%s': initialization failed\n", extensions[n]->d_name);
-                        uv_dlclose(extension->handle);
-                        dslink_free(extension->handle);
-                        dslink_free(extension);
-                    }
-                }
-            }
-            free(extensions[n]);
-        }
-        free(extensions);
     }
 
     return 0;

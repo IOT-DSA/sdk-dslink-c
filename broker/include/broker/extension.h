@@ -29,4 +29,4 @@ extern "C" {
 }
 #endif
 
-#endif // BROKER_BROKER_H
+#endif // BROKER_EXTENSION_H

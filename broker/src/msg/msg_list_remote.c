@@ -151,7 +151,7 @@ void broker_list_dslink_response(RemoteDSLink *link, json_t *resp, BrokerListStr
                                                         name, json_string_nocheck("dsa/link"));
                                 json_t *dsid = json_object_get(stream->node->meta, "$$dsId");
                                 if (dsid) {
-                                    json_object_set_new_nocheck(stream->updates_cache, "$$dsId", json_incref(dsid));
+                                    json_object_set_nocheck(stream->updates_cache, "$$dsId", dsid);
                                 }
                                 continue;
                             } else {
