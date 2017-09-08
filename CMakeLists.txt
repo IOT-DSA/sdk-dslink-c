@@ -71,9 +71,11 @@ IF(CMAKE_BUILD_TYPE STREQUAL "Release")
     ENDIF()
 ENDIF()
 
-foreach(dep "mbed" "wslay" "argtable3" "jansson" "libuv")
-    include("${CMAKE_CURRENT_LIST_DIR}/deps/${dep}/CMakeLists.txt")
-endforeach()
+##### This is the libuv, mbed, jansson, wslay and artable3 build files
+include("${CMAKE_CURRENT_LIST_DIR}/deps/CMakeLists.txt")
+include("${CMAKE_CURRENT_LIST_DIR}/deps/CMakeLists_jansson.txt")
+include("${CMAKE_CURRENT_LIST_DIR}/deps/CMakeLists_wslay.txt")
+include("${CMAKE_CURRENT_LIST_DIR}/deps/CMakeLists_argtable3.txt")
 
 include(ExternalProject)
 
@@ -222,10 +224,11 @@ install(TARGETS sdk_dslink_c
         ARCHIVE DESTINATION "${DSLINK_INSTALL_LIB_DIR}" COMPONENT lib
         RUNTIME DESTINATION "${DSLINK_INSTALL_BIN_DIR}" COMPONENT lib)
 
-install(DIRECTORY "sdk/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev)
-install(DIRECTORY "deps/mbed/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev)
-install(DIRECTORY "deps/wslay/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev)
-install(DIRECTORY "deps/jansson/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev)
+install(DIRECTORY "sdk/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY "deps/mbedtls/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY "deps/wslay/lib/includes/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY "deps/wslay/lib/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY "deps/jansson/src/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev FILES_MATCHING PATTERN "*.h")
 
 ####### Configure Broker #######
 

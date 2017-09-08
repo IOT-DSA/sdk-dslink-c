@@ -1,0 +1,7 @@
+set(ARGTABLE3_DIR "${CMAKE_CURRENT_LIST_DIR}/argtable3")
+include_directories("${ARGTABLE3_DIR}")
+
+ADD_C_FLAGS("-fPIC")
+set_source_files_properties(${ARGTABLE3_DIR}/argtable3.c PROPERTIES COMPILE_FLAGS -Wno-unused-variable)
+set(ARGTABLE_SRC "${ARGTABLE3_DIR}/argtable3.c"
+)

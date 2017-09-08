@@ -18,6 +18,7 @@ StorageProvider *dslink_storage_init(json_t *config) {
 
 void dslink_storage_destroy(StorageProvider *provider) {
     provider->destroy_cb(provider);
+    dslink_free((void *)provider);
 }
 
 void dslink_storage_push(StorageProvider *provider, const char *group, const char *key, json_t *value, storage_push_done_cb cb, void *data) {
