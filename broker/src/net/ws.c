@@ -82,7 +82,7 @@ void broker_send_ws_thread(void *arg) {
             break;
         }
 
-        if(broker->currLink) {
+        if(broker->currLink && (broker->currLink->pendingClose == 0)) {
             ret = wslay_event_send(broker->currLink->ws);
             if (ret != 0) {
                 log_debug("Send error in thread: %d\n", ret);

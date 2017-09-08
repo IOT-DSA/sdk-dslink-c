@@ -50,6 +50,10 @@ void broker_server_client_ready(uv_poll_t *poll,
                                 int status,
                                 int events) {
     (void) status;
+
+    //TODO: (ali) delete later
+    log_debug("Poll triggered\n");
+
     Client *client = poll->data;
     if(client) {
         Server *server = client->server;
@@ -218,7 +222,7 @@ void broker_server_new_client(uv_poll_t *poll,
     clientPoll->data = client;
     client->poll = clientPoll;
     client->poll_cb = broker_server_client_ready;
-    uv_poll_start(clientPoll, UV_READABLE | UV_WRITABLE, client->poll_cb);
+    uv_poll_start(clientPoll, UV_READABLE, client->poll_cb);
 
     log_debug("Accepted a client connection\n");
     return;
