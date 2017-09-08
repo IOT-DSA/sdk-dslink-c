@@ -93,6 +93,8 @@ typedef struct DownstreamNode {
     // Map<uint32_t *, SubRequester *>
     Map req_sub_sids;
 
+    Dispatcher on_link_connected;
+    Dispatcher on_link_disconnected;
 } DownstreamNode;
 
 BrokerNode *broker_node_get(BrokerNode *root,

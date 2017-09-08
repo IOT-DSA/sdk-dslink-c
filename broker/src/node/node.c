@@ -115,6 +115,21 @@ BrokerNode *broker_node_createl(const char *name, size_t nameLen,
     return node;
 }
 
+static
+void broker_node_update_child(BrokerNode *parent, const char* name) {
+    if (parent->list_stream) {
+        update_list_child(parent, parent->list_stream, name);
+    }
+
+    ref_t *ref = dslink_map_get(parent->children, (void *) name);
+    if (ref) {
+        BrokerNode *child = ref->data;
+        listener_dispatch_message(&parent->on_child_added, child);
+    } else {
+        listener_dispatch_message(&parent->on_child_removed, NULL);
+    }
+}
+
 DownstreamNode *broker_init_downstream_node(BrokerNode *parentNode, const char *name) {
     DownstreamNode *node = dslink_calloc(1, sizeof(DownstreamNode));
     if (!node) {
@@ -138,6 +153,9 @@ DownstreamNode *broker_init_downstream_node(BrokerNode *parentNode, const char *
             ) {
         goto fail;
     }
+
+    listener_init(&node->on_link_connected);
+    listener_init(&node->on_link_disconnected);
 
     {
         size_t parentPathLen = strlen(parentNode->path);
@@ -169,29 +187,15 @@ DownstreamNode *broker_init_downstream_node(BrokerNode *parentNode, const char *
         goto fail;
     }
     node->parent = parentNode;
+    broker_node_update_child(parentNode, name);
     return node;
 
-    fail:
+fail:
     dslink_map_free(&node->list_streams);
     DSLINK_CHECKED_EXEC(dslink_free, (char *) node->name);
     json_decref(node->meta);
     dslink_free(node);
     return NULL;
-}
-
-static
-void broker_node_update_child(BrokerNode *parent, const char* name) {
-    if (parent->list_stream) {
-        update_list_child(parent, parent->list_stream, name);
-    }
-
-    ref_t *ref = dslink_map_get(parent->children, (void *) name);
-    if (ref) {
-        BrokerNode *child = ref->data;
-        listener_dispatch_message(&parent->on_child_added, child);
-    } else {
-        listener_dispatch_message(&parent->on_child_removed, NULL);
-    }
 }
 
 int broker_node_add(BrokerNode *parent, BrokerNode *child) {
@@ -274,6 +278,8 @@ void broker_node_free(BrokerNode *node) {
         dslink_map_free(&dnode->req_sub_paths);
         dslink_map_free(&dnode->resp_sub_sids);
         dslink_map_free(&dnode->resp_sub_streams);
+        listener_remove_all(&dnode->on_link_connected);
+        listener_remove_all(&dnode->on_link_disconnected);
     } else {
         // TODO: add a new type for these listeners
         // they shouldn't be part of base node type
@@ -334,7 +340,8 @@ void broker_dslink_disconnect(DownstreamNode *node) {
         broker_stream_list_disconnect(stream);
     }
 
-    node->link = NULL;
+    listener_dispatch_message(&node->on_link_disconnected, node);
+
     char disconnectedTs[32];
     dslink_create_ts(disconnectedTs, 32);
     json_object_set_new_nocheck(node->meta, "$disconnectedTs", json_string_nocheck(disconnectedTs));
@@ -368,7 +375,7 @@ void broker_dslink_connect(DownstreamNode *dsn, RemoteDSLink *link) {
         dslink_decref(ref);
     }
 
-
+    listener_dispatch_message(&link->node->on_link_connected, dsn);
 }
 
 size_t broker_downstream_node_base_len(const char *path) {

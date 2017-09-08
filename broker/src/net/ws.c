@@ -8,6 +8,7 @@
 #include <broker/sys/throughput.h>
 #include <wslay_event.h>
 
+#include "broker/broker.h"
 #include "broker/remote_dslink.h"
 #include "broker/net/ws.h"
 #include "broker/net/server.h"
@@ -24,6 +25,7 @@ void broker_ws_send_init(Socket *sock, const char *accept) {
     int bLen = snprintf(buf, sizeof(buf), BROKER_WS_RESP, accept);
     dslink_socket_write(sock, buf, (size_t) bLen);
 }
+
 int broker_count_json_msg(json_t *json) {
     int messages = 0;
     json_t * requests = json_object_get(json, "requests");
@@ -46,6 +48,27 @@ int broker_count_json_msg(json_t *json) {
     }
     return messages;
 }
+
+int broker_ws_send_obj_link_id(struct Broker* broker, const char *link_name, int upstream, json_t *obj)
+{
+    ref_t *ref;
+    if(upstream) {
+        ref = dslink_map_get(broker->upstream->children, (void *) link_name);
+    } else {
+        ref = dslink_map_get(broker->downstream->children, (void *) link_name);
+    }
+
+    if(!ref) {
+        return -1;
+    }
+
+    DownstreamNode *node = ref->data;
+    if(node && node->link) {
+        return broker_ws_send_obj(node->link, obj);
+    }
+    return -1;
+}
+
 int broker_ws_send_obj(RemoteDSLink *link, json_t *obj) {
     ++link->msgId;
     json_object_set_new_nocheck(obj, "msg", json_integer(link->msgId));
@@ -84,7 +107,6 @@ int broker_ws_send(RemoteDSLink *link, const char *data) {
 
     return -1;
 }
-
 
 int broker_ws_generate_accept_key(const char *buf, size_t bufLen,
                                   char *out, size_t outLen) {

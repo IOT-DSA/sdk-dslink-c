@@ -63,7 +63,7 @@ endif()
 
 ADD_C_FLAGS("-fPIC")
 IF(CMAKE_BUILD_TYPE STREQUAL "Release")
-    MESSAGE(INFO, "Applying secure compiler and linker flags")
+    MESSAGE(INFO "Applying secure compiler and linker flags")
     IF(${CMAKE_C_COMPILER_ID} STREQUAL "Clang")
         ADD_C_FLAGS("-Wl,-pie -fPIE -D_FORTIFY_SOURCE=2")
     ELSE()
@@ -71,7 +71,7 @@ IF(CMAKE_BUILD_TYPE STREQUAL "Release")
     ENDIF()
 ENDIF()
 
-##### This is the libuv, mbed, jansson, wslay and artable3 build files
+##### This are the libuv, mbed, jansson, wslay and argtable3 build files
 include("${CMAKE_CURRENT_LIST_DIR}/deps/CMakeLists.txt")
 include("${CMAKE_CURRENT_LIST_DIR}/deps/CMakeLists_jansson.txt")
 include("${CMAKE_CURRENT_LIST_DIR}/deps/CMakeLists_wslay.txt")
@@ -202,13 +202,16 @@ endif()
 ###### Configure Libraries #####
 
 set(CMAKE_MACOSX_RPATH 1)
-add_library(sdk_dslink_c-object OBJECT ${LIBRARY_SRC})
 
-add_library(sdk_dslink_c-static STATIC $<TARGET_OBJECTS:sdk_dslink_c-object>)
-target_link_libraries(sdk_dslink_c-static jansson libuv)
+if(NOT APPLE AND UNIX)
+    set(DSLINK_PLATFORM_LIBS dl)
+endif()
 
-add_library(sdk_dslink_c SHARED $<TARGET_OBJECTS:sdk_dslink_c-object>)
-target_link_libraries(sdk_dslink_c jansson libuv)
+add_library(sdk_dslink_c-static STATIC ${LIBRARY_SRC})
+target_link_libraries(sdk_dslink_c-static jansson libuv ${DSLINK_PLATFORM_LIBS})
+
+add_library(sdk_dslink_c SHARED ${LIBRARY_SRC})
+target_link_libraries(sdk_dslink_c jansson libuv ${DSLINK_PLATFORM_LIBS})
 
 set(DSLINK_INSTALL_LIB_DIR lib CACHE PATH "Installation directory for libraries")
 set(DSLINK_INSTALL_BIN_DIR bin CACHE PATH "Installation directory for executables")
@@ -233,23 +236,21 @@ install(DIRECTORY "deps/jansson/src/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}
 ####### Configure Broker #######
 
 if (DSLINK_BUILD_BROKER)
+    MESSAGE(INFO "Configured for broker build")
     include_directories("${CMAKE_CURRENT_LIST_DIR}/broker/include")
 
     install(DIRECTORY "broker/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev)
 
-    add_library(sdk_broker_c-object OBJECT ${BROKER_SRC})
-    target_include_directories(sdk_broker_c-object PUBLIC "broker/include")
-
-    add_library(sdk_broker_c SHARED $<TARGET_OBJECTS:sdk_broker_c-object>)
+    add_library(sdk_broker_c SHARED ${BROKER_SRC})
     target_link_libraries(sdk_broker_c sdk_dslink_c)
     target_include_directories(sdk_broker_c PUBLIC "broker/include")
 
-    add_library(sdk_broker_c-static STATIC $<TARGET_OBJECTS:sdk_broker_c-object>)
+    add_library(sdk_broker_c-static STATIC ${BROKER_SRC})
     target_link_libraries(sdk_broker_c-static sdk_dslink_c-static)
     target_include_directories(sdk_broker_c-static PUBLIC "broker/include")
 
     add_executable(broker "${BROKER_SRC_DIR}/main.c")
-    target_link_libraries(broker sdk_broker_c-static)
+    target_link_libraries(broker sdk_broker_c)
 endif()
 
 ###### Configure Examples ######
