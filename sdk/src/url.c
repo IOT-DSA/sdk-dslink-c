@@ -35,7 +35,11 @@ Url *dslink_url_parse(const char *address) {
                 c = *(address + (++len));
             } while (c == '/');
             dslink_url_handle_scheme_for_secure(url->scheme, &url->secure);
-            state = 1;
+            if(c == '[') {
+                state = 3;
+            } else {
+                state = 1;
+            }
             address += len;
             len = 0;
         } else if ((c == ':' || c == '/') && state == 1) {
@@ -47,7 +51,7 @@ Url *dslink_url_parse(const char *address) {
                 address += 1;
             } else {
                 dslink_url_handle_scheme(url->scheme, &url->port, &url->secure);
-                state = 3;
+                state = 4;
             }
             address += len;
             len = 0;
@@ -60,7 +64,23 @@ Url *dslink_url_parse(const char *address) {
             }
             *(num + len) = '\0';
             url->port = (unsigned short) strtol(num, NULL, 10);
-            state = 3;
+            state = 4;
+            address += len;
+            len = 0;
+        } else if ((c == ']') && state == 3) {
+            // Parse the IPv6 host
+            len -= 2; // Rewind
+            address += 1;
+            URL_ADDRESS_SUBSTRING_COPY(url->host, len)
+            address += 1;
+            c = *(address + len);
+            if (c == ':') {
+                state = 2;
+                address += 1;
+            } else {
+                dslink_url_handle_scheme(url->scheme, &url->port, &url->secure);
+                state = 4;
+            }
             address += len;
             len = 0;
         }
