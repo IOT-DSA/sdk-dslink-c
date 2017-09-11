@@ -99,11 +99,13 @@ void reconnect_if_error_occured(int stat, UpstreamPoll* upstreamPoll) {
 static
 void upstream_io_handler(uv_poll_t *poll, int status, int events) {
     (void) events;
-    if (status < 0) {
-        return;
-    }
     UpstreamPoll *upstreamPoll = poll->data;
     if(!upstreamPoll || !upstreamPoll->ws) {
+        return;
+    }
+    if (status < 0) {
+        log_err("Failed to handle upstream connection: %s\n", uv_strerror(status));
+        reconnect_if_error_occured(status, upstreamPoll);
         return;
     }
 
