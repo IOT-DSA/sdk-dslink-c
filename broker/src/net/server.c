@@ -241,14 +241,32 @@ void broker_ssl_server_new_client(uv_poll_t *poll,
         goto fail_poll_setup;
     }
 
+    mbedtls_ssl_conf_cert_profile(&sslSocket->conf, &mbedtls_x509_crt_profile_next);
+
+    static int preset_suiteb_hashes[] = {
+        MBEDTLS_MD_SHA512,
+        MBEDTLS_MD_SHA384,
+        MBEDTLS_MD_SHA256,
+        MBEDTLS_MD_NONE
+    };
+    mbedtls_ssl_conf_sig_hashes(&sslSocket->conf, preset_suiteb_hashes);
+
+    static int ciphersuites[] = {
+        MBEDTLS_TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+        MBEDTLS_TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+        MBEDTLS_TLS_DHE_RSA_WITH_AES_128_GCM_SHA256,
+        MBEDTLS_TLS_DHE_RSA_WITH_AES_256_GCM_SHA384,
+        MBEDTLS_TLS_RSA_WITH_AES_128_GCM_SHA256,
+        MBEDTLS_TLS_RSA_WITH_AES_256_GCM_SHA384,
+        0
+    };
+
+    mbedtls_ssl_conf_ciphersuites(&sslSocket->conf, ciphersuites);
+
+    mbedtls_ssl_conf_min_version(&sslSocket->conf, MBEDTLS_SSL_MAJOR_VERSION_3, MBEDTLS_SSL_MINOR_VERSION_3);
+
     mbedtls_ssl_conf_rng( &sslSocket->conf, mbedtls_ctr_drbg_random, &sslSocket->drbg );
     mbedtls_ssl_conf_dbg( &sslSocket->conf, mbed_debug, stdout );
-
-//#if defined(MBEDTLS_SSL_CACHE_C)
-//    mbedtls_ssl_conf_session_cache( &sslSocket->conf, &cache,
-//                                    mbedtls_ssl_cache_get,
-//                                    mbedtls_ssl_cache_set );
-//#endif
 
     mbedtls_ssl_conf_ca_chain( &sslSocket->conf, server->srvcert.next, NULL );
     if( ( ret = mbedtls_ssl_conf_own_cert( &sslSocket->conf, &server->srvcert, &server->pkey ) ) != 0 )
