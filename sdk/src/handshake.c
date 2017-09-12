@@ -247,7 +247,61 @@ exit:
     return ret;
 }
 
+int dslink_generate_dsid(mbedtls_ecdh_context *key, const char* name, char **dsId) {
+    // if you change this code, you also have to change the code below in dslink_handshake_generate_req
+    // TODO refactor dslink_generate_dsid and dslink_handshake_generate_req to include below code only once
+  *dsId = NULL;
+  unsigned char pubKeyBin[65];
+  size_t pubKeyBinLen = 0;
+
+  unsigned char pubKey[90];
+  size_t pubKeyLen = 0;
+  if (!(mbedtls_ecp_point_write_binary(&key->grp, &key->Q,
+                                       MBEDTLS_ECP_PF_UNCOMPRESSED,
+                                       &pubKeyBinLen, pubKeyBin,
+                                       sizeof(pubKeyBin)) == 0
+        && dslink_base64_url_encode(pubKey,
+                                    sizeof(pubKey),
+                                    &pubKeyLen,
+                                    pubKeyBin,
+                                    pubKeyBinLen) == 0)) {
+          goto fail;
+        }
+
+  { // Generate dsId
+    unsigned char sha[32];
+    mbedtls_sha256(pubKeyBin, pubKeyBinLen, sha, 0);
+
+    unsigned char tmp[45];
+    size_t tmpLen = 0;
+    if ((errno = dslink_base64_url_encode((unsigned char *) tmp,
+                                          sizeof(tmp),
+                                          &tmpLen,
+                                          sha,
+                                          sizeof(sha))) != 0) {
+      goto fail;
+    }
+
+    size_t nameLen = strlen(name);
+    *dsId = dslink_malloc(nameLen + tmpLen + 2);
+    if (!(*dsId)) {
+      goto fail;
+    }
+    memcpy(*dsId, name, nameLen);
+    *(*dsId + nameLen) = '-';
+    memcpy((*dsId + nameLen + 1), (char *) tmp, tmpLen);
+    *(*dsId + nameLen + tmpLen + 1) = '\0';
+  }
+  return 0;
+
+fail:
+  DSLINK_CHECKED_EXEC(dslink_free, *dsId);
+  *dsId = NULL;
+  return -1;
+}
+
 char *dslink_handshake_generate_req(DSLink *link, char **dsId) {
+    // if you change this code, you also have to change the code above in dslink_generate_dsid
     const size_t reqSize = 512;
     json_t *obj = json_object();
     char *req = dslink_malloc(reqSize);

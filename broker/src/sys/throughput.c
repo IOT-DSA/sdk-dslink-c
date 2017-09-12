@@ -46,31 +46,38 @@ static void onThroughputTimer(uv_timer_t *handle) {
     }
 }
 
+void set_json_atttribute_no_check(json_t* meta, const char* key, json_t* value) {
+    json_object_set_nocheck(meta, key, value);
+    json_decref(value);
+}
+
 int init_throughput(struct BrokerNode *sysNode) {
     messagesOutPerSecond = broker_node_create("messagesOutPerSecond", "node");
-    json_object_set_nocheck(messagesOutPerSecond->meta, "$type", json_string_nocheck("number"));
+    
+    set_json_atttribute_no_check(messagesOutPerSecond->meta, "$type", json_string_nocheck("number"));
+
     broker_node_add(sysNode, messagesOutPerSecond);
 
     dataOutPerSecond = broker_node_create("dataOutPerSecond", "node");
-    json_object_set_nocheck(dataOutPerSecond->meta, "$type", json_string_nocheck("number"));
-    json_object_set_nocheck(dataOutPerSecond->meta, "@unit", json_string_nocheck("bytes"));
+    set_json_atttribute_no_check(dataOutPerSecond->meta, "$type", json_string_nocheck("number"));
+    set_json_atttribute_no_check(dataOutPerSecond->meta, "@unit", json_string_nocheck("bytes"));
     broker_node_add(sysNode, dataOutPerSecond);
 
     frameOutPerSecond = broker_node_create("frameOutPerSecond", "node");
-    json_object_set_nocheck(frameOutPerSecond->meta, "$type", json_string_nocheck("number"));
+    set_json_atttribute_no_check(frameOutPerSecond->meta, "$type", json_string_nocheck("number"));
     broker_node_add(sysNode, frameOutPerSecond);
 
     messagesInPerSecond = broker_node_create("messagesInPerSecond", "node");
-    json_object_set_nocheck(messagesInPerSecond->meta, "$type", json_string_nocheck("number"));
+    set_json_atttribute_no_check(messagesInPerSecond->meta, "$type", json_string_nocheck("number"));
     broker_node_add(sysNode, messagesInPerSecond);
 
     dataInPerSecond = broker_node_create("dataInPerSecond", "node");
-    json_object_set_nocheck(dataInPerSecond->meta, "$type", json_string_nocheck("number"));
-    json_object_set_nocheck(dataInPerSecond->meta, "@unit", json_string_nocheck("bytes"));
+    set_json_atttribute_no_check(dataInPerSecond->meta, "$type", json_string_nocheck("number"));
+    set_json_atttribute_no_check(dataInPerSecond->meta, "@unit", json_string_nocheck("bytes"));
     broker_node_add(sysNode, dataInPerSecond);
 
     frameInPerSecond = broker_node_create("frameInPerSecond", "node");
-    json_object_set_nocheck(frameInPerSecond->meta, "$type", json_string_nocheck("number"));
+    set_json_atttribute_no_check(frameInPerSecond->meta, "$type", json_string_nocheck("number"));
     broker_node_add(sysNode, frameInPerSecond);
 
     uv_timer_init(mainLoop, &throughputTimer);

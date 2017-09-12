@@ -259,6 +259,8 @@ void dslink_handle_ping(uv_timer_t* handle) {
         if (time_diff >= 60) {
             broker_ws_send_obj(link, json_object());
         }
+    } else {
+        broker_ws_send_obj(link, json_object());
     }
 
     if (link->lastReceiveTime) {

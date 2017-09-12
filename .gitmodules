@@ -1,0 +1,15 @@
+[submodule "deps/libuv"]
+	path = deps/libuv
+	url = https://github.com/libuv/libuv.git
+[submodule "deps/mbedtls"]
+	path = deps/mbedtls
+	url = https://github.com/ARMmbed/mbedtls.git
+[submodule "deps/jansson"]
+	path = deps/jansson
+	url = https://github.com/akheron/jansson.git
+[submodule "deps/wslay"]
+	path = deps/wslay
+	url = https://github.com/tatsuhiro-t/wslay.git
+[submodule "deps/argtable3"]
+	path = deps/argtable3
+	url = https://github.com/argtable/argtable3.git

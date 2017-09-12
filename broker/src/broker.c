@@ -1,4 +1,8 @@
+#include <dirent.h>
+#include <dlfcn.h>
+#include <libgen.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <wslay_event.h>
 
@@ -31,6 +35,13 @@
 
 uv_loop_t *mainLoop = NULL;
 
+struct Extension
+{
+    uv_lib_t* handle;
+    struct ExtensionCallbacks callbacks;
+};
+
+
 static
 void handle_conn(Broker *broker, HttpRequest *req, Socket *sock) {
     json_error_t err;
@@ -53,7 +64,7 @@ void handle_conn(Broker *broker, HttpRequest *req, Socket *sock) {
     if (!dsId) {
         goto exit;
     }
-    log_info("%s connecting \n", dsId);
+    log_info("%s connecting\n", dsId);
     const char *token = broker_http_param_get(&req->uri, "token");
     json_t *resp = broker_handshake_handle_conn(broker, dsId, token, body);
     json_decref(body);
@@ -276,6 +287,7 @@ void broker_close_link(RemoteDSLink *link) {
     // so link need to be freed before disconnected from node
     if (ref) {
         DownstreamNode *node = ref->data;
+        node->link = NULL;
         broker_dslink_disconnect(node);
     }
 
@@ -293,6 +305,46 @@ void broker_free(Broker *broker) {
     dslink_map_free(&broker->remote_pending_sub);
     dslink_map_free(&broker->local_pending_sub);
     memset(broker, 0, sizeof(Broker));
+}
+
+static int extension_on_link_connected(Listener *listener, void *node)
+{
+    Broker* broker = listener->data;
+    DownstreamNode *link = node;
+
+    if(list_is_not_empty(&(broker->extensions))) {
+        dslink_list_foreach(&(broker->extensions)) {
+            struct Extension* extension = ((ListNode*)node)->value;
+            if(extension->callbacks.connect_callback) {
+                extension->callbacks.connect_callback(link);
+            }
+        }
+    }
+    return 0;
+}
+
+static int extension_on_link_disconnected(Listener *listener, void *node)
+{
+    Broker* broker = listener->data;
+    DownstreamNode *link = node;
+
+    if(list_is_not_empty(&(broker->extensions))) {
+        dslink_list_foreach(&(broker->extensions)) {
+            struct Extension* extension = ((ListNode*)node)->value;
+            if(extension->callbacks.disconnect_callback) {
+                extension->callbacks.disconnect_callback(link);
+            }
+        }
+    }
+    return 0;
+}
+
+static int extension_on_child_added(Listener *listener, void *node)
+{
+    DownstreamNode* link = node;
+    listener_add(&link->on_link_connected, extension_on_link_connected, listener->data);
+    listener_add(&link->on_link_disconnected, extension_on_link_disconnected, listener->data);
+    return 0;
 }
 
 static
@@ -335,13 +387,15 @@ int broker_init(Broker *broker, json_t *defaultPermission) {
         broker_node_free(broker->downstream);
         goto fail;
     }
+
+    listener_add(&broker->downstream->on_child_added, extension_on_child_added, broker);
+
     broker_load_downstream_nodes(broker);
     broker_load_qos_storage(broker);
 
     if (broker_sys_node_populate(broker->sys)) {
         goto fail;
     }
-
 
     BrokerNode *node = broker_node_create("defs", "static");
     if (!(node && json_object_set_new_nocheck(node->meta,
@@ -373,6 +427,7 @@ fail:
     return 1;
 }
 
+
 void broker_stop(Broker* broker) {
     dslink_map_foreach(broker->downstream->children) {
         DownstreamNode *node = entry->value->data;
@@ -392,9 +447,167 @@ void broker_stop(Broker* broker) {
             broker_remote_dslink_free(link);
         }
     }
+    if(list_is_not_empty(&broker->extensions)) {
+        log_info("Deinitializing extensions\n");
+        dslink_list_foreach(&broker->extensions) {
+            deinit_ds_extension_type deinit_function;
+
+            struct Extension* extension = ((ListNode*)node)->value;
+
+            if(uv_dlsym(extension->handle, "deinit_ds_extension", (void **) &deinit_function) == 0) {
+                int ret = deinit_function();
+                if(ret == 0) {
+                    log_info("Deinitialized extension\n");
+                } else {
+                    log_err("Could not deinitialize extension: %d\n", ret);
+                }
+            } else {
+                log_warn("No deinitializing function found for extension\n");
+            }
+
+            uv_dlclose(extension->handle);
+            dslink_free(extension->handle);
+            dslink_free(extension);
+        }
+    }
+    dslink_free(broker->extensionConfig.brokerUrl);
+    dslink_list_free_all_nodes(&broker->extensions);
+}
+
+static int isipv6address(const char* host)
+{
+    int i = 0;
+    for(; host[i]; host[i]==':' ? i++ : *host++);
+    return i>0;
+}
+
+int broker_init_extensions(Broker* broker, json_t* config) {
+    list_init(&broker->extensions);
+
+    const char* extension_library_name = "libdsmanager.so";
+    json_t* extension_library = json_object_get(config, "extension_library");
+    if (extension_library && json_is_string(extension_library)) {
+        extension_library_name = json_string_value(extension_library);
+    }
+
+    struct Extension* extension = dslink_malloc(sizeof(struct Extension));
+    extension->handle = (uv_lib_t*)dslink_malloc(sizeof(uv_lib_t));
+    extension->callbacks.connect_callback = NULL;
+    extension->callbacks.disconnect_callback = NULL;
+
+    if (uv_dlopen(extension_library_name, extension->handle)) {
+        log_err("Could not load extension: '%s': %s\n", extension_library_name, uv_dlerror(extension->handle));
+        dslink_free(extension->handle);
+        dslink_free(extension);
+        return -1;
+    } else {
+        init_ds_extension_type init_function;
+        if(uv_dlsym(extension->handle, "init_ds_extension", (void **)&init_function) != 0) {
+            log_debug("Not an extension: '%s' %s\n", extension_library_name, uv_dlerror(extension->handle));
+            uv_dlclose(extension->handle);
+            dslink_free(extension->handle);
+            dslink_free(extension);
+            return -1;
+        }
+
+        // TODO lfuerste: refactor into a function
+        int httpEnabled = 0;
+        int httpsEnabled = 0;
+        const char *httpHost = NULL;
+        char httpPort[8];
+        memset(httpPort, 0, sizeof(httpPort));
+        {
+            json_t *http = json_object_get(config, "http");
+            if (http) {
+                json_t *enabled = json_object_get(http, "enabled");
+                if(enabled && json_boolean_value(enabled)) {
+                    httpEnabled = 1;
+                    httpHost = json_string_value(json_object_get(http, "host"));
+
+                    json_t *jsonPort = json_object_get(http, "port");
+                    if (jsonPort) {
+                        json_int_t p = json_integer_value(jsonPort);
+                        int len = snprintf(httpPort, sizeof(httpPort) - 1,
+                                           "%" JSON_INTEGER_FORMAT, p);
+                        httpPort[len] = '\0';
+                    }
+                }
+            }
+        }
+
+        const char *httpsHost = NULL;
+        char httpsPort[8];
+        memset(httpsPort, 0, sizeof(httpsPort));
+        {
+            json_t *https = json_object_get(config, "https");
+            if (https) {
+                json_t *enabled = json_object_get(https, "enabled");
+                if (enabled && json_boolean_value(enabled)) {
+                    httpsEnabled = 1;
+                    httpsHost = json_string_value(json_object_get(https, "host"));
+
+                    json_t *jsonPort = json_object_get(https, "port");
+                    if (jsonPort) {
+                        json_int_t p = json_integer_value(jsonPort);
+                        int len = snprintf(httpsPort, sizeof(httpsPort) - 1, "%" JSON_INTEGER_FORMAT, p);
+                        httpsPort[len] = '\0';
+                    }
+                }
+            }
+        }
+
+        ///
+
+        json_t* extensions_https = json_object_get(config, "extension_https");
+        if(extensions_https && json_boolean_value(extensions_https)) {
+            if(!httpsEnabled) {
+                log_err("Cannot load extensions. At least https has to be enabled.");
+                return -1;
+            }
+
+            int len = strlen(httpsHost)+strlen(httpsPort)+16+1;
+            broker->extensionConfig.brokerUrl = dslink_malloc(len);
+            if(isipv6address(httpsHost)) {
+                snprintf(broker->extensionConfig.brokerUrl, len, "https://[%s]:%s/conn", httpsHost, httpsPort);
+            } else {
+                snprintf(broker->extensionConfig.brokerUrl, len, "https://%s:%s/conn", httpsHost, httpsPort);
+            }
+        } else {
+            if(!httpEnabled) {
+                log_err("Cannot load extensions. At least http has to be enabled.");
+                return -1;
+            }
+
+            int len = strlen(httpHost)+strlen(httpPort)+15+1;
+            broker->extensionConfig.brokerUrl = dslink_malloc(len);
+            if(isipv6address(httpHost)) {
+                snprintf(broker->extensionConfig.brokerUrl, len, "http://[%s]:%s/conn", httpHost, httpPort);
+            } else {
+                snprintf(broker->extensionConfig.brokerUrl, len, "http://%s:%s/conn", httpHost, httpPort);
+            }
+        }
+
+        broker->extensionConfig.loop = mainLoop;
+
+        if(init_function(broker->sys, &broker->extensionConfig, &extension->callbacks) == 0) {
+            log_info("Loaded extension '%s'\n", extension_library_name);
+            dslink_list_insert(&(broker->extensions), extension);
+        } else {
+            log_err("Could not load extension: '%s': initialization failed\n", extension_library_name);
+            uv_dlclose(extension->handle);
+            dslink_free(extension->handle);
+            dslink_free(extension);
+            return -1;
+        }
+    }
+
+    return 0;
 }
 
 int broker_start() {
+    // onyl allow an uv threadpool of max one thread
+    putenv("UV_THREADPOOL_SIZE=1");
+
     log_info("IOT-DSA c-sdk git commit: %s\n", IOT_DSA_C_SDK_GIT_COMMIT_HASH);
 
     int ret = 0;
@@ -422,6 +635,8 @@ int broker_start() {
         ret = 1;
         goto exit;
     }
+
+    broker_init_extensions(&broker, config);
 
     ret = broker_start_server(config);
 exit:

@@ -6,8 +6,13 @@
 #include "broker/sys/token.h"
 #include "broker/sys/restart.h"
 #include "broker/sys/clear_conns.h"
+#include "broker/utils.h"
 #include "broker/upstream/upstream_node.h"
+#include "broker/net/ws.h"
 
+#define LOG_TAG "sys"
+
+#include <dslink/log.h>
 #include "dslink/utils.h"
 
 int init_sys_static(BrokerNode *sysNode) {
@@ -76,6 +81,98 @@ int init_sys_static(BrokerNode *sysNode) {
     return 0;
 }
 
+static
+void set_log_level(RemoteDSLink *link,
+                   BrokerNode *node,
+                   json_t *req,
+                   PermissionLevel maxPermission)
+{
+    (void)node;
+    if (maxPermission < PERMISSION_CONFIG) {
+        broker_utils_send_closed_resp(link, req, "permissionDenied");
+        return;
+    }
+    json_t *params = json_object_get(req, "params");
+    if (!json_is_object(params)) {
+        broker_utils_send_closed_resp(link, req, "invalidParameter");
+        return;
+    }
+
+    json_t *level = json_object_get(params, "Level");
+    if (!json_is_string(level)) {
+        broker_utils_send_closed_resp(link, req, "invalidParameter");
+        return;
+    }
+
+    const char* name = json_string_value(level);
+    dslink_log_set_lvl(name);
+
+  json_t* rid = json_object_get(req, "rid");
+  if(!rid) {
+    return;
+  }
+
+  json_t* top = json_object();
+  if (!top) {
+    return;
+  }
+  json_t* resps = json_array();
+  if (!resps) {
+    json_delete(top);
+    return;
+  }
+  json_object_set_new_nocheck(top, "responses", resps);
+
+  json_t* resp = json_object();
+  if (!resp) {
+    json_delete(top);
+    return;
+  }
+  json_t* updates = json_array();
+  json_t* update = json_array();
+  json_array_append_new(updates, update);
+  json_object_set_new_nocheck(resp, "updates", updates);
+  json_array_append_new(resps, resp);
+
+  json_object_set_new_nocheck(resp, "stream", json_string("closed"));
+  json_object_set_nocheck(resp, "rid", rid);
+  broker_ws_send_obj(link, top);
+  json_delete(top);
+}
+
+int init_set_log_level(BrokerNode *sysNode)
+{
+    BrokerNode *setLogLevelNode = broker_node_create("setLogLevel", "node");
+    if (!setLogLevelNode) {
+        return 1;
+    }
+
+    if (broker_node_add(sysNode, setLogLevelNode) != 0) {
+        broker_node_free(setLogLevelNode);
+        return 1;
+    }
+
+    if (json_object_set_new_nocheck(setLogLevelNode->meta, "$invokable",
+                                    json_string_nocheck("write")) != 0) {
+        return 1;
+    }
+
+    if (json_object_set_new_nocheck(setLogLevelNode->meta, "$name",
+                                    json_string_nocheck("Set Log Level")) != 0) {
+        return 1;
+    }
+
+    setLogLevelNode->on_invoke = set_log_level;
+
+    json_error_t err;
+    json_t *params = json_loads("[{\"name\":\"Level\",\"type\":\"enum[off,fatal,error,warn,info,debug]\"}]", 0, &err);
+    if (json_object_set_new_nocheck(setLogLevelNode->meta, "$params", params) != 0) {
+        return 1;
+    }
+
+    return 0;
+}
+
 int broker_sys_node_populate(BrokerNode *sysNode) {
     if (!sysNode) {
         return 1;
@@ -86,6 +183,7 @@ int broker_sys_node_populate(BrokerNode *sysNode) {
     init_sys_upstream_node(sysNode);
     init_sys_static(sysNode);
     init_clear_conns(sysNode);
+    init_set_log_level(sysNode);
     init_permissions_actions(sysNode);
     init_throughput(sysNode);
     return 0;

@@ -10,9 +10,8 @@ extern "C" {
 #include <dslink/storage/storage.h>
 #include <dslink/socket.h>
 
-#include <broker/node.h>
+#include <broker/extension.h>
 
-struct uv_loop_t;
 
 typedef struct Broker {
     StorageProvider *storage;
@@ -39,6 +38,10 @@ typedef struct Broker {
     uv_timer_t *saveConnsHandler;
 
     uv_timer_t *saveDataHandler;
+
+    List extensions;
+
+    struct ExtensionConfig extensionConfig;
 } Broker;
 
 extern uv_loop_t *mainLoop;

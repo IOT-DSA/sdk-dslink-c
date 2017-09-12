@@ -29,6 +29,8 @@ int dslink_handshake_read_key_pair(mbedtls_ecdh_context *ctx,
                                    char *buf);
 int dslink_handshake_generate_key_pair(mbedtls_ecdh_context *ctx);
 
+int dslink_generate_dsid(mbedtls_ecdh_context *key, const char* name, char **dsId);
+
 char *dslink_handshake_generate_req(DSLink *link, char **dsId);
 int dslink_parse_handshake_response(const char *resp,
                                     json_t **handshake);

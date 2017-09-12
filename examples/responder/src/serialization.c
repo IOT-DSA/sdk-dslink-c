@@ -3,6 +3,7 @@
 #include <dslink/log.h>
 #include "serialization.h"
 
+#include <strings.h>
 
 static
 void save_node(uv_timer_t* timer) {

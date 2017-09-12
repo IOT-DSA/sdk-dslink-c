@@ -253,7 +253,7 @@ exit_with_error:
 }
 
 BrokerNode *broker_query_create_action(BrokerNode *parent) {
-    BrokerNode *node = broker_node_create("query", "node");
+    BrokerNode *node = broker_node_create("Query", "node");
     if (!node) {
         return NULL;
     }

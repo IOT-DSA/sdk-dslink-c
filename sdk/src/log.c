@@ -7,6 +7,9 @@
 int dslink_log_lvl = LOG_LVL_INFO;
 
 int dslink_log_set_lvl(const char *level) {
+    if(!level) {
+      return 1;
+    }
     if (dslink_strcasecmp(level, "off") == 0
         || dslink_strcasecmp(level, "none") == 0) {
         dslink_log_lvl = LOG_LVL_OFF;
@@ -18,10 +21,8 @@ int dslink_log_set_lvl(const char *level) {
         dslink_log_lvl = LOG_LVL_WARN;
     } else if (dslink_strcasecmp(level, "info") == 0) {
         dslink_log_lvl = LOG_LVL_INFO;
-#ifndef NDEBUG
     } else if (dslink_strcasecmp(level, "debug") == 0) {
         dslink_log_lvl = LOG_LVL_DEBUG;
-#endif
     } else {
         return 1;
     }

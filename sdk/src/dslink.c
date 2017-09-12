@@ -245,7 +245,7 @@ int dslink_handle_key(DSLink *link) {
         } else if (ret == DSLINK_OPEN_FILE_ERR) {
             log_fatal("Failed to write generated key to disk\n");
         } else if (ret == DSLINK_CRYPT_KEY_PAIR_GEN_ERR) {
-            log_fatal("Failed to generated key\n");
+            log_fatal("Failed to generate key\n");
         } else {
             log_fatal("Unknown error occurred during key handling: %d\n", ret);
         }

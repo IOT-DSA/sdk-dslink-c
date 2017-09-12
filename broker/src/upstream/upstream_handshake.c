@@ -99,11 +99,13 @@ void reconnect_if_error_occured(int stat, UpstreamPoll* upstreamPoll) {
 static
 void upstream_io_handler(uv_poll_t *poll, int status, int events) {
     (void) events;
-    if (status < 0) {
-        return;
-    }
     UpstreamPoll *upstreamPoll = poll->data;
     if(!upstreamPoll || !upstreamPoll->ws) {
+        return;
+    }
+    if (status < 0) {
+        log_err("Failed to handle upstream connection: %s\n", uv_strerror(status));
+        reconnect_if_error_occured(status, upstreamPoll);
         return;
     }
 
@@ -213,6 +215,7 @@ void connect_conn_callback(uv_poll_t *handle, int status, int events) {
             if(errno != EAGAIN) {
                 dslink_free(resp);
                 log_err("Error while reading from socket %d\n", errno);
+                upstream_reconnect(upstreamPoll);
                 return;
             }
 
@@ -343,7 +346,7 @@ void upstream_connect_conn(UpstreamPoll *upstreamPoll) {
 
     upstreamPoll->clientDslink = clientDslink;
 
-    log_debug("Trying to connect to %s", clientDslink->config.broker_url->host);
+    log_debug("Trying to connect to %s\n", clientDslink->config.broker_url->host);
     if (dslink_socket_connect_async(upstreamPoll, clientDslink->config.broker_url->host,
                               clientDslink->config.broker_url->port,
                               clientDslink->config.broker_url->secure) != 0) {
