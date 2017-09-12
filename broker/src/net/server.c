@@ -252,12 +252,12 @@ void broker_ssl_server_new_client(uv_poll_t *poll,
     mbedtls_ssl_conf_sig_hashes(&sslSocket->conf, preset_suiteb_hashes);
 
     static int ciphersuites[] = {
-        MBEDTLS_TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
         MBEDTLS_TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-        MBEDTLS_TLS_DHE_RSA_WITH_AES_256_GCM_SHA384,
+        MBEDTLS_TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
         MBEDTLS_TLS_DHE_RSA_WITH_AES_128_GCM_SHA256,
-        MBEDTLS_TLS_RSA_WITH_AES_256_GCM_SHA384,
+        MBEDTLS_TLS_DHE_RSA_WITH_AES_256_GCM_SHA384,
         MBEDTLS_TLS_RSA_WITH_AES_128_GCM_SHA256,
+        MBEDTLS_TLS_RSA_WITH_AES_256_GCM_SHA384,
         0
     };
 
