@@ -558,7 +558,7 @@ int broker_init_extensions(Broker* broker, json_t* config) {
 
         ///
 
-        json_t* extensions_https = json_object_get(config, "extensions_https");
+        json_t* extensions_https = json_object_get(config, "extension_https");
         if(extensions_https && json_boolean_value(extensions_https)) {
             if(!httpsEnabled) {
                 log_err("Cannot load extensions. At least https has to be enabled.");
