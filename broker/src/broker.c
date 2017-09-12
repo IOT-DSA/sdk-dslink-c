@@ -496,7 +496,7 @@ int broker_init_extensions(Broker* broker, json_t* config) {
     extension->callbacks.disconnect_callback = NULL;
 
     if (uv_dlopen(extension_library_name, extension->handle)) {
-        log_err("Could not load extension: '%s': %s\n", extension_library_name, uv_dlerror(extension->handle));
+        log_warn("Could not load extension: '%s': %s\n", extension_library_name, uv_dlerror(extension->handle));
         dslink_free(extension->handle);
         dslink_free(extension);
         return -1;
