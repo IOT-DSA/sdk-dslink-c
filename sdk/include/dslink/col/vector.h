@@ -10,66 +10,127 @@ extern "C" {
 
 #include "dslink/mem/mem.h"
 
-    typedef int vector_comparison_fn_type(const void *, const void *);
+typedef int vector_comparison_fn_type(const void *, const void *);
 
-    /// Defines the structure of a vector.
-    typedef struct {
-        uint32_t size;
-        uint32_t capacity;
-        void** data;
-    } Vector;
+/// Defines the structure of a vector.
+typedef struct {
+    uint32_t size;
+    uint32_t capacity;
+    void* data;
+    size_t element_size;
+} Vector;
 
 #define dslink_vector_foreach(vector) {\
 uint32_t n = 0;\
-for (void* data = (vector)->data[n]; n < (vector)->size; ++n, data = (vector)->data[n])
+for (void* data = (vector)->data; n < (vector)->size; ++n, data = (char*)(vector)->data+(n*(vector)->element_size))
 
 #define dslink_vector_foreach_end() }
 
-    /// Initializes a vector.
-    /// @param vec The vector to initialize
-    /// @param initial_size The initial element capacity of the vector
-    /// @return 0 if the vector could be initialized successfully, otherwise -1
-    int vector_init(Vector* vec, uint32_t initial_size);
+/// Initializes a vector.
+/// @param vec The vector to initialize
+/// @param initial_size The initial element capacity of the vector
+/// @param element_size Size of a single element.
+/// @return 0 if the vector could be initialized successfully, otherwise -1
+int vector_init(Vector* vec, uint32_t initial_size, size_t element_size);
 
-    /// Adds a value to the end of the vector, also known as push back.
-    /// @param vec The vector
-    /// @param data The value to add
-    /// @return The index (>= 0) upon success, -1 otherwise
-    long vector_append(Vector* vec, void* data);
+uint32_t vector_count(const Vector* vec);
 
-    /// Sets a new value for the element at index. If the index is not in range, an error will be returned and the
-    /// vector remains unchanged.
-    /// @param vec The vector
-    /// @param index The index to set the value for
-    /// @param data The value to set
-    /// @return 0 upon success, -1 otherwise
-    int vector_set(Vector* vec, uint32_t index, void* data);
+/// Adds a value to the end of the vector, also known as push back.
+/// @param vec The vector
+/// @param data A pointer to the value to add. The value will be copied into the vector.
+/// @return The index (>= 0) upon success, -1 otherwise
+long vector_append(Vector* vec, void* data);
 
-    /// Gets the value at the index. If the index is not in range, an error will be returned
-    /// @param vec The vector
-    /// @param index The index to get the value for
-    /// @return The value or NULL if the index is out of range.
-    void* vector_get(Vector* vec, uint32_t index);
+/// Sets a new value for the element at index. If the index is not in range, an error will be returned and the
+/// vector remains unchanged.
+/// @param vec The vector
+/// @param index The index to set the value for
+/// @param data A pointer to the value to set. The value will be copied into the vector.
+/// @return 0 upon success, -1 otherwise
+int vector_set(Vector* vec, uint32_t index, void* data);
 
-    /// Removes the value at the index and reorganizes the vector to fill the gap, thus invalidated all previous
-    /// indexes. If the index is not in range, an error will be returned and the
-    /// vector remains unchanged.
-    /// @param vec The vector
-    /// @param index The index to remove the value from
-    /// @return 0 upon success, -1 otherwise
-    int vector_remove(Vector* vec, uint32_t index);
+/// Gets the value at the index. If the index is not in range, an error will be returned
+/// @param vec The vector
+/// @param index The index to get the value for
+/// @return A pointer to the value or NULL if the index is out of range.
+void* vector_get(const Vector* vec, uint32_t index);
 
-    /// Searches the vector for the data using the given comparison function.
-    /// @param vec The vector
-    /// @param data The data to find
-    /// @param cmp_fn The compare function to use
-    /// @return The index (>= 0) of the value if found, -1 otherwise
-    int vector_find(Vector* vec, void* data, vector_comparison_fn_type cmp_fn);
+/// Removes the value at the index and reorganizes the vector to fill the gap, thus invalidating all previous
+/// indexes. If the index is not in range, an error will be returned and the
+/// vector remains unchanged.
+/// @param vec The vector
+/// @param index The index to remove the value from
+/// @return 0 upon success, -1 otherwise
+int vector_erase(Vector* vec, uint32_t index);
 
-    /// Frees the internally allocated memory of the vector. Does not free the memory pointed to by the elements.
-    /// @param vec The vector
-    /// @return 0 upon success, -1 otherwise
-    int vector_free(Vector* vec);
+/// Removes the values between the [lower, upper] range and reorganizes the vector to fill the gap, thus
+/// invalidating all previous indexes. If the [lower, upper] range is not in range, an error will be returned and the
+/// vector remains unchanged.
+/// @param vec The vector
+/// @param lower The lower bound to remove from
+/// @param upper The upper bound to remove from
+/// @return 0 upon success, -1 otherwise
+int vector_erase_range(Vector* vec, uint32_t lower, uint32_t upper);
+
+/// Removes all elements satisfying specific criteria from the vector. Removing is done by shifting all elements
+/// not to remove to the beginning. The function return the index of the first element to remove. Elements between
+/// return value end the end of the vector have unspecified value. Function call is typically followed by an
+/// vector_erase_range function call.
+/// @param vec The vector
+/// @param data The data compare the elements with.
+/// @param cmp_fn The compare function to use
+/// @return index of the first matching element, size of vector, if no matching elements were found
+uint32_t vector_remove_if(const Vector* vec, void* data, vector_comparison_fn_type cmp_fn);
+
+/// Searches the vector for the data using the given comparison function.
+/// @param vec The vector
+/// @param data The data to find
+/// @param cmp_fn The compare function to use
+/// @return The index (>= 0) of the value if found, -1 otherwise
+long vector_find(const Vector* vec, void* data, vector_comparison_fn_type cmp_fn);
+
+/// Searches the vector for the data using the given comparison function and a binary search algorithm. The vector
+/// has to be sorted in order to work.
+/// @param vec The vector
+/// @param data The data to find
+/// @param cmp_fn The compare function to use
+/// @return The index (>= 0) of the value if found, -1 otherwise
+long vector_binary_search(const Vector* vec, void* data, vector_comparison_fn_type cmp_fn);
+
+/// Searches a range of vector for the data using the given comparison function and a binary search algorithm.
+/// The vector has to be sorted in order to work.
+/// @param vec The vector
+/// @param data The data to find
+/// @param cmp_fn The compare function to use
+/// @param lower The lowest index of the range to search in
+/// @param upper The upper (excluded) index of the range to search in
+/// @return The index in the range [lower,upper) of the value if found, -1 otherwise
+long vector_binary_search_range(const Vector* vec, void* data, vector_comparison_fn_type cmp_fn,
+                                uint32_t lower, uint32_t upper);
+
+/// Searches the vector for the first element, that is greater than the given value. The vector
+/// has to be sorted by the cmp_fn in order to work.
+/// @param vec The vector
+/// @param data The data to find
+/// @param cmp_fn The compare function to use
+/// @return The index (>= 0) of the first element greater than value. Size of the vector, if no greater element exists
+uint32_t vector_upper_bound(const Vector* vec, void* data, vector_comparison_fn_type cmp_fn);
+
+/// Searches a range of the vector for the first element, that is greater than the given value. The vector
+/// has to be sorted by the cmp_fn in order to work.
+/// @param vec The vector
+/// @param data The data to find
+/// @param cmp_fn The compare function to use
+/// @param lower The lowest index of the range to search in
+/// @param upper The upper (excluded) index of the range to search in
+/// @return The index (>= first) of the first element greater than value. upper, if no greater element exists
+uint32_t vector_upper_bound_range(const Vector* vec, void* data, vector_comparison_fn_type cmp_fn,
+                                  uint32_t lower, uint32_t upper);
+
+/// Frees the internally allocated memory of the vector. Does not free the memory pointed to by the elements.
+/// @param vec The vector
+/// @return 0 upon success, -1 otherwise
+int vector_free(Vector* vec);
 
 #ifdef __cplusplus
 }
