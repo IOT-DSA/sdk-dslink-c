@@ -1,0 +1,69 @@
+#ifndef SDK_DSLINK_C_VECTOR_H
+#define SDK_DSLINK_C_VECTOR_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <stdlib.h>
+#include <stdint.h>
+
+#include "dslink/mem/mem.h"
+
+    /// Defines the structure of a vector.
+    typedef struct {
+        uint32_t size;
+        uint32_t capacity;
+        void** data;
+    } Vector;
+
+#define dslink_vector_foreach(vector) {\
+uint32_t n = 0;\
+for (void* data = (vector)->data[n]; n < (vector)->size; ++n, data = (vector)->data[n])
+
+#define dslink_vector_foreach_end() }
+
+    /// Initializes a vector.
+    /// @param vec The vector to initialize
+    /// @param initial_size The initial element capacity of the vector
+    /// @return 0 if the vector could be initialized successfully, otherwise -1
+    int vector_init(Vector* vec, uint32_t initial_size);
+
+    /// Adds a value to the end of the vector, also known as push back.
+    /// @param vec The vector to initialize
+    /// @param data The value to add
+    /// @return The index (>= 0) upon success, -1 otherwise
+    long vector_append(Vector* vec, void* data);
+
+    /// Sets a new value for the element at index. If the index is not in range, an error will be returned and the
+    /// vector remains unchanged.
+    /// @param vec The vector to initialize
+    /// @param index The index to set the value for
+    /// @param data The value to set
+    /// @return 0 upon success, -1 otherwise
+    int vector_set(Vector* vec, uint32_t index, void* data);
+
+    /// Gets the value at the index. If the index is not in range, an error will be returned
+    /// @param vec The vector to initialize
+    /// @param index The index to get the value for
+    /// @return The value or NULL if the index is out of range.
+    void* vector_get(Vector* vec, uint32_t index);
+
+    /// Removes the value at the index and reorganizes the vector to fill the gap, thus invalidated all previous
+    /// indexes. If the index is not in range, an error will be returned and the
+    /// vector remains unchanged.
+    /// @param vec The vector to initialize
+    /// @param index The index to remove the value from
+    /// @return 0 upon success, -1 otherwise
+    int vector_remove(Vector* vec, uint32_t index);
+
+    /// Frees the internally allocated memory of the vector. Does not free the memory pointed to by the elements.
+    /// @param vec The vector to initialize
+    /// @return 0 upon success, -1 otherwise
+    int vector_free(Vector* vec);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif // SDK_DSLINK_C_VECTOR_H

@@ -12,6 +12,7 @@ separate_arguments(memcheck_command)
 
 set(SDK_TEST_SET
     "col_map_test"
+    "col_vec_test"
     "utils_test"
     "thread_safe_api_test"
 )

@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.0.0 FATAL_ERROR)
 project(sdk_dslink_c C)
 
 option(USE_CCACHE "Enable CCache Support" ON)
-option(DSLINK_BUILD_BROKER "Whether to build the broker" OFF)
+option(DSLINK_BUILD_BROKER "Whether to build the broker" ON)
 option(DSLINK_BUILD_EXAMPLES "Whether to build the examples" OFF)
 option(DSLINK_TEST "Whether to enable tests" OFF)
 option(TOOLCHAIN_DYNAMIC_LINK_ENABLE "Enable Dynamic Linking for Toolchain" ON)
@@ -115,6 +115,7 @@ set(DSLINK_SRC
     "${DSLINK_SRC_DIR}/col/list.c"
     "${DSLINK_SRC_DIR}/col/listener.c"
     "${DSLINK_SRC_DIR}/col/map.c"
+    "${DSLINK_SRC_DIR}/col/vector.c"
 
     "${DSLINK_SRC_DIR}/mem/mem.c"
     "${DSLINK_SRC_DIR}/mem/ref.c"
