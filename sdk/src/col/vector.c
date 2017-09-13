@@ -22,7 +22,7 @@ int vector_init(Vector* vec, uint32_t initial_size)
     return 0;
 }
 
-int vector_resize(Vector* vec)
+static int vector_resize(Vector* vec)
 {
     if(!vec) {
         return -1;
@@ -81,6 +81,21 @@ int vector_remove(Vector* vec, uint32_t index)
         memmove(&vec->data[index], &vec->data[index+1], (vec->size-(index+1))*sizeof(vec->data));
     }
     --(vec->size);
+
+    return 0;
+}
+
+int vector_find(Vector* vec, void* data, vector_comparison_fn_type cmp_fn)
+{
+    if(!vec && vec->size > 0) {
+        return -1;
+    }
+
+    for(uint32_t n = 0; n < vec->size; ++n) {
+        if(cmp_fn(data, vec->data[n]) == 0) {
+            return n;
+        }
+    }
 
     return 0;
 }
