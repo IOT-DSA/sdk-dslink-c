@@ -156,6 +156,7 @@ set(DSLINK_SRC
     "${DSLINK_SRC_DIR}/col/list.c"
     "${DSLINK_SRC_DIR}/col/listener.c"
     "${DSLINK_SRC_DIR}/col/map.c"
+    "${DSLINK_SRC_DIR}/col/vector.c"
 
     "${DSLINK_SRC_DIR}/mem/mem.c"
     "${DSLINK_SRC_DIR}/mem/ref.c"
