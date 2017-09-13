@@ -135,6 +135,33 @@ void col_vec_iterate_test(void **state) {
     dslink_vector_foreach_end();
 }
 
+int cmp_int(const void* lhs, const void* rhs)
+{
+    if((int)lhs == (int)rhs) {
+        return 0;
+    }
+    return -1;
+}
+
+static
+void col_vec_find_test(void **state) {
+    (void) state;
+
+    Vector vec;
+    vector_init(&vec, 10);
+
+    vector_append(&vec, 4711);
+    vector_append(&vec, 815);
+    vector_append(&vec, 42);
+    vector_append(&vec, 66);
+
+    int n = 42;
+    int idx = vector_find(&vec, n, cmp_int);
+    assert_int_equal(idx, 2);
+    assert_int_equal((int)vector_get(&vec, idx), 42);
+}
+
+
 int main() {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(col_vec_init_test),
@@ -143,6 +170,7 @@ int main() {
         cmocka_unit_test(col_vec_set_get_test),
         cmocka_unit_test(col_vec_remove_test),
         cmocka_unit_test(col_vec_iterate_test),
+        cmocka_unit_test(col_vec_find_test),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
