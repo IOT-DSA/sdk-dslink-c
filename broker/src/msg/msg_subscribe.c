@@ -20,7 +20,8 @@ void broker_handle_local_subscribe(BrokerNode *respNode,
         if (respNode->value) {
             broker_update_sub_stream_value(respNode->sub_stream, respNode->value, NULL);
         } else {
-            broker_update_sub_stream_value(respNode->sub_stream, json_null(), NULL);
+  	    // We do not send any response here, which is aligned to the DART broker behavior
+	    // The node might get an value later.
         }
     }
     subreq->stream = respNode->sub_stream;
