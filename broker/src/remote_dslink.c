@@ -28,6 +28,7 @@ int broker_remote_dslink_init(RemoteDSLink *link) {
             ) {
         return 1;
     }
+    link->pendingAcks = NULL;
     permission_groups_init(&link->permission_groups);
 #ifdef BROKER_CLOSE_LINK_SEM2
     uv_sem_init(&link->close_sem,1);
@@ -61,11 +62,15 @@ void broker_remote_dslink_free(RemoteDSLink *link) {
     List req_sub_to_remove;
     list_init(&req_sub_to_remove);
 
+    vector_free(link->pendingAcks);
+
     dslink_map_foreach(&link->req_sub_paths) {
         // find all subscription that doesn't use qos
         SubRequester *subreq = entry->value->data;
-        if (subreq->qos == 0) {
+        if (subreq->qos <= 1) {
             dslink_list_insert(&req_sub_to_remove, subreq);
+        } else if (subreq->qos >= 2) {
+            broker_clear_messsage_ids(subreq);
         }
     }
     dslink_list_foreach(&req_sub_to_remove) {
@@ -89,6 +94,8 @@ void broker_remote_dslink_free(RemoteDSLink *link) {
     dslink_map_free(&link->responder_streams);
 
     permission_groups_free(&link->permission_groups);
+
+    dslink_free(link->pendingAcks);
 
 #ifndef BROKER_PING_THREAD
     if (link->pingTimerHandle) {

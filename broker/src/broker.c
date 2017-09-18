@@ -159,6 +159,7 @@ void broker_on_data_callback(Client *client, void *data) {
     char buf[1024];
     char bodyBuf[1024];
     {
+        sleep(2);
         int read = dslink_socket_read(client->sock, buf, sizeof(buf) - 1);
         if(read < 0) {
             goto exit;

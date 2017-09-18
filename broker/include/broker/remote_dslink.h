@@ -18,6 +18,8 @@ extern "C" {
 #include "broker/permission/permission.h"
 #include <broker/permission/permission_group.h>
 
+#include <dslink/col/vector.h>
+
 //comment out to disable sending ws messages in thread
 #define BROKER_WS_SEND_THREAD_MODE
 #ifdef BROKER_WS_SEND_THREAD_MODE
@@ -66,7 +68,7 @@ typedef struct RemoteDSLink {
 
     json_t *linkData;
 
-    // Map<uint32_t *, Stream *>
+    // Map<uint32_t *, BrokerStream *>
 
     // connect to requester
     // broker receive requests and send back responses
@@ -83,7 +85,7 @@ typedef struct RemoteDSLink {
     // Map<uint32_t *, SubRequester *>
     Map req_sub_sids;
 
-    json_t* updates;
+    Vector* pendingAcks;
 
     uint32_t rid;
 

@@ -145,8 +145,12 @@ int broker_ws_send(RemoteDSLink *link, const char *data, int len, int opcode, in
 }
 
 int broker_ws_send_obj(RemoteDSLink *link, json_t *obj, int droppable) {
-    ++link->msgId;
-    json_object_set_new_nocheck(obj, "msg", json_integer(link->msgId));
+    uint32_t id = ++link->msgId;
+    //that value : 0x7FFFFFFF
+    if(link->msgId == 2147483647) {
+        link->msgId = 0;
+    }
+    json_object_set_new_nocheck(obj, "msg", json_integer(id));
 
     // DECODE OBJ
     char* data = NULL;
@@ -201,7 +205,7 @@ int broker_ws_send_obj(RemoteDSLink *link, json_t *obj, int droppable) {
         throughput_add_output(sentBytes, sentMessages);
     }
     dslink_free(data);
-    return link->msgId;
+    return id;
 }
 
 

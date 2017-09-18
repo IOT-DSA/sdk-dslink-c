@@ -28,7 +28,7 @@ void gen_number(uv_timer_t *timer) {
 
 static
 void responder_rng_subbed(DSLink *link, DSNode *node) {
-    log_info("Subscribed to %s\n", node->path);
+    log_debug("Subscribed to %s\n", node->path);
 
     void **a = malloc(sizeof(void *) * 2);
     a[0] = link;
@@ -43,7 +43,7 @@ void responder_rng_subbed(DSLink *link, DSNode *node) {
 static
 void responder_rng_unsubbed(DSLink *link, DSNode *node) {
     (void) link;
-    log_info("Unsubscribed to %s\n", node->path);
+    log_debug("Unsubscribed to %s\n", node->path);
 }
 
 void responder_init_rng(DSLink *link, DSNode *root) {

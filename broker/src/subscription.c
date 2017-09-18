@@ -3,6 +3,69 @@
 #include <broker/net/ws.h>
 #include <broker/config.h>
 #include <broker/broker.h>
+#define LOG_TAG "subscription"
+
+#include <dslink/log.h>
+#include <string.h>
+
+static int removeFromMessageQueue(SubRequester *subReq, uint32_t msgId);
+static int sendMessage(SubRequester *subReq, json_t *varray, uint32_t* msgId);
+
+static const uint32_t SEND_MAX_QUEUE = 8;
+
+int cmp_pack_subs(const void* lhs, const void* rhs)
+{
+    PendingAck* lpack = (PendingAck*)lhs;
+    PendingAck* rpack = (PendingAck*)rhs;
+    if(lpack->subscription == rpack->subscription) {
+        return 0;
+    }
+
+    return -1;
+}
+int cmp_pack(const void* lhs, const void* rhs)
+{
+    PendingAck* lpack = (PendingAck*)lhs;
+    PendingAck* rpack = (PendingAck*)rhs;
+    if(lpack->msg_id == rpack->msg_id) {
+        return 0;
+    } else if(lpack->msg_id > rpack->msg_id) {
+        return 1;
+    }
+    return -1;
+}
+
+int cmp_int(const void* lhs, const void* rhs)
+{
+    if(*(int*)lhs == *(int*)rhs) {
+        return 0;
+    } else if(*(int*)lhs > *(int*)rhs) {
+        return 1;
+    }
+    return -1;
+}
+
+int check_subscription_ack(RemoteDSLink *link, uint32_t ack)
+{
+    PendingAck search_pack = { NULL, ack };
+    //can remove this log
+    log_debug("Receiving ack from %s: %d\n", link->name, ack);
+    uint32_t last = vector_upper_bound(link->pendingAcks, &search_pack, cmp_pack);
+
+    for (long idx = (long)last-1; idx >= 0; --idx) {
+        PendingAck pack = *(PendingAck*)vector_get(link->pendingAcks, idx);
+        SubRequester *subReq = pack.subscription;
+
+        --subReq->messageOutputQueueCount;
+
+        if ( removeFromMessageQueue(subReq, pack.msg_id) ) {
+            sendQueuedMessages(subReq);
+        }
+    }
+    vector_erase_range(link->pendingAcks, 0, last);
+    return 0;
+}
+
 
 void send_subscribe_request(RemoteDSLink *link,
                             const char *path,
@@ -31,17 +94,17 @@ void send_subscribe_request(RemoteDSLink *link,
 }
 SubRequester *broker_create_sub_requester(RemoteDSLink * link, const char *path, uint32_t reqSid, uint8_t qos, json_t *qosQueue) {
     SubRequester *req = dslink_calloc(1, sizeof(SubRequester));
+    memset(req, 0, sizeof(SubRequester));
     if (qosQueue) {
         req->qosQueue = qosQueue;
         json_incref(qosQueue);
-    } else if (qos > 1) {
+    } else if (qos > 2) {
         req->qosQueue = json_array();
     }
     req->path = dslink_strdup(path);
     req->reqLink = link;
     req->reqSid = reqSid;
     req->qos = qos;
-    req->pendingAcks = NULL;
     return req;
 }
 
@@ -92,9 +155,16 @@ void broker_free_sub_requester(SubRequester *req) {
         clear_qos_queue(req, 1);
         json_decref(req->qosQueue);
     }
-    if(req->pendingAcks) {
-        vector_free(req->pendingAcks);
-        dslink_free(req->pendingAcks);
+
+    if(req->messageQueue) {
+        PendingAck search_pack = { req, 0 };
+        uint32_t eraseIdx = vector_remove_if( req->reqLink->pendingAcks, &search_pack, cmp_pack_subs);
+        vector_erase_range( req->reqLink->pendingAcks, eraseIdx, vector_count(req->reqLink->pendingAcks) );
+        req->messageOutputQueueCount = 0;
+
+        rb_free(req->messageQueue);
+        dslink_free(req->messageQueue);
+        req->messageQueue = NULL;
     }
     dslink_free(req->path);
     dslink_free(req->qosKey1);
@@ -103,9 +173,22 @@ void broker_free_sub_requester(SubRequester *req) {
 
 }
 
+void broker_clear_messsage_ids(SubRequester *subReq)
+{
+    while (subReq->messageOutputQueueCount) {
+        --subReq->messageOutputQueueCount;
+        QueuedMessage* m = rb_at(subReq->messageQueue, subReq->messageOutputQueueCount);
+        if(!m) {
+            subReq->messageOutputQueueCount = 0;
+            break;
+        }
+        m->msg_id = 0;
+    }
+}
+
 void clear_qos_queue(SubRequester *subReq, uint8_t serialize) {
     json_array_clear(subReq->qosQueue);
-    if (serialize && subReq->qos & 2) {
+    if (serialize && subReq->qos > 2) {
         serialize_qos_queue(subReq, 0);
     }
 }
@@ -134,72 +217,167 @@ void broker_update_sub_req_qos(SubRequester *subReq) {
     }
 }
 
-void broker_update_sub_req(SubRequester *subReq, json_t *varray, int send) {
-    //TODO: (ali)check here! never enters else if?
-    if (subReq->reqLink) {
+static int addPendingAck(SubRequester *subReq, uint32_t msgId)
+{
 
-        json_array_set_new(varray, 0, json_integer(subReq->reqSid));
+    RemoteDSLink* link = (subReq->reqLink);
+    if(!link->pendingAcks) {
+        link->pendingAcks = (Vector*)dslink_malloc(sizeof(Vector));
+        vector_init(link->pendingAcks, 64, sizeof(PendingAck));
+    }
+    PendingAck pack = { subReq, msgId };
+    vector_append(link->pendingAcks, &pack);
+    ++subReq->messageOutputQueueCount;
+    return 0;
+}
 
-        if(send) {
-            json_t *top = json_object();
-            json_t *resps = json_array();
-            json_object_set_new_nocheck(top, "responses", resps);
-            json_t *newResp = json_object();
-            json_array_append_new(resps, newResp);
-            json_object_set_new_nocheck(newResp, "rid", json_integer(0));
-            json_t *updates = json_array();
-            json_object_set_new_nocheck(newResp, "updates", updates);
-            json_array_append(updates, varray);
-            int msgid = broker_ws_send_obj(subReq->reqLink, top, BROKER_MESSAGE_DROPPABLE);
-            if(subReq->qos > 0) {
-                if(!subReq->pendingAcks) {
-                    subReq->pendingAcks = (Vector*)dslink_malloc(sizeof(Vector));
-                    //TODO: (ali-qos) why it is 64
-                    vector_init(subReq->pendingAcks, 64, sizeof(int));
-                }
-                vector_append(subReq->pendingAcks, &msgid);
+void cleanup_queued_message(void* message) {
+    QueuedMessage* m = message;
+    if(m) {
+        json_decref(m->message);
+    }
+}
+
+uint32_t sendQueuedMessages(SubRequester *subReq) {
+    uint32_t result = 0;
+
+    if(rb_count(subReq->messageQueue)) {
+        while (subReq->messageOutputQueueCount < SEND_MAX_QUEUE) {
+            QueuedMessage* m = rb_at(subReq->messageQueue, subReq->messageOutputQueueCount);
+            if(!m) {
+                break;
             }
-            json_decref(top);
-        } else {
-            if(!subReq->reqLink->updates)
-                subReq->reqLink->updates = json_array();
-            json_array_append(subReq->reqLink->updates, varray);
-        }
+            if(m->msg_id > 0) {
+                log_debug("Has been send already: %d\n", m->msg_id);
+                break;
+            }
 
-    } else if (subReq->qos > 1){
-        // add to qos queue
-        if (!subReq->qosQueue) {
-            subReq->qosQueue = json_array();
-        }
-        if (json_array_size(subReq->qosQueue) >= broker_max_qos_queue_size) {
-            // destroy qos queue when exceed max queue size
-            clear_qos_queue(subReq, 1);
-            subReq->qos = 0;
-            return;
-        }
-        json_array_append(subReq->qosQueue, varray);
-        if (subReq->qos > 2) {
-            serialize_qos_queue(subReq, 0);
+            sendMessage(subReq, m->message, &m->msg_id);
+            ++result;
         }
     }
+    return result;
+}
+
+static int sendMessage(SubRequester *subReq, json_t *varray, uint32_t* msgId) {
+    json_t *top = json_object();
+    json_t *resps = json_array();
+    json_object_set_new_nocheck(top, "responses", resps);
+    json_t *newResp = json_object();
+    json_array_append_new(resps, newResp);
+    json_object_set_new_nocheck(newResp, "rid", json_integer(0));
+    json_t *updates = json_array();
+    json_object_set_new_nocheck(newResp, "updates", updates);
+
+    json_array_set_new(varray, 0, json_integer(subReq->reqSid));
+    json_array_append(updates, varray);
+
+    int res = broker_ws_send_obj(subReq->reqLink, top, BROKER_MESSAGE_DROPPABLE);
+    if(res >= 0) {
+        *msgId = (uint32_t)res;
+        json_decref(top);
+
+        log_debug("Send message with msgId %d\n", *msgId);
+
+        return addPendingAck(subReq, *msgId);
+    } else {
+        log_warn("Error when sending message\n");
+        return -1;
+    }
+}
+
+static void addToMessageQueue(SubRequester *subReq, json_t *varray, uint32_t msgId) {
+
+    log_debug("Add message with msgId %d to MessageQueue\n", msgId);
+
+    if(!subReq->messageQueue) {
+        subReq->messageQueue = (Ringbuffer*)dslink_malloc(sizeof(Ringbuffer));
+        // TODO lfuerste: maybe use a lesser value for QOS == 0?
+        rb_init(subReq->messageQueue, broker_max_qos_queue_size, sizeof(QueuedMessage), cleanup_queued_message);
+    }
+    QueuedMessage m = { json_incref(varray),  msgId};
+    if(rb_push(subReq->messageQueue, &m) > 0) {
+        log_debug("Skipping a value because the queue is full: sid %d\n", subReq->reqSid);
+    }
+}
+
+static int removeFromMessageQueue(SubRequester *subReq, uint32_t msgId) {
+    int result = 0;
+
+    log_debug("Remove message with msgId %d from MessageQueue\n", msgId);
+    if(subReq->messageQueue) {
+        while(rb_count(subReq->messageQueue)) {
+            QueuedMessage* m = rb_front(subReq->messageQueue);
+
+            if(m->msg_id == 0 || m->msg_id > msgId) {
+                break;
+            }
+            ++result;
+            rb_pop(subReq->messageQueue);
+            //can remove this log
+            log_debug("Removing message with msgId %d from MessageQueue\n", m->msg_id);
+        }
+    }
+    return result;
+}
+///// end //////////////////////////////////////////
+int broker_update_sub_req(SubRequester *subReq, json_t *varray) {
+    int result = 1;
+
+    uint32_t msgId = 0;
+
+    if ( subReq->qos <= 2 ) {
+        // Add the message to the message queue and than try to send messages from the queue to keep message order
+        // in all cases
+        addToMessageQueue(subReq, varray, msgId);
+        if ( sendQueuedMessages(subReq) == 0 ) {
+            log_debug("Send queue full: %d\n", subReq->reqSid);
+        }
+    } else {
+        if (subReq->reqLink) {
+            result = sendMessage(subReq, varray, &msgId);
+        } else {
+            // add to qos queue
+            if (!subReq->qosQueue) {
+                subReq->qosQueue = json_array();
+            }
+            if (json_array_size(subReq->qosQueue) >= broker_max_qos_queue_size) {
+                // destroy qos queue when exceed max queue size
+                clear_qos_queue(subReq, 1);
+                return result;
+            }
+            json_array_append(subReq->qosQueue, varray);
+            serialize_qos_queue(subReq, 0);
+        }
+
+    }
+
+    return result;
 }
 
 static
-void broker_update_sub_reqs(BrokerSubStream *stream, int send) {
+int broker_update_sub_reqs(BrokerSubStream *stream, json_t *responder_msg_id) {
+    int result = 1;
+
     dslink_map_foreach(&stream->reqSubs) {
         SubRequester *req = entry->value->data;
-        broker_update_sub_req(req, stream->last_value, send);
+        result &= broker_update_sub_req(req, stream->last_value);
+        if ( !result && responder_msg_id ) {
+            json_decref(stream->last_pending_responder_msg_id);
+            stream->last_pending_responder_msg_id = json_incref(responder_msg_id);
+        }
     }
+    return result;
 }
 
-void broker_update_sub_stream(BrokerSubStream *stream, json_t *varray, int send) {
+int broker_update_sub_stream(BrokerSubStream *stream, json_t *varray, json_t *responder_msg_id) {
     json_decref(stream->last_value);
     stream->last_value = varray;
     json_incref(varray);
-    broker_update_sub_reqs(stream,send);
+    return broker_update_sub_reqs(stream, responder_msg_id);
 }
 
-void broker_update_sub_stream_value(BrokerSubStream *stream, json_t *value, json_t *ts) {
+int broker_update_sub_stream_value(BrokerSubStream *stream, json_t *value, json_t *ts, json_t *responder_msg_id) {
     json_decref(stream->last_value);
     json_t *varray = json_array();
     json_array_append(varray, json_null());
@@ -216,7 +394,7 @@ void broker_update_sub_stream_value(BrokerSubStream *stream, json_t *value, json
     }
 
     stream->last_value = varray;
-    broker_update_sub_reqs(stream, 1);
+    return broker_update_sub_reqs(stream, responder_msg_id);
 }
 
 void broker_update_stream_qos(BrokerSubStream *stream) {
@@ -232,6 +410,8 @@ void broker_update_stream_qos(BrokerSubStream *stream) {
         if (maxQos != stream->respQos && ((DownstreamNode*)stream->respNode)->link) {
             stream->respQos = maxQos;
             send_subscribe_request(((DownstreamNode*)stream->respNode)->link, stream->remote_path, stream->respSid, stream->respQos);
+        } else {
+            stream->respQos = maxQos;
         }
     }
 }

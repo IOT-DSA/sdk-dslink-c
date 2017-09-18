@@ -6,6 +6,7 @@ extern "C" {
 #endif
 
 #include "broker/remote_dslink.h"
+#include <dslink/col/vector.h>
 
 struct RemoteDSLink;
 struct BrokerNode;
@@ -70,7 +71,7 @@ typedef struct DownstreamNode {
 
     json_t *groups;
 
-    // Map<char *, Stream *>
+    // Map<char *, BrokerListStream *>
     Map list_streams;
 
     uint32_t sid;

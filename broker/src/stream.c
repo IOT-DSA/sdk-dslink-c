@@ -142,7 +142,7 @@ void broker_stream_free(BrokerStream *stream) {
             dslink_map_foreach(&bss->reqSubs) {
                 SubRequester *reqsub = entry->value->data;
                 reqsub->stream = NULL;
-                reqsub->respNode = NULL;
+//                reqsub->respNode = NULL;
                 broker_subscribe_disconnected_remote(reqsub->path, reqsub);
             }
             DownstreamNode* dnode = (DownstreamNode*)bss->respNode;
@@ -154,7 +154,7 @@ void broker_stream_free(BrokerStream *stream) {
             dslink_map_foreach(&bss->reqSubs) {
                 SubRequester *reqsub = entry->value->data;
                 reqsub->stream = NULL;
-                reqsub->respNode = NULL;
+//                reqsub->respNode = NULL;
                 broker_subscribe_local_nonexistent(reqsub->path, reqsub);
             }
             bss->respNode->sub_stream = NULL;

@@ -17,15 +17,17 @@ void broker_handle_local_subscribe(BrokerNode *respNode,
         respNode->sub_stream = broker_stream_sub_init();
         respNode->sub_stream->respNode = respNode;
         if (respNode->value) {
-            broker_update_sub_stream_value(respNode->sub_stream, respNode->value, NULL);
+            broker_update_sub_stream_value(respNode->sub_stream, respNode->value, NULL, NULL);
         } else {
-            broker_update_sub_stream_value(respNode->sub_stream, json_null(), NULL);
+            // We do not send any response here, which is aligned to the DART broker behavior
+            // The node might get an value later.
+//            broker_update_sub_stream_value(respNode->sub_stream, json_null(), NULL);
         }
     }
     subreq->stream = respNode->sub_stream;
     dslink_map_set(&respNode->sub_stream->reqSubs, dslink_ref(reqLink, NULL), dslink_ref(subreq, NULL));
     if (respNode->sub_stream->last_value) {
-        broker_update_sub_req(subreq, respNode->sub_stream->last_value, 1);
+        broker_update_sub_req(subreq, respNode->sub_stream->last_value);
     }
 }
 
@@ -41,6 +43,8 @@ void broker_subscribe_remote(DownstreamNode *respNode, SubRequester *subreq,
         bss = broker_stream_sub_init();
         bss->respSid =  broker_node_incr_sid(respNode);
         bss->remote_path = dslink_strdup(respPath);
+        bss->last_value = NULL;
+        bss->last_pending_responder_msg_id = NULL;
         bss->respNode = (BrokerNode*)respNode;
         // a invalid qos value, so the newQos != qos,
         // which will send a new subscribe method to responder
@@ -54,7 +58,7 @@ void broker_subscribe_remote(DownstreamNode *respNode, SubRequester *subreq,
 
     broker_update_stream_qos(bss);
     if (bss->last_value) {
-        broker_update_sub_req(subreq, bss->last_value, 1);
+        broker_update_sub_req(subreq, bss->last_value);
     }
 }
 
@@ -195,14 +199,16 @@ void handle_subscribe(RemoteDSLink *link, json_t *sub) {
         if (json_array_size(reqsub->qosQueue) > 0) {
             // send qos data
             broker_update_sub_req_qos(reqsub);
+        } else if (reqsub->qos == 2) {
+            sendQueuedMessages( reqsub);
         } else if (reqsub->stream && reqsub->stream->last_value) {
-            broker_update_sub_req(reqsub, reqsub->stream->last_value ,1);
+            broker_update_sub_req(reqsub, reqsub->stream->last_value);
         }
         return;
     }
 
     SubRequester *subreq = broker_create_sub_requester(reqLink, path, sid, qos, NULL);
-    if (qos & 2) {
+    if (qos > 2) {
         serialize_qos_queue(subreq, 0);
     }
     broker_add_new_subscription(link->broker, subreq);
