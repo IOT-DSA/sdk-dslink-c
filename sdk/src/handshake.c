@@ -361,6 +361,10 @@ char *dslink_handshake_generate_req(DSLink *link, char **dsId) {
         json_object_set_new(obj, "isRequester", json_boolean(link->is_requester));
         json_object_set_new(obj, "isResponder", json_boolean(link->is_responder));
         json_object_set_new(obj, "version", json_string_nocheck("1.1.2"));
+        json_object_set_new(obj, "formats", json_array());
+        json_array_append(json_object_get(obj,"formats"), json_string_nocheck("json"));
+        json_array_append(json_object_get(obj,"formats"), json_string_nocheck("msgpack"));
+
         if (link->link_data) {
             json_object_set(obj, "linkData", link->link_data);
         }

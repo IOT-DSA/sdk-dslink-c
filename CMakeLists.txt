@@ -90,6 +90,7 @@ include("${CMAKE_CURRENT_LIST_DIR}/deps/CMakeLists.txt")
 include("${CMAKE_CURRENT_LIST_DIR}/deps/CMakeLists_jansson.txt")
 include("${CMAKE_CURRENT_LIST_DIR}/deps/CMakeLists_wslay.txt")
 include("${CMAKE_CURRENT_LIST_DIR}/deps/CMakeLists_argtable3.txt")
+include("${CMAKE_CURRENT_LIST_DIR}/deps/msgpack-c/CMakeLists.txt")
 
 include(ExternalProject)
 
@@ -127,6 +128,7 @@ endif()
 include_directories("${CMAKE_CURRENT_BINARY_DIR}/include")
 include_directories("${JANSSON_DIR}/include")
 include_directories("${CMAKE_CURRENT_LIST_DIR}/sdk/include")
+include_directories("${CMAKE_CURRENT_LIST_DIR}/deps/msgpack-c/include")
 
 set(DSLINK_SRC_DIR "${CMAKE_CURRENT_LIST_DIR}/sdk/src")
 set(DSLINK_SRC
@@ -224,14 +226,14 @@ endif()
 
 if (DSLINK_BUILD_STATIC OR DSLINK_BUILD_EXAMPLES)
     add_library(sdk_dslink_c-static STATIC ${LIBRARY_SRC})
-    target_link_libraries(sdk_dslink_c-static jansson libuv ${DSLINK_PLATFORM_LIBS})
+    target_link_libraries(sdk_dslink_c-static msgpackc jansson libuv ${DSLINK_PLATFORM_LIBS})
     set(DSLINK_INSTALL_TARGETS sdk_dslink_c sdk_dslink_c-static)
 else()
     set(DSLINK_INSTALL_TARGETS sdk_dslink_c)
 endif()
 
 add_library(sdk_dslink_c SHARED ${LIBRARY_SRC})
-target_link_libraries(sdk_dslink_c jansson libuv ${DSLINK_PLATFORM_LIBS})
+target_link_libraries(sdk_dslink_c msgpackc jansson libuv ${DSLINK_PLATFORM_LIBS})
 set_target_properties(sdk_dslink_c PROPERTIES VERSION ${VERSION} SOVERSION ${VERSION} )
 
 set(DSLINK_INSTALL_LIB_DIR lib CACHE PATH "Installation directory for libraries")
@@ -255,6 +257,7 @@ if (DSLINK_PACKAGE_INCLUDES)
     install(DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/deps/mbedtls/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev FILES_MATCHING PATTERN "*.h")
     install(DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/deps/wslay/lib/includes/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev FILES_MATCHING PATTERN "*.h")
     install(DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/deps/wslay/lib/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev FILES_MATCHING PATTERN "*.h")
+    install(DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/deps/msgpack-c/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev FILES_MATCHING PATTERN "*.h")
     install(DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/deps/jansson/src/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev FILES_MATCHING PATTERN "*.h")
 endif()
 

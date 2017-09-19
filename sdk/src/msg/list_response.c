@@ -1,4 +1,5 @@
 #include <string.h>
+#include <wslay/wslay.h>
 #include "dslink/mem/mem.h"
 #include "dslink/utils.h"
 #include "dslink/msg/list_response.h"

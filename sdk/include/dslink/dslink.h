@@ -52,6 +52,8 @@ struct DSLink {
 
     json_t *link_data;
     json_t *dslink_json;
+
+    int is_msgpack;
 };
 
 struct Responder {
