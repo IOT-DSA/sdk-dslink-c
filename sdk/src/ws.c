@@ -5,6 +5,7 @@
 #include <wslay_event.h>
 #include <dslink/socket_private.h>
 #include <dslink/base64_url.h>
+#include <msgpack/object.h>
 
 #include "dslink/msg/request_handler.h"
 #include "dslink/msg/response_handler.h"
@@ -110,27 +111,53 @@ int dslink_ws_send_obj(wslay_event_context_ptr ctx, json_t *obj) {
     json_t *jsonMsg = json_integer(msg);
     json_object_set(obj, "msg", jsonMsg);
 
-    char *data = json_dumps(obj, JSON_PRESERVE_ORDER);
+    log_debug("Message(as %s) is trying sent: %s\n",
+                  (link->is_msgpack==1)?"msgpack":"json",
+                  json_dumps(obj,JSON_INDENT(0)));
+
+    // DECODE OBJ
+    char* data = NULL;
+    int len;
+    int opcode;
+
+    if(link->is_msgpack)
+    {
+        msgpack_sbuffer* buff = dslink_ws_json_to_msgpack(obj);
+        data = malloc(buff->size);
+        len = buff->size;
+        memcpy(data, buff->data, len);
+        msgpack_sbuffer_free(buff);
+        opcode = WSLAY_BINARY_FRAME;
+    }
+    else
+    {
+        data = json_dumps(obj, JSON_PRESERVE_ORDER);
+        len = strlen(data);
+        opcode = WSLAY_TEXT_FRAME;
+    }
+
+    json_object_del(obj, "msg");
+    json_delete(jsonMsg);
+
     if (!data) {
         return DSLINK_ALLOC_ERR;
     }
 
-    dslink_ws_send(ctx, data);
+    dslink_ws_send(ctx, data, len, opcode);
     dslink_free(data);
-
-    json_object_del(obj, "msg");
-    json_delete(jsonMsg);
 
     return 0;
 }
 
 static
-int dslink_ws_send_internal(wslay_event_context_ptr ctx, const char *data, uint8_t resend) {
+int dslink_ws_send_internal(wslay_event_context_ptr ctx,
+                            const char *data, const int len, int opcode,
+                            uint8_t resend) {
     (void) resend;
     struct wslay_event_msg msg;
     msg.msg = (const uint8_t *) data;
-    msg.msg_length = strlen(data);
-    msg.opcode = WSLAY_TEXT_FRAME;
+    msg.msg_length = len;
+    msg.opcode = opcode;
 
     DSLink *link = (DSLink*)ctx->user_data;
     if(!link) {
@@ -150,12 +177,12 @@ int dslink_ws_send_internal(wslay_event_context_ptr ctx, const char *data, uint8
     uv_poll_start(link->poll, UV_READABLE | UV_WRITABLE, io_handler);
 #endif
 
-    log_debug("Message queued to be sent: %s\n", data);
+    log_debug("Message(%s) queued to be sent: %s\n", (opcode==WSLAY_TEXT_FRAME)?"text":"binary", data);
     return 0;
 }
 
-int dslink_ws_send(struct wslay_event_context* ctx, const char* data) {
-    return dslink_ws_send_internal(ctx, data, 0);
+int dslink_ws_send(struct wslay_event_context* ctx, const char* data, const int len, const int opcode) {
+    return dslink_ws_send_internal(ctx, data, len, opcode, 0);
 }
 
 int dslink_handshake_connect_ws(Url *url,
@@ -289,21 +316,40 @@ void recv_frame_cb(wslay_event_context_ptr ctx,
                    void *user_data) {
 
     (void) ctx;
-    if (arg->opcode != WSLAY_TEXT_FRAME) {
+    DSLink *link = user_data;
+
+    json_t *obj = NULL;
+    int is_recv_data_msg_pack = 0;
+
+    if (arg->opcode == WSLAY_TEXT_FRAME) {
+        json_error_t err;
+        obj = json_loadb((char *) arg->msg, arg->msg_length,
+                         JSON_PRESERVE_ORDER, &err);
+    }
+    else if(arg->opcode == WSLAY_BINARY_FRAME){
+        msgpack_unpacked msg;
+        msgpack_unpacked_init(&msg);
+        msgpack_unpack_next(&msg, (char *) arg->msg, arg->msg_length, NULL);
+
+        /* prints the deserialized object. */
+        msgpack_object obj_msgpack = msg.data;
+
+        obj = dslink_ws_msgpack_to_json(&obj_msgpack);
+        is_recv_data_msg_pack = 1;
+    }
+    else {
         return;
     }
 
-    DSLink *link = user_data;
-    json_error_t err;
-    json_t *obj = json_loadb((char *) arg->msg, arg->msg_length,
-                             JSON_PRESERVE_ORDER, &err);
+
     if (!obj) {
         log_err("Failed to parse JSON payload: %.*s\n",
                 (int) arg->msg_length, arg->msg);
         goto exit;
     } else {
-        log_debug("Message received: %.*s\n",
-                  (int) arg->msg_length, arg->msg);
+        log_debug("Message(as %s) received: %s\n",
+                  (is_recv_data_msg_pack==1)?"msgpack":"json",
+                  json_dumps(obj, JSON_INDENT(0)));
     }
 
     json_t *reqs = json_object_get(obj, "requests");
@@ -451,4 +497,179 @@ void dslink_handshake_handle_ws(DSLink *link, link_callback on_requester_ready_c
 
     wslay_event_context_free(ptr);
     link->_ws = NULL;
+}
+
+int sync_json_to_msg_pack(json_t *json_obj, msgpack_packer* pk)
+{
+    char* buf;
+    size_t buf_len = 0;
+
+    switch(json_obj->type)
+    {
+        case JSON_OBJECT:
+            msgpack_pack_map(pk, json_object_size(json_obj));
+
+            const char *key;
+            json_t *value;
+
+            void *iter = json_object_iter(json_obj);
+            while(iter)
+            {
+                key = json_object_iter_key(iter);
+                value = json_object_iter_value(iter);
+
+                msgpack_pack_str(pk, strlen(key));
+                msgpack_pack_str_body(pk, key, strlen(key));
+
+                if(sync_json_to_msg_pack(value, pk) != 1)
+                    return 0;
+
+                iter = json_object_iter_next(json_obj, iter);
+            }
+
+            break;
+        case JSON_ARRAY:
+            msgpack_pack_array(pk, json_array_size(json_obj));
+            for(size_t i = 0; i < json_array_size(json_obj); i++)
+            {
+                if(sync_json_to_msg_pack(json_array_get(json_obj, i), pk) != 1)
+                    return 0;
+            }
+            break;
+        case JSON_BINARY:
+            buf_len = json_binary_length_raw(json_obj);
+            buf = (char*) malloc(buf_len);
+
+            buf_len = json_binary_value(json_obj, buf);
+
+            msgpack_pack_bin(pk, buf_len);
+            msgpack_pack_bin_body(pk, buf, buf_len);
+
+            free(buf);
+            break;
+        case JSON_STRING:
+            msgpack_pack_str(pk, json_string_length(json_obj));
+            msgpack_pack_str_body(pk, json_string_value(json_obj), json_string_length(json_obj));
+            break;
+        case JSON_INTEGER:
+            msgpack_pack_int(pk, json_integer_value(json_obj));
+            break;
+        case JSON_REAL:
+            msgpack_pack_double(pk, json_real_value(json_obj));
+            break;
+        case JSON_TRUE:
+            msgpack_pack_true(pk);
+            break;
+        case JSON_FALSE:
+            msgpack_pack_false(pk);
+            break;
+        case JSON_NULL :
+            msgpack_pack_nil(pk);
+            break;
+    }
+
+    return 1;
+}
+
+msgpack_sbuffer* dslink_ws_json_to_msgpack(json_t *json_obj)
+{
+    msgpack_sbuffer* buffer = msgpack_sbuffer_new();
+    msgpack_packer* pk = msgpack_packer_new(buffer, msgpack_sbuffer_write);
+
+    if( sync_json_to_msg_pack(json_obj, pk) != 1)
+        goto ERROR;
+
+    EXIT:
+    msgpack_packer_free(pk);
+    return buffer;
+
+    ERROR:
+    log_fatal("Cannot convert to msg_pack\n")
+    msgpack_sbuffer_free(buffer);
+    buffer = NULL;
+    goto EXIT;
+}
+
+
+
+json_t* dslink_ws_msgpack_to_json(msgpack_object* msg_obj)
+{
+    json_t* json_obj = NULL;
+    json_t* temp = NULL;
+
+    char* text;
+
+    switch(msg_obj->type)
+    {
+        case MSGPACK_OBJECT_NIL:
+            json_obj = json_null();
+            break;
+        case MSGPACK_OBJECT_BOOLEAN:
+            json_obj = json_boolean(msg_obj->via.boolean);
+            break;
+        case MSGPACK_OBJECT_POSITIVE_INTEGER:
+            json_obj = json_integer(msg_obj->via.u64);
+            break;
+        case MSGPACK_OBJECT_NEGATIVE_INTEGER:
+            json_obj = json_integer(msg_obj->via.i64);
+            break;
+        case MSGPACK_OBJECT_FLOAT32:
+            json_obj = json_real(msg_obj->via.f64);
+            break;
+        case MSGPACK_OBJECT_FLOAT:
+            json_obj = json_real(msg_obj->via.f64);
+            break;
+        case MSGPACK_OBJECT_STR:
+            json_obj = json_stringn_nocheck(msg_obj->via.str.ptr, msg_obj->via.str.size);
+            break;
+        case MSGPACK_OBJECT_ARRAY:
+            json_obj = json_array();
+            for(uint32_t i = 0; i < msg_obj->via.array.size; i++)
+            {
+                temp = dslink_ws_msgpack_to_json(&msg_obj->via.array.ptr[i]);
+                if(temp == NULL)
+                    goto ERROR;
+
+                json_array_append(json_obj, temp);
+            }
+            break;
+        case MSGPACK_OBJECT_MAP:
+            json_obj = json_object();
+
+            for(uint32_t i = 0; i < msg_obj->via.map.size; i++)
+            {
+                msgpack_object_kv* kv = &msg_obj->via.map.ptr[i];
+                if(kv->key.type != MSGPACK_OBJECT_STR)
+                    goto ERROR;
+
+                temp = dslink_ws_msgpack_to_json(&kv->val);
+                if(temp == NULL)
+                    goto ERROR;
+
+                text = malloc(kv->key.via.str.size + 1);
+                memcpy(text, kv->key.via.str.ptr, kv->key.via.str.size);
+                text[kv->key.via.str.size] = '\0';
+                json_object_set_nocheck(json_obj, text, temp);
+                free(text);
+            }
+
+            break;
+        case MSGPACK_OBJECT_BIN:
+            json_obj = json_binaryn_nocheck(msg_obj->via.bin.ptr, msg_obj->via.bin.size);
+            break;
+        case MSGPACK_OBJECT_EXT:
+            log_fatal("Cannot convert json BECAUSE EXT NOT IMPLEMENTED\n");
+            goto ERROR;
+            break;
+    }
+
+    EXIT:
+    return json_obj;
+
+    ERROR:
+    if(json_obj != NULL)
+        json_decref(json_obj);
+
+    json_obj = NULL;
+    goto EXIT;
 }

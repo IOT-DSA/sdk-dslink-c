@@ -445,6 +445,11 @@ int dslink_init_do(DSLink *link, DSLinkCallbacks *cbs) {
     const char *tKey = json_string_value(json_object_get(handshake, "tempKey"));
     const char *salt = json_string_value(json_object_get(handshake, "salt"));
 
+    const char *format = json_string_value(json_object_get(handshake, "format"));
+    link->is_msgpack = 0;
+    if(format != NULL && strcmp(format, "msgpack") == 0)
+        link->is_msgpack = 1;
+
     if (!(uri && ((tKey && salt) || link->config.token))) {
         log_fatal("Handshake didn't return the "
                       "necessary parameters to complete\n");

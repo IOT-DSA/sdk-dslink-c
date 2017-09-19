@@ -67,7 +67,7 @@ IF(CMAKE_BUILD_TYPE STREQUAL "Release")
     ADD_C_FLAGS("-pie -fPIE -D_FORTIFY_SOURCE=2")
 ENDIF()
 
-foreach(dep "wslay" "argtable3" "jansson" "libuv")
+foreach(dep "wslay" "argtable3" "msgpack-c" "jansson" "libuv")
     include("${CMAKE_CURRENT_LIST_DIR}/deps/${dep}/CMakeLists.txt")
 endforeach()
 
@@ -137,6 +137,7 @@ include_directories("${CMAKE_CURRENT_BINARY_DIR}/include")
 include_directories("${JANSSON_DIR}/include")
 include_directories("${CMAKE_CURRENT_LIST_DIR}/sdk/include")
 include_directories("${OPENSSL_INCLUDE_DIR}")
+include_directories("${CMAKE_CURRENT_LIST_DIR}/deps/msgpack-c/include")
 
 set(DSLINK_SRC_DIR "${CMAKE_CURRENT_LIST_DIR}/sdk/src")
 set(DSLINK_SRC
@@ -231,13 +232,15 @@ set(CMAKE_MACOSX_RPATH 1)
 add_library(sdk_dslink_c-object OBJECT ${LIBRARY_SRC})
 
 add_library(sdk_dslink_c-static STATIC $<TARGET_OBJECTS:sdk_dslink_c-object>)
-target_link_libraries(sdk_dslink_c-static jansson libuv)
+target_link_libraries(sdk_dslink_c-static msgpackc jansson libuv)
+
 target_link_libraries(sdk_dslink_c-static ${OPENSSL_SSL_LIBRARY})
 target_link_libraries(sdk_dslink_c-static ${OPENSSL_CRYPTO_LIBRARY})
 add_dependencies(sdk_dslink_c-static openssl_lib)
 
 add_library(sdk_dslink_c SHARED $<TARGET_OBJECTS:sdk_dslink_c-object>)
-target_link_libraries(sdk_dslink_c jansson libuv)
+target_link_libraries(sdk_dslink_c msgpackc jansson libuv)
+
 
 set(DSLINK_INSTALL_LIB_DIR lib CACHE PATH "Installation directory for libraries")
 set(DSLINK_INSTALL_BIN_DIR bin CACHE PATH "Installation directory for executables")
@@ -255,6 +258,7 @@ install(TARGETS sdk_dslink_c
 
 install(DIRECTORY "sdk/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev)
 install(DIRECTORY "deps/wslay/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev)
+install(DIRECTORY "deps/msgpack-c/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev)
 install(DIRECTORY "deps/jansson/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev)
 install(DIRECTORY "${OPENSSL_INCLUDE_DIR}" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev)
 
@@ -279,7 +283,7 @@ if (DSLINK_BUILD_BROKER)
     add_executable(broker "${BROKER_SRC_DIR}/main.c")
     target_link_libraries(broker sdk_broker_c-static)
     target_link_libraries(broker sdk_dslink_c-static)
-    target_link_libraries(broker jansson libuv)
+    target_link_libraries(broker msgpackc jansson libuv)
     target_link_libraries(broker ${OPENSSL_SSL_LIBRARY})
     target_link_libraries(broker ${OPENSSL_CRYPTO_LIBRARY})
 
