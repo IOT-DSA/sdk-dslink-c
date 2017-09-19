@@ -61,6 +61,8 @@ typedef struct RemoteDSLink {
     Map responder_streams;
 
     PermissionGroups permission_groups;
+
+    int is_msgpack;
 } RemoteDSLink;
 
 int broker_remote_dslink_init(RemoteDSLink *link);

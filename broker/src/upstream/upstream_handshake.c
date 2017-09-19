@@ -251,6 +251,15 @@ void connect_conn_callback(uv_poll_t *handle, int status, int events) {
             goto exit;
         }
 
+        const char *format = json_string_value(json_object_get(handshake, "format"));
+        upstreamPoll->clientDslink->is_msgpack = 0;
+        upstreamPoll->remoteDSLink->is_msgpack = 0;
+        if((format != NULL) && (strcmp(format, "msgpack") == 0)) {
+            printf("ALI_DEBUG: ******************msgpack received\n");
+            upstreamPoll->clientDslink->is_msgpack = 1;
+            upstreamPoll->remoteDSLink->is_msgpack = 1;
+        }
+
         if ((dslink_handshake_connect_ws(upstreamPoll->clientDslink->config.broker_url, &upstreamPoll->clientDslink->key, uri,
                                          tKey, salt, upstreamPoll->dsId, NULL, &upstreamPoll->sock)) != 0) {
             upstream_reconnect(upstreamPoll);

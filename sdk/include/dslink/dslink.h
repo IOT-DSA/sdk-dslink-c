@@ -69,7 +69,7 @@ struct DSLink {
     uv_sem_t ws_queue_sem;
     int closingSendThread;
 #endif
-
+    int is_msgpack;
 };
 
 struct Responder {

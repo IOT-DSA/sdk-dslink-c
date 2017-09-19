@@ -221,7 +221,7 @@ json_int_t json_integer_value(const json_t *integer);
 double json_real_value(const json_t *real);
 double json_number_value(const json_t *json);
 /* base64 decode and return */
-size_t json_binary_value(const json_t *string, char* dec_bin);
+size_t json_binary_value(const json_t *binary, char* dec_bin);
 const char *json_binary_value_raw(const json_t *binary);
 size_t json_binary_length_raw(const json_t *binary);
 int json_check_binary_prefix(const char *value);

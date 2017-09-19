@@ -212,6 +212,25 @@ json_t *broker_handshake_handle_conn(Broker *broker,
         }
         json_object_set_new_nocheck(resp, "path", json_string_nocheck(buf));
 
+        // FORMATS
+        link->is_msgpack = 0;
+        json_t* formats_from_link = json_object_get(handshake, "formats");
+
+        if(formats_from_link != NULL)
+        {
+            int arr_size = json_array_size(formats_from_link);
+
+            for(int i = 0; i < arr_size; i++)
+            {
+                int ret = strcmp("msgpack", json_string_value(json_array_get(formats_from_link, i)));
+                if(ret == 0)
+                    link->is_msgpack = 1;
+            }
+        }
+
+        json_object_set_new_nocheck(resp, "format", json_string_nocheck(
+                link->is_msgpack == 1?"msgpack":"json"));
+
         link->path = dslink_strdup(buf);
         if (!link->path) {
             goto fail;
