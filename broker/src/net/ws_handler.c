@@ -123,13 +123,6 @@ void broker_on_ws_data(wslay_event_context_ptr ctx,
     int is_recv_data_msg_pack = 0;
 
     if (arg->opcode == WSLAY_TEXT_FRAME) {
-        if (arg->msg_length == 2
-            && arg->msg[0] == '{'
-            && arg->msg[1] == '}') {
-            broker_ws_send(link, "{}", strlen("{}"), WSLAY_TEXT_FRAME);
-            return;
-        }
-
         json_error_t err;
         data = json_loadb((char *) arg->msg,
                           arg->msg_length, 0, &err);
@@ -146,6 +139,16 @@ void broker_on_ws_data(wslay_event_context_ptr ctx,
         data = dslink_ws_msgpack_to_json(&obj);
         is_recv_data_msg_pack = 1;
     }
+
+    // Check whether it is ping or not
+    if(data != NULL && json_object_iter(data) == NULL)
+    {
+        log_debug("Ping received (as %s), responding back...\n", is_recv_data_msg_pack?"msgpack":"json");
+        broker_ws_send_ping(link);
+        return;
+    }
+
+
 
     if (throughput_input_needed()) {
         int receiveMessages = 0;

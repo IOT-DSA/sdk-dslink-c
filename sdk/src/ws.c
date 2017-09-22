@@ -159,6 +159,47 @@ int dslink_ws_send_obj(wslay_event_context_ptr ctx, json_t *obj) {
     return 0;
 }
 
+int dslink_ws_send_ping(wslay_event_context_ptr ctx) {
+    DSLink *link = ctx->user_data;
+
+    json_t *obj = json_object();
+
+    log_debug("Message (ping) (as %s) is trying sent\n",
+              (link->is_msgpack==1)?"msgpack":"json");
+
+    // DECODE OBJ
+    char* data = NULL;
+    int len;
+    int opcode;
+
+    if(link->is_msgpack)
+    {
+        msgpack_sbuffer* buff = dslink_ws_json_to_msgpack(obj);
+        data = malloc(buff->size);
+        len = buff->size;
+        memcpy(data, buff->data, len);
+        msgpack_sbuffer_free(buff);
+        opcode = WSLAY_BINARY_FRAME;
+    }
+    else
+    {
+        data = json_dumps(obj, JSON_PRESERVE_ORDER);
+        len = strlen(data);
+        opcode = WSLAY_TEXT_FRAME;
+    }
+
+    json_delete(obj);
+
+    if (!data) {
+        return DSLINK_ALLOC_ERR;
+    }
+
+    dslink_ws_send(ctx, data, len, opcode);
+    dslink_free(data);
+
+    return 0;
+}
+
 static
 int dslink_ws_send_internal(wslay_event_context_ptr ctx,
                             const char *data, const int len, int opcode,
@@ -200,6 +241,7 @@ int dslink_handshake_connect_ws(Url *url,
                                 const char *salt,
                                 const char *dsId,
                                 const char *token,
+                                const char *format,
                                 Socket **sock) {
     *sock = NULL;
     int ret = 0;
@@ -216,12 +258,12 @@ int dslink_handshake_connect_ws(Url *url,
         char builtUri[256];
         char * encodedDsId = dslink_str_escape(dsId);
         if (tempKey && salt) {
-            snprintf(builtUri, sizeof(builtUri) - 1, "%s?auth=%s&dsId=%s",
-                     uri, auth, encodedDsId);
+            snprintf(builtUri, sizeof(builtUri) - 1, "%s?auth=%s&dsId=%s&format=%s",
+                     uri, auth, encodedDsId, format);
         } else {
             // trusted dslink
-            snprintf(builtUri, sizeof(builtUri) - 1, "%s?dsId=%s&token=%s",
-                     uri, encodedDsId, token);
+            snprintf(builtUri, sizeof(builtUri) - 1, "%s?dsId=%s&token=%s&format=%s",
+                     uri, encodedDsId, token, format);
         }
         dslink_free(encodedDsId);
 
@@ -411,9 +453,7 @@ void ping_handler(uv_timer_t *timer) {
     log_debug("Pinging...\n");
 
     DSLink *link = timer->data;
-    json_t *obj = json_object();
-    dslink_ws_send_obj(link->_ws, obj);
-    json_delete(obj);
+    dslink_ws_send_ping(link->_ws);
 
     struct timeval current_time;
     gettimeofday(&current_time, NULL);
