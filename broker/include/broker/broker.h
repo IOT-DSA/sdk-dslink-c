@@ -32,7 +32,7 @@ typedef struct Broker {
     Map client_connecting;
 
     // Map<char *name, RemoteDSLink *>
-    Map client_connected;
+    Map remote_connected;
 
     // Map<char *dslinkPath, List<SubRequester *> *>
     Map remote_pending_sub;

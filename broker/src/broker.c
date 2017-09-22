@@ -267,7 +267,7 @@ void broker_handle_ping_thread(void *arg) {
     Broker *broker = (Broker*)arg;
     while(1) {
 
-        dslink_map_foreach(&broker->client_connected) {
+        dslink_map_foreach(&broker->remote_connected) {
             RemoteDSLink *connLink = (RemoteDSLink *) entry->value->data;
             if (!dslink_generic_ping_handler(connLink)) {
                 log_debug("Remote dslink problem while pinging!\n");
@@ -309,7 +309,7 @@ void broker_close_link(RemoteDSLink *link) {
 
     ref_t *link_ref;
     if(link->dsId) {
-        link_ref = dslink_map_remove_get(&link->broker->client_connected,
+        link_ref = dslink_map_remove_get(&link->broker->remote_connected,
                           link->dsId->data);
         if(link_ref) {
             RemoteDSLink *rm_link = link_ref->data;
@@ -352,7 +352,7 @@ void broker_free(Broker *broker) {
     dslink_map_free(&broker->client_connecting);
     dslink_map_free(&broker->remote_pending_sub);
     dslink_map_free(&broker->local_pending_sub);
-    dslink_map_free(&broker->client_connected);
+    dslink_map_free(&broker->remote_connected);
 
     memset(broker, 0, sizeof(Broker));
 }
@@ -419,7 +419,7 @@ int broker_init(Broker *broker, json_t *defaultPermission) {
         goto fail;
     }
 
-    if (dslink_map_init(&broker->client_connected, dslink_map_str_cmp,
+    if (dslink_map_init(&broker->remote_connected, dslink_map_str_cmp,
                         dslink_map_str_key_len_cal, dslink_map_hash_key) != 0) {
         goto fail;
     }
@@ -479,7 +479,7 @@ void broker_stop(Broker* broker) {
 
             ref_t *link_ref;
             if(link->dsId) {
-                link_ref = dslink_map_remove_get(&link->broker->client_connected,
+                link_ref = dslink_map_remove_get(&link->broker->remote_connected,
                                                  link->dsId->data);
                 if(link_ref) {
                     RemoteDSLink *rm_link = link_ref->data;
@@ -492,28 +492,32 @@ void broker_stop(Broker* broker) {
     }
 
     //For the links that does not have downstream node
-    dslink_map_foreach_nonext(&broker->client_connected) {
-        RemoteDSLink* link = (RemoteDSLink*)entry->value->data;
-
-        dslink_socket_close(link->client->sock);
-        uv_close((uv_handle_t *) link->client->poll,
-                 broker_free_handle);
-        dslink_free(link->client);
-        link->client = NULL;
+    dslink_map_foreach_nonext(&broker->remote_connected) {
 
         MapEntry *tmp = entry->next;
 
-        ref_t *link_ref;
-        if(link->dsId) {
-            link_ref = dslink_map_remove_get(&link->broker->client_connected,
-                                             link->dsId->data);
-            if(link_ref) {
-                RemoteDSLink *rm_link = link_ref->data;
-                log_debug("DSLink %s has been removed from connected list\n", rm_link->name);
+        RemoteDSLink* link = (RemoteDSLink*)entry->value->data;
+
+        //do not close upstream remote dslinks, they are close later on
+        if(!link->isUpstream) {
+            dslink_socket_close(link->client->sock);
+            uv_close((uv_handle_t *) link->client->poll,
+                     broker_free_handle);
+            dslink_free(link->client);
+            link->client = NULL;
+
+            ref_t *link_ref;
+            if (link->dsId) {
+                link_ref = dslink_map_remove_get(&link->broker->remote_connected,
+                                                 link->dsId->data);
+                if (link_ref) {
+                    RemoteDSLink *rm_link = link_ref->data;
+                    log_debug("DSLink %s has been removed from connected list\n", rm_link->name);
+                }
             }
+            broker_remote_dslink_free(link);
+            dslink_decref(link->dsId);
         }
-        broker_remote_dslink_free(link);
-        dslink_decref(link->dsId);
         entry = tmp;
     }
 

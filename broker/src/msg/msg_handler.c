@@ -97,7 +97,7 @@ void broker_handle_resp(RemoteDSLink *link, json_t *resp) {
         json_t *update;
 
         //Updates are not sent directly, first collected for each link then sent
-        dslink_map_foreach(&link->broker->client_connected) {
+        dslink_map_foreach(&link->broker->remote_connected) {
             RemoteDSLink* connLink = (RemoteDSLink*)entry->value->data;
             if(connLink->updates)
                 json_delete(connLink->updates);
@@ -141,7 +141,7 @@ void broker_handle_resp(RemoteDSLink *link, json_t *resp) {
         }
 
         //Updates are not sent directly, first collected for each link then sent
-        dslink_map_foreach(&link->broker->client_connected) {
+        dslink_map_foreach(&link->broker->remote_connected) {
             RemoteDSLink *connLink = (RemoteDSLink *) entry->value->data;
             if (connLink->updates) {
 

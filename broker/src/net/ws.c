@@ -124,7 +124,7 @@ int broker_ws_send(RemoteDSLink *link, const char *data, int droppable) {
         if(uv_sem_trywait(&link->broker->ws_queue_sem)) {
 
             size_t tot_pending = 0;
-            dslink_map_foreach(&link->broker->client_connected) {
+            dslink_map_foreach(&link->broker->remote_connected) {
                 RemoteDSLink* connLink = (RemoteDSLink*)entry->value->data;
                 tot_pending += connLink->ws->queued_msg_length;
             }

@@ -288,6 +288,18 @@ void connect_conn_callback(uv_poll_t *handle, int status, int events) {
             log_info("Successfully connected to the upstream broker '%s'\n", upstreamPoll->name);
         }
 
+        ref_t *tmp = dslink_ref(dslink_strdup(upstreamPoll->dsId), dslink_free);
+        if (!tmp) {
+            log_warn("Upstream poll name couldn't be duplicated\n");
+        } else {
+            // add to connected map with the dsid
+            if (dslink_map_set(&upstreamPoll->remoteDSLink->broker->remote_connected, tmp,
+                               dslink_ref(upstreamPoll->remoteDSLink, NULL)) != 0) {
+                log_warn("DSLink %s couldn't be added to list\n", upstreamPoll->name);
+                dslink_free(tmp);
+            }
+        }
+
         upstreamPoll->clientDslink->_socket = upstreamPoll->sock;
 
         upstream_handshake_handle_ws(upstreamPoll);
