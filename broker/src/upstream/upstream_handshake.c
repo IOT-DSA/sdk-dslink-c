@@ -252,16 +252,24 @@ void connect_conn_callback(uv_poll_t *handle, int status, int events) {
         }
 
         const char *format = json_string_value(json_object_get(handshake, "format"));
+
+        // TODO: only remoteDSLink also works, but idk about client, should check in refactor.
         upstreamPoll->clientDslink->is_msgpack = 0;
         upstreamPoll->remoteDSLink->is_msgpack = 0;
+
         if((format != NULL) && (strcmp(format, "msgpack") == 0)) {
-            printf("ALI_DEBUG: ******************msgpack received\n");
-            upstreamPoll->clientDslink->is_msgpack = 1;
+            upstreamPoll->clientDslink->is_msgpack = 0;
             upstreamPoll->remoteDSLink->is_msgpack = 1;
         }
 
+        const char* format_str = upstreamPoll->remoteDSLink->is_msgpack?"msgpack":"json";
+
+        log_info("Format was decided as %s by server\n", format_str);
+
+
+
         if ((dslink_handshake_connect_ws(upstreamPoll->clientDslink->config.broker_url, &upstreamPoll->clientDslink->key, uri,
-                                         tKey, salt, upstreamPoll->dsId, NULL, &upstreamPoll->sock)) != 0) {
+                                         tKey, salt, upstreamPoll->dsId, NULL, format_str, &upstreamPoll->sock)) != 0) {
             upstream_reconnect(upstreamPoll);
             goto exit;
         } else {
