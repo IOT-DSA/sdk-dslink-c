@@ -276,10 +276,10 @@ int dslink_generic_ping_handler(RemoteDSLink *link) {
         gettimeofday(&current_time, NULL);
         long time_diff = current_time.tv_sec - link->lastWriteTime->tv_sec;
         if (time_diff >= 30) {
-            broker_ws_send_obj(link, json_object());
+            broker_ws_send_ping(link);
         }
     } else {
-        broker_ws_send_obj(link, json_object());
+        broker_ws_send_ping(link);
     }
 
     if (link->lastReceiveTime) {

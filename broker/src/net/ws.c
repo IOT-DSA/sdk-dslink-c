@@ -47,6 +47,7 @@ int broker_count_json_msg(json_t *json) {
     }
     return messages;
 }
+
 int broker_ws_send_obj(RemoteDSLink *link, json_t *obj) {
     ++link->msgId;
     json_object_set_new_nocheck(obj, "msg", json_integer(link->msgId));
@@ -95,6 +96,57 @@ int broker_ws_send_obj(RemoteDSLink *link, json_t *obj) {
         int sentMessages = broker_count_json_msg(obj);
         throughput_add_output(sentBytes, sentMessages);
     }
+    dslink_free(data);
+    return 0;
+}
+
+int broker_ws_send_ping(RemoteDSLink *link) {
+    json_t *obj = json_object();
+
+    // DECODE OBJ
+    char* data = NULL;
+    int len;
+    int opcode;
+
+    log_debug("Message (Ping)(as %s) is trying sent to %s\n",
+              (link->is_msgpack==1)?"msgpack":"json",
+              (char *) link->dsId->data);
+
+    if(link->is_msgpack) {
+        msgpack_sbuffer* buff = dslink_ws_json_to_msgpack(obj);
+        data = malloc(buff->size);
+        len = buff->size;
+        memcpy(data, buff->data, len);
+        msgpack_sbuffer_free(buff);
+        opcode = WSLAY_BINARY_FRAME;
+    }
+    else {
+        data = json_dumps(obj, JSON_PRESERVE_ORDER | JSON_COMPACT);
+        len = strlen(data);
+        opcode = WSLAY_TEXT_FRAME;
+    }
+
+    if (!data) {
+        return DSLINK_ALLOC_ERR;
+    }
+
+    int sentBytes = broker_ws_send(link, data, len, opcode);
+
+    if(sentBytes == -1)
+    {
+        log_err("Message (Ping)(as %s) is failed sent to %s\n",
+                (link->is_msgpack==1)?"msgpack":"json",
+                (char *) link->dsId->data);
+    }
+
+    if (throughput_output_needed()) {
+        int sentMessages = broker_count_json_msg(obj);
+        throughput_add_output(sentBytes, sentMessages);
+    }
+
+
+    json_delete(obj);
+
     dslink_free(data);
     return 0;
 }
