@@ -29,7 +29,7 @@ endmacro()
 
 ##### Git Version Info ####
 set(IOT_DSA_C_SDK_GIT_DIR "${CMAKE_CURRENT_LIST_DIR}/.git")
-if (EXISTS "${IOT_DSA_C_SDK_GIT_DIR}" AND IS_DIRECTORY "${IOT_DSA_C_SDK_GIT_DIR}" AND NOT "${IOT_DSA_C_SDK_GIT_COMMIT_HASH}")
+if (EXISTS "${IOT_DSA_C_SDK_GIT_DIR}" AND NOT "${IOT_DSA_C_SDK_GIT_COMMIT_HASH}")
     execute_process(
         COMMAND git log -1 --format=%H
         WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}"

@@ -31,7 +31,7 @@ int init_restart(BrokerNode *sysNode) {
     }
 
     if (json_object_set_new_nocheck(restartNode->meta, "$name",
-                            json_string_nocheck("Restart Broker")) != 0) {
+                            json_string_nocheck("Restart Server")) != 0) {
         return 1;
     }
 
