@@ -484,7 +484,12 @@ static int isipv6address(const char* host)
 int broker_init_extensions(Broker* broker, json_t* config) {
     list_init(&broker->extensions);
 
+#ifdef __linux__
     const char* extension_library_name = "libdsmanager.so";
+#elif __APPLE__ && __MACH__
+    const char* extension_library_name = "libdsmanager.dylib";
+#endif
+
     json_t* extension_library = json_object_get(config, "extension_library");
     if (extension_library && json_is_string(extension_library)) {
         extension_library_name = json_string_value(extension_library);
