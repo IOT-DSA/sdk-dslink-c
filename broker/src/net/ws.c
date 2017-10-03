@@ -49,7 +49,7 @@ int broker_count_json_msg(json_t *json) {
     return messages;
 }
 
-int broker_ws_send_obj_link_id(struct Broker* broker, const char *link_name, int upstream, json_t *obj)
+uint32_t broker_ws_send_obj_link_id(struct Broker* broker, const char *link_name, int upstream, json_t *obj)
 {
     ref_t *ref;
     if(upstream) {
@@ -69,9 +69,12 @@ int broker_ws_send_obj_link_id(struct Broker* broker, const char *link_name, int
     return -1;
 }
 
-int broker_ws_send_obj(RemoteDSLink *link, json_t *obj) {
-    ++link->msgId;
-    json_object_set_new_nocheck(obj, "msg", json_integer(link->msgId));
+uint32_t broker_ws_send_obj(RemoteDSLink *link, json_t *obj) {
+    uint32_t id = ++link->msgId;
+    if(link->msgId == 2147483647) {
+        link->msgId = 0;
+    }
+    json_object_set_new_nocheck(obj, "msg", json_integer(id));
     char *data = json_dumps(obj, JSON_PRESERVE_ORDER | JSON_COMPACT);
     json_object_del(obj, "msg");
 
@@ -84,7 +87,7 @@ int broker_ws_send_obj(RemoteDSLink *link, json_t *obj) {
         throughput_add_output(sentBytes, sentMessages);
     }
     dslink_free(data);
-    return 0;
+    return id;
 }
 
 int broker_ws_send(RemoteDSLink *link, const char *data) {
@@ -100,7 +103,7 @@ int broker_ws_send(RemoteDSLink *link, const char *data) {
     if(link->client->poll && !uv_is_closing((uv_handle_t*)link->client->poll)) {
         uv_poll_start(link->client->poll, UV_READABLE | UV_WRITABLE, link->client->poll_cb);
 
-        log_debug("Message sent to %s: %s\n", (char *) link->dsId->data, data);
+        log_info("Message sent to %s: %s\n", (char *) link->dsId->data, data);
 
         return (int)msg.msg_length;
     }

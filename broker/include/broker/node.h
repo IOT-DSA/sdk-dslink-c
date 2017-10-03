@@ -7,6 +7,8 @@ extern "C" {
 
 #include "broker/remote_dslink.h"
 
+#include <dslink/col/vector.h>
+
 struct RemoteDSLink;
 struct BrokerNode;
 struct UpstreamPoll;
@@ -19,7 +21,6 @@ typedef void (*on_invocation_cb)(struct RemoteDSLink *link,
                                  PermissionLevel maxPermission);
 
 typedef enum BrokerNodeType {
-
     REGULAR_NODE = 0,
     DOWNSTREAM_NODE
 } BrokerNodeType;
@@ -38,7 +39,6 @@ typedef struct BrokerNodeBase {
 } BrokerNodeBase;
 
 typedef struct BrokerNode {
-
     BROKER_NODE_FIELDS;
 
     struct BrokerListStream *list_stream;
@@ -61,7 +61,6 @@ typedef struct VirtualDownstreamNode {
 } VirtualDownstreamNode;
 
 typedef struct DownstreamNode {
-
     BROKER_NODE_FIELDS;
 
     struct RemoteDSLink *link;
@@ -70,7 +69,7 @@ typedef struct DownstreamNode {
 
     json_t *groups;
 
-    // Map<char *, Stream *>
+    // Map<char *, BrokerListStream *>
     Map list_streams;
 
     uint32_t rid;
@@ -95,6 +94,8 @@ typedef struct DownstreamNode {
 
     Dispatcher on_link_connected;
     Dispatcher on_link_disconnected;
+
+    Vector* pendingAcks;
 } DownstreamNode;
 
 BrokerNode *broker_node_get(BrokerNode *root,
@@ -104,7 +105,7 @@ BrokerNode *broker_node_createl(const char *name, size_t nameLen,
                                 const char *profile, size_t profileLen);
 
 // when newValue is 1, node won't add ref count on value
-void  broker_node_update_value(BrokerNode *node, json_t *value, uint8_t isNewValue);
+void broker_node_update_value(BrokerNode *node, json_t *value, uint8_t isNewValue);
 
 int broker_node_add(BrokerNode *parent, BrokerNode *child);
 

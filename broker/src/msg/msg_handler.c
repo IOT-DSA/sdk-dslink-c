@@ -30,10 +30,10 @@ int broker_msg_handle_close(RemoteDSLink *link, json_t *req) {
 }
 
 static
-void broker_handle_req(RemoteDSLink *link, json_t *req) {
+int broker_handle_req(RemoteDSLink *link, json_t *req) {
     json_t *jRid = json_object_get(req, "rid");
     if (!jRid) {
-        return;
+        return 1;
     }
 
     const char *method = json_string_value(json_object_get(req, "method"));
@@ -45,11 +45,11 @@ void broker_handle_req(RemoteDSLink *link, json_t *req) {
             json_t *params = json_object_get(req, "params");
             stream->continuous_invoke(link,  params);
         }
-        return;
+        return 1;
     }
 
     if (!method) {
-        return;
+        return 1;
     }
     if (strcmp(method, "list") == 0) {
         if (broker_msg_handle_list(link, req) != 0) {
@@ -82,13 +82,17 @@ void broker_handle_req(RemoteDSLink *link, json_t *req) {
     } else {
         log_err("Method unhandled: %s\n", method);
     }
+
+    return 1;
 }
 
 static
-void broker_handle_resp(RemoteDSLink *link, json_t *resp) {
+int broker_handle_resp(RemoteDSLink *link, json_t *resp, json_t *responder_msg_id) {
+    int result = 1;
+
     json_t *jRid = json_object_get(resp, "rid");
     if (!jRid) {
-        return;
+        return result;
     }
 
     uint32_t rid = (uint32_t) json_integer_value(jRid);
@@ -108,7 +112,7 @@ void broker_handle_resp(RemoteDSLink *link, json_t *resp) {
                 }
 
                 BrokerSubStream *s = ref->data;
-                broker_update_sub_stream(s, update);
+                result &= broker_update_sub_stream(s, update, responder_msg_id);
             } else if (json_is_object(update)) {
                 json_t *jSid = json_object_get(update, "sid");
                 if (!jSid) {
@@ -123,16 +127,16 @@ void broker_handle_resp(RemoteDSLink *link, json_t *resp) {
                 BrokerSubStream *s = ref->data;
                 json_t *value = json_object_get(update, "value");
                 json_t *ts = json_object_get(update, "ts");
-                broker_update_sub_stream_value(s, value, ts);
+                result &= broker_update_sub_stream_value(s, value, ts, responder_msg_id);
             }
 
         }
-        return;
+        return result;
     }
 
     ref_t *ref = dslink_map_get(&link->responder_streams, &rid);
     if (!ref) {
-        return;
+        return result;
     }
 
     BrokerStream *stream = ref->data;
@@ -158,6 +162,8 @@ void broker_handle_resp(RemoteDSLink *link, json_t *resp) {
             }
         }
     }
+
+    return result;
 }
 
 void broker_msg_handle(RemoteDSLink *link,
@@ -167,19 +173,22 @@ void broker_msg_handle(RemoteDSLink *link,
     }
     json_incref(data);
 
+    char* dump = json_dumps(data, JSON_PRESERVE_ORDER);
+    log_info("message received from %s: %s\n", link->name, dump);
+    dslink_free(dump);
+
     json_t *reqs = json_object_get(data, "requests");
     json_t *resps = json_object_get(data, "responses");
 
-    if (reqs || resps) {
-        json_t *msg = json_object_get(data, "msg");
-        if (json_is_integer(msg)) {
-            json_t *obj = json_object();
-            if (obj) {
-                json_object_set_nocheck(obj, "ack", msg);
-                broker_ws_send_obj(link, obj);
-                json_decref(obj);
-            }
-        }
+    int sendAckOk = 0;
+    json_t *msg = json_object_get(data, "msg");
+    if (json_is_integer(msg) && (reqs || resps)) {
+        sendAckOk = 1;
+    }
+
+    json_t *ack = json_object_get(data, "ack");
+    if(json_is_integer(ack)) {
+        check_subscription_ack(link, json_integer_value(ack));
     }
 
     if (link->isRequester && reqs) {
@@ -194,7 +203,16 @@ void broker_msg_handle(RemoteDSLink *link,
         json_t *resp;
         size_t index = 0;
         json_array_foreach(resps, index, resp) {
-            broker_handle_resp(link, resp);
+            broker_handle_resp(link, resp, msg);
+        }
+    }
+
+    if (sendAckOk) {
+        json_t *obj = json_object();
+        if (obj) {
+            json_object_set_nocheck(obj, "ack", msg);
+            broker_ws_send_obj(link, obj);
+            json_decref(obj);
         }
     }
 

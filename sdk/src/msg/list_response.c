@@ -176,17 +176,7 @@ int dslink_response_list(DSLink *link, json_t *req, DSNode *node) {
         }
     }
 
-    {
-        char *data = json_dumps(top, JSON_PRESERVE_ORDER);
-        if (!data) {
-            json_delete(top);
-            dslink_map_remove(link->responder->list_subs,
-                              (char *) node->path);
-            return 1;
-        }
-        dslink_ws_send(link->_ws, data);
-        dslink_free(data);
-    }
+    dslink_ws_send_obj(link->_ws, top);
 
     json_delete(top);
     return 0;

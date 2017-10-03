@@ -152,6 +152,10 @@ int init_set_log_level(BrokerNode *sysNode)
         return 1;
     }
 
+    if(json_object_set_new_nocheck(setLogLevelNode->meta, "$actionGroup", json_string_nocheck("Server Log")) != 0) {
+        return 1;
+    }
+
     if (json_object_set_new_nocheck(setLogLevelNode->meta, "$invokable",
                                     json_string_nocheck("write")) != 0) {
         return 1;

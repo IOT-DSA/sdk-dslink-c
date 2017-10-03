@@ -8,7 +8,8 @@
 include(ExternalProject)
 
 ExternalProject_Add(cmocka_bundle
-    URL https://git.cryptomilk.org/projects/cmocka.git/snapshot/cmocka-1.1.1.tar.gz
+    GIT_REPOSITORY https://git.cryptomilk.org/projects/cmocka.git
+    GIT_TAG cmocka-1.1.1
     CMAKE_ARGS -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
     -DCMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME}
     -DWITH_STATIC_LIB=ON

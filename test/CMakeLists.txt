@@ -2,7 +2,6 @@ include(cmocka.cmake)
 
 enable_testing()
 
-include_directories(include)
 include_directories(${CMOCKA_INCLUDE_DIR} include)
 
 find_program(MEMORYCHECK_COMMAND valgrind)
@@ -13,6 +12,7 @@ separate_arguments(memcheck_command)
 set(SDK_TEST_SET
     "col_map_test"
     "col_vec_test"
+    "col_ringbuf_test"
     "utils_test"
     "thread_safe_api_test"
 )

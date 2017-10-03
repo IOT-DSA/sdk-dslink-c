@@ -134,6 +134,14 @@ void disconnected(DSLink *link) {
     log_info("Disconnected!\n");
 }
 
+void on_rng_update(struct DSLink *link, uint32_t sid, json_t *val, json_t *ts)
+{
+    (void)link;
+    (void)sid;
+    (void)ts;
+    printf("Val => %f\n", json_real_value(val));
+}
+
 void requester_ready(DSLink *link) {
     configure_request(dslink_requester_list(link, "/downstream", on_list_update));
     configure_request(dslink_requester_subscribe(
@@ -142,6 +150,12 @@ void requester_ready(DSLink *link) {
         on_value_update,
         0
     ));
+    configure_request(dslink_requester_subscribe(
+                                                 link,
+                                                 "/downstream/Responder/rng",
+                                                 on_rng_update,
+                                                 2
+                                                 ));
     configure_request(dslink_requester_set(link, "/downstream/Weather/@test", json_integer(4)));
 
     start_stream_invoke(link);
