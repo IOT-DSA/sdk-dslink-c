@@ -1,4 +1,4 @@
-#if defined(__linux__)
+#if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__unix__)
 #include <stdint.h>
 #include <stdio.h>
 #endif
