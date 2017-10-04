@@ -11,7 +11,7 @@ extern "C" {
 #ifndef LOG_TAG
 #define LOG_TAG ""
 #error "LOG_TAG isn't properly defined. \
-Define it as: `#define LOG_TAG "tag"` before the include."
+Define it as: `\#define LOG_TAG "tag"` before the include."
 #endif
 
 // Global logging level

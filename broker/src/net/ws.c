@@ -103,7 +103,7 @@ int broker_ws_send(RemoteDSLink *link, const char *data) {
     if(link->client->poll && !uv_is_closing((uv_handle_t*)link->client->poll)) {
         uv_poll_start(link->client->poll, UV_READABLE | UV_WRITABLE, link->client->poll_cb);
 
-        log_info("Message sent to %s: %s\n", (char *) link->dsId->data, data);
+        log_debug("Message sent to %s: %s\n", (char *) link->dsId->data, data);
 
         return (int)msg.msg_length;
     }

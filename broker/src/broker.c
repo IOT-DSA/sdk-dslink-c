@@ -349,6 +349,21 @@ static int extension_on_child_added(Listener *listener, void *node)
 
 static
 int broker_init(Broker *broker, json_t *defaultPermission) {
+    if (dslink_map_init(&broker->client_connecting, dslink_map_str_cmp,
+                        dslink_map_str_key_len_cal, dslink_map_hash_key) != 0) {
+        goto fail;
+    }
+
+    if (dslink_map_init(&broker->remote_pending_sub, dslink_map_str_cmp,
+                        dslink_map_str_key_len_cal, dslink_map_hash_key) != 0) {
+        goto fail;
+    }
+
+    if (dslink_map_init(&broker->local_pending_sub, dslink_map_str_cmp,
+                        dslink_map_str_key_len_cal, dslink_map_hash_key) != 0) {
+        goto fail;
+    }
+
     broker->root = broker_node_create("", "node");
     if (!broker->root) {
         goto fail;
@@ -406,20 +421,6 @@ int broker_init(Broker *broker, json_t *defaultPermission) {
         goto fail;
     }
 
-    if (dslink_map_init(&broker->client_connecting, dslink_map_str_cmp,
-                        dslink_map_str_key_len_cal, dslink_map_hash_key) != 0) {
-        goto fail;
-    }
-
-    if (dslink_map_init(&broker->remote_pending_sub, dslink_map_str_cmp,
-                        dslink_map_str_key_len_cal, dslink_map_hash_key) != 0) {
-        goto fail;
-    }
-
-    if (dslink_map_init(&broker->local_pending_sub, dslink_map_str_cmp,
-                        dslink_map_str_key_len_cal, dslink_map_hash_key) != 0) {
-        goto fail;
-    }
 
     return 0;
 fail:

@@ -41,7 +41,7 @@ int cmp_int(const void* lhs, const void* rhs)
 int check_subscription_ack(RemoteDSLink *link, uint32_t ack)
 {
     PendingAck search_pack = { NULL, ack };
-    log_info("Receiving ack from %s: %d\n", link->name, ack);
+    log_debug("Receiving ack from %s: %d\n", link->name, ack);
 
     uint32_t last = vector_upper_bound(link->node->pendingAcks, &search_pack, cmp_pack);
 
@@ -262,14 +262,14 @@ static int sendMessage(SubRequester *subReq, json_t *varray, uint32_t* msgId)
 
     ++subReq->messageOutputQueueCount;
 
-     log_info("Send message with msgId %d\n", *msgId);
+     log_debug("Send message with msgId %d\n", *msgId);
 
     return addPendingAck(subReq, *msgId);
 }
 
 static void addToMessageQueue(SubRequester *subReq, json_t *varray, uint32_t msgId) {
 
-     log_info("Add message with msgId %d to MessageQueue\n", msgId);
+     log_debug("Add message with msgId %d to MessageQueue\n", msgId);
 
 
     if(!subReq->messageQueue) {
@@ -286,7 +286,7 @@ static void addToMessageQueue(SubRequester *subReq, json_t *varray, uint32_t msg
 static int removeFromMessageQueue(SubRequester *subReq, uint32_t msgId) {
    int result = 0;
 
-    log_info("Remove message with msgId %d from MessageQueue\n", msgId);
+    log_debug("Remove message with msgId %d from MessageQueue\n", msgId);
 
     if(subReq->messageQueue) {
         while(rb_count(subReq->messageQueue)) {
@@ -297,7 +297,7 @@ static int removeFromMessageQueue(SubRequester *subReq, uint32_t msgId) {
             }
 	    ++result;
             rb_pop(subReq->messageQueue);
-	    log_info("Removing message with msgId %d from MessageQueue\n", m->msg_id);
+	    log_debug("Removing message with msgId %d from MessageQueue\n", m->msg_id);
 
             --subReq->messageOutputQueueCount;
         }
@@ -314,9 +314,9 @@ int broker_update_sub_req(SubRequester *subReq, json_t *varray) {
         // We need to send the message first to get a message id
         if (subReq->reqNode->link && subReq->messageOutputQueueCount < SEND_MAX_QUEUE) {
             result = sendMessage(subReq, varray, &msgId);
-            log_info("Sending with msgid: %d\n", msgId);
+            log_debug("Sending with msgid: %d\n", msgId);
         } else {
-            log_info("Send queue full: %d\n", subReq->reqSid);
+            log_debug("Send queue full: %d\n", subReq->reqSid);
         }
         // Now add the message with or without its message id to the queue
         addToMessageQueue(subReq, varray, msgId);

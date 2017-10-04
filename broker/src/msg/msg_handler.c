@@ -173,9 +173,11 @@ void broker_msg_handle(RemoteDSLink *link,
     }
     json_incref(data);
 
+    /*
     char* dump = json_dumps(data, JSON_PRESERVE_ORDER);
-    log_info("message received from %s: %s\n", link->name, dump);
+    log_debug("message received from %s: %s\n", link->name, dump);
     dslink_free(dump);
+    */
 
     json_t *reqs = json_object_get(data, "requests");
     json_t *resps = json_object_get(data, "responses");

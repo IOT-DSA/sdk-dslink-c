@@ -6,6 +6,7 @@
 #include "broker/sys/token.h"
 #include "broker/sys/restart.h"
 #include "broker/sys/clear_conns.h"
+#include "broker/sys/inspect.h"
 #include "broker/utils.h"
 #include "broker/upstream/upstream_node.h"
 #include "broker/net/ws.h"
@@ -190,5 +191,7 @@ int broker_sys_node_populate(BrokerNode *sysNode) {
     init_set_log_level(sysNode);
     init_permissions_actions(sysNode);
     init_throughput(sysNode);
+    init_inspect(sysNode);
+
     return 0;
 }
