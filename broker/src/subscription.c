@@ -16,6 +16,17 @@ static int sendMessage(SubRequester *subReq, json_t *varray, uint32_t* msgId);
 static const uint32_t SEND_MAX_QUEUE = 8;
 
 
+int cmp_pack_subs(const void* lhs, const void* rhs)
+{
+    PendingAck* lpack = (PendingAck*)lhs;
+    PendingAck* rpack = (PendingAck*)rhs;
+    if(lpack->subscription == rpack->subscription) {
+        return 0;
+    }
+
+    return -1;
+}
+
 int cmp_pack(const void* lhs, const void* rhs)
 {
     PendingAck* lpack = (PendingAck*)lhs;
@@ -50,7 +61,7 @@ int check_subscription_ack(RemoteDSLink *link, uint32_t ack)
       SubRequester *subReq = pack.subscription;
       
       if ( removeFromMessageQueue(subReq, pack.msg_id) ) { 
-	sendQueuedMessages(subReq);
+          sendQueuedMessages(subReq);
       }      
     }
     vector_remove_range(link->node->pendingAcks, 0, last);
@@ -149,6 +160,15 @@ void broker_free_sub_requester(SubRequester *req) {
         json_decref(req->qosQueue);
     }
     if(req->messageQueue) {
+        while(1) {
+            PendingAck search_pack = { req, 0 };
+            long idx = vector_find(req->reqNode->pendingAcks, &search_pack, cmp_pack_subs);
+            if(idx == -1) {
+                break;
+            }
+            vector_remove(req->reqNode->pendingAcks, idx);
+        }
+
         rb_free(req->messageQueue);
         dslink_free(req->messageQueue);
         req->messageQueue = NULL;
