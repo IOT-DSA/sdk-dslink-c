@@ -152,7 +152,7 @@ void requester_ready(DSLink *link) {
     ));
     configure_request(dslink_requester_subscribe(
                                                  link,
-                                                 "/downstream/Responder/rng",
+                                                 "/downstream/Responder/sequence",
                                                  on_rng_update,
                                                  2
                                                  ));

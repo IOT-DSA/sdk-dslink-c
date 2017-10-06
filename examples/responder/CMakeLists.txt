@@ -7,4 +7,5 @@ set(EXAMPLE_SRC
     "${EXAMPLE_SRC_DIR}/rng.c"
     "${EXAMPLE_SRC_DIR}/invoke.c"
     "${EXAMPLE_SRC_DIR}/serialization.c"
+    "${EXAMPLE_SRC_DIR}/sequence.c"
 )
