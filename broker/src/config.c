@@ -64,6 +64,7 @@ json_t *broker_config_gen() {
     json_object_set_new_nocheck(broker_config, "log_level", json_string_nocheck("info"));
     json_object_set_new_nocheck(broker_config, "allowAllLinks", json_true());
     json_object_set_new_nocheck(broker_config, "maxQueue", json_integer(1024));
+    json_object_set_new_nocheck(broker_config, "maxSendQueue", json_integer(8));
     json_object_set_new_nocheck(broker_config, "defaultPermission", json_null());
 
     json_t *storage = json_object();
@@ -125,6 +126,7 @@ json_t *broker_config_get() {
 
 uint8_t broker_enable_token = 1;
 size_t broker_max_qos_queue_size = 1024;
+size_t broker_max_ws_send_queue_size = 8;
 char *broker_storage_path = ".";
 
 int broker_change_default_permissions(json_t* json) {
@@ -162,15 +164,34 @@ int broker_config_load(json_t* json) {
         broker_enable_token = 0;
     }
 
-    // load maxQueue
-    json_t* maxQueue = json_object_get(json, "maxQueue");
-    if (json_is_integer(maxQueue)) {
+    {
+      // load max send queue size
+      json_t* maxSendQueue = json_object_get(json, "maxSendQueue");
+      if (json_is_integer(maxSendQueue)) {
+        broker_max_ws_send_queue_size = (size_t)json_integer_value(maxSendQueue);
+        if (broker_max_ws_send_queue_size < 8) {
+	  broker_max_ws_send_queue_size = 8;
+        } else if (broker_max_ws_send_queue_size > 0xFFFFF) {
+	  broker_max_ws_send_queue_size = 0xFFFFF;
+        }
+      }
+    }
+
+    {
+      // load maxQueue
+      json_t* maxQueue = json_object_get(json, "maxQueue");
+      if (json_is_integer(maxQueue)) {
         broker_max_qos_queue_size = (size_t)json_integer_value(maxQueue);
         if (broker_max_qos_queue_size < 16) {
-            broker_max_qos_queue_size = 16;
+	  broker_max_qos_queue_size = 16;
         } else if (broker_max_qos_queue_size > 0xFFFFF) {
-            broker_max_qos_queue_size = 0xFFFFF;
+	  broker_max_qos_queue_size = 0xFFFFF;
         }
+        if (broker_max_qos_queue_size < broker_max_ws_send_queue_size) {
+	  broker_max_qos_queue_size = broker_max_ws_send_queue_size;
+        }
+
+      }
     }
 
     json_t *storage = json_object_get(json, "storage");

@@ -13,9 +13,6 @@
 static int removeFromMessageQueue(SubRequester *subReq, uint32_t msgId);
 static int sendMessage(SubRequester *subReq, json_t *varray, uint32_t* msgId);
 
-static const uint32_t SEND_MAX_QUEUE = 8;
-
-
 int cmp_pack_subs(const void* lhs, const void* rhs)
 {
     PendingAck* lpack = (PendingAck*)lhs;
@@ -248,7 +245,7 @@ int sendQueuedMessages(SubRequester *subReq) {
     int result = 1;
 
     if(rb_count(subReq->messageQueue)) {
-        while (subReq->messageOutputQueueCount < SEND_MAX_QUEUE) {
+        while (subReq->messageOutputQueueCount < broker_max_ws_send_queue_size) {
             QueuedMessage* m = rb_at(subReq->messageQueue, subReq->messageOutputQueueCount);
             if(!m) {
                 break;
@@ -332,7 +329,7 @@ int broker_update_sub_req(SubRequester *subReq, json_t *varray) {
 
     if ( subReq->qos <= 2 ) {
         // We need to send the message first to get a message id
-        if (subReq->reqNode->link && subReq->messageOutputQueueCount < SEND_MAX_QUEUE) {
+        if (subReq->reqNode->link && subReq->messageOutputQueueCount < broker_max_ws_send_queue_size) {
             result = sendMessage(subReq, varray, &msgId);
             log_debug("Sending with msgid: %d\n", msgId);
         } else {
