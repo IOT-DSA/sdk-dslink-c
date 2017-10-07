@@ -61,7 +61,7 @@ for (void* data = (vector)->data; n < (vector)->size; ++n, data = (char*)(vector
     /// @param vec The vector
     /// @param index The index to remove the value from
     /// @return 0 upon success, -1 otherwise
-    int vector_remove(Vector* vec, uint32_t index);
+    int vector_erase(Vector* vec, uint32_t index);
 
     /// Removes the values between the [lower, upper] range and reorganizes the vector to fill the gap, thus
     /// invalidating all previous indexes. If the [lower, upper] range is not in range, an error will be returned and the
@@ -70,7 +70,7 @@ for (void* data = (vector)->data; n < (vector)->size; ++n, data = (char*)(vector
     /// @param lower The lower bound to remove from
     /// @param upper The upper bound to remove from
     /// @return 0 upon success, -1 otherwise
-    int vector_remove_range(Vector* vec, uint32_t lower, uint32_t upper);
+    int vector_erase_range(Vector* vec, uint32_t lower, uint32_t upper);
 
     /// Searches the vector for the data using the given comparison function.
     /// @param vec The vector
@@ -98,22 +98,22 @@ for (void* data = (vector)->data; n < (vector)->size; ++n, data = (char*)(vector
     long vector_binary_search_range(const Vector* vec, void* data, vector_comparison_fn_type cmp_fn, 
 				 uint32_t lower, uint32_t upper);
 
-    /// Searches the vector for the data using the given comparison function and a binary search algorithm. The vector
-    /// has to be sorted in order to work.
+    /// Searches the vector for the first element, that is greater than the given value. The vector
+    /// has to be sorted by the cmp_fn in order to work.
     /// @param vec The vector
     /// @param data The data to find
     /// @param cmp_fn The compare function to use
-    /// @return The index (>= 0) of the value if found, -1 otherwise
+    /// @return The index (>= 0) of the first element greater than value. Size of the vector, if no greater element exists
     uint32_t vector_upper_bound(const Vector* vec, void* data, vector_comparison_fn_type cmp_fn);
 
-    /// Searches a range of vector for the data using the given comparison function and a binary search algorithm. 
-    /// The vector has to be sorted in order to work.
+    /// Searches a range of the vector for the first element, that is greater than the given value. The vector
+    /// has to be sorted by the cmp_fn in order to work.
     /// @param vec The vector
     /// @param data The data to find
     /// @param cmp_fn The compare function to use
     /// @param lower The lowest index of the range to search in
     /// @param upper The upper (excluded) index of the range to search in
-    /// @return The index in the range [lower,upper) of the value if found, -1 otherwise
+    /// @return The index (>= first) of the first element greater than value. upper, if no greater element exists
     uint32_t vector_upper_bound_range(const Vector* vec, void* data, vector_comparison_fn_type cmp_fn, 
 				      uint32_t lower, uint32_t upper);
 

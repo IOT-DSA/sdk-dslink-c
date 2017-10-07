@@ -5,6 +5,31 @@
 
 #include <string.h>
 
+static inline int vector_resize(Vector* vec)
+{
+    if(!vec) {
+        return -1;
+    }
+    if(vec->size >= vec->capacity) {
+        uint32_t cap = vec->capacity * 2;
+        if(!cap) {
+            cap = 64;
+        }
+        void* data = dslink_realloc(vec->data, cap*vec->element_size);
+        if(!data) {
+            return -1;
+        }
+        vec->data = data;
+        vec->capacity = cap;
+    }
+
+    return 0;
+}
+
+static inline void* element_ptr(Vector* vec, uint32_t index)
+{
+  return (char*)vec->data + (index*vec->element_size);
+}
 
 int vector_init(Vector* vec, uint32_t initial_size, size_t element_size)
 {
@@ -32,27 +57,6 @@ uint32_t vector_count(const Vector* vec)
     return vec->size;
 }
 
-static int vector_resize(Vector* vec)
-{
-    if(!vec) {
-        return -1;
-    }
-    if(vec->size >= vec->capacity) {
-        uint32_t cap = vec->capacity * 2;
-        if(!cap) {
-            cap = 64;
-        }
-        void* data = dslink_realloc(vec->data, cap*vec->element_size);
-        if(!data) {
-            return -1;
-        }
-        vec->data = data;
-        vec->capacity = cap;
-    }
-
-    return 0;
-}
-
 long vector_append(Vector* vec, void* data)
 {
     if(!vec) {
@@ -64,8 +68,7 @@ long vector_append(Vector* vec, void* data)
             return -1;
         }
     }
-    size_t offset = vec->size*vec->element_size;
-    memcpy((char*)vec->data + offset, data, vec->element_size);
+    memcpy( element_ptr( vec, vec->size), data, vec->element_size);
     ++vec->size;
 
     return vec->size-1;
@@ -76,7 +79,7 @@ int vector_set(Vector* vec, uint32_t index, void* data)
     if(!vec || index >= vec->size) {
         return -1;
     }
-    memcpy((char*)vec->data + (index*vec->element_size), data, vec->element_size);
+    memcpy( element_ptr( vec, index), data, vec->element_size);
 
     return 0;
 }
@@ -87,23 +90,23 @@ void* vector_get(const Vector* vec, uint32_t index)
         return NULL;
     }
 
-    return (char*)vec->data + (index*vec->element_size);
+    return element_ptr( vec, index);
 }
 
-int vector_remove(Vector* vec, uint32_t index)
+int vector_erase(Vector* vec, uint32_t index)
 {
     if(!vec || index >= vec->size-1) {
         return -1;
     }
     if(index != vec->size-1) {
-        memmove((char*)vec->data + (index*vec->element_size), (char*)vec->data + ((index+1)*vec->element_size), (vec->size-(index+1))*vec->element_size);
+      memmove( element_ptr( vec, index), element_ptr( vec, index+1), (vec->size-(index+1))*vec->element_size);
     }
     --(vec->size);
 
     return 0;
 }
 
-int vector_remove_range(Vector* vec, uint32_t lower, uint32_t upper)
+int vector_erase_range(Vector* vec, uint32_t lower, uint32_t upper)
 {
     if(!vec || lower > vec->size-1 || lower >= upper) {
         return -1;
@@ -121,7 +124,7 @@ int vector_remove_range(Vector* vec, uint32_t lower, uint32_t upper)
     }
 
     if(upper < vec->size-1) {
-        memmove((char*)vec->data + (lower*vec->element_size), (char*)vec->data + ((upper+1)*vec->element_size), (vec->size-(upper-lower))*vec->element_size);
+      memmove( element_ptr( vec, lower), element_ptr( vec, upper+1), (vec->size-(upper-lower))*vec->element_size);
     }
     vec->size -= (upper - lower)+1;
 
@@ -143,6 +146,7 @@ long vector_find(const Vector* vec, void* data, vector_comparison_fn_type cmp_fn
     return -1;
 }
 
+
 long vector_binary_search(const Vector* vec, void* data, vector_comparison_fn_type cmp_fn)
 {
     if(!vec || vec->size == 0) {
@@ -158,7 +162,7 @@ long vector_binary_search_range(const Vector* vec, void* data, vector_comparison
         return -1;
     }
 
-    int res = cmp_fn(data, (char*)vec->data + (lower*vec->element_size));
+    int res = cmp_fn( data, element_ptr( vec, lower));
     if ( res <= 0 ) {
       return res == 0 ? (long)lower : -1;
     }
@@ -169,7 +173,7 @@ long vector_binary_search_range(const Vector* vec, void* data, vector_comparison
       --r;
     }
     
-    res = cmp_fn(data, (char*)vec->data + (r*vec->element_size));
+    res = cmp_fn( data, element_ptr( vec, r));
     if ( res >= 0 ) {
       return res == 0 ? (long)r : -1;
     }
@@ -178,7 +182,7 @@ long vector_binary_search_range(const Vector* vec, void* data, vector_comparison
     uint32_t m = 0;
     while(l <= r) {
         m = (l + r) / 2;
-        int res = cmp_fn(data, (char*)vec->data + (m*vec->element_size));
+        int res = cmp_fn( data, element_ptr( vec, m));
         if(res == 0) {
             return m;
         } else if(res > 0) {
@@ -203,14 +207,14 @@ uint32_t vector_upper_bound(const Vector* vec, void* data, vector_comparison_fn_
 uint32_t vector_upper_bound_range(const Vector* vec, void* data, vector_comparison_fn_type cmp_fn, uint32_t first, uint32_t last)
 {
     if ( !vec || vec->size == 0 || !last) {
-        return 0;
+        return first;
     }
 
     if ( last > vec->size ) {
       last = vec->size;
     } 
     if (last <= first) {
-      return 0;
+      return last;
     }
 
     uint32_t count = last- first;
@@ -220,7 +224,7 @@ uint32_t vector_upper_bound_range(const Vector* vec, void* data, vector_comparis
       uint32_t step = count / 2;
       it += step;
       
-      int res = cmp_fn(data, (char*)vec->data + (it*vec->element_size));
+      int res = cmp_fn( data, element_ptr( vec, it));
       if(res >= 0) {
 	first = ++it;
 	count -= step + 1;

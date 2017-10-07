@@ -78,7 +78,7 @@ int check_subscription_ack(RemoteDSLink *link, uint32_t ack)
           sendQueuedMessages(subReq);
       }      
     }
-    vector_remove_range(link->node->pendingAcks, 0, last);
+    vector_erase_range(link->node->pendingAcks, 0, last);
     return 0;
 }
 
@@ -180,7 +180,7 @@ void broker_free_sub_requester(SubRequester *req) {
             if(idx == -1) {
                 break;
             }
-            vector_remove(req->reqNode->pendingAcks, idx);
+            vector_erase(req->reqNode->pendingAcks, idx);
         }
 	subReq->messageOutputQueueCount = 0;
 

@@ -111,7 +111,7 @@ void col_vec_set_get_test(void **state) {
 }
 
 static
-void col_vec_remove_test(void **state) {
+void col_vec_erase_test(void **state) {
     (void) state;
 
     Vector vec;
@@ -133,7 +133,7 @@ void col_vec_remove_test(void **state) {
     assert_int_equal(*(int*)vector_get(&vec, 2), 42);
     assert_int_equal(*(int*)vector_get(&vec, 3), 66);
 
-    vector_remove(&vec, 1);
+    vector_erase(&vec, 1);
     assert_int_equal(vec.capacity, 10);
     assert_int_equal(vec.size, 3);
 
@@ -384,7 +384,61 @@ void col_vec_upper_bound_test(void **state) {
 }
 
 static
-void col_vec_range_remove_test(void **state) {
+void col_vec_upper_bound_range_test(void **state) {
+    (void) state;
+
+    Vector vec;
+    vector_init(&vec, 512, sizeof(int));
+
+    int n = 2;
+    for(; n <= 1024; n += 2) {
+        vector_append(&vec, &n);
+    }
+    assert_int_equal(vector_count(&vec), 512);
+
+    n = 42;
+    int idx = vector_upper_bound_range(&vec, &n, cmp_int, 0, 512);
+    assert_int_equal(idx, 21);
+    assert_int_equal(*(int*)vector_get(&vec, idx), 44);
+
+    assert_int_equal( vector_upper_bound_range(&vec, &n, cmp_int, 0, idx+1), idx );
+    assert_int_equal( vector_upper_bound_range(&vec, &n, cmp_int, idx, 512), idx );
+    assert_int_equal( vector_upper_bound_range(&vec, &n, cmp_int, idx/2, 512), idx );
+    assert_int_equal( vector_upper_bound_range(&vec, &n, cmp_int, idx, idx+1), idx );
+    assert_int_equal( vector_upper_bound_range(&vec, &n, cmp_int, 0, 2*512), idx );
+
+    assert_int_equal( vector_upper_bound_range(&vec, &n, cmp_int, 0, idx), idx );
+    assert_int_equal( vector_upper_bound_range(&vec, &n, cmp_int, idx, idx), idx );
+    assert_int_equal( vector_upper_bound_range(&vec, &n, cmp_int, idx+1, 512), idx+1 );
+    
+    n = 41;
+    idx = vector_upper_bound_range( &vec, &n, cmp_int, 0, 512 );
+    assert_int_equal(idx, 20);
+    assert_int_equal(*(int*)vector_get(&vec, idx), 42);
+
+    assert_int_equal( vector_upper_bound_range(&vec, &n, cmp_int, 0, idx+1), idx );
+    assert_int_equal( vector_upper_bound_range(&vec, &n, cmp_int, idx, 512), idx );
+    assert_int_equal( vector_upper_bound_range(&vec, &n, cmp_int, idx/2, 512), idx );
+    assert_int_equal( vector_upper_bound_range(&vec, &n, cmp_int, idx, idx+1), idx );
+    assert_int_equal( vector_upper_bound_range(&vec, &n, cmp_int, 0, 2*512), idx );
+
+    assert_int_equal( vector_upper_bound_range(&vec, &n, cmp_int, 0, idx), idx );
+    assert_int_equal( vector_upper_bound_range(&vec, &n, cmp_int, idx, idx), idx );
+    assert_int_equal( vector_upper_bound_range(&vec, &n, cmp_int, idx+1, 512), idx+1 );
+
+    n = 0;
+    idx = vector_upper_bound_range( &vec, &n, cmp_int, 0, 512 );
+    assert_int_equal(idx, 0);
+
+    n = 1025;
+    idx = vector_upper_bound_range( &vec, &n, cmp_int, 0, 512 );
+    assert_int_equal(idx, 512);
+
+    vector_free(&vec);
+}
+
+static
+void col_vec_range_erase_test(void **state) {
     (void) state;
 
     {
@@ -396,7 +450,7 @@ void col_vec_range_remove_test(void **state) {
             vector_append(&vec, &n);
         }
 
-        vector_remove_range(&vec, 0, 1000);
+        vector_erase_range(&vec, 0, 1000);
 
         assert_int_equal(vector_count(&vec), 24);
 
@@ -414,7 +468,7 @@ void col_vec_range_remove_test(void **state) {
             vector_append(&vec, &n);
         }
 
-        vector_remove_range(&vec, 500, 901);
+        vector_erase_range(&vec, 500, 901);
 
         assert_int_equal(vector_count(&vec), 623);
         assert_int_equal(*(int*)vector_get(&vec, 0), 0);
@@ -431,7 +485,7 @@ void col_vec_range_remove_test(void **state) {
             vector_append(&vec, &n);
         }
 
-        vector_remove_range(&vec, 500, 2001);
+        vector_erase_range(&vec, 500, 2001);
 
         assert_int_equal(vector_count(&vec), 500);
         assert_int_equal(*(int*)vector_get(&vec, 0), 0);
@@ -448,7 +502,7 @@ void col_vec_range_remove_test(void **state) {
             vector_append(&vec, &n);
         }
 
-        assert_int_equal(vector_remove_range(&vec, 2000, 500), -1);
+        assert_int_equal(vector_erase_range(&vec, 2000, 500), -1);
 
         vector_free(&vec);
     }
@@ -461,7 +515,7 @@ int main() {
         cmocka_unit_test(col_vec_append_test),
         cmocka_unit_test(col_vec_resize_test),
         cmocka_unit_test(col_vec_set_get_test),
-        cmocka_unit_test(col_vec_remove_test),
+        cmocka_unit_test(col_vec_erase_test),
         cmocka_unit_test(col_vec_iterate_test),
         cmocka_unit_test(col_vec_find_test),
         cmocka_unit_test(col_vec_count_test),
@@ -469,7 +523,8 @@ int main() {
         cmocka_unit_test(col_vec_binary_search_test),
         cmocka_unit_test(col_vec_binary_search_range_test),
         cmocka_unit_test(col_vec_upper_bound_test),
-        cmocka_unit_test(col_vec_range_remove_test),
+        cmocka_unit_test(col_vec_upper_bound_range_test),
+        cmocka_unit_test(col_vec_range_erase_test),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
