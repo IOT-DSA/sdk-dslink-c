@@ -108,7 +108,7 @@ int handle_ws(Broker *broker, HttpRequest *req, Client *client) {
             //TODO: handle format
 //            const char *format = broker_http_param_get(&req->uri, "format");
 
-            if(broker_local_handle_ws(broker, client, accept, perm_group+1, session) != 0) {
+            if(broker_local_handle_ws(broker, client, accept, perm_group, session) != 0) {
                 printf("broker_local_handle_ws failed\n");
                 goto fail;
             }

@@ -64,7 +64,30 @@ json_t *broker_config_gen() {
     json_object_set_new_nocheck(broker_config, "log_level", json_string_nocheck("info"));
     json_object_set_new_nocheck(broker_config, "allowAllLinks", json_true());
     json_object_set_new_nocheck(broker_config, "maxQueue", json_integer(1024));
-    json_object_set_new_nocheck(broker_config, "defaultPermission", json_null());
+//    json_object_set_new_nocheck(broker_config, "defaultPermission", json_null());
+    json_t *defPerm = json_array();
+    json_object_set_new_nocheck(broker_config, "defaultPermission", defPerm);
+
+    json_t *configPerm = json_array();
+    json_array_append_new(defPerm, configPerm);
+    json_array_append_new(configPerm,json_string_nocheck(":config"));
+    json_array_append_new(configPerm,json_string_nocheck("config"));
+    json_t *writePerm = json_array();
+    json_array_append_new(defPerm, writePerm);
+    json_array_append_new(writePerm,json_string_nocheck(":write"));
+    json_array_append_new(writePerm,json_string_nocheck("write"));
+    json_t *readPerm = json_array();
+    json_array_append_new(defPerm, readPerm);
+    json_array_append_new(readPerm,json_string_nocheck(":read"));
+    json_array_append_new(readPerm,json_string_nocheck("read"));
+    json_t *userPerm = json_array();
+    json_array_append_new(defPerm, userPerm);
+    json_array_append_new(userPerm,json_string_nocheck(":user"));
+    json_array_append_new(userPerm,json_string_nocheck("write"));
+    json_t *defaultPerm = json_array();
+    json_array_append_new(defPerm, defaultPerm);
+    json_array_append_new(defaultPerm,json_string_nocheck("default"));
+    json_array_append_new(defaultPerm,json_string_nocheck("read"));
 
     json_t *storage = json_object();
 
