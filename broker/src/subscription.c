@@ -46,6 +46,21 @@ int cmp_int(const void* lhs, const void* rhs)
     return -1;
 }
 
+static int addPendingAck(SubRequester *subReq, uint32_t msgId)
+{
+    DownstreamNode* node = (DownstreamNode*)(subReq->reqNode->link->node);
+    if(!node->pendingAcks) {
+        node->pendingAcks = (Vector*)dslink_malloc(sizeof(Vector));
+        vector_init(node->pendingAcks, 64, sizeof(PendingAck));
+    }
+    PendingAck pack = { subReq, msgId };
+    vector_append(node->pendingAcks, &pack);
+
+    ++subReq->messageOutputQueueCount;
+
+    return 0;
+}
+
 int check_subscription_ack(RemoteDSLink *link, uint32_t ack)
 {
     PendingAck search_pack = { NULL, ack };
@@ -57,6 +72,8 @@ int check_subscription_ack(RemoteDSLink *link, uint32_t ack)
       PendingAck pack = *(PendingAck*)vector_get(link->node->pendingAcks, idx);
       SubRequester *subReq = pack.subscription;
       
+      --subReq->messageOutputQueueCount;
+
       if ( removeFromMessageQueue(subReq, pack.msg_id) ) { 
           sendQueuedMessages(subReq);
       }      
@@ -165,6 +182,7 @@ void broker_free_sub_requester(SubRequester *req) {
             }
             vector_remove(req->reqNode->pendingAcks, idx);
         }
+	subReq->messageOutputQueueCount = 0;
 
         rb_free(req->messageQueue);
         dslink_free(req->messageQueue);
@@ -183,6 +201,7 @@ void broker_clear_messsage_ids(SubRequester *subReq)
     --subReq->messageOutputQueueCount;
     QueuedMessage* m = rb_at(subReq->messageQueue, subReq->messageOutputQueueCount);
     if(!m) {
+      subReq->messageOutputQueueCount = 0;
       break;
     }
     m->msg_id = 0;
@@ -219,19 +238,6 @@ void broker_update_sub_req_qos(SubRequester *subReq) {
         json_decref(top);
         clear_qos_queue(subReq, 1);
     }
-}
-
-static int addPendingAck(SubRequester *subReq, uint32_t msgId)
-{
-    DownstreamNode* node = (DownstreamNode*)(subReq->reqNode->link->node);
-    if(!node->pendingAcks) {
-        node->pendingAcks = (Vector*)dslink_malloc(sizeof(Vector));
-        vector_init(node->pendingAcks, 64, sizeof(PendingAck));
-    }
-    PendingAck pack = { subReq, msgId };
-    vector_append(node->pendingAcks, &pack);
-
-    return 0;
 }
 
 void cleanup_queued_message(void* message) {
@@ -277,8 +283,6 @@ static int sendMessage(SubRequester *subReq, json_t *varray, uint32_t* msgId)
     *msgId = broker_ws_send_obj(subReq->reqNode->link, top);
     json_decref(top);
 
-    ++subReq->messageOutputQueueCount;
-
      log_debug("Send message with msgId %d\n", *msgId);
 
     return addPendingAck(subReq, *msgId);
@@ -290,7 +294,7 @@ static void addToMessageQueue(SubRequester *subReq, json_t *varray, uint32_t msg
 
 
     if(!subReq->messageQueue) {
-        subReq->messageQueue = (Ringbuffer*)dslink_malloc(sizeof(Ringbuffer));
+         subReq->messageQueue = (Ringbuffer*)dslink_malloc(sizeof(Ringbuffer));
         // TODO lfuerste: maybe use a lesser value for QOS == 0?
         rb_init(subReq->messageQueue, broker_max_qos_queue_size, sizeof(QueuedMessage), cleanup_queued_message);
     }
@@ -316,7 +320,6 @@ static int removeFromMessageQueue(SubRequester *subReq, uint32_t msgId) {
             rb_pop(subReq->messageQueue);
 	    log_debug("Removing message with msgId %d from MessageQueue\n", m->msg_id);
 
-            --subReq->messageOutputQueueCount;
         }
     }
     return result;
@@ -340,7 +343,6 @@ int broker_update_sub_req(SubRequester *subReq, json_t *varray) {
     } else {
         if (subReq->reqNode->link ) {
             result = sendMessage(subReq, varray, &msgId);
-            --subReq->messageOutputQueueCount;
         } else {
             // add to qos queue
             if (!subReq->qosQueue) {
