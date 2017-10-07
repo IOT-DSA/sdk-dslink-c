@@ -26,7 +26,7 @@ static inline int vector_resize(Vector* vec)
     return 0;
 }
 
-static inline void* element_ptr(Vector* vec, uint32_t index)
+static inline void* element_ptr(const Vector* vec, uint32_t index)
 {
   return (char*)vec->data + (index*vec->element_size);
 }
@@ -146,6 +146,25 @@ long vector_find(const Vector* vec, void* data, vector_comparison_fn_type cmp_fn
     return -1;
 }
 
+uint32_t vector_remove_if(const Vector* vec, void* data, vector_comparison_fn_type cmp_fn)
+{
+  uint32_t first;
+
+  long found = vector_find( vec, data, cmp_fn );
+  if ( found >= 0 ) {
+    first = (uint32_t)found;
+    for (uint32_t i = first; ++i != vec->size; ) {
+      if (cmp_fn( data, element_ptr( vec, i)) != 0) {
+	memmove( element_ptr( vec, first), element_ptr( vec, i), vec->element_size);
+	++first;
+      }
+    }
+  } else {
+    first = vec->size;
+  }
+  
+  return first;
+}
 
 long vector_binary_search(const Vector* vec, void* data, vector_comparison_fn_type cmp_fn)
 {

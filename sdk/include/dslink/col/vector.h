@@ -72,6 +72,16 @@ for (void* data = (vector)->data; n < (vector)->size; ++n, data = (char*)(vector
     /// @return 0 upon success, -1 otherwise
     int vector_erase_range(Vector* vec, uint32_t lower, uint32_t upper);
 
+    /// Removes all elements satisfying specific criteria from the vector. Removing is done by shifting all elements 
+    /// not to remove to the beginning. The function return the index of the first element to remove. Elements between
+    /// return value end the end of the vector have unspecified value. Function call is typically followed by an 
+    /// vector_erase_range function call.
+    /// @param vec The vector
+    /// @param data The data compare the elements with.
+    /// @param cmp_fn The compare function to use
+    /// @return index of the first matching element, size of vector, if no matching elements were found
+    uint32_t vector_remove_if(const Vector* vec, void* data, vector_comparison_fn_type cmp_fn);
+
     /// Searches the vector for the data using the given comparison function.
     /// @param vec The vector
     /// @param data The data to find

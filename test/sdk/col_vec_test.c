@@ -508,6 +508,76 @@ void col_vec_range_erase_test(void **state) {
     }
 }
 
+
+static int int_equal_hundreths(const void *lhs, const void *rhs)
+{
+  int lhsHundredths = (*(int*)lhs) / 100;
+  int rhsHundredths = (*(int*)rhs) / 100;
+
+  if ( lhsHundredths < rhsHundredths ) {
+    return -1;
+  } else if ( lhsHundredths > rhsHundredths ) {
+    return +1;
+  } else {
+    return 0;
+  }
+}
+
+
+static
+void col_vec_remove_if_test(void **state) 
+{
+    (void) state;
+
+    Vector vec;
+    vector_init(&vec, 512, sizeof(int));
+
+    int n = 2;
+    for(; n <= 1024; n += 2) {
+        vector_append(&vec, &n);
+    }
+    assert_int_equal(vector_count(&vec), 512);
+
+    // Remove 49 elements at the beginning of the vector
+    n = 0;
+    uint32_t idx = vector_remove_if( &vec, &n, &int_equal_hundreths);
+    assert_int_equal( idx, 463 );
+    assert_int_equal( vector_erase_range( &vec, idx, vector_count(&vec)), 0 );
+    // Second remove should do nothing
+    assert_int_equal( vector_remove_if( &vec, &n, &int_equal_hundreths), 463 );
+    for (uint32_t i = 0; i < 463; ++i) {
+      assert_int_equal( *(int*)vector_get( &vec, i), 2*i+100 ); 
+    }
+
+    // Remove  13 elements at the end of the vector 
+    n = 1000;
+    idx = vector_remove_if( &vec, &n, &int_equal_hundreths);
+    assert_int_equal( idx, 450 );
+    assert_int_equal( vector_erase_range( &vec, idx, vector_count(&vec)), 0 );
+    // Second remove should do nothing
+    assert_int_equal( vector_remove_if( &vec, &n, &int_equal_hundreths), 450 );
+    // Now check, if everything is still valid
+    for (uint32_t i = 0; i < 450; ++i) {
+      assert_int_equal( *(int*)vector_get( &vec, i), 2*i+100 ); 
+    }
+
+    // Remove 50 Elements in the middle of the vector.
+    n = 400;
+    idx = vector_remove_if( &vec, &n, &int_equal_hundreths);
+    assert_int_equal( idx, 400 );
+    assert_int_equal( vector_erase_range( &vec, idx, vector_count(&vec)), 0 );
+    // Second remove should do nothing
+    assert_int_equal( vector_remove_if( &vec, &n, &int_equal_hundreths), 400 );
+    // Now check, if everything is still valid
+    for (uint32_t i = 0; i < 149; ++i) {
+      assert_int_equal( *(int*)vector_get( &vec, i), 2*i+100 ); 
+    }
+    for (uint32_t i = 150; i < 400; ++i) {
+      assert_int_equal( *(int*)vector_get( &vec, i), 2*i+200 ); 
+    }
+}
+
+
 int main() {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(col_vec_init_test),
@@ -516,6 +586,7 @@ int main() {
         cmocka_unit_test(col_vec_resize_test),
         cmocka_unit_test(col_vec_set_get_test),
         cmocka_unit_test(col_vec_erase_test),
+	cmocka_unit_test(col_vec_remove_if_test),
         cmocka_unit_test(col_vec_iterate_test),
         cmocka_unit_test(col_vec_find_test),
         cmocka_unit_test(col_vec_count_test),

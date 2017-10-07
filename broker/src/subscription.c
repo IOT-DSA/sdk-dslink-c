@@ -174,16 +174,11 @@ void broker_free_sub_requester(SubRequester *req) {
         json_decref(req->qosQueue);
     }
     if(req->messageQueue) {
-        while(1) {
-            PendingAck search_pack = { req, 0 };
-            long idx = vector_find(req->reqNode->pendingAcks, &search_pack, cmp_pack_subs);
-            if(idx == -1) {
-                break;
-            }
-            vector_erase(req->reqNode->pendingAcks, idx);
-        }
-	subReq->messageOutputQueueCount = 0;
-
+        PendingAck search_pack = { req, 0 };
+ 	uint32_t eraseIdx = vector_remove_if( req->reqNode->pendingAcks, &search_pack, cmp_pack_subs);
+	vector_erase_range( req->reqNode->pendingAcks, eraseIdx, vector_count(req->reqNode->pendingAcks) );
+	req->messageOutputQueueCount = 0;
+	
         rb_free(req->messageQueue);
         dslink_free(req->messageQueue);
         req->messageQueue = NULL;
