@@ -2,7 +2,6 @@
 #include <assert.h>
 
 #include <dslink/crypto.h>
-#include <openssl/bn.h>
 
 #define LOG_TAG "node"
 #include <dslink/log.h>

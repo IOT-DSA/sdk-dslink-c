@@ -115,7 +115,7 @@ fail:
         dslink_free(dsId);
     }
     broker_send_bad_request(client->sock);
-    dslink_socket_close_nofree(client->sock);
+    dslink_socket_close_nofree(&client->sock);
     return 1;
 }
 
@@ -183,7 +183,7 @@ void broker_on_data_callback(Client *client, void *data) {
     }
 
 exit:
-    dslink_socket_close_nofree(client->sock);
+    dslink_socket_close_nofree(&client->sock);
 }
 
 void broker_close_link(RemoteDSLink *link) {
@@ -195,7 +195,7 @@ void broker_close_link(RemoteDSLink *link) {
             uv_close((uv_handle_t *) link->client->poll,
                      broker_free_handle);
         }
-        dslink_socket_close_nofree(link->client->sock);
+        dslink_socket_close_nofree(&link->client->sock);
     }
     if (link->dsId) {
         log_info("DSLink `%s` has disconnected\n", (char *) link->dsId->data);
@@ -323,7 +323,7 @@ void broker_stop(Broker* broker) {
 
         if (node->link) {
             RemoteDSLink *link = node->link;
-            dslink_socket_close(link->client->sock);
+            dslink_socket_close(&link->client->sock);
             uv_close((uv_handle_t *) link->client->poll,
                      broker_free_handle);
             dslink_free(link->client);

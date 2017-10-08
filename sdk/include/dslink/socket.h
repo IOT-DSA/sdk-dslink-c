@@ -46,9 +46,9 @@ int dslink_socket_accept(Socket *server_socket, Socket **client_socket);
 int dslink_socket_read(Socket *sock, char *buf, size_t len);
 int dslink_socket_write(Socket *sock, char *buf, size_t len);
 
-void dslink_socket_close(Socket *sock);
-void dslink_socket_close_nofree(Socket *sock);
-void dslink_socket_free(Socket *sock);
+void dslink_socket_close(Socket **sock_ptr);
+void dslink_socket_close_nofree(Socket **sock_ptr);
+void dslink_socket_free(Socket **sock_ptr);
 
 int dslink_socket_set_nonblock(Socket *socket);
 int dslink_socket_set_block(Socket *socket);

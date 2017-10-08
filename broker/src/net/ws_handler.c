@@ -10,6 +10,7 @@
 #include "broker/net/ws.h"
 #include <msgpack.h>
 #include <dslink/ws.h>
+#include <dslink/utils.h>
 
 ssize_t broker_want_read_cb(wslay_event_context_ptr ctx,
                      uint8_t *buf, size_t len,

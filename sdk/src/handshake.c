@@ -222,7 +222,7 @@ int dslink_handshake_read_key_pair(dslink_ecdh_context *ctx, char *buf) {
 int dslink_handshake_generate_key_pair(dslink_ecdh_context *ctx) {
     int ret = 0;
 
-    if (dslink_crypto_ecdh_generate_keys(ctx) != 1) {
+    if (dslink_crypto_ecdh_generate_keys(ctx) != 0) {
         ret = DSLINK_CRYPT_KEY_PAIR_GEN_ERR;
     }
 
@@ -445,6 +445,8 @@ int dslink_handshake_generate(DSLink *link,
 exit:
     DSLINK_CHECKED_EXEC(dslink_free, req);
     DSLINK_CHECKED_EXEC(dslink_free, resp);
-    DSLINK_CHECKED_EXEC(dslink_socket_close, sock);
+
+    dslink_socket_close(&sock);
+
     return ret;
 }

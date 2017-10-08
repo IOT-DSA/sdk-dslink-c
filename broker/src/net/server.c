@@ -15,7 +15,7 @@
 static
 void broker_server_free_client(uv_poll_t *poll) {
     Client *client = poll->data;
-    dslink_socket_free(client->sock);
+    dslink_socket_free(&client->sock);
     dslink_free(client);
     uv_close((uv_handle_t *) poll, broker_free_handle);
 }
@@ -101,14 +101,14 @@ void broker_server_new_client(uv_poll_t *poll,
     Server *server = poll->data;
     Socket *client_sock;
 
-    if(dslink_socket_accept(server->sock, &client_sock) != 1)
+    if(dslink_socket_accept(server->sock, &client_sock) != 0)
     {
         return;
     }
 
     Client *client = dslink_calloc(1, sizeof(Client));
     if (!client) {
-        dslink_socket_close(client_sock);
+        dslink_socket_close(&client_sock);
         return;
     }
 
@@ -137,7 +137,7 @@ void broker_server_new_client(uv_poll_t *poll,
 
     fail_poll_setup:
     {
-        dslink_socket_free(client->sock);
+        dslink_socket_free(&client->sock);
         dslink_free(client);
     }
     return;
@@ -299,7 +299,7 @@ int start_server_with_server_settings(ServerSettings *settings, Server *server,
     Socket *socket = server->sock;
     ret = dslink_socket_bind(socket, settings->host, settings->port);
 
-    if(ret != 1) {
+    if(ret != 0) {
         log_fatal("Failed to bind to %s:%d, with error code %d\n", settings->host, settings->port, ret);
         return ret;
     }
@@ -332,7 +332,7 @@ int start_server_with_server_settings(ServerSettings *settings, Server *server,
     return 1;
 
     close_socket_and_exit:
-    dslink_socket_close(socket);
+    dslink_socket_close(&socket);
     return ret;
 }
 

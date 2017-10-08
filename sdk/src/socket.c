@@ -15,10 +15,11 @@
 
 Socket *dslink_socket_init(uint_fast8_t secure) {
     Socket *s = dslink_malloc(sizeof(Socket));
-    if(!s)
-        return NULL;
+    if(!s) goto error;
 
     s->fd = socket(PF_INET, SOCK_STREAM, 0);
+    if(s->fd == -1) goto deinit;
+
     bzero(&s->addr, sizeof(s->addr));
     s->addr.sin_family = AF_INET;
     s->secure = 0;
@@ -37,21 +38,30 @@ Socket *dslink_socket_init(uint_fast8_t secure) {
         if ( !s->ssl_ctx )
         {
             log_err("Failed to create SSL Context because %s\n", ERR_reason_error_string(errno));
-            return NULL;
+            goto deinit;
         }
     }
 
     return s;
+
+    deinit:
+    free(s);
+
+    error:
+    return NULL;
 }
 
-// WARN: in .h file function says "param: an initialized socket" but function initialized socket itself
+// TODO: in .h file function says "param: an initialized socket" but function initialized socket itself
 int dslink_socket_connect(Socket **sock,
                           const char *address,
                           unsigned short port,
                           uint_fast8_t secure) {
-    *sock = dslink_socket_init(secure);
-    if (!(*sock)) {
-        return DSLINK_ALLOC_ERR;
+    if(*sock == NULL)
+    {
+        *sock = dslink_socket_init(secure);
+        if (!(*sock)) {
+            return DSLINK_ALLOC_ERR;
+        }
     }
 
     Socket *socket = *sock;
@@ -73,8 +83,7 @@ int dslink_socket_connect(Socket **sock,
     {
         INITIALIZE_OPENSSL();
         socket->ssl = SSL_new(socket->ssl_ctx);     // create new SSL connection state
-        if(!socket->ssl)
-            return DSLINK_SOCK_SSL_SETUP_ERR;
+        if(!socket->ssl) return DSLINK_SOCK_SSL_SETUP_ERR;
 
         if(SSL_set_fd(socket->ssl, socket->fd) != 1)
             return DSLINK_SOCK_SSL_CONFIG_ERR;
@@ -100,6 +109,7 @@ int dslink_socket_bind(Socket *socket, const char *address, unsigned short port)
     socket->addr.sin_addr.s_addr = *(long*)(host->h_addr);
 
     int yes=1;
+
     if (setsockopt(socket->fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) == -1)
         return DSLINK_SOCK_BIND_ERR;
 
@@ -109,9 +119,10 @@ int dslink_socket_bind(Socket *socket, const char *address, unsigned short port)
     if ( listen(socket->fd, 10) != 0 )
         return DSLINK_SOCK_BIND_ERR;
 
-    return 1;
+    return 0;
 }
 
+// Make it return new client socket or NULL
 int dslink_socket_accept(Socket *server_socket, Socket **client_socket) {
     *client_socket = dslink_calloc(1, sizeof(Socket));
     if (!*client_socket) {
@@ -125,7 +136,7 @@ int dslink_socket_accept(Socket *server_socket, Socket **client_socket) {
 
     if(client->fd == -1)
     {
-        log_err("Failed to accept a client connection %d\n", errno);
+        log_err("Failed to accept a client connection, errno %d\n", errno);
         return -1;
     }
 
@@ -140,13 +151,13 @@ int dslink_socket_accept(Socket *server_socket, Socket **client_socket) {
 
         if ( SSL_accept(client->ssl) == -1 )
         {
-            log_err("Failed to accept a client connection as SSL %d\n", errno);
+            log_err("Failed to accept a client connection as SSL, errno %d\n", errno);
             return -1;
         }
     }
 
     log_debug("Accepted a client connection\n");
-    return 1;
+    return 0;
 
     fail:
     {
@@ -167,11 +178,13 @@ int dslink_socket_read(Socket *sock, char *buf, size_t len) {
     if (sock->secure)
         r = SSL_read(sock->ssl, (unsigned char *) buf, len);
     else
-        r = recv(sock->fd , (unsigned char *) buf, len , 0);
+        r = recv(sock->fd, (unsigned char *) buf, len , 0);
 
     if (r < 0) {
         if(errno == EAGAIN)
             return DSLINK_SOCK_WOULD_BLOCK;
+
+        log_err("read error with errno %d\n", errno);
 
         return DSLINK_SOCK_READ_ERR;
     }
@@ -192,8 +205,9 @@ int dslink_socket_write(Socket *sock, char *buf, size_t len) {
 
     if (r < 0)
     {
-        if(errno == EAGAIN)
-            return DSLINK_SOCK_WOULD_BLOCK;
+        if(errno == EAGAIN) return DSLINK_SOCK_WOULD_BLOCK;
+
+        log_err("read error with errno %d\n", errno);
 
         return DSLINK_SOCK_WRITE_ERR;
     }
@@ -201,26 +215,31 @@ int dslink_socket_write(Socket *sock, char *buf, size_t len) {
     return r;
 }
 
-void dslink_socket_close_nofree(Socket *sock) {
+void dslink_socket_close_nofree(Socket **sock_ptr) {
+    if(!sock_ptr) return;
+
+    Socket *sock = *sock_ptr;
     if(!sock) return;
 
     if (sock->secure) {
         if(sock->ssl)
-            SSL_shutdown(sock->ssl);
+        {
+            int ret = SSL_shutdown(sock->ssl);
+            if(ret != 0) log_err("SLL cannot be closed!\n");
+        }
     }
 
     if(sock->fd >= 0) {
-        int ret = shutdown(sock->fd, SHUT_RDWR);
-
-        if(ret != 0){
-            log_err("Socket cannot be closed!\n");
-        }
-
+        int ret = close(sock->fd);
+        if(ret != 0) log_err("Socket cannot be closed!\n");
         sock->fd = -1;
     }
 }
 
-void dslink_socket_free(Socket *sock) {
+void dslink_socket_free(Socket **sock_ptr) {
+    if(!sock_ptr) return;
+
+    Socket *sock = *sock_ptr;
     if(!sock) return;
 
     if (sock->secure) {
@@ -232,13 +251,15 @@ void dslink_socket_free(Socket *sock) {
             SSL_CTX_free(sock->ssl_ctx);
         sock->ssl_ctx = NULL;
     }
+
     dslink_free(sock);
+    *sock_ptr = NULL;
 }
 
 
-void dslink_socket_close(Socket *sock) {
-    dslink_socket_close_nofree(sock);
-    dslink_socket_free(sock);
+void dslink_socket_close(Socket **sock_ptr) {
+    dslink_socket_close_nofree(sock_ptr);
+    dslink_socket_free(sock_ptr);
 }
 
 static int __OPEN_SSL_INITIALIZED = 0;

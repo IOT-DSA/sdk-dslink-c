@@ -4,7 +4,7 @@ project(sdk_dslink_c C)
 option(USE_CCACHE "Enable CCache Support" ON)
 option(DSLINK_BUILD_BROKER "Whether to build the broker" ON)
 option(DSLINK_BUILD_EXAMPLES "Whether to build the examples" ON)
-option(DSLINK_TEST "Whether to enable tests" OFF)
+option(DSLINK_TEST "Whether to enable tests" ON)
 option(TOOLCHAIN_DYNAMIC_LINK_ENABLE "Enable Dynamic Linking for Toolchain" ON)
 
 ##### Configure CMake Modules #####
@@ -239,7 +239,8 @@ target_link_libraries(sdk_dslink_c-static ${OPENSSL_CRYPTO_LIBRARY})
 add_dependencies(sdk_dslink_c-static openssl_lib)
 
 add_library(sdk_dslink_c SHARED $<TARGET_OBJECTS:sdk_dslink_c-object>)
-target_link_libraries(sdk_dslink_c msgpackc jansson libuv)
+target_link_libraries(sdk_dslink_c msgpackc jansson libuv ${OPENSSL_SSL_LIBRARY} ${OPENSSL_CRYPTO_LIBRARY})
+add_dependencies(sdk_dslink_c openssl_lib)
 
 
 set(DSLINK_INSTALL_LIB_DIR lib CACHE PATH "Installation directory for libraries")

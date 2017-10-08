@@ -37,8 +37,8 @@ void upstream_clear_poll(UpstreamPoll *upstreamPoll) {
             uv_close((uv_handle_t *)upstreamPoll->connCheckTimer, broker_free_handle);
             upstreamPoll->connCheckTimer = NULL;
         }
-        dslink_socket_close_nofree(upstreamPoll->sock);
-        dslink_socket_free(upstreamPoll->sock);
+        dslink_socket_close_nofree(&upstreamPoll->sock);
+        dslink_socket_free(&upstreamPoll->sock);
         upstreamPoll->sock = NULL;
     } else if (upstreamPoll->status == UPSTREAM_WS) {
         uv_poll_stop(upstreamPoll->wsPoll);
@@ -254,9 +254,7 @@ void connect_conn_callback(uv_poll_t *handle, int status, int events) {
 
     dslink_free(resp);
 
-    dslink_socket_close_nofree(upstreamPoll->sock);
-    dslink_socket_free(upstreamPoll->sock);
-    upstreamPoll->sock = NULL;
+    dslink_socket_close(&upstreamPoll->sock);
 
     if (handshake) {
         const char *uri = json_string_value(json_object_get(handshake, "wsUri"));

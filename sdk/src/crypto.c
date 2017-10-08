@@ -10,8 +10,6 @@
 /*
  * ECDH
  *
- *
- *
  */
 
 
@@ -76,15 +74,15 @@ int dslink_crypto_ecdh_generate_keys(dslink_ecdh_context *ctx)
     ctx->Q = EC_KEY_get0_public_key(ctx->eckey);
     if(!ctx->Q) goto error;
 
-    return 1;
+    return 0;
 
     error:
     return DSLINK_CRYPT_KEY_PAIR_GEN_ERR;
 }
 
 int dslink_crypto_ecdh_set_keys(dslink_ecdh_context *ctx,
-                                BIGNUM* private_key,
-                                EC_POINT* public_key)
+                                const DSLINK_CRYPTO_BIGNUM* private_key,
+                                const DSLINK_CRYPTO_EC_POINT* public_key)
 {
     if(EC_KEY_set_private_key(ctx->eckey, private_key) != 1) goto error;
     if(EC_KEY_set_public_key(ctx->eckey, public_key) != 1) goto error;
@@ -104,21 +102,19 @@ int dslink_crypto_ecdh_set_keys(dslink_ecdh_context *ctx,
 }
 
 
-int dslink_crypto_bn_read_binary(BIGNUM *X, const unsigned char *buf, size_t buflen)
+int dslink_crypto_bn_read_binary(DSLINK_CRYPTO_BIGNUM *X, const unsigned char *buf, size_t buflen)
 {
-    if(!X)
-        return DSLINK_CRYPT_INPUT_ERR;
+    if(!X) return DSLINK_CRYPT_INPUT_ERR;
 
-    // It is actually write in X
+    // It is actually write in X and one returns it
     BIGNUM *just_for_test = BN_bin2bn(buf,buflen,X);
 
-    if (!just_for_test)
-        return DSLINK_CRYPT_KEY_DECODE_ERR;
+    if (!just_for_test) return DSLINK_CRYPT_KEY_DECODE_ERR;
 
     return 0;
 }
 
-int dslink_crypto_bn_write_binary( const BIGNUM *X, unsigned char *buf, size_t buflen )
+int dslink_crypto_bn_write_binary( const DSLINK_CRYPTO_BIGNUM *X, unsigned char *buf, size_t buflen )
 {
     if((size_t)BN_num_bytes(X) > buflen) return -1;
 
@@ -131,33 +127,30 @@ int dslink_crypto_bn_write_binary( const BIGNUM *X, unsigned char *buf, size_t b
     return len;
 }
 
-int dslink_crypto_ecp_point_read_binary(const EC_GROUP *grp, EC_POINT *ec_point,
+int dslink_crypto_ecp_point_read_binary(const EC_GROUP *grp, DSLINK_CRYPTO_EC_POINT *ec_point,
                                         const unsigned char *buf, size_t bufLen)
 {
-    if(!ec_point)
-        return DSLINK_CRYPT_INPUT_ERR;
+    if(!ec_point) return DSLINK_CRYPT_INPUT_ERR;
 
     BIGNUM *bn = BN_bin2bn(buf,bufLen,NULL);
-    if (!bn)
-        return DSLINK_CRYPT_KEY_DECODE_ERR;
+    if (!bn) return DSLINK_CRYPT_KEY_DECODE_ERR;
 
     // It is actually write in ec_point
     EC_POINT* just_for_test = EC_POINT_bn2point(grp, bn, ec_point, NULL );
     BN_free(bn);
 
-    if (!just_for_test)
-        return DSLINK_CRYPT_KEY_DECODE_ERR;
+    if (!just_for_test) return DSLINK_CRYPT_KEY_DECODE_ERR;
 
     return 0;
 }
 
-int dslink_crypto_ecp_point_write_binary(const EC_GROUP *grp, const EC_POINT *ec_point,
+int dslink_crypto_ecp_point_write_binary(const EC_GROUP *grp, const DSLINK_CRYPTO_EC_POINT *ec_point,
                                          size_t *olen,
                                          unsigned char *buf, size_t buflen)
 {
     BIGNUM *bn = EC_POINT_point2bn(grp, ec_point, POINT_CONVERSION_UNCOMPRESSED, NULL, NULL);
-    if (!bn)
-        return -1;
+
+    if (!bn) return -1;
 
     *olen = dslink_crypto_bn_write_binary(bn, buf, buflen);
 
@@ -167,10 +160,9 @@ int dslink_crypto_ecp_point_write_binary(const EC_GROUP *grp, const EC_POINT *ec
 }
 
 int dslink_crypto_ecdh_set_peer_public_key(dslink_ecdh_context* ctx,
-                                           EC_POINT* peer_public_key)
+                                           const DSLINK_CRYPTO_EC_POINT* peer_public_key)
 {
-    if(ctx->Qp)
-        EC_POINT_free(ctx->Qp);
+    if(ctx->Qp) EC_POINT_free(ctx->Qp); // deinit it if already have
 
     ctx->Qp = EC_POINT_new(ctx->grp);
     EC_POINT_copy(ctx->Qp, peer_public_key);
@@ -182,21 +174,14 @@ int dslink_crypto_ecdh_calc_secret(dslink_ecdh_context *ctx, size_t *olen,
                                    unsigned char *buf, size_t blen)
 {
     // CHECK
-    if(!ctx->Qp || !ctx->eckey)
-        return DSLINK_CRYPT_MISSING_KEYS_ERR;
+    if(!ctx->Qp || !ctx->eckey) return DSLINK_CRYPT_MISSING_KEYS_ERR;
 
     // calculate it and write into struct
     size_t secret_len = (EC_GROUP_get_degree(ctx->grp) + 7) / 8;
 
-    if(secret_len > blen)
-        return DSLINK_CRYPT_INSUFFICIENT_BUFFER_ERR;
+    if(secret_len > blen) return DSLINK_CRYPT_INSUFFICIENT_BUFFER_ERR;
 
     *olen = ECDH_compute_key(buf, secret_len, ctx->Qp, ctx->eckey, NULL);
-
-//    if(ctx->z) BN_free(ctx->z);
-//    ctx->z = BN_new();
-//
-//    dslink_crypto_bn_read_binary(ctx->z, buf, olen);
 
     return 0;
 }
@@ -261,6 +246,8 @@ int dslink_crypto_sha1( const unsigned char *input, size_t ilen, unsigned char o
 static int IS_RAND_INITIALIZED = 0;
 void dslink_crypto_random(unsigned char *buffer, size_t len)
 {
+    if(len == 0) return;
+
     if(!IS_RAND_INITIALIZED) {
         RAND_poll();
         IS_RAND_INITIALIZED = 1;
@@ -332,7 +319,7 @@ int dslink_crypto_aes_decrypt(unsigned char *ciphertext, int ciphertext_len, uns
 
     error:
     EVP_CIPHER_CTX_free(ctx);
-    return DSLINK_CRYPT_DECRYPT_ERR;
+    return -1;
 
 }
 
@@ -376,6 +363,6 @@ int dslink_crypto_aes_encrypt(unsigned char *plaintext, int plaintext_len, unsig
 
     error:
     EVP_CIPHER_CTX_free(ctx);
-    return DSLINK_CRYPT_ENCRYPT_ERR;
+    return -1;
 }
 

@@ -4,12 +4,23 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <openssl/sha.h>
 
+
+#include <openssl/sha.h>
 #include <openssl/ec.h>
 #include <openssl/ecdh.h>
 /*NID_X9_62_prime256v1*/
 #include <openssl/evp.h>
+
+#define DSLINK_CRYPTO_BIGNUM BIGNUM
+#define dslink_crypto_new_bn BN_new
+#define dslink_crypto_compare_bn BN_cmp
+#define dslink_crypto_free_bn BN_free
+
+#define DSLINK_CRYPTO_EC_POINT EC_POINT
+#define dslink_crypto_new_ec_point EC_POINT_new
+#define dslink_crypto_compare_ec_point EC_POINT_cmp
+#define dslink_crypto_free_ec_point EC_POINT_free
 
 typedef struct{
     EC_GROUP *grp;
@@ -19,8 +30,8 @@ typedef struct{
 //    BIGNUM *z;                   /*!<  shared secret                                 */
 //
 //    // These are just ptr in eckey DO NOT FREE THEM
-    const BIGNUM *d;                   /*!<  our secret value (private key)                */
-    const EC_POINT *Q;                 /*!<  our public value (public key)                 */
+    const DSLINK_CRYPTO_BIGNUM *d;       /*!<  our secret value (private key)                */
+    const DSLINK_CRYPTO_EC_POINT *Q;     /*!<  our public value (public key)                 */
 
 }dslink_ecdh_context;
 
@@ -30,21 +41,21 @@ int dslink_crypto_ecdh_init_context(dslink_ecdh_context* ctx);
 int dslink_crypto_ecdh_deinit_context(dslink_ecdh_context *ctx);
 int dslink_crypto_ecdh_generate_keys(dslink_ecdh_context *ctx);
 int dslink_crypto_ecdh_set_keys(dslink_ecdh_context *ctx,
-                                BIGNUM* private_key,
-                                EC_POINT* public_key);
+                                const DSLINK_CRYPTO_BIGNUM* private_key,
+                                const DSLINK_CRYPTO_EC_POINT* public_key);
 
-int dslink_crypto_bn_read_binary(BIGNUM *X, const unsigned char *buf, size_t buflen);
-int dslink_crypto_bn_write_binary(const BIGNUM *X, unsigned char *buf, size_t buflen);
+int dslink_crypto_bn_read_binary(DSLINK_CRYPTO_BIGNUM *X, const unsigned char *buf, size_t buflen);
+int dslink_crypto_bn_write_binary(const DSLINK_CRYPTO_BIGNUM *X, unsigned char *buf, size_t buflen);
 
 
-int dslink_crypto_ecp_point_read_binary(const EC_GROUP *grp, EC_POINT *ec_point,
+int dslink_crypto_ecp_point_read_binary(const EC_GROUP *grp, DSLINK_CRYPTO_EC_POINT *ec_point,
                                         const unsigned char *buf, size_t bufLen);
-int dslink_crypto_ecp_point_write_binary(const EC_GROUP *grp, const EC_POINT *ec_point,
+int dslink_crypto_ecp_point_write_binary(const EC_GROUP *grp, const DSLINK_CRYPTO_EC_POINT *ec_point,
                                          size_t *olen,
                                          unsigned char *buf, size_t buflen);
 
 int dslink_crypto_ecdh_set_peer_public_key(dslink_ecdh_context* ctx,
-                                           EC_POINT* peer_public_key);
+                                           const DSLINK_CRYPTO_EC_POINT* peer_public_key);
 int dslink_crypto_ecdh_calc_secret(dslink_ecdh_context *ctx, size_t *olen,
                                    unsigned char *buf, size_t blen);
 

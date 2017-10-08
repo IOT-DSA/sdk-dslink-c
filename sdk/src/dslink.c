@@ -539,7 +539,7 @@ int dslink_init_do(DSLink *link, DSLinkCallbacks *cbs) {
     }
 
     dslink_crypto_ecdh_deinit_context(&link->key);
-    DSLINK_CHECKED_EXEC(dslink_socket_close, sock);
+    dslink_socket_close(&sock);
     DSLINK_CHECKED_EXEC(dslink_free, dsId);
     DSLINK_CHECKED_EXEC(json_delete, handshake);
 

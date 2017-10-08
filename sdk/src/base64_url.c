@@ -5,6 +5,9 @@
 #include "dslink/base64_url.h"
 #include "dslink/err.h"
 
+
+// These adapted from mbedtls
+
 static const unsigned char base64_enc_map_[64] =
 {
     'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J',
@@ -220,6 +223,7 @@ int dslink_base64_encode( unsigned char *dst,
                           size_t *olen,
                           const unsigned char *src,
                           size_t slen) {
+
     size_t i, n;
     int C1, C2, C3;
     unsigned char *p;
@@ -240,7 +244,7 @@ int dslink_base64_encode( unsigned char *dst,
 
     n *= 4;
 
-    if( ( dlen < n + 1 ) || ( NULL == dst ) )
+    if( dlen < n + 1 )
     {
         *olen = n + 1;
         return( DSLINK_BASE64_BUFFER_TOO_SMALL_ERR );
