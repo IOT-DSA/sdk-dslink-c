@@ -57,7 +57,7 @@ void broker_remote_dslink_free(RemoteDSLink *link) {
             SubRequester *subreq = entry->value->data;
             if (subreq->qos <= 1) {
                 dslink_list_insert(&req_sub_to_remove, subreq);
-            } else if (subreq->qos == 2) {
+            } else if (subreq->qos >= 2) {
 	        broker_clear_messsage_ids(subreq);
 	    }
         }
