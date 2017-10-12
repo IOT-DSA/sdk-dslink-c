@@ -101,7 +101,7 @@ int get_current_permission(List *permissionList,
                         return 1;
                     }
                 }
-                break;
+                //break; //this break blocks checking permission pairs after default
             }
         }
     }
