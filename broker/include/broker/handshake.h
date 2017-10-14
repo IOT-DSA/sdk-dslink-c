@@ -21,7 +21,8 @@ int broker_local_handle_ws(Broker *broker,
                            Client *client,
                            const char *wsAccept,
                            const char* perm_group,
-                           const char* session);
+                           const char* session,
+                           const char* format);
 
 DownstreamNode *broker_init_downstream_node(BrokerNode *parentNode, const char *name);
 

@@ -122,6 +122,7 @@ int dslink_socket_bind(Socket *socket, const char *address, unsigned short port)
     return 0;
 }
 
+
 // Make it return new client socket or NULL
 int dslink_socket_accept(Socket *server_socket, Socket **client_socket) {
     *client_socket = dslink_calloc(1, sizeof(Socket));
@@ -207,7 +208,7 @@ int dslink_socket_write(Socket *sock, char *buf, size_t len) {
     {
         if(errno == EAGAIN) return DSLINK_SOCK_WOULD_BLOCK;
 
-        log_err("read error with errno %d\n", errno);
+        log_err("write error with errno %d\n", errno);
 
         return DSLINK_SOCK_WRITE_ERR;
     }
@@ -225,7 +226,7 @@ void dslink_socket_close_nofree(Socket **sock_ptr) {
         if(sock->ssl)
         {
             int ret = SSL_shutdown(sock->ssl);
-            if(ret != 0) log_err("SLL cannot be closed!\n");
+            if(ret != 0) log_err("SSL cannot be closed!\n");
         }
     }
 
@@ -277,6 +278,7 @@ void INITIALIZE_OPENSSL(){
 }
 
 #include <fcntl.h>
+#include <arpa/inet.h>
 
 int dslink_socket_set_nonblock(Socket *socket)
 {
@@ -312,4 +314,37 @@ int dslink_check_connection(Socket *socket)
         return -1;
     }
     return 0;
+}
+
+
+
+#define SOCK_ADDR_IN6_PTR(sa)	((struct sockaddr_in6 *)(sa))
+#define SOCK_ADDR_IN6_ADDR(sa)	SOCK_ADDR_IN6_PTR(sa)->sin6_addr
+#define SOCK_ADDR_IN_PTR(sa)	((struct sockaddr_in *)(sa))
+#define SOCK_ADDR_IN_ADDR(sa)	SOCK_ADDR_IN_PTR(sa)->sin_addr
+
+// function adapted from :
+// https://opensource.apple.com/source/postfix/postfix-197/postfix/src/util/sock_addr.c
+int dslink_check_socket_local(Socket *socket)
+{
+    unsigned long inaddr;
+    struct sockaddr * sa = (struct sockaddr*) &socket->addr;
+
+    if (sa->sa_family == AF_INET)
+    {
+        inaddr = ntohl(SOCK_ADDR_IN_ADDR(sa).s_addr);
+        return (IN_CLASSA(inaddr)
+                && ((inaddr & IN_CLASSA_NET) >> IN_CLASSA_NSHIFT)
+                   == IN_LOOPBACKNET);
+    }
+    else if (sa->sa_family == AF_INET6)
+    {
+	    return (IN6_IS_ADDR_LOOPBACK(&SOCK_ADDR_IN6_ADDR(sa)));
+    }
+    else
+    {
+        log_fatal("sock_addr_in_loopback: unsupported address family %d", sa->sa_family);
+    }
+
+    return DSLINK_UNSUPPORTED_ADDRESS_FAMILY;
 }

@@ -64,6 +64,7 @@ typedef struct Broker {
 extern uv_loop_t *mainLoop;
 
 int broker_start();
+void _broker_close_link(RemoteDSLink *link);
 void broker_close_link(RemoteDSLink *link);
 void broker_stop(Broker* broker);
 

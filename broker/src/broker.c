@@ -105,11 +105,9 @@ int handle_ws(Broker *broker, HttpRequest *req, Client *client) {
         if(client->is_local) {
             const char *perm_group = dslink_str_unescape(broker_http_param_get(&req->uri, "group"));
             const char *session = broker_http_param_get(&req->uri, "session");
-            //TODO: handle format
-//            const char *format = broker_http_param_get(&req->uri, "format");
-
-            if(broker_local_handle_ws(broker, client, accept, perm_group+1, session) != 0) {
-                printf("broker_local_handle_ws failed\n");
+            const char *format = broker_http_param_get(&req->uri, "format");
+            if(broker_local_handle_ws(broker, client, accept, perm_group+1, session, format) != 0) {
+                log_debug("Broker local handle_ws failed\n");
                 goto fail;
             }
         } else {
@@ -129,9 +127,7 @@ fail:
     dslink_socket_close_nofree(&client->sock);
     return 1;
 }
-
 void broker_on_data_callback(Client *client, void *data) {
-
     Broker *broker = data;
     RemoteDSLink *link = client->sock_data;
     if (link) {
@@ -139,9 +135,9 @@ void broker_on_data_callback(Client *client, void *data) {
         link->ws->read_enabled = 1;
         ret = wslay_event_recv(link->ws);
         if (ret || link->pendingClose) {
-            log_info("Error in ws receive: %d\n",ret);
+            log_info("Error in ws receive: %d\n", ret);
             // clear the poll now, so it won't get cleared twice
-            link->client->poll = NULL;
+            link->client->poll = NULL;//because it is cleared in the broker_server_client_ready, after this callback
             broker_close_link(link);
         }
         return;
@@ -153,6 +149,7 @@ void broker_on_data_callback(Client *client, void *data) {
 
     HttpRequest req;
     char buf[1024];
+    char bodyBuf[1024];
     {
         int read = dslink_socket_read(client->sock, buf, sizeof(buf) - 1);
         if(read < 0) {
@@ -164,8 +161,9 @@ void broker_on_data_callback(Client *client, void *data) {
             goto exit;
         }
 
+
+	//only java dslinks sends the body as a separate SSL record
         if(client->sock->secure) {
-            char bodyBuf[1024];
             read = dslink_socket_read(client->sock, bodyBuf, sizeof(bodyBuf) - 1);
             if(read > 0) {
                 bodyBuf[read] = '\0';
@@ -221,48 +219,39 @@ void broker_handle_ping_thread(void *arg) {
 }
 #endif
 
-void broker_close_link(RemoteDSLink *link) {
-    if (!link) {
-        return;
-    }
-#ifdef BROKER_WS_SEND_THREAD_MODE
-    if(link->broker && (link->broker->currLink == link)) {
-        link->broker->currLink = NULL;
-    }
-#endif
-    link->pendingClose = 1;
+void _broker_close_link(RemoteDSLink *link) {
 
-    if (link->client) {
-        if (link->client->poll) {
-            uv_close((uv_handle_t *) link->client->poll,
+    if ((link)->client) {
+        if ((link)->client->poll) {
+            uv_close((uv_handle_t *) (link)->client->poll,
                      broker_free_handle);
         }
-        dslink_socket_close_nofree(&link->client->sock);
+        dslink_socket_close_nofree(&(link)->client->sock);
     }
-    if (link->dsId) {
-        log_info("DSLink `%s` has disconnected  %s\n", (char *) link->dsId->data, link->name);
+    if ((link)->dsId) {
+        log_info("DSLink `%s` has disconnected  %s\n", (char *) (link)->dsId->data, (link)->name);
     } else {
-        log_info("DSLink `%s` has disconnected\n", (char *) link->name);
+        log_info("DSLink `%s` has disconnected\n", (char *) (link)->name);
     }
 
     ref_t *link_ref;
-    if(link->dsId) {
-        link_ref = dslink_map_remove_get(&link->broker->remote_connected,
-                          link->dsId->data);
-        if(link_ref) {
+    if ((link)->dsId) {
+        link_ref = dslink_map_remove_get(&(link)->broker->remote_connected,
+                                         (link)->dsId->data);
+        if (link_ref) {
             RemoteDSLink *rm_link = link_ref->data;
-            log_debug("DSLink %s has been removed from connected list\n", rm_link->name);
+            log_debug("DSLink %s has been removed from connected list, list size:%d\n", rm_link->name,(int)link->broker->remote_connected.size);
         }
     }
 
     ref_t *ref;
-    if (link->isUpstream) {
-        ref = dslink_map_get(link->broker->upstream->children, (void *) link->name);
+    if ((link)->isUpstream) {
+        ref = dslink_map_get((link)->broker->upstream->children, (void *) (link)->name);
     } else {
-       ref = dslink_map_get(link->broker->downstream->children, (void *) link->name);
+        ref = dslink_map_get((link)->broker->downstream->children, (void *) (link)->name);
     }
 
-    broker_remote_dslink_free(link);
+    broker_remote_dslink_free((link));
     // it's possible that free link still rely on node->link to close related streams
     // so link need to be freed before disconnected from node
     if (ref) {
@@ -270,13 +259,31 @@ void broker_close_link(RemoteDSLink *link) {
         broker_dslink_disconnect(node);
     }
 
-    dslink_decref(link->dsId);
+    dslink_decref((link)->dsId);
 #ifdef BROKER_WS_SEND_THREAD_MODE
-    if(link->broker && (link->broker->currLink == link)) {
-        link->broker->currLink = NULL;
+    if ((link)->broker && ((link)->broker->currLink == link)) {
+        (link)->broker->currLink = NULL;
     }
 #endif
+#ifdef BROKER_CLOSE_LINK_SEM2
+    uv_sem_destroy(&link->close_sem);
+#endif
     dslink_free(link);
+}
+
+void broker_close_link(RemoteDSLink *link) {
+
+    if (!link || link->pendingClose>1) {
+        return;
+    }
+    link->pendingClose = 2;
+
+#if defined(BROKER_CLOSE_LINK_SEM2)
+    uv_sem_wait(&link->close_sem);
+    _broker_close_link(link);
+#else
+    _broker_close_link(link);
+#endif
 }
 
 static
@@ -408,7 +415,8 @@ void broker_stop(Broker* broker) {
 
         if (node->link) {
             RemoteDSLink *link = node->link;
-            link->pendingClose = 1;
+            if(link->pendingClose == 0)
+                link->pendingClose = 1;
             dslink_socket_close(&link->client->sock);
             uv_close((uv_handle_t *) link->client->poll,
                      broker_free_handle);
@@ -438,7 +446,7 @@ void broker_stop(Broker* broker) {
 
         //do not close upstream remote dslinks, they are close later on
         if(!link->isUpstream) {
-            dslink_socket_close(link->client->sock);
+            dslink_socket_close(&link->client->sock);
             uv_close((uv_handle_t *) link->client->poll,
                      broker_free_handle);
             dslink_free(link->client);

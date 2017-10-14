@@ -157,7 +157,8 @@ int main(int argc, char **argv) {
         init,
         connected,
         disconnected,
-        requester_ready
+        requester_ready,
+        NULL
     };
 
     return dslink_init(argc, argv, "C-Requester", 1, 0, &cbs);

@@ -12,12 +12,12 @@ extern "C" {
 #define BROKER_MESSAGE_DROPPABLE 1
 
 void broker_ws_send_init(Socket *sock, const char *accept);
-int broker_ws_send_obj(RemoteDSLink *link, json_t *obj);
 int broker_ws_send_ping(RemoteDSLink *link);
-int broker_ws_send(RemoteDSLink *link, const char *data, int len, int opcode);
+
+int broker_ws_send_str(RemoteDSLink *link, const char *data, int opcode, int droppable);
+int broker_ws_send(RemoteDSLink *link, const char *data, int len, int opcode, int droppable);
 
 int broker_ws_send_obj(RemoteDSLink *link, json_t *obj, int droppable);
-int broker_ws_send(RemoteDSLink *link, const char *data, int droppable);
 
 int broker_ws_generate_accept_key(const char *buf, size_t bufLen,
                                   char *out, size_t outLen);

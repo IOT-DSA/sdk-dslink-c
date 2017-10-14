@@ -291,7 +291,8 @@ int dslink_generic_ping_handler(RemoteDSLink *link) {
         gettimeofday(&current_time, NULL);
         long time_diff = current_time.tv_sec - link->lastReceiveTime->tv_sec;
         if (time_diff >= 60) {
-            link->pendingClose=1;
+            if(link->pendingClose == 0)
+                link->pendingClose = 1;
             return 0;
         }
     }
@@ -469,7 +470,8 @@ int broker_local_handle_ws(Broker *broker,
                            Client *client,
                            const char *wsAccept,
                            const char* perm_group,
-                           const char* session) {
+                           const char* session,
+                           const char* format) {
 #ifndef BROKER_PING_THREAD
     uv_timer_t *ping_timer = NULL;
 #endif
@@ -486,6 +488,12 @@ int broker_local_handle_ws(Broker *broker,
     link->broker = broker;
     link->isResponder = 0;
     link->isRequester = 1;
+
+    //FORMAT
+    link->is_msgpack = 0;
+    if(strcmp(format,"msgpack") == 0)
+        link->is_msgpack = 1;
+
 
     char buf[512] = {0};
     snprintf(buf, sizeof(buf), "/dglux-%s",session);

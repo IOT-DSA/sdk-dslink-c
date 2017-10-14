@@ -37,7 +37,7 @@ endforeach()
 
 if (DSLINK_BUILD_BROKER)
     foreach(name ${BROKER_TEST_SET})
-        add_executable(broker_${name} broker/${name} sdk/socket_test.c)
+        add_executable(broker_${name} broker/${name})
         target_link_libraries(broker_${name} sdk_broker_c sdk_dslink_c cmocka)
         add_memcheck_test(broker_${name})
     endforeach()

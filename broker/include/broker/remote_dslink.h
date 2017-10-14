@@ -19,6 +19,9 @@ extern "C" {
 
 //comment out to disable sending ws messages in thread
 #define BROKER_WS_SEND_THREAD_MODE
+#ifdef BROKER_WS_SEND_THREAD_MODE
+#define BROKER_CLOSE_LINK_SEM2
+#endif
 //#define BROKER_DROP_MESSAGE
 //#define BROKER_WS_SEND_HYBRID_MODE // DO NOT USE!
 //#define BROKER_WS_DIRECT_SEND
@@ -85,6 +88,10 @@ typedef struct RemoteDSLink {
 
 
     int is_msgpack;
+
+#ifdef BROKER_CLOSE_LINK_SEM2
+    uv_sem_t close_sem;
+#endif
 } RemoteDSLink;
 
 int broker_remote_dslink_init(RemoteDSLink *link);

@@ -159,13 +159,13 @@ json_t* get_test_json()
     json_object_set_new(json, "binary4", json_binary("B"));
     json_object_set_new(json, "binary5", json_binary(""));
     json_object_set_new(json, "array1", json_array());
-    json_array_append(json_object_get(json,"array1"), json_string_nocheck("Hello_2"));
-    json_array_append(json_object_get(json,"array1"), json_string_nocheck("msgpack32"));
-    json_array_append(json_object_get(json,"array1"), json_boolean(0));
-    json_array_append(json_object_get(json,"array1"), json_null());
-    json_array_append(json_object_get(json,"array1"), json_real(3.221));
-    json_array_append(json_object_get(json,"array1"), json_integer(3));
-    json_array_append(json_object_get(json,"array1"), json_binary("BINARRYYYYY12123123123123123"));
+    json_array_append_new(json_object_get(json,"array1"), json_string_nocheck("Hello_2"));
+    json_array_append_new(json_object_get(json,"array1"), json_string_nocheck("msgpack32"));
+    json_array_append_new(json_object_get(json,"array1"), json_boolean(0));
+    json_array_append_new(json_object_get(json,"array1"), json_null());
+    json_array_append_new(json_object_get(json,"array1"), json_real(3.221));
+    json_array_append_new(json_object_get(json,"array1"), json_integer(3));
+    json_array_append_new(json_object_get(json,"array1"), json_binary("BINARRYYYYY12123123123123123"));
 
     return json;
 }
@@ -280,8 +280,12 @@ void json_msgpack_convert_test(void **state) {
 
     // MSGPACK(from json) to JSON
     json_t *json_from_msg_from_json = dslink_ws_msgpack_to_json(deserialized);
+    msgpack_sbuffer_free(sbuffer);
+    free(deserialized);
 
     assert_json_equal(json_1, json_from_msg_from_json);
+
+    msgpack_zone_destroy(&mempool);
 
     ///////////
     // TEST 2
@@ -296,8 +300,13 @@ void json_msgpack_convert_test(void **state) {
 
     // MSGPACK to JSON
     json_t *json_from_msg = dslink_ws_msgpack_to_json(deserialized2);
+    msgpack_sbuffer_free(sbuffer2);
+    free(deserialized2);
+
 
     assert_json_equal(json_1, json_from_msg);
+
+    msgpack_zone_destroy(&mempool2);
 
 
     json_decref(json_1);

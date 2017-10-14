@@ -15,6 +15,7 @@
 
 #include "thread_safe_api_test.h"
 #include <dslink/log.h>
+#include <unistd.h>
 #include <string.h>
 #include <assert.h>
 #include <dslink/storage/storage.h>
@@ -63,7 +64,7 @@ void async_run_callback_test3(DSLink *link, void* cbData) {
     dslink_free(cbData);
 
     if(testRes) {
-        log_info("All Tests Done!\n");
+        log_info("All Tests Done!!\n");
 
         //delete the node after test
         ref_t *nodeToRemove = dslink_map_remove_get(link->responder->super_root->children, "test_node");
@@ -71,11 +72,10 @@ void async_run_callback_test3(DSLink *link, void* cbData) {
             dslink_node_tree_free(link, nodeToRemove->data);
             dslink_decref(nodeToRemove);
         }
-
-
     } else {
         log_info("Test failed\n");
     }
+    dslink_close(link);
 }
 
 void thread_safe_api_test3(void *arg) {
@@ -107,7 +107,9 @@ void nodval_async_set_callback_test2(int res, void* cbData) {
 //    dslink_free(cbData);
     if(testRes) {
         log_info("Test 2 done\n");
-        thread_safe_api_test3((DSLink *) cbData);
+        uv_thread_t new_thread_id;
+        uv_thread_create(&new_thread_id, thread_safe_api_test3, cbData);
+        uv_thread_join(&new_thread_id);
     }
 }
 
@@ -146,7 +148,9 @@ void nodval_async_get_callback_test1(json_t *retVal, void* cbData) {
 
     if(testRes) {
         log_info("Test 1 done\n");
-        thread_safe_api_test2((DSLink *) cbData);
+        uv_thread_t new_thread_id;
+        uv_thread_create(&new_thread_id, thread_safe_api_test2, cbData);
+        uv_thread_join(&new_thread_id);
     }
 }
 
@@ -195,7 +199,6 @@ int run_thread_safe_api_tests(DSLink *link) {
 
     uv_thread_t new_thread_id;
     uv_thread_create(&new_thread_id, thread_safe_api_test1, link);
-
     uv_thread_join(&new_thread_id);
 
     return 1;
@@ -248,7 +251,8 @@ int main(int argc, char **argv) {
             init, // init_cb
             connected, //on_connected_cb
             disconnected, // on_disconnected_cb
-            NULL // on_requester_ready_cb
+            NULL, // on_requester_ready_cb
+            NULL //node_not_found_cb
     };
 
 

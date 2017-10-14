@@ -380,7 +380,7 @@ json_t* dslink_ws_msgpack_to_json(msgpack_object* msg_obj)
                 if(temp == NULL)
                     goto ERROR;
 
-                json_array_append(json_obj, temp);
+                json_array_append_new(json_obj, temp);
             }
             break;
         case MSGPACK_OBJECT_MAP:
@@ -399,7 +399,7 @@ json_t* dslink_ws_msgpack_to_json(msgpack_object* msg_obj)
                 text = malloc(kv->key.via.str.size + 1);
                 memcpy(text, kv->key.via.str.ptr, kv->key.via.str.size);
                 text[kv->key.via.str.size] = '\0';
-                json_object_set_nocheck(json_obj, text, temp);
+                json_object_set_new_nocheck(json_obj, text, temp);
                 free(text);
             }
 

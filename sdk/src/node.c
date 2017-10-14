@@ -181,7 +181,8 @@ void dslink_node_tree_free_basic(DSLink *link, DSNode *root) {
     }
 
     // DONE: remove node from open_streams, list_subs, and value_path_subs: implemented
-    dslink_map_remove(link->responder->value_path_subs, (void*)root->path);
+    if(link->responder->value_path_subs)
+        dslink_map_remove(link->responder->value_path_subs, (void*)root->path);
 
     if(link->responder->value_sid_subs) {
         MapEntry *foundMapEntry = NULL;
@@ -194,10 +195,11 @@ void dslink_node_tree_free_basic(DSLink *link, DSNode *root) {
             dslink_map_remove(link->responder->value_sid_subs, foundMapEntry->key->data);
     }
 
-    ref_t* ridRef = dslink_map_remove_get(link->responder->list_subs,(void*)root->path);
-    if(ridRef)
-        dslink_map_remove(link->responder->open_streams,ridRef->data);
-
+    if(link->responder->list_subs) {
+        ref_t *ridRef = dslink_map_remove_get(link->responder->list_subs, (void *) root->path);
+        if (ridRef)
+            dslink_map_remove(link->responder->open_streams, ridRef->data);
+    }
 
     DSLINK_CHECKED_EXEC(dslink_free, (void *) root->path);
     DSLINK_CHECKED_EXEC(dslink_free, (void *) root->name);

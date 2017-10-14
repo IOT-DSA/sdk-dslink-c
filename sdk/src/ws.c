@@ -218,7 +218,7 @@ int dslink_ws_send_internal(wslay_event_context_ptr ctx,
     uv_poll_start(link->poll, UV_READABLE | UV_WRITABLE, io_handler);
 #endif
 
-    log_debug("Message(%s) queued to be sent: %s\n", (opcode==WSLAY_TEXT_FRAME)?"text":"binary", data);
+    log_debug("Message(%s) queued to be sent: %.*s\n", (opcode==WSLAY_TEXT_FRAME)?"text":"binary",len, data);
     return 0;
 }
 

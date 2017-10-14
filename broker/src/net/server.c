@@ -38,6 +38,13 @@ void stop_server_handler(uv_signal_t* handle, int signum) {
     uv_stop(handle->loop);
 }
 
+static
+void sigpipe_handler(uv_signal_t* handle, int signum) {
+    (void)handle;
+    (void)signum;
+    log_warn("Received SIGPIPE, ignored...\n");
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -60,6 +67,7 @@ void broker_server_client_ready(uv_poll_t *poll,
             if (client->sock->fd == -1) {
                 broker_server_free_client(poll);
                 client = NULL;
+                log_debug("Client cleared\n");
             }
         } else if (status == -EBADF && events ==0) {
             //broker_server_client_fail(poll);
@@ -109,8 +117,6 @@ void broker_server_new_client(uv_poll_t *poll,
     (void) status;
     (void) events;
 
-    int ret;
-
     Server *server = poll->data;
     Socket *client_sock;
 
@@ -125,38 +131,9 @@ void broker_server_new_client(uv_poll_t *poll,
         return;
     }
 
-    client->is_local = 0;
+    client->is_local = dslink_check_socket_local(client_sock);
     client->server = server;
     client->sock = client_sock;
-    client->sock = dslink_socket_init(0);
-    if (!client->sock) {
-        dslink_free(client);
-        return;
-    }
-
-    //TODO: MERGE ERROR
-    //TODO: (ali) consider ipV6?
-    in_addr_t client_ip;
-    size_t ip_len;
-
-    ret = mbedtls_net_accept(&server->srv, &client->sock->socket_ctx,
-                             &client_ip, sizeof( in_addr_t ), &ip_len);
-
-    if (ret == MBEDTLS_ERR_NET_BUFFER_TOO_SMALL) {
-        log_warn("Client IP address couldn't get properly\n");
-    } else if (ret != 0) {
-        log_warn("Failed to accept a client connection\n");
-        goto fail_poll_setup;
-    } else {
-        char str[INET_ADDRSTRLEN];
-        inet_ntop( AF_INET, &client_ip, str, INET_ADDRSTRLEN );
-
-        if(client_ip == inet_addr("127.0.0.1")) {
-            client->is_local = 1;
-        }
-    }
-
-
 
     uv_poll_t *clientPoll = dslink_malloc(sizeof(uv_poll_t));
     if (!clientPoll) {
@@ -234,12 +211,12 @@ int broker_start_server(json_t *config) {
         if(httpsServer.is_active)
         {
             log_info("HTTPS server bound successful to %s:%d\n",
-                     http_settings->host, http_settings->port);
+                     https_settings->host, https_settings->port);
         }
         else
         {
             log_fatal("HTTPS server bound failed to %s:%d, with error %d\n",
-                      http_settings->host, http_settings->port, ret);
+                      https_settings->host, https_settings->port, ret);
         }
     }
     dslink_free(https_settings);
@@ -251,6 +228,10 @@ int broker_start_server(json_t *config) {
     uv_signal_t sigTerm;
     uv_signal_init(mainLoop, &sigTerm);
     uv_signal_start(&sigTerm, stop_server_handler, SIGTERM);
+
+    uv_signal_t sigPipe;
+    uv_signal_init(mainLoop, &sigPipe);
+    uv_signal_start(&sigPipe, sigpipe_handler, SIGPIPE);
 
     if (httpServer.is_active || httpsServer.is_active)
         uv_run(mainLoop, UV_RUN_DEFAULT);
@@ -273,12 +254,6 @@ int broker_start_server(json_t *config) {
 //        uv__free(mainLoop->watchers);
 //    }
 //#endif
-
-#if defined(__unix__) || defined(__APPLE__)
-    if (mainLoop && mainLoop->watchers) {
-        uv__free(mainLoop->watchers);
-    }
-#endif
 
     json_decref(config);
     return 0;

@@ -29,7 +29,9 @@ int broker_remote_dslink_init(RemoteDSLink *link) {
         return 1;
     }
     permission_groups_init(&link->permission_groups);
-
+#ifdef BROKER_CLOSE_LINK_SEM2
+    uv_sem_init(&link->close_sem,1);
+#endif
     return 0;
 }
 

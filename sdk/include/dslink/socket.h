@@ -8,7 +8,6 @@ extern "C" {
 #include <stdlib.h>
 #include <stdint.h>
 
-typedef struct SslSocket SslSocket;
 typedef struct Socket Socket;
 
 /**
@@ -52,7 +51,9 @@ void dslink_socket_free(Socket **sock_ptr);
 
 int dslink_socket_set_nonblock(Socket *socket);
 int dslink_socket_set_block(Socket *socket);
+
 int dslink_check_connection(Socket *socket);
+int dslink_check_socket_local(Socket *socket);
 
 void INITIALIZE_OPENSSL();
 

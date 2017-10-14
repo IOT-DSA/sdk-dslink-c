@@ -1,5 +1,5 @@
 #include "cmocka_init.h"
-#include "broker/node.h"
+#include <broker/node.h>
 #include <dslink/utils.h>
 
 static
