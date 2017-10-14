@@ -26,6 +26,9 @@ int dslink_request_handle(DSLink *link, json_t *req) {
     if (strcmp(method, "list") == 0) {
         const char *path = json_string_value(json_object_get(req, "path"));
         DSNode *node = dslink_node_get_path(link->responder->super_root, path);
+        if(!node && link->cbs->node_not_found_cb) {
+            link->cbs->node_not_found_cb(link,path);
+        }
         return dslink_response_list(link, req, node);
     } else if (strcmp(method, "subscribe") == 0) {
         json_t *paths = json_object_get(req, "paths");
@@ -38,7 +41,11 @@ int dslink_request_handle(DSLink *link, json_t *req) {
     } else if (strcmp(method, "invoke") == 0) {
         const char *path = json_string_value(json_object_get(req, "path"));
         DSNode *node = dslink_node_get_path(link->responder->super_root, path);
-        if (node && node->on_invocation) {
+        if(!node) {
+            if(link->cbs->node_not_found_cb) {
+                link->cbs->node_not_found_cb(link,path);
+            }
+        } else if (node && node->on_invocation) {
             Stream *stream = dslink_malloc(sizeof(Stream));
             if (!stream) {
                 return 1;
@@ -85,6 +92,10 @@ int dslink_request_handle(DSLink *link, json_t *req) {
                     dslink_node_update_value(link, node, value);
                 }
             }
+        } else {
+            if(link->cbs->node_not_found_cb) {
+                link->cbs->node_not_found_cb(link,path);
+            }
         }
     } else if (strcmp(method, "close") == 0) {
         json_t *rid = json_object_get(req, "rid");
@@ -97,13 +108,16 @@ int dslink_request_handle(DSLink *link, json_t *req) {
 
             if (stream->path) {
                 node = dslink_node_get_path(link->responder->super_root, stream->path);
-            }
-
-            if (stream->on_close != NULL) {
-                stream->on_close(link, node, stream);
+                if(!node && link->cbs->node_not_found_cb) {
+                    link->cbs->node_not_found_cb(link, stream->path);
+                }
             }
 
             if (stream->type == LIST_STREAM) {
+                if (stream->on_close != NULL) {
+                    stream->on_close(link, node, stream);
+                }
+
                 dslink_map_remove(link->responder->list_subs, (void *) stream->path);
             }
 

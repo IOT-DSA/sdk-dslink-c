@@ -36,12 +36,12 @@ void send_list_request(BrokerListStream *stream,
     json_object_set_new_nocheck(req, "method", json_string_nocheck("list"));
     json_object_set_new_nocheck(req, "path", json_string_nocheck(path));
 
-    uint32_t rid = broker_node_incr_rid(node);
+    uint32_t rid = broker_node_incr_rid(node->link);
 
     json_object_set_new_nocheck(req, "rid",
                                 json_integer(rid));
 
-    broker_ws_send_obj(node->link, top);
+    broker_ws_send_obj(node->link, top, BROKER_MESSAGE_DROPPABLE);
     json_decref(top);
 
     if (stream == NULL) {
@@ -65,7 +65,6 @@ void broker_list_dslink(RemoteDSLink *reqLink,
                                 (char *) path);
     if (ref) {
         BrokerListStream *stream = ref->data;
-
         broker_add_requester_list_stream(reqLink, stream, reqRid);
         send_list_updates(reqLink, stream, reqRid);
         return;
@@ -100,7 +99,7 @@ void broker_list_dslink_send_cache(BrokerListStream *stream){
         json_object_set_new_nocheck(resp, "rid", newRid);
 
         RemoteDSLink *client = entry->key->data;
-        broker_ws_send_obj(client, top);
+        broker_ws_send_obj(client, top, BROKER_MESSAGE_DROPPABLE);
     }
 
     json_decref(top);
@@ -185,7 +184,7 @@ void broker_list_dslink_response(RemoteDSLink *link, json_t *resp, BrokerListStr
             json_object_set_new_nocheck(resp, "rid", newRid);
 
             RemoteDSLink *client = entry->key->data;
-            broker_ws_send_obj(client, top);
+            broker_ws_send_obj(client, top, BROKER_MESSAGE_DROPPABLE);
         }
         json_decref(top);
     } else {

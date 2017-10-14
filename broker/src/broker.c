@@ -17,6 +17,7 @@
 #include <broker/utils.h>
 #include <broker/net/ws.h>
 #include <dslink/socket_private.h>
+#include "uv-common.h"
 
 #define CONN_RESP   "HTTP/1.1 200 OK\r\n" \
                     "Connection: close\r\n" \
@@ -101,10 +102,20 @@ int handle_ws(Broker *broker, HttpRequest *req, Client *client) {
     dsId = dslink_str_unescape(broker_http_param_get(&req->uri, "dsId"));
     const char *auth = broker_http_param_get(&req->uri, "auth");
     if (!(dsId && auth)) {
-        goto fail;
-    }
+        if(client->is_local) {
+            const char *perm_group = dslink_str_unescape(broker_http_param_get(&req->uri, "group"));
+            const char *session = broker_http_param_get(&req->uri, "session");
+            //TODO: handle format
+//            const char *format = broker_http_param_get(&req->uri, "format");
 
-    if (broker_handshake_handle_ws(broker, client, dsId,
+            if(broker_local_handle_ws(broker, client, accept, perm_group+1, session) != 0) {
+                printf("broker_local_handle_ws failed\n");
+                goto fail;
+            }
+        } else {
+            goto fail;
+        }
+    } else if (broker_handshake_handle_ws(broker, client, dsId,
                                    auth, accept) != 0) {
         goto fail;
     }
@@ -124,9 +135,11 @@ void broker_on_data_callback(Client *client, void *data) {
     Broker *broker = data;
     RemoteDSLink *link = client->sock_data;
     if (link) {
+        int ret;
         link->ws->read_enabled = 1;
-        wslay_event_recv(link->ws);
-        if (link->pendingClose) {
+        ret = wslay_event_recv(link->ws);
+        if (ret || link->pendingClose) {
+            log_info("Error in ws receive: %d\n",ret);
             // clear the poll now, so it won't get cleared twice
             link->client->poll = NULL;
             broker_close_link(link);
@@ -186,10 +199,39 @@ exit:
     dslink_socket_close_nofree(&client->sock);
 }
 
+#ifdef BROKER_PING_THREAD
+void broker_handle_ping_thread(void *arg) {
+
+    Broker *broker = (Broker*)arg;
+    while(1) {
+
+        dslink_map_foreach(&broker->remote_connected) {
+            RemoteDSLink *connLink = (RemoteDSLink *) entry->value->data;
+            if (!dslink_generic_ping_handler(connLink)) {
+                log_debug("Remote dslink problem while pinging!\n");
+                broker_close_link(connLink);
+            }
+        }
+
+        dslink_sleep(10000);
+        if(broker->closing_ping_thread == 1)
+            break;
+    }
+
+}
+#endif
+
 void broker_close_link(RemoteDSLink *link) {
     if (!link) {
         return;
     }
+#ifdef BROKER_WS_SEND_THREAD_MODE
+    if(link->broker && (link->broker->currLink == link)) {
+        link->broker->currLink = NULL;
+    }
+#endif
+    link->pendingClose = 1;
+
     if (link->client) {
         if (link->client->poll) {
             uv_close((uv_handle_t *) link->client->poll,
@@ -198,9 +240,19 @@ void broker_close_link(RemoteDSLink *link) {
         dslink_socket_close_nofree(&link->client->sock);
     }
     if (link->dsId) {
-        log_info("DSLink `%s` has disconnected\n", (char *) link->dsId->data);
+        log_info("DSLink `%s` has disconnected  %s\n", (char *) link->dsId->data, link->name);
     } else {
         log_info("DSLink `%s` has disconnected\n", (char *) link->name);
+    }
+
+    ref_t *link_ref;
+    if(link->dsId) {
+        link_ref = dslink_map_remove_get(&link->broker->remote_connected,
+                          link->dsId->data);
+        if(link_ref) {
+            RemoteDSLink *rm_link = link_ref->data;
+            log_debug("DSLink %s has been removed from connected list\n", rm_link->name);
+        }
     }
 
     ref_t *ref;
@@ -218,6 +270,12 @@ void broker_close_link(RemoteDSLink *link) {
         broker_dslink_disconnect(node);
     }
 
+    dslink_decref(link->dsId);
+#ifdef BROKER_WS_SEND_THREAD_MODE
+    if(link->broker && (link->broker->currLink == link)) {
+        link->broker->currLink = NULL;
+    }
+#endif
     dslink_free(link);
 }
 
@@ -227,10 +285,13 @@ void broker_free(Broker *broker) {
         dslink_storage_destroy(broker->storage);
     }
 
+    broker_node_free(broker->upstream); // in order to remove upstream before sys to avoid crash caused by throughput nodes
     broker_node_free(broker->root);
     dslink_map_free(&broker->client_connecting);
     dslink_map_free(&broker->remote_pending_sub);
     dslink_map_free(&broker->local_pending_sub);
+    dslink_map_free(&broker->remote_connected);
+
     memset(broker, 0, sizeof(Broker));
 }
 
@@ -296,6 +357,11 @@ int broker_init(Broker *broker, json_t *defaultPermission) {
         goto fail;
     }
 
+    if (dslink_map_init(&broker->remote_connected, dslink_map_str_cmp,
+                        dslink_map_str_key_len_cal, dslink_map_hash_key) != 0) {
+        goto fail;
+    }
+
     if (dslink_map_init(&broker->remote_pending_sub, dslink_map_str_cmp,
                         dslink_map_str_key_len_cal, dslink_map_hash_key) != 0) {
         goto fail;
@@ -306,6 +372,19 @@ int broker_init(Broker *broker, json_t *defaultPermission) {
         goto fail;
     }
 
+#ifdef BROKER_WS_SEND_THREAD_MODE
+    broker->closing_send_thread = 0;
+    uv_sem_init(&broker->ws_send_sem,0);
+    uv_sem_init(&broker->ws_queue_sem,1);
+    uv_thread_create(&broker->ws_send_thread_id, broker_send_ws_thread, broker);
+    broker->currLink = NULL;
+#endif
+
+#ifdef BROKER_PING_THREAD
+    broker->closing_ping_thread = 0;
+    uv_thread_create(&broker->ping_thread_id, broker_handle_ping_thread, broker);
+#endif
+
     return 0;
 fail:
     broker_free(broker);
@@ -313,24 +392,83 @@ fail:
 }
 
 void broker_stop(Broker* broker) {
+
+#ifdef BROKER_WS_SEND_THREAD_MODE
+    broker->closing_send_thread = 1;
+    uv_sem_post(&broker->ws_send_sem);
+#endif
+
     dslink_map_foreach(broker->downstream->children) {
         DownstreamNode *node = entry->value->data;
 
         // Ensure the dsId is freed
-        node->dsId->count = 1;
+//        node->dsId->count = 1; //causes seg fault below
         dslink_decref(node->dsId);
         node->dsId = NULL;
 
         if (node->link) {
             RemoteDSLink *link = node->link;
+            link->pendingClose = 1;
             dslink_socket_close(&link->client->sock);
             uv_close((uv_handle_t *) link->client->poll,
                      broker_free_handle);
             dslink_free(link->client);
             link->client = NULL;
+
+            ref_t *link_ref;
+            if(link->dsId) {
+                link_ref = dslink_map_remove_get(&link->broker->remote_connected,
+                                                 link->dsId->data);
+                if(link_ref) {
+                    RemoteDSLink *rm_link = link_ref->data;
+                    log_debug("DSLink %s has been removed from connected list\n", rm_link->name);
+                }
+            }
             broker_remote_dslink_free(link);
+            dslink_decref(link->dsId);
         }
     }
+
+    //For the links that does not have downstream node
+    dslink_map_foreach_nonext(&broker->remote_connected) {
+
+        MapEntry *tmp = entry->next;
+
+        RemoteDSLink* link = (RemoteDSLink*)entry->value->data;
+
+        //do not close upstream remote dslinks, they are close later on
+        if(!link->isUpstream) {
+            dslink_socket_close(link->client->sock);
+            uv_close((uv_handle_t *) link->client->poll,
+                     broker_free_handle);
+            dslink_free(link->client);
+            link->client = NULL;
+
+            ref_t *link_ref;
+            if (link->dsId) {
+                link_ref = dslink_map_remove_get(&link->broker->remote_connected,
+                                                 link->dsId->data);
+                if (link_ref) {
+                    RemoteDSLink *rm_link = link_ref->data;
+                    log_debug("DSLink %s has been removed from connected list\n", rm_link->name);
+                }
+            }
+            broker_remote_dslink_free(link);
+            dslink_decref(link->dsId);
+        }
+        entry = tmp;
+    }
+
+#ifdef BROKER_WS_SEND_THREAD_MODE
+    uv_thread_join(&broker->ws_send_thread_id);
+    uv_sem_destroy(&broker->ws_send_sem);
+    uv_sem_destroy(&broker->ws_queue_sem);
+#endif
+
+#ifdef BROKER_PING_THREAD
+    broker->closing_ping_thread = 1;
+    uv_thread_join(&broker->ping_thread_id);
+#endif
 }
 
 int broker_start() {
@@ -347,6 +485,7 @@ int broker_start() {
 
     Broker broker;
     memset(&broker, 0, sizeof(Broker));
+    broker.pendingActionUpstreamPoll = NULL;
 
     mainLoop = dslink_calloc(1, sizeof(uv_loop_t));
     uv_loop_init(mainLoop);
@@ -367,6 +506,11 @@ int broker_start() {
     ret = broker_start_server(config);
 exit:
     broker_free(&broker);
+#if defined(__unix__) || defined(__APPLE__)
+    if (mainLoop && mainLoop->watchers) {
+        uv__free(mainLoop->watchers);
+    }
+#endif
     dslink_free(mainLoop);
     return ret;
 }

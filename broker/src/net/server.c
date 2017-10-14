@@ -46,6 +46,10 @@ void broker_server_client_ready(uv_poll_t *poll,
                                 int status,
                                 int events) {
     (void) status;
+
+    //TODO: (ali) delete later
+    log_debug("Poll triggered\n");
+
     Client *client = poll->data;
     if(client) {
         Server *server = client->server;
@@ -78,11 +82,17 @@ void broker_server_client_ready(uv_poll_t *poll,
                 } else {
                     log_debug("Enabling READ/WRITE poll on client\n");
                     uv_poll_start(poll, UV_READABLE | UV_WRITABLE, broker_server_client_ready);
+#ifdef BROKER_WS_SEND_THREAD_MODE
+                    uv_sem_wait(&link->broker->ws_queue_sem);
+                    link->broker->currLink = link;
+                    uv_sem_post(&link->broker->ws_send_sem);
+#else
                     int stat = wslay_event_send(link->ws);
                     if(stat != 0) {
                         broker_close_link(link);
                         client = NULL;
                     }
+#endif
                 }
             }
         }
@@ -95,8 +105,11 @@ void broker_server_client_ready(uv_poll_t *poll,
 static
 void broker_server_new_client(uv_poll_t *poll,
                               int status, int events) {
+
     (void) status;
     (void) events;
+
+    int ret;
 
     Server *server = poll->data;
     Socket *client_sock;
@@ -112,8 +125,38 @@ void broker_server_new_client(uv_poll_t *poll,
         return;
     }
 
+    client->is_local = 0;
     client->server = server;
     client->sock = client_sock;
+    client->sock = dslink_socket_init(0);
+    if (!client->sock) {
+        dslink_free(client);
+        return;
+    }
+
+    //TODO: MERGE ERROR
+    //TODO: (ali) consider ipV6?
+    in_addr_t client_ip;
+    size_t ip_len;
+
+    ret = mbedtls_net_accept(&server->srv, &client->sock->socket_ctx,
+                             &client_ip, sizeof( in_addr_t ), &ip_len);
+
+    if (ret == MBEDTLS_ERR_NET_BUFFER_TOO_SMALL) {
+        log_warn("Client IP address couldn't get properly\n");
+    } else if (ret != 0) {
+        log_warn("Failed to accept a client connection\n");
+        goto fail_poll_setup;
+    } else {
+        char str[INET_ADDRSTRLEN];
+        inet_ntop( AF_INET, &client_ip, str, INET_ADDRSTRLEN );
+
+        if(client_ip == inet_addr("127.0.0.1")) {
+            client->is_local = 1;
+        }
+    }
+
+
 
     uv_poll_t *clientPoll = dslink_malloc(sizeof(uv_poll_t));
     if (!clientPoll) {
@@ -130,7 +173,7 @@ void broker_server_new_client(uv_poll_t *poll,
     clientPoll->data = client;
     client->poll = clientPoll;
     client->poll_cb = broker_server_client_ready;
-    uv_poll_start(clientPoll, UV_READABLE | UV_WRITABLE, client->poll_cb);
+    uv_poll_start(clientPoll, UV_READABLE, client->poll_cb);
 
     log_debug("Accepted a client connection\n");
     return;
@@ -225,6 +268,11 @@ int broker_start_server(json_t *config) {
         uv_poll_stop(&httpsPoll);
 
     uv_loop_close(mainLoop);
+//#if defined(__unix__) || defined(__APPLE__)
+//    if (mainLoop && mainLoop->watchers) {
+//        uv__free(mainLoop->watchers);
+//    }
+//#endif
 
 #if defined(__unix__) || defined(__APPLE__)
     if (mainLoop && mainLoop->watchers) {

@@ -73,7 +73,6 @@ typedef struct DownstreamNode {
     // Map<char *, Stream *>
     Map list_streams;
 
-    uint32_t rid;
     uint32_t sid;
 
     // Map<char *, VirtualDownstreamNode *>
@@ -86,12 +85,6 @@ typedef struct DownstreamNode {
 
     // Map<uint32_t *, BrokerSubStream *>
     Map resp_sub_sids;
-
-    // Map<char *, SubRequester *>
-    Map req_sub_paths;
-
-    // Map<uint32_t *, SubRequester *>
-    Map req_sub_sids;
 
 } DownstreamNode;
 
@@ -108,7 +101,7 @@ int broker_node_add(BrokerNode *parent, BrokerNode *child);
 
 void broker_node_free(BrokerNode *node);
 
-uint32_t broker_node_incr_rid(DownstreamNode *node);
+uint32_t broker_node_incr_rid(RemoteDSLink *link);
 uint32_t broker_node_incr_sid(DownstreamNode *node);
 
 void broker_dslink_disconnect(DownstreamNode *node);

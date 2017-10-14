@@ -13,6 +13,6 @@ void broker_send_close_request(RemoteDSLink *respLink,
     json_object_set_new_nocheck(req, "method", json_string_nocheck("close"));
     json_object_set_new_nocheck(req, "rid", json_integer(rid));
 
-    broker_ws_send_obj(respLink, top);
+    broker_ws_send_obj(respLink, top, BROKER_MESSAGE_DROPPABLE);
     json_decref(top);
 }

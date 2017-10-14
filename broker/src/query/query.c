@@ -95,7 +95,7 @@ int query_value_update(Listener *listener, void *node) {
 
         json_object_set_new_nocheck(resp, "updates", updates);
 
-        broker_ws_send_obj(stream->requester, top);
+        broker_ws_send_obj(stream->requester, top, BROKER_MESSAGE_DROPPABLE);
         json_decref(top);
     }
     return 0;
@@ -227,7 +227,7 @@ void query_invoke(struct RemoteDSLink *link,
             json_object_set_new_nocheck(resp, "stream",
                                         json_string_nocheck("open"));
 
-            broker_ws_send_obj(link, top);
+            broker_ws_send_obj(link, top, BROKER_MESSAGE_DROPPABLE);
             json_decref(top);
         }
         query_child_added_stream(stream, link->broker->data);
@@ -247,7 +247,7 @@ exit_with_error:
         json_object_set_new_nocheck(resp, "stream",
                                     json_string_nocheck("closed"));
 
-        broker_ws_send_obj(link, top);
+        broker_ws_send_obj(link, top, BROKER_MESSAGE_DROPPABLE);
         json_decref(top);
     }
 }

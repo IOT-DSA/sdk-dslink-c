@@ -41,6 +41,8 @@ typedef struct UpstreamPoll {
     struct DSLink *clientDslink;
     struct Socket *sock;
     struct wslay_event_context *ws; // Event context for WSLay
+    int pendingDelete;
+    struct BrokerNode *pendingActionNode;
 } UpstreamPoll;
 
 void upstream_create_poll(const char *brokerUrl, const char *name, const char *idPrefix, const char *group);

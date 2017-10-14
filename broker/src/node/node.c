@@ -122,17 +122,12 @@ DownstreamNode *broker_init_downstream_node(BrokerNode *parentNode, const char *
     }
     node->type = DOWNSTREAM_NODE;
 
-
     if (dslink_map_init(&node->list_streams, dslink_map_str_cmp,
                         dslink_map_str_key_len_cal, dslink_map_hash_key) != 0
         || dslink_map_init(&node->children_permissions, dslink_map_str_cmp,
                            dslink_map_str_key_len_cal, dslink_map_hash_key) != 0
-        || dslink_map_init(&node->req_sub_paths, dslink_map_str_cmp,
-                           dslink_map_str_key_len_cal, dslink_map_hash_key) != 0
         || dslink_map_init(&node->resp_sub_streams, dslink_map_str_cmp,
                            dslink_map_str_key_len_cal, dslink_map_hash_key) != 0
-        || dslink_map_init(&node->req_sub_sids, dslink_map_uint32_cmp,
-                           dslink_map_uint32_key_len_cal, dslink_map_hash_key) != 0
         || dslink_map_init(&node->resp_sub_sids, dslink_map_uint32_cmp,
                            dslink_map_uint32_key_len_cal, dslink_map_hash_key) != 0
             ) {
@@ -234,13 +229,13 @@ void broker_node_free(BrokerNode *node) {
 
     if (node->children) {
         dslink_map_foreach_nonext(node->children) {
-            dslink_decref(entry->key);
             {
                 BrokerNode *child = entry->value->data;
                 child->parent = NULL;
                 broker_node_free(child);
                 dslink_decref(entry->value);
             }
+            dslink_decref(entry->key);
             MapEntry *tmp = entry->next;
             free(entry->node);
             free(entry);
@@ -259,10 +254,6 @@ void broker_node_free(BrokerNode *node) {
             dslink_free(dnode->upstreamPoll);
         }
 
-        dslink_map_foreach(&dnode->req_sub_paths) {
-            SubRequester *subreq = entry->value->data;
-            broker_free_sub_requester(subreq);
-        }
         dslink_map_foreach(&dnode->resp_sub_streams) {
             broker_stream_free(entry->value->data);
         }
@@ -270,8 +261,6 @@ void broker_node_free(BrokerNode *node) {
             broker_stream_free(entry->value->data);
         }
         dslink_map_free(&dnode->list_streams);
-        dslink_map_free(&dnode->req_sub_sids);
-        dslink_map_free(&dnode->req_sub_paths);
         dslink_map_free(&dnode->resp_sub_sids);
         dslink_map_free(&dnode->resp_sub_streams);
     } else {
@@ -298,12 +287,12 @@ void broker_node_free(BrokerNode *node) {
     dslink_free(node);
 }
 
-uint32_t broker_node_incr_rid(DownstreamNode *node) {
-    if (node->rid >= INT32_MAX ) {
+uint32_t broker_node_incr_rid(RemoteDSLink *link) {
+    if (link->rid >= INT32_MAX ) {
         // Loop it around
-        node->rid = 1;
+        link->rid = 1;
     }
-    return ++node->rid;
+    return ++link->rid;
 }
 
 uint32_t broker_node_incr_sid(DownstreamNode *node) {
@@ -350,7 +339,7 @@ void broker_dslink_connect(DownstreamNode *dsn, RemoteDSLink *link) {
 
     dslink_map_foreach(&dsn->resp_sub_streams) {
         BrokerSubStream *stream = entry->value->data;
-        send_subscribe_request(dsn, stream->remote_path, stream->respSid, stream->respQos);
+        send_subscribe_request(link, stream->remote_path, stream->respSid, stream->respQos);
     }
 
     ref_t *ref = dslink_map_remove_get(&link->broker->remote_pending_sub,

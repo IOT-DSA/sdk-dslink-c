@@ -25,7 +25,7 @@ void send_invoke_request(DownstreamNode *node,
                                     json_string_nocheck(permission_level_str(maxPermission)));
     }
 
-    broker_ws_send_obj(node->link, top);
+    broker_ws_send_obj(node->link, top, BROKER_MESSAGE_DROPPABLE);
     json_decref(top);
 }
 
@@ -95,12 +95,12 @@ int broker_msg_handle_invoke(RemoteDSLink *link, json_t *req) {
     }
 
     DownstreamNode *ds = (DownstreamNode *) node;
-    uint32_t rid = broker_node_incr_rid(ds);
 
     if (!ds->link) {
         broker_utils_send_closed_resp(link, req, "disconnected");
         return 0;
     }
+    uint32_t rid = broker_node_incr_rid(ds->link);
 
     BrokerInvokeStream *s = broker_stream_invoke_init();
 

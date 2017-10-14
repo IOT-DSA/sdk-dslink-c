@@ -42,7 +42,7 @@ void upstream_clear_poll(UpstreamPoll *upstreamPoll) {
         upstreamPoll->sock = NULL;
     } else if (upstreamPoll->status == UPSTREAM_WS) {
         uv_poll_stop(upstreamPoll->wsPoll);
-        uv_close((uv_handle_t *)upstreamPoll->wsPoll, broker_free_handle);
+        uv_close((uv_handle_t *) upstreamPoll->wsPoll, broker_free_handle);
         upstreamPoll->remoteDSLink->client->poll = NULL;
     }
     if (upstreamPoll->reconnectTimer) {
@@ -50,8 +50,10 @@ void upstream_clear_poll(UpstreamPoll *upstreamPoll) {
         uv_close((uv_handle_t *)upstreamPoll->reconnectTimer, broker_free_handle);
         upstreamPoll->reconnectTimer = NULL;
     }
+    // TODO: Check, it can be possible bug
 //    if (upstreamPoll->conCheckAddrList) {
 //        freeaddrinfo( upstreamPoll->conCheckAddrList );
+//        upstreamPoll->conCheckAddrList = NULL;
 //    }
     broker_close_link(upstreamPoll->remoteDSLink);
     upstream_free_dslink(upstreamPoll->clientDslink);
@@ -104,6 +106,10 @@ void upstream_io_handler(uv_poll_t *poll, int status, int events) {
         return;
     }
 
+    if(!upstreamPoll->remoteDSLink) {
+        return;
+    }
+
     if (status < 0) {
         if(status == UV_EBADF) {
             reconnect_if_error_occured(status, upstreamPoll);
@@ -115,6 +121,12 @@ void upstream_io_handler(uv_poll_t *poll, int status, int events) {
     if (events & UV_READABLE) {
         int stat = wslay_event_recv(upstreamPoll->ws);
         reconnect_if_error_occured(stat, upstreamPoll);
+
+        Broker *broker = mainLoop->data;
+        if(broker->pendingActionUpstreamPoll/*upstreamPoll->pendingDelete*/) {
+            delete_upstream(*broker->pendingActionUpstreamPoll);
+            broker->pendingActionUpstreamPoll = NULL;
+        }
     }
 
     if (events & UV_WRITABLE) {
@@ -291,6 +303,18 @@ void connect_conn_callback(uv_poll_t *handle, int status, int events) {
             log_info("Successfully connected to the upstream broker '%s'\n", upstreamPoll->name);
         }
 
+        ref_t *tmp = dslink_ref(dslink_strdup(upstreamPoll->dsId), dslink_free);
+        if (!tmp) {
+            log_warn("Upstream poll name couldn't be duplicated\n");
+        } else {
+            // add to connected map with the dsid
+            if (dslink_map_set(&upstreamPoll->remoteDSLink->broker->remote_connected, tmp,
+                               dslink_ref(upstreamPoll->remoteDSLink, NULL)) != 0) {
+                log_warn("DSLink %s couldn't be added to list\n", upstreamPoll->name);
+                dslink_free(tmp);
+            }
+        }
+
         upstreamPoll->clientDslink->_socket = upstreamPoll->sock;
 
         upstream_handshake_handle_ws(upstreamPoll);
@@ -412,6 +436,7 @@ void upstream_create_poll(const char *brokerUrl, const char *name, const char *i
     upstreamPoll->group = dslink_strdup(group);
     upstreamPoll->node = node;
     upstreamPoll->reconnectInterval = 0;
+    upstreamPoll->pendingDelete = 0;
 
     node->upstreamPoll = upstreamPoll;
 

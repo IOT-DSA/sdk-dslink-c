@@ -53,7 +53,7 @@ void send_list_updates(RemoteDSLink *reqLink,
     json_object_set_new_nocheck(resp, "stream", json_string_nocheck("open"));
     json_object_set_new_nocheck(resp, "updates", cached_updates);
 
-    broker_ws_send_obj(reqLink, top);
+    broker_ws_send_obj(reqLink, top, BROKER_MESSAGE_DROPPABLE);
     json_decref(top);
 }
 
@@ -176,7 +176,7 @@ void update_list_attribute(BrokerNode *node,
         json_object_set_new_nocheck(resp, "rid", newRid);
 
         RemoteDSLink *client = entry->key->data;
-        broker_ws_send_obj(client, top);
+        broker_ws_send_obj(client, top, BROKER_MESSAGE_DROPPABLE);
     }
     json_decref(top);
 }
@@ -234,7 +234,7 @@ void update_list_child(BrokerNode *node,
         json_object_set_new_nocheck(resp, "rid", newRid);
 
         RemoteDSLink *client = entry->key->data;
-        broker_ws_send_obj(client, top);
+        broker_ws_send_obj(client, top, BROKER_MESSAGE_DROPPABLE);
     }
     json_decref(top);
 }

@@ -34,7 +34,7 @@ void broker_utils_send_closed_resp(RemoteDSLink *link, json_t *req, const char* 
         json_object_set_new_nocheck(resp, "error", errorObject);
     }
 
-    broker_ws_send_obj(link, top);
+    broker_ws_send_obj(link, top, BROKER_MESSAGE_DROPPABLE);
     json_decref(top);
 }
 
@@ -68,7 +68,7 @@ void broker_utils_send_static_list_resp(RemoteDSLink *link, json_t *req) {
                                 json_string_nocheck("closed"));
 
 
-    broker_ws_send_obj(link, top);
+    broker_ws_send_obj(link, top, BROKER_MESSAGE_DROPPABLE);
     json_decref(top);
 }
 
@@ -105,6 +105,6 @@ void broker_utils_send_disconnected_list_resp(RemoteDSLink *link, json_t *req) {
                                 json_string_nocheck("closed"));
 
 
-    broker_ws_send_obj(link, top);
+    broker_ws_send_obj(link, top, BROKER_MESSAGE_DROPPABLE);
     json_decref(top);
 }

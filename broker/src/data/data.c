@@ -61,7 +61,7 @@ void on_delete_node_invoked(RemoteDSLink *link,
             dslink_map_foreach(&node->parent->list_stream->requester_links) {
                 uint32_t *rid = entry->value->data;
                 json_object_set_new_nocheck(resp, "rid", json_integer(*rid));
-                broker_ws_send_obj(entry->key->data, top);
+                broker_ws_send_obj(entry->key->data, top, BROKER_MESSAGE_DROPPABLE);
             }
             json_decref(top);
         }

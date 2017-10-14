@@ -276,10 +276,14 @@ int dslink_generic_ping_handler(RemoteDSLink *link) {
         gettimeofday(&current_time, NULL);
         long time_diff = current_time.tv_sec - link->lastWriteTime->tv_sec;
         if (time_diff >= 30) {
+            // TODO: MERGE ISSUE BROKER_MESSAGE_NOT_DROPPABLE
             broker_ws_send_ping(link);
+            //broker_ws_send_obj(link, json_object(), BROKER_MESSAGE_NOT_DROPPABLE);
         }
     } else {
+        // TODO: MERGE ISSUE BROKER_MESSAGE_NOT_DROPPABLE
         broker_ws_send_ping(link);
+        //broker_ws_send_obj(link, json_object(), BROKER_MESSAGE_NOT_DROPPABLE);
     }
 
     if (link->lastReceiveTime) {
@@ -325,7 +329,9 @@ int broker_handshake_handle_ws(Broker *broker,
         return 1;
     }
 
+#ifndef BROKER_PING_THREAD
     uv_timer_t *ping_timer = NULL;
+#endif
     int ret = 0;
     { // Perform auth check
         char expectedAuth[90];
@@ -386,7 +392,7 @@ int broker_handshake_handle_ws(Broker *broker,
     link->client = client;
     link->dsId = oldDsId;
     link->node = node;
-    node->dsId = oldDsId;
+    node->dsId = dslink_incref(oldDsId);
     client->sock_data = link;
 
     json_object_set_new_nocheck(node->meta, "$$dsId", json_string_nocheck(dsId));
@@ -401,11 +407,15 @@ int broker_handshake_handle_ws(Broker *broker,
     link->ws = ws;
     broker_ws_send_init(client->sock, wsAccept);
 
+
+
+#ifndef BROKER_PING_THREAD
     ping_timer = dslink_malloc(sizeof(uv_timer_t));
     ping_timer->data = link;
     uv_timer_init(link->client->poll->loop, ping_timer);
     uv_timer_start(ping_timer, dslink_handle_ping, 1000, 10000);
     link->pingTimerHandle = ping_timer;
+#endif
 
     // set the ->link and update all existing stream
     broker_dslink_connect(node, link);
@@ -414,6 +424,20 @@ int broker_handshake_handle_ws(Broker *broker,
         update_list_child(broker->downstream,
                           broker->downstream->list_stream,
                           link->name);
+    }
+
+    ref_t *tmp = dslink_ref(dslink_strdup(dsId), dslink_free);
+    if (!tmp) {
+        ret = 1;
+        goto exit;
+    }
+    // add to connected map with the dsid
+    if (dslink_map_set(&broker->remote_connected, tmp,
+                       dslink_ref(link, NULL)) != 0) {
+        log_warn("DSLink %s couldn't be added to list\n",link->name);
+        dslink_free(tmp);
+        ret = 1;
+        goto exit;
     }
 
     log_info("DSLink `%s` has connected\n", dsId);
@@ -429,11 +453,105 @@ exit:
         dslink_free((char *)link->path);
         dslink_free(link);
 
+
+#ifndef BROKER_PING_THREAD
         if (ping_timer) {
             uv_timer_stop(ping_timer);
             uv_close((uv_handle_t *) ping_timer, broker_free_handle);
         }
+#endif
     }
 
     return ret;
+}
+
+int broker_local_handle_ws(Broker *broker,
+                           Client *client,
+                           const char *wsAccept,
+                           const char* perm_group,
+                           const char* session) {
+#ifndef BROKER_PING_THREAD
+    uv_timer_t *ping_timer = NULL;
+#endif
+    RemoteDSLink *link = dslink_calloc(1, sizeof(RemoteDSLink));
+    json_t *resp = json_object();
+    if (!(link && resp)) {
+        goto fail;
+    }
+
+    if (broker_remote_dslink_init(link) != 0) {
+        goto fail;
+    }
+
+    link->broker = broker;
+    link->isResponder = 0;
+    link->isRequester = 1;
+
+    char buf[512] = {0};
+    snprintf(buf, sizeof(buf), "/dglux-%s",session);
+    link->dsId = dslink_ref(dslink_strdup(buf+1), dslink_free);
+    link->name = dslink_strdup("dglux");
+    link->path = dslink_strdup(buf);
+
+
+    // add permission group to link
+    permission_groups_load(&link->permission_groups, (const char*)link->dsId->data, perm_group);
+
+    link->client = client;
+    client->sock_data = link;
+
+
+    wslay_event_context_ptr ws;
+    if (wslay_event_context_server_init(&ws,
+                                        broker_ws_callbacks(),
+                                        link) != 0) {
+        goto fail;
+    }
+    link->ws = ws;
+    broker_ws_send_init(client->sock, wsAccept);
+
+#ifndef BROKER_PING_THREAD
+    ping_timer = dslink_malloc(sizeof(uv_timer_t));
+    ping_timer->data = link;
+    uv_timer_init(link->client->poll->loop, ping_timer);
+    uv_timer_start(ping_timer, dslink_handle_ping, 1000, 10000);
+    link->pingTimerHandle = ping_timer;
+#endif
+
+    update_list_child(broker->downstream,
+                      broker->downstream->list_stream,
+                      link->name);
+
+    ref_t *tmp = dslink_ref(dslink_strdup(buf+1), dslink_free);
+    if (!tmp) {
+        goto fail;
+    }
+    // add to connected map with the dsid
+    if (dslink_map_set(&broker->remote_connected,tmp,
+                       dslink_ref(link, NULL)) != 0) {
+        log_warn("DSLink %s couldn't be added to list\n",link->name);
+        dslink_free(tmp);
+        goto fail;
+    }
+
+    log_info("Local DSLink has connected!\n");
+
+    return 0;
+
+fail:
+    if (link) {
+        dslink_map_free(&link->requester_streams);
+        dslink_map_free(&link->responder_streams);
+        broker_remote_dslink_free(link);
+        if(link->path)
+            dslink_free((void *) link->path);
+        dslink_free(link);
+    }
+#ifndef BROKER_PING_THREAD
+    if (ping_timer) {
+        uv_timer_stop(ping_timer);
+        uv_close((uv_handle_t *) ping_timer, broker_free_handle);
+    }
+#endif
+    return 1;
 }

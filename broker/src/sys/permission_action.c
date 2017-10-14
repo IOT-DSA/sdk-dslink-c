@@ -88,7 +88,7 @@ void get_permissions(RemoteDSLink *link,
         json_array_append_new(row, permissions);
         json_object_set_new_nocheck(resp, "updates", updates);
 
-        broker_ws_send_obj(link, top);
+        broker_ws_send_obj(link, top, BROKER_MESSAGE_DROPPABLE);
         json_decref(top);
     }
 }

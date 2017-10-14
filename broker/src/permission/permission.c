@@ -77,8 +77,10 @@ void permission_groups_load(PermissionGroups* groups, const char *dsId, const ch
     }
 
     // dsId as a permission group
-    groups->groups[len] = dslink_strdup(dsId);
-    ++len;
+    if(dsId) {
+        groups->groups[len] = dslink_strdup(dsId);
+        ++len;
+    }
 
     groups->groupLen = len;
 }

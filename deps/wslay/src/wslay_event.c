@@ -591,6 +591,7 @@ int wslay_event_recv(wslay_event_context_ptr ctx)
       if(new_frame) {
         if(ctx->imsg->msg_length+iocb.payload_length >
            ctx->max_recv_msg_length) {
+
           if((r = wslay_event_queue_close_wrapper
               (ctx, WSLAY_CODE_MESSAGE_TOO_BIG, NULL, 0)) != 0) {
             return r;

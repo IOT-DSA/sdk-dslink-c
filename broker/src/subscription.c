@@ -4,8 +4,7 @@
 #include <broker/config.h>
 #include <broker/broker.h>
 
-
-void send_subscribe_request(DownstreamNode *node,
+void send_subscribe_request(RemoteDSLink *link,
                             const char *path,
                             uint32_t sid,
                             uint8_t qos) {
@@ -16,7 +15,7 @@ void send_subscribe_request(DownstreamNode *node,
     json_t *req = json_object();
     json_array_append_new(reqs, req);
 
-    uint32_t rid = broker_node_incr_rid(node);
+    uint32_t rid = broker_node_incr_rid(link);
     json_object_set_new_nocheck(req, "rid", json_integer(rid));
     json_object_set_new_nocheck(req, "method", json_string_nocheck("subscribe"));
     json_t *paths = json_array();
@@ -27,12 +26,10 @@ void send_subscribe_request(DownstreamNode *node,
     json_object_set_new_nocheck(p, "sid", json_integer(sid));
     json_object_set_new_nocheck(p, "qos", json_integer(qos));
 
-    broker_ws_send_obj(node->link, top);
+    broker_ws_send_obj(link, top, BROKER_MESSAGE_DROPPABLE);
     json_decref(top);
 }
-
-
-SubRequester *broker_create_sub_requester(DownstreamNode * node, const char *path, uint32_t reqSid, uint8_t qos, json_t *qosQueue) {
+SubRequester *broker_create_sub_requester(RemoteDSLink * link, const char *path, uint32_t reqSid, uint8_t qos, json_t *qosQueue) {
     SubRequester *req = dslink_calloc(1, sizeof(SubRequester));
     if (qosQueue) {
         req->qosQueue = qosQueue;
@@ -41,7 +38,7 @@ SubRequester *broker_create_sub_requester(DownstreamNode * node, const char *pat
         req->qosQueue = json_array();
     }
     req->path = dslink_strdup(path);
-    req->reqNode = node;
+    req->reqLink = link;
     req->reqSid = reqSid;
     req->qos = qos;
     return req;
@@ -49,7 +46,7 @@ SubRequester *broker_create_sub_requester(DownstreamNode * node, const char *pat
 
 void serialize_qos_queue(SubRequester *subReq, uint8_t delete) {
     if (!subReq->qosKey1) {
-        subReq->qosKey1 = dslink_str_escape(subReq->reqNode->path);
+        subReq->qosKey1 = dslink_str_escape(subReq->reqLink->path);
     }
     if (!subReq->qosKey2) {
         subReq->qosKey2 = dslink_str_escape(subReq->path);
@@ -67,11 +64,11 @@ void serialize_qos_queue(SubRequester *subReq, uint8_t delete) {
 }
 
 void broker_free_sub_requester(SubRequester *req) {
-    dslink_map_remove(&req->reqNode->req_sub_paths, (void*)req->path);
+    dslink_map_remove(&req->reqLink->req_sub_paths, (void*)req->path);
 
     if (req->reqSid != 0xFFFFFFFF) {
         // while still waiting for qos requester to connect
-        dslink_map_remove(&req->reqNode->req_sub_sids, &req->reqSid);
+        dslink_map_remove(&req->reqLink->req_sub_sids, &req->reqSid);
     }
 
     if (req->pendingNode) {
@@ -81,14 +78,14 @@ void broker_free_sub_requester(SubRequester *req) {
         req->pendingNode = NULL;
     }
     if (req->stream) {
-        dslink_map_remove(&req->stream->reqSubs, req->reqNode);
+        dslink_map_remove(&req->stream->reqSubs, req->reqLink);
         if (req->stream->reqSubs.size == 0) {
             broker_stream_free((BrokerStream *)req->stream);
         }
     }
     if (req->qos > 2) {
         serialize_qos_queue(req, 1);
-        dslink_storage_store(((Broker *)mainLoop->data)->storage, req->reqNode->path, req->path, NULL, NULL, NULL);
+        dslink_storage_store(((Broker *)mainLoop->data)->storage, req->reqLink->path, req->path, NULL, NULL, NULL);
     }
     if (req->qosQueue) {
         clear_qos_queue(req, 1);
@@ -109,7 +106,7 @@ void clear_qos_queue(SubRequester *subReq, uint8_t serialize) {
 }
 
 void broker_update_sub_req_qos(SubRequester *subReq) {
-    if (subReq->reqNode->link) {
+    if (subReq->reqLink) {
 
         json_t *top = json_object();
         json_t *resps = json_array();
@@ -125,30 +122,37 @@ void broker_update_sub_req_qos(SubRequester *subReq) {
         }
         json_object_set_nocheck(newResp, "updates", subReq->qosQueue);
 
-        broker_ws_send_obj(subReq->reqNode->link, top);
+        broker_ws_send_obj(subReq->reqLink, top, BROKER_MESSAGE_DROPPABLE);
 
         json_decref(top);
         clear_qos_queue(subReq, 1);
     }
 }
 
-void broker_update_sub_req(SubRequester *subReq, json_t *varray) {
-    if (subReq->reqNode->link) {
-        json_t *top = json_object();
-        json_t *resps = json_array();
-        json_object_set_new_nocheck(top, "responses", resps);
-        json_t *newResp = json_object();
-        json_array_append_new(resps, newResp);
-        json_object_set_new_nocheck(newResp, "rid", json_integer(0));
-        json_t *updates = json_array();
-        json_object_set_new_nocheck(newResp, "updates", updates);
+void broker_update_sub_req(SubRequester *subReq, json_t *varray, int send) {
+    //TODO: (ali)check here! never enters else if?
+    if (subReq->reqLink) {
 
         json_array_set_new(varray, 0, json_integer(subReq->reqSid));
-        json_array_append(updates, varray);
 
-        broker_ws_send_obj(subReq->reqNode->link, top);
+        if(send) {
+            json_t *top = json_object();
+            json_t *resps = json_array();
+            json_object_set_new_nocheck(top, "responses", resps);
+            json_t *newResp = json_object();
+            json_array_append_new(resps, newResp);
+            json_object_set_new_nocheck(newResp, "rid", json_integer(0));
+            json_t *updates = json_array();
+            json_object_set_new_nocheck(newResp, "updates", updates);
+            json_array_append(updates, varray);
+            broker_ws_send_obj(subReq->reqLink, top, BROKER_MESSAGE_DROPPABLE);
+            json_decref(top);
+        } else {
+            if(!subReq->reqLink->updates)
+                subReq->reqLink->updates = json_array();
+            json_array_append(subReq->reqLink->updates, varray);
+        }
 
-        json_decref(top);
     } else if (subReq->qos > 1){
         // add to qos queue
         if (!subReq->qosQueue) {
@@ -168,17 +172,18 @@ void broker_update_sub_req(SubRequester *subReq, json_t *varray) {
 }
 
 static
-void broker_update_sub_reqs(BrokerSubStream *stream) {
+void broker_update_sub_reqs(BrokerSubStream *stream, int send) {
     dslink_map_foreach(&stream->reqSubs) {
         SubRequester *req = entry->value->data;
-        broker_update_sub_req(req, stream->last_value);
+        broker_update_sub_req(req, stream->last_value, send);
     }
 }
-void broker_update_sub_stream(BrokerSubStream *stream, json_t *varray) {
+
+void broker_update_sub_stream(BrokerSubStream *stream, json_t *varray, int send) {
     json_decref(stream->last_value);
     stream->last_value = varray;
     json_incref(varray);
-    broker_update_sub_reqs(stream);
+    broker_update_sub_reqs(stream,send);
 }
 
 void broker_update_sub_stream_value(BrokerSubStream *stream, json_t *value, json_t *ts) {
@@ -198,7 +203,7 @@ void broker_update_sub_stream_value(BrokerSubStream *stream, json_t *value, json
     }
 
     stream->last_value = varray;
-    broker_update_sub_reqs(stream);
+    broker_update_sub_reqs(stream, 1);
 }
 
 void broker_update_stream_qos(BrokerSubStream *stream) {
@@ -213,7 +218,7 @@ void broker_update_stream_qos(BrokerSubStream *stream) {
         }
         if (maxQos != stream->respQos && ((DownstreamNode*)stream->respNode)->link) {
             stream->respQos = maxQos;
-            send_subscribe_request((DownstreamNode*)stream->respNode, stream->remote_path, stream->respSid, stream->respQos);
+            send_subscribe_request(((DownstreamNode*)stream->respNode)->link, stream->remote_path, stream->respSid, stream->respQos);
         }
     }
 }

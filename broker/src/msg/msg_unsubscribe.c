@@ -18,7 +18,8 @@ void broker_msg_send_unsubscribe(BrokerSubStream *bss, RemoteDSLink *link) {
     json_object_set_new_nocheck(req, "method",
                                 json_string_nocheck("unsubscribe"));
 
-    uint32_t rid = broker_node_incr_rid(link->node);
+    uint32_t rid = broker_node_incr_rid(link);
+
     json_object_set_new_nocheck(req, "rid",
                                 json_integer(rid));
 
@@ -28,13 +29,13 @@ void broker_msg_send_unsubscribe(BrokerSubStream *bss, RemoteDSLink *link) {
         json_object_set_new_nocheck(req, "sids", sids);
     }
 
-    broker_ws_send_obj(((DownstreamNode*)bss->respNode)->link, top);
+    broker_ws_send_obj(((DownstreamNode*)bss->respNode)->link, top, BROKER_MESSAGE_DROPPABLE);
     json_decref(top);
 }
 
 static
 void handle_unsubscribe(RemoteDSLink *link, uint32_t sid) {
-    ref_t *ref = dslink_map_remove_get(&link->node->req_sub_sids, &sid);
+    ref_t *ref = dslink_map_remove_get(&link->req_sub_sids, &sid);
     if (ref) {
         SubRequester *subreq = ref->data;
         broker_free_sub_requester(subreq);

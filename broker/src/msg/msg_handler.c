@@ -22,7 +22,7 @@ int broker_msg_handle_close(RemoteDSLink *link, json_t *req) {
 
     ref_t *ref = dslink_map_remove_get(&link->requester_streams, &rid);
 
-    if (ref) {
+    if (ref && ref->data) {
         requester_stream_closed(ref->data, link);
         dslink_decref(ref);
     }
@@ -95,7 +95,19 @@ void broker_handle_resp(RemoteDSLink *link, json_t *resp) {
     if (rid == 0) {
         size_t index;
         json_t *update;
+
+        //Updates are not sent directly, first collected for each link then sent
+        dslink_map_foreach(&link->broker->remote_connected) {
+            RemoteDSLink* connLink = (RemoteDSLink*)entry->value->data;
+            if(connLink->updates)
+                json_delete(connLink->updates);
+
+        }
+
         json_array_foreach(json_object_get(resp, "updates"), index, update) {
+            if(!link->node)
+                continue;
+
             if (json_is_array(update)) {
                 json_t *jSid = json_array_get(update, 0);
                 if (!jSid) {
@@ -108,7 +120,7 @@ void broker_handle_resp(RemoteDSLink *link, json_t *resp) {
                 }
 
                 BrokerSubStream *s = ref->data;
-                broker_update_sub_stream(s, update);
+                broker_update_sub_stream(s, update,0);
             } else if (json_is_object(update)) {
                 json_t *jSid = json_object_get(update, "sid");
                 if (!jSid) {
@@ -126,6 +138,25 @@ void broker_handle_resp(RemoteDSLink *link, json_t *resp) {
                 broker_update_sub_stream_value(s, value, ts);
             }
 
+        }
+
+        //Updates are not sent directly, first collected for each link then sent
+        dslink_map_foreach(&link->broker->remote_connected) {
+            RemoteDSLink *connLink = (RemoteDSLink *) entry->value->data;
+            if (connLink->updates) {
+
+                json_t *top = json_object();
+                json_t *resps = json_array();
+                json_object_set_new_nocheck(top, "responses", resps);
+                json_t *newResp = json_object();
+                json_array_append_new(resps, newResp);
+                json_object_set_new_nocheck(newResp, "rid", json_integer(0));
+                json_object_set_new_nocheck(newResp, "updates", connLink->updates);
+
+                broker_ws_send_obj(connLink, top, BROKER_MESSAGE_DROPPABLE);
+                json_decref(top);
+                connLink->updates = NULL;
+            }
         }
         return;
     }
@@ -147,7 +178,7 @@ void broker_handle_resp(RemoteDSLink *link, json_t *resp) {
 
         json_t *newRid = json_integer(is->requester_rid);
         json_object_set_new_nocheck(resp, "rid", newRid);
-        broker_ws_send_obj(is->requester, top);
+        broker_ws_send_obj(is->requester, top, BROKER_MESSAGE_DROPPABLE);
         json_decref(top);
 
         json_t *jStreamStat = json_object_get(resp, "stream");
@@ -176,21 +207,13 @@ void broker_msg_handle(RemoteDSLink *link,
             json_t *obj = json_object();
             if (obj) {
                 json_object_set_nocheck(obj, "ack", msg);
-                broker_ws_send_obj(link, obj);
+                broker_ws_send_obj(link, obj, BROKER_MESSAGE_DROPPABLE);
                 json_decref(obj);
             }
         }
     }
 
-    if (link->isRequester && reqs) {
-        json_t *req;
-        size_t index = 0;
-        json_array_foreach(reqs, index, req) {
-            broker_handle_req(link, req);
-        }
-    }
-
-    if (link->isResponder && resps) {
+    if (link && link->isResponder && resps) {
         json_t *resp;
         size_t index = 0;
         json_array_foreach(resps, index, resp) {
@@ -198,5 +221,16 @@ void broker_msg_handle(RemoteDSLink *link,
         }
     }
 
+
+    if (link && link->isRequester && reqs) {
+        json_t *req;
+        size_t index = 0;
+        json_array_foreach(reqs, index, req) {
+            broker_handle_req(link, req);
+        }
+    }
+
+
     json_decref(data);
+
 }

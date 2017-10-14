@@ -30,6 +30,7 @@ typedef struct Client {
 
     uv_poll_t *poll;
     uv_poll_cb poll_cb;
+    int is_local;
 }Client;
 
 

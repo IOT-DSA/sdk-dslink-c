@@ -12,8 +12,7 @@
 
 void broker_handle_local_subscribe(BrokerNode *respNode,
                                    SubRequester *subreq) {
-    DownstreamNode *reqNode = subreq->reqNode;
-
+    RemoteDSLink *reqLink = subreq->reqLink;
     if (!respNode->sub_stream) {
         respNode->sub_stream = broker_stream_sub_init();
         respNode->sub_stream->respNode = respNode;
@@ -24,15 +23,15 @@ void broker_handle_local_subscribe(BrokerNode *respNode,
         }
     }
     subreq->stream = respNode->sub_stream;
-    dslink_map_set(&respNode->sub_stream->reqSubs, dslink_ref(reqNode, NULL), dslink_ref(subreq, NULL));
+    dslink_map_set(&respNode->sub_stream->reqSubs, dslink_ref(reqLink, NULL), dslink_ref(subreq, NULL));
     if (respNode->sub_stream->last_value) {
-        broker_update_sub_req(subreq, respNode->sub_stream->last_value);
+        broker_update_sub_req(subreq, respNode->sub_stream->last_value, 1);
     }
 }
 
 void broker_subscribe_remote(DownstreamNode *respNode, SubRequester *subreq,
                              const char *respPath) {
-    DownstreamNode *reqNode = subreq->reqNode;
+    RemoteDSLink *reqLink = subreq->reqLink;
 
     ref_t *ref = dslink_map_get(&respNode->resp_sub_streams, (void*)respPath);
     BrokerSubStream *bss;
@@ -51,14 +50,13 @@ void broker_subscribe_remote(DownstreamNode *respNode, SubRequester *subreq,
     }
 
     subreq->stream = bss;
-    dslink_map_set(&bss->reqSubs, dslink_ref(reqNode, NULL), dslink_ref(subreq, NULL));
+    dslink_map_set(&bss->reqSubs, dslink_ref(reqLink, NULL), dslink_ref(subreq, NULL));
 
     broker_update_stream_qos(bss);
     if (bss->last_value) {
-        broker_update_sub_req(subreq, bss->last_value);
+        broker_update_sub_req(subreq, bss->last_value, 1);
     }
 }
-
 
 static
 void subs_list_free(void *p) {
@@ -123,11 +121,11 @@ void broker_subscribe_local_nonexistent(const char *path, SubRequester *subreq) 
 
 void broker_add_new_subscription(Broker *broker, SubRequester *subreq) {
     char *out = NULL;
-    DownstreamNode * reqNode = subreq->reqNode;
+    RemoteDSLink * reqLink = subreq->reqLink;
     BrokerNode *respNode = broker_node_get(broker->root, subreq->path, &out);
 
-    dslink_map_set(&reqNode->req_sub_paths, dslink_str_ref(subreq->path), dslink_ref(subreq, NULL));
-    dslink_map_set(&reqNode->req_sub_sids, dslink_int_ref(subreq->reqSid), dslink_ref(subreq, NULL));
+    dslink_map_set(&reqLink->req_sub_paths, dslink_str_ref(subreq->path), dslink_ref(subreq, NULL));
+    dslink_map_set(&reqLink->req_sub_sids, dslink_int_ref(subreq->reqSid), dslink_ref(subreq, NULL));
 
     if (!respNode) {
         if (dslink_str_starts_with(subreq->path, "/downstream/") || dslink_str_starts_with(subreq->path, "/upstream/")) {
@@ -159,7 +157,7 @@ void handle_subscribe(RemoteDSLink *link, json_t *sub) {
         return;
     }
 
-    DownstreamNode *reqNode = link->node;
+    RemoteDSLink *reqLink = link;
 
     uint32_t sid = (uint32_t) json_integer_value(jSid);
 
@@ -172,8 +170,8 @@ void handle_subscribe(RemoteDSLink *link, json_t *sub) {
 
     // TODO check if sid or path already exist
 
-    ref_t *idsub = dslink_map_get(&reqNode->req_sub_sids, &sid);
-    ref_t *pathsub = dslink_map_get(&reqNode->req_sub_paths, (void*)path);
+    ref_t *idsub = dslink_map_get(&reqLink->req_sub_sids, &sid);
+    ref_t *pathsub = dslink_map_get(&reqLink->req_sub_paths, (void*)path);
 
     if (idsub && pathsub && idsub->data == pathsub->data) {
         // update qos only
@@ -190,23 +188,23 @@ void handle_subscribe(RemoteDSLink *link, json_t *sub) {
     if (pathsub) {
         // update sid and qos on existing path;
         SubRequester *reqsub = pathsub->data;
-        ref_t *pathidsub = dslink_map_remove_get(&reqNode->req_sub_sids, &reqsub->reqSid);
+        ref_t *pathidsub = dslink_map_remove_get(&reqLink->req_sub_sids, &reqsub->reqSid);
         if (pathidsub) {
             dslink_free(pathidsub);
         }
         reqsub->reqSid = sid;
-        dslink_map_set(&reqNode->req_sub_sids, dslink_int_ref(sid), dslink_ref(reqsub, NULL));
+        dslink_map_set(&reqLink->req_sub_sids, dslink_int_ref(sid), dslink_ref(reqsub, NULL));
         broker_update_sub_qos(reqsub, qos);
         if (json_array_size(reqsub->qosQueue) > 0) {
             // send qos data
             broker_update_sub_req_qos(reqsub);
         } else if (reqsub->stream && reqsub->stream->last_value) {
-            broker_update_sub_req(reqsub, reqsub->stream->last_value);
+            broker_update_sub_req(reqsub, reqsub->stream->last_value ,1);
         }
         return;
     }
 
-    SubRequester *subreq = broker_create_sub_requester(reqNode, path, sid, qos, NULL);
+    SubRequester *subreq = broker_create_sub_requester(reqLink, path, sid, qos, NULL);
     if (qos & 2) {
         serialize_qos_queue(subreq, 0);
     }
