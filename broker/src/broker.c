@@ -106,7 +106,7 @@ int handle_ws(Broker *broker, HttpRequest *req, Client *client) {
             const char *perm_group = dslink_str_unescape(broker_http_param_get(&req->uri, "group"));
             const char *session = broker_http_param_get(&req->uri, "session");
             const char *format = broker_http_param_get(&req->uri, "format");
-            if(broker_local_handle_ws(broker, client, accept, perm_group+1, session, format) != 0) {
+            if(broker_local_handle_ws(broker, client, accept, perm_group, session, format) != 0) {
                 log_debug("Broker local handle_ws failed\n");
                 goto fail;
             }
