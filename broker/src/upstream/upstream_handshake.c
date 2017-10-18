@@ -236,7 +236,18 @@ void connect_conn_callback(uv_poll_t *handle, int status, int events) {
     }
 
     json_t *handshake = NULL;
-    dslink_parse_handshake_response(resp, &handshake);
+    int res = dslink_parse_handshake_response(resp, &handshake);
+    if(res == DSLINK_HANDSHAKE_MOVED_PERMANENTLY) {
+        char* location = strstr(resp, "location:");
+        if(location) {
+            char* idx = strstr(location, "http");
+            char* end = strstr(idx, "/conn");
+            if(end) {
+                end[5] = '\0';
+            }
+            log_err("The site has been moved permanently to %s. Please change your upstream configuration accordingly.\n", idx);
+        }
+    }
 
     dslink_free(resp);
 
