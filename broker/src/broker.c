@@ -475,26 +475,6 @@ void broker_stop(Broker* broker) {
     dslink_list_free_all_nodes(&broker->extensions);
 }
 
-static const char* setHostFrom(const char* protocol,const char* address, const char* port)
-{
-    char* host = NULL;
-
-    if(dslink_isipv6address(address)) {
-        const char* temp = dslink_checkIpv6Address(address);
-        int len = strlen(temp)+strlen(port)+16+1;
-        host = dslink_malloc(len);
-        snprintf(host, len, "%s://[%s]:%s/conn", protocol, temp, port);
-    } else {
-        const char* temp = dslink_checkIpv4Address(address);
-        int len = strlen(temp)+strlen(port)+16+1;
-        host = dslink_malloc(len);
-        snprintf(host, len, "%s://%s:%s/conn", protocol, temp, port);
-    }
-
-    return host;
-}
-
-
 int broker_init_extensions(Broker* broker, json_t* config) {
     list_init(&broker->extensions);
 
