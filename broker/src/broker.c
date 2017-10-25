@@ -308,7 +308,7 @@ int broker_init(Broker *broker, json_t *defaultPermission) {
     if (!broker->root) {
         goto fail;
     }
-    printf("ALI_DEBUG: %s\n",json_dumps(defaultPermission,JSON_PRESERVE_ORDER));
+    log_debug("defaultPermissions: %s\n",json_dumps(defaultPermission,JSON_PRESERVE_ORDER));
     broker->root->permissionList = permission_list_new_from_json(defaultPermission);
 
     broker->root->path = dslink_strdup("/");

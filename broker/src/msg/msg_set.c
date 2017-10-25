@@ -89,8 +89,7 @@ int broker_msg_handle_set(RemoteDSLink *link, json_t *req) {
     char *out = NULL;
     BrokerNode *node = broker_node_get(link->broker->root, path, &out);
 
-    PermissionLevel permission_requester;
-    if(!security_barrier(link, req, path, PERMISSION_WRITE, &permission_requester)) return 0;
+    if(!security_barrier(link, req, path, PERMISSION_WRITE, NULL)) return 0;
 
     if (node && node->type == DOWNSTREAM_NODE) {
         uint32_t reqRid = (uint32_t) json_integer_value(rid);

@@ -36,7 +36,7 @@ void broker_handle_req(RemoteDSLink *link, json_t *req) {
     if (!jRid) { return; }
     uint32_t rid = (uint32_t) json_integer_value(jRid);
 
-    printf("MKOCEAN: %s\n", json_dumps(req, JSON_INDENT(1)));
+    //printf("%s\n", json_dumps(req, JSON_INDENT(1)));// dev debug
 
 
     const char *method = json_string_value(json_object_get(req, "method"));
@@ -53,12 +53,12 @@ void broker_handle_req(RemoteDSLink *link, json_t *req) {
 
 
     // Front permission check with possible lowest permission (PERMISSION_LIST)
-//    const char *path = json_string_value(json_object_get(req, "path"));
-//    if(path)
-//    {
-//        if(!security_barrier(link, req, path, PERMISSION_LIST, NULL))
-//            return;
-//    }
+    const char *path = json_string_value(json_object_get(req, "path"));
+    if(path)
+    {
+        if(!security_barrier(link, req, path, PERMISSION_LIST, NULL))
+            return;
+    }
 
     if (!method) {
         return;
