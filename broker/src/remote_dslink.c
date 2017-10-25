@@ -6,8 +6,8 @@
 #include <broker/stream.h>
 #include <broker/subscription.h>
 
-#include <broker/net/ws.h>
 #include <dslink/crypto.h>
+#include <broker/net/ws.h>
 
 int broker_remote_dslink_init(RemoteDSLink *link) {
     memset(link, 0, sizeof(RemoteDSLink));

@@ -34,6 +34,7 @@ int sync_json_to_msg_pack(json_t *json_obj, msgpack_packer* pk);
 msgpack_sbuffer* dslink_ws_json_to_msgpack(json_t *json_obj);
 json_t* dslink_ws_msgpack_to_json(msgpack_object* obj);
 
+
 #ifdef __cplusplus
 }
 #endif

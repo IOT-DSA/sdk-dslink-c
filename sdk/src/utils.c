@@ -3,6 +3,7 @@
 #include <time.h>
 #include <sys/time.h>
 #include <stdio.h>
+#include <wslay/wslay.h>
 
 #include "dslink/mem/mem.h"
 #include "dslink/utils.h"
@@ -423,3 +424,5 @@ json_t* dslink_ws_msgpack_to_json(msgpack_object* msg_obj)
     json_obj = NULL;
     goto EXIT;
 }
+
+

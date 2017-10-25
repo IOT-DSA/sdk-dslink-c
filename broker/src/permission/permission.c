@@ -1,12 +1,12 @@
 
 #include "broker/permission/permission.h"
+#include "broker/permission/permission_group.h"
 #include <broker/node.h>
-#include <broker/remote_dslink.h>
-#include <string.h>
-#include <dslink/utils.h>
 #include <broker/broker.h>
 #include <broker/config.h>
+#include <broker/utils.h>
 
+// PERMISSION STRINGS /////////////////////////////////////////////////
 const char* PERMISSION_NAMES[6] = {"none", "list", "read", "write", "config", "never"};
 
 const char *permission_level_str(PermissionLevel level) {
@@ -29,65 +29,100 @@ PermissionLevel permission_str_level(const char *str) {
     return p;
 }
 
-void permission_groups_init(PermissionGroups* groups) {
-    groups->groups = NULL;
-    groups->groupLen = 0;
-}
+///////////////////////////////////////////////////////////////////////
 
-void permission_groups_free(PermissionGroups* groups) {
-    if (groups->groups) {
-        for (size_t i = 0; i < groups->groupLen; ++i) {
-            dslink_free((void *)groups->groups[i]);
-        }
-        dslink_free(groups->groups);
-    }
-}
+// THIS IS ONLY TAKING UPDATE array section
+void remove_entries_from_update_according_to_permission(json_t *l, PermissionLevel level)
+{
+    (void) level;
 
-void permission_groups_load(PermissionGroups* groups, const char *dsId, const char* str) {
-    if (groups->groups) {
-        permission_groups_free(groups);
-    }
-    size_t allocatedLen = 1;
-    size_t len = 0;
+    json_t *main_value = NULL;
 
-    if (str) {
-        allocatedLen = 4;
-        groups->groups = dslink_malloc(sizeof(char*) * allocatedLen);
+    unsigned int i = 0;
 
-        const char *start = str;
-        const char *end = str - 1;
+    json_array_foreach(l, i, main_value)
+    {
+        if(!json_is_array(main_value))
+            continue;
 
-        do {
-            ++end;
-            if (*end == ',' || *end == '\0')  {
-                if (end > start) {
-                    // +1 for current value, +1 for the dsId
-                    if (len + 2 > allocatedLen) {
-                        allocatedLen *= 2;
-                        groups->groups = dslink_realloc(groups->groups, sizeof(char*) * allocatedLen);
-                    }
-                    groups->groups[len] = dslink_strdupl(start, end - start);
-                    ++len;
-                }
-                start = end + 1;
+        // It is nodes value itself check it
+        json_t* maybe_writable = json_array_get(main_value,0);
+        if(maybe_writable && strcmp("$writable", json_string_value(maybe_writable)) == 0)
+        {
+            json_t* writable_perm = json_array_get(main_value,1);
+            if(writable_perm && permission_str_level(json_string_value(writable_perm)) > level)
+            {
+                json_array_remove(l, i);
+                i--;
+                continue;
             }
-        }while (*end);
-    } else {
-        groups->groups = dslink_malloc(sizeof(char*));
-    }
+        }
 
-    // dsId as a permission group
-    if(dsId) {
-        groups->groups[len] = dslink_strdup(dsId);
-        ++len;
-    }
+        json_t* props = json_array_get(main_value, 1);
+        if(!props) continue;
 
-    groups->groupLen = len;
+        // Find in probs
+        json_t* invokable = json_object_get(props, "$invokable");
+
+        if(invokable && permission_str_level(json_string_value(invokable)) > level)
+        {
+            json_array_remove(l, i);
+            i--;
+            continue;
+        }
+
+        json_t* writable = json_object_get(props, "$writable");
+        if(writable && permission_str_level(json_string_value(invokable)) > level)
+        {
+            json_object_del(props, "$writable");
+            continue;
+        }
+    }
 }
 
+// Finding name "update" in all json sending to remove
+void filter_list_according_to_permission(json_t *l, PermissionLevel level)
+{
+    if(level == PERMISSION_CONFIG) return;
+
+    const char *main_key = NULL;
+    json_t *main_value = NULL;
+    unsigned int i = 0;
+
+    if(json_is_array(l))
+    {
+        json_array_foreach(l, i, main_value)
+        {
+            filter_list_according_to_permission(main_value, level);
+        }
+    }
+
+    if(json_is_object(l))
+    {
+        json_object_foreach(l, main_key, main_value) {
+
+            if(main_key == NULL)
+                continue;
+
+            if(strcmp(main_key, "updates") == 0){
+                remove_entries_from_update_according_to_permission(main_value, level);
+            }
+            else {
+                filter_list_according_to_permission(main_value, level);
+            }
+        }
+    }
+
+
+}
+
+
+// For every group that node have
+// Travel all the groups and
+// select the highest permission in the group
 static
-int get_current_permission(List *permissionList,
-                        const char **groups, PermissionLevel *levels, size_t glen) {
+int fill_permission_levels(List *permissionList, const char **groups,
+                           PermissionLevel *levels, size_t glen) {
 
     for (size_t g = 0; g < glen; ++g) {
         const char* group = groups[g];
@@ -112,13 +147,17 @@ static
 void get_virtual_permission(const char* path, VirtualDownstreamNode* node,
                             const char **groups, PermissionLevel *levels, size_t glen) {
     if (node->permissionList) {
-        if (get_current_permission(node->permissionList, groups, levels, glen)) {
+        if (fill_permission_levels(node->permissionList, groups, levels, glen)) {
             return;
         }
     }
+
     if (!path || *path == 0) {
         return;
     }
+
+    // We couldn't find any permission here
+    // so we are going to next level
 
     const char* next = strstr(path, "/");
     char* name;
@@ -146,10 +185,11 @@ static
 void get_node_permission(const char* path, BrokerNode* node,
                          const char **groups, PermissionLevel *levels, size_t glen) {
     if (node->permissionList) {
-        if (get_current_permission(node->permissionList, groups, levels, glen)) {
+        if (fill_permission_levels(node->permissionList, groups, levels, glen)) {
             return;
         }
     }
+
     if (!path || *path == 0) {
         return;
     }
@@ -187,12 +227,16 @@ PermissionLevel get_permission(const char* path, BrokerNode* rootNode, RemoteDSL
     if (!rootNode->permissionList) {
         return PERMISSION_CONFIG;
     }
+
     if (*path != '/') {
         return PERMISSION_NONE;
     }
+
     size_t glen = reqLink->permission_groups.groupLen;
     PermissionLevel *levels = dslink_calloc(glen, sizeof(PermissionLevel));
     get_node_permission(path+1, rootNode, reqLink->permission_groups.groups, levels, glen);
+
+    // Getting maximum level from permission level list
     PermissionLevel maxLevel = PERMISSION_NONE;
     for (size_t i = 0; i < glen; ++i) {
         if (levels[i] > maxLevel) {
@@ -200,14 +244,14 @@ PermissionLevel get_permission(const char* path, BrokerNode* rootNode, RemoteDSL
         }
     }
     dslink_free(levels);
+
     return maxLevel;
 }
 
 
-static
-uint8_t set_virtual_permission_list(const char* path, VirtualDownstreamNode* node, json_t *json) {
+static uint8_t set_virtual_permission_list(const char* path, VirtualDownstreamNode* node, json_t *json) {
     if (!path || *path == 0) {
-        List *permissions = permission_list_load(json);
+        List *permissions = permission_list_new_from_json(json);
         permission_list_free(node->permissionList);
         node->permissionList = permissions;
         return 0;
@@ -234,10 +278,9 @@ uint8_t set_virtual_permission_list(const char* path, VirtualDownstreamNode* nod
     }
 }
 
-static
-uint8_t set_node_permission_list(const char* path, BrokerNode* node, json_t *json) {
+static uint8_t set_node_permission_list(const char* path, BrokerNode* node, json_t *json) {
     if (!path || *path == 0) {
-        List *permissions = permission_list_load(json);
+        List *permissions = permission_list_new_from_json(json);
         permission_list_free(node->permissionList);
         node->permissionList = permissions;
         return 0;
@@ -298,10 +341,9 @@ uint8_t set_permission_list(const char *path, struct BrokerNode *rootNode, struc
 }
 
 
-static
-json_t *get_virtual_permission_list(const char* path, VirtualDownstreamNode* node) {
+static json_t *get_virtual_permission_list(const char* path, VirtualDownstreamNode* node) {
     if (!path || *path == 0) {
-        return permission_list_save(node->permissionList);
+        return permission_list_get_as_json(node->permissionList);
     } else {
         const char* next = strstr(path, "/");
         char* name;
@@ -325,10 +367,9 @@ json_t *get_virtual_permission_list(const char* path, VirtualDownstreamNode* nod
     }
 }
 
-static
-json_t *get_node_permission_list(const char* path, BrokerNode* node) {
+static json_t *get_node_permission_list(const char* path, BrokerNode* node) {
     if (!path || *path == 0) {
-        return permission_list_save(node->permissionList);
+        return permission_list_get_as_json(node->permissionList);
     } else {
         const char* next = strstr(path, "/");
         char* name;
@@ -371,6 +412,7 @@ json_t * get_permission_list(const char* path, struct BrokerNode* rootNode, stru
     return get_node_permission_list(path+1, rootNode);
 }
 
+
 // permission list for node or virtual node
 void permission_list_free(List* list) {
     if (!list) {
@@ -384,7 +426,7 @@ void permission_list_free(List* list) {
     dslink_list_free(list);
 }
 
-json_t *permission_list_save(List * permissionList) {
+json_t *permission_list_get_as_json(List *permissionList) {
     if (!permissionList || list_is_empty(permissionList)) {
         return NULL;
     }
@@ -402,10 +444,11 @@ json_t *permission_list_save(List * permissionList) {
     return rslt;
 }
 
-List *permission_list_load(json_t *json) {
+List *permission_list_new_from_json(json_t *json) {
     if (!json_is_array(json) || json_array_size(json) == 0) {
         return NULL;
     }
+
     List *rslt = dslink_calloc(1, sizeof(List));
     list_init(rslt);
 
@@ -429,4 +472,69 @@ List *permission_list_load(json_t *json) {
         }
     }
     return rslt;
+}
+
+int security_barrier(struct RemoteDSLink *requester,
+                     json_t *req, const char *path,
+                     PermissionLevel allowed_level_on_root,
+                     PermissionLevel* requester_level_out)
+{
+    // Checking the permit on request
+    // It can allow the maximum permission
+    json_t *maxPermitJson = NULL;
+    if(req) maxPermitJson = json_object_get(req, "permit");
+
+    PermissionLevel maxPermit = PERMISSION_CONFIG;
+    if (maxPermitJson && json_is_string(maxPermitJson)) {
+        maxPermit = permission_str_level(json_string_value(maxPermitJson));
+    }
+
+    // get permission from requester's broker's root
+    PermissionLevel requester_level;
+    requester_level = get_permission(path, requester->broker->root, requester);
+
+    // Check if requester want to access to the another node permission
+    char *out = NULL;
+    BrokerNode *node_on_path = broker_node_get(requester->broker->root, path, &out);
+
+    if(node_on_path && node_on_path->type == DOWNSTREAM_NODE)
+    {
+        DownstreamNode *dsn = (DownstreamNode *) node_on_path;
+
+        if(dsn->link)
+        {
+            // We are checking the permission of the requested link on broker,
+            // If it is bigger than requester permission we will not serve anything!
+            PermissionLevel on_path_permission = get_permission("/", requester->broker->root, dsn->link);
+
+            if(on_path_permission>requester_level)
+                requester_level = PERMISSION_NONE;
+        }
+    }
+
+    // clamping it to maxpermit,
+    if (requester_level > maxPermit) {
+        requester_level = maxPermit;
+    }
+
+    if(requester_level_out) *requester_level_out = requester_level;
+
+    // Check if its a for /sys
+    // For permission it is not allowed!
+    if(strlen(path) > 3)
+    {
+        if( dslink_str_starts_with(path, "/sys") && requester_level < PERMISSION_CONFIG)
+        {
+            if(req) broker_utils_send_closed_resp(requester, req, "permissionDenied");
+            return 0;
+        }
+    }
+
+    // Checking the permission finally
+    if (requester_level < allowed_level_on_root) {
+        if(req) broker_utils_send_closed_resp(requester, req, "permissionDenied");
+        return 0;
+    }
+
+    return 1;
 }

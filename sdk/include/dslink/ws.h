@@ -5,6 +5,9 @@
 extern "C" {
 #endif
 
+#include <wslay/wslay.h>
+#include <wslay_event.h>
+
 #include <jansson.h>
 #include <msgpack.h>
 
@@ -25,10 +28,11 @@ int dslink_handshake_connect_ws(Url *url,
 
 void dslink_handshake_handle_ws(DSLink *link, link_callback on_requester_ready_cb);
 
-int dslink_ws_send_obj(struct wslay_event_context *ctx, json_t *obj);
-int dslink_ws_send(struct wslay_event_context *ctx,
-                   const char *data, const int len, const int opcode);
+int dslink_ws_send(struct wslay_event_context* ctx, struct wslay_event_msg msg);
 
+int dslink_ws_send_obj(struct wslay_event_context *ctx, json_t *obj);
+
+struct wslay_event_msg dslink_ws_dump_json_into_msg(json_t *obj, int as_msgpack);
 
 
 #ifdef __cplusplus

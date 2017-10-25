@@ -57,6 +57,7 @@ static void server_basic(Socket *socket) {
 
     printf("Received Message =%d %s\n", byte_count, rec_message );
 
+    dslink_socket_close(&client_socket);
 }
 
 static void client_basic(Socket *socket){
@@ -92,14 +93,13 @@ void socket_bind_connect_test(void **state) {
     Socket *server_socket = dslink_socket_init(0);
     assert_non_null(server_socket);
 
-    Socket *client_socket = NULL;
+    Socket *client_socket = dslink_socket_init(0);
 
     uv_thread_t server_id;
     uv_thread_t client_id;
 
     uv_barrier_init(&server_ready_blocker, 2);
     uv_barrier_init(&connection_ok_blocker, 2);
-
 
     uv_thread_create(&server_id, (void (*)(void*)) server_basic, server_socket);
     uv_thread_create(&client_id, (void (*)(void*)) client_basic, client_socket);
@@ -109,9 +109,6 @@ void socket_bind_connect_test(void **state) {
 
     uv_barrier_destroy(&server_ready_blocker);
     uv_barrier_destroy(&connection_ok_blocker);
-
-
-
 
     dslink_socket_close(&server_socket);
     assert_null(server_socket);

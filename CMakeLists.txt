@@ -219,7 +219,7 @@ set(BROKER_SRC
     "${BROKER_SRC_DIR}/node/virtual_downstream.c"
     "${BROKER_SRC_DIR}/msg/msg_remove.c"
     "${BROKER_SRC_DIR}/sys/throughput.c"
-)
+    "${BROKER_SRC_DIR}/permission/permission_group.c")
 ###### Configure Libraries #####
 
 set(CMAKE_MACOSX_RPATH 1)

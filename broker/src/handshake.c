@@ -276,14 +276,10 @@ int dslink_generic_ping_handler(RemoteDSLink *link) {
         gettimeofday(&current_time, NULL);
         long time_diff = current_time.tv_sec - link->lastWriteTime->tv_sec;
         if (time_diff >= 30) {
-            // TODO: MERGE ISSUE BROKER_MESSAGE_NOT_DROPPABLE
             broker_ws_send_ping(link);
-            //broker_ws_send_obj(link, json_object(), BROKER_MESSAGE_NOT_DROPPABLE);
         }
     } else {
-        // TODO: MERGE ISSUE BROKER_MESSAGE_NOT_DROPPABLE
         broker_ws_send_ping(link);
-        //broker_ws_send_obj(link, json_object(), BROKER_MESSAGE_NOT_DROPPABLE);
     }
 
     if (link->lastReceiveTime) {

@@ -293,8 +293,6 @@ void connect_conn_callback(uv_poll_t *handle, int status, int events) {
 
         log_info("Format was decided as %s by server\n", format_str);
 
-
-
         if ((dslink_handshake_connect_ws(upstreamPoll->clientDslink->config.broker_url, &upstreamPoll->clientDslink->key, uri,
                                          tKey, salt, upstreamPoll->dsId, NULL, format_str, &upstreamPoll->sock)) != 0) {
             upstream_reconnect(upstreamPoll);

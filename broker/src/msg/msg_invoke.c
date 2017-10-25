@@ -53,11 +53,6 @@ int broker_msg_handle_invoke(RemoteDSLink *link, json_t *req) {
     if (!(reqRid && reqPath)) {
         return 1;
     }
-    json_t *maxPermitJson = json_object_get(req, "permit");
-    PermissionLevel maxPermit = PERMISSION_CONFIG;
-    if (json_is_string(maxPermitJson)) {
-        maxPermit = permission_str_level(json_string_value(maxPermitJson));
-    }
 
     const char *path = json_string_value(reqPath);
     char *out = NULL;
@@ -67,21 +62,24 @@ int broker_msg_handle_invoke(RemoteDSLink *link, json_t *req) {
         return 0;
     }
 
+    // TODO: POSSIBLE can be a bug on this
     Broker *broker = mainLoop->data;
+    (void) broker;
 
-    PermissionLevel permissionOnPath = get_permission(path, broker->root, link);
-    if (permissionOnPath > maxPermit) {
-        permissionOnPath = maxPermit;
+    PermissionLevel permissionOnPath;
+    // TODO: POSSIBLE WRONG ON PERMISSION_NONE
+    if(!security_barrier(link, req, path, PERMISSION_NONE, &permissionOnPath)) return 0;
+
+    json_t *maxPermitJson = json_object_get(req, "permit");
+    PermissionLevel maxPermit = PERMISSION_CONFIG;
+    if (json_is_string(maxPermitJson)) {
+        maxPermit = permission_str_level(json_string_value(maxPermitJson));
     }
 
-    if (permissionOnPath == PERMISSION_NONE) {
-        broker_utils_send_closed_resp(link, req, "permissionDenied");
-        return 0;
-    }
     if (node->type == REGULAR_NODE) {
         json_t *invokableJson = json_object_get(node->meta, "$invokable");
-
         PermissionLevel level = permission_str_level(json_string_value(invokableJson));
+
         if (level > permissionOnPath) {
             broker_utils_send_closed_resp(link, req, "permissionDenied");
         } else if (node->on_invoke) {

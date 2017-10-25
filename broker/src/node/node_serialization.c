@@ -13,7 +13,7 @@ static
 void broker_save_downstream_virtual_nodes(VirtualDownstreamNode *node, const char *name, json_t *pdata) {
     json_t *data = json_copy(node->meta);
 
-    json_t *plist = permission_list_save(node->permissionList);
+    json_t *plist = permission_list_get_as_json(node->permissionList);
     if (plist) {
         json_object_set_new_nocheck(data, "?permissions", plist);
     }
@@ -47,7 +47,7 @@ void broker_save_downstream_nodes(uv_timer_t *handle) {
         json_t *data = json_copy(node->meta);
         json_object_del(data, "$disconnectedTs");
 
-        json_t *plist = permission_list_save(node->permissionList);
+        json_t *plist = permission_list_get_as_json(node->permissionList);
         if (plist) {
             json_object_set_new_nocheck(data, "?permissions", plist);
         }
@@ -78,7 +78,7 @@ void broker_load_downstream_virtual_nodes(Map *map, const char *name, json_t *da
             if (*key == '?') {
                 if (strcmp(key, "?permissions") == 0) {
                     // when loading fails, permissionList will be NULL.
-                    node->permissionList = permission_list_load(value);
+                    node->permissionList = permission_list_new_from_json(value);
                 }
             } else if (*key == '$' || *key == '@') {
                 // copy metadata
@@ -121,7 +121,7 @@ int broker_load_downstream_nodes(Broker *broker) {
                     if (*key == '?') {
                         if (strcmp(key, "?permissions") == 0) {
                             // when loading fails, permissionList will be NULL.
-                            node->permissionList = permission_list_load(value);
+                            node->permissionList = permission_list_new_from_json(value);
                         }
                     } else if (*key == '$' || *key == '@') {
                         // copy metadata
@@ -174,7 +174,7 @@ json_t *broker_save_data_node(BrokerNode *node) {
     }
 
     // save permission list
-    json_t *plist = permission_list_save(node->permissionList);
+    json_t *plist = permission_list_get_as_json(node->permissionList);
     if (plist) {
         json_object_set_new_nocheck(data, "?permissions", plist);
     }
@@ -221,7 +221,7 @@ void broker_load_data_node(BrokerNode *node, json_t *data) {
         if (*key == '?') {
             if (strcmp(key, "?permissions") == 0) {
                 // when loading fails, permissionList will be NULL.
-                node->permissionList = permission_list_load(value);
+                node->permissionList = permission_list_new_from_json(value);
             }
         } if (*key == '$' || *key == '@') {
             json_object_set_nocheck(node->meta, key, value);

@@ -31,14 +31,16 @@ int broker_msg_handle_close(RemoteDSLink *link, json_t *req) {
 
 static
 void broker_handle_req(RemoteDSLink *link, json_t *req) {
+    // Firstly check rid
     json_t *jRid = json_object_get(req, "rid");
-    if (!jRid) {
-        return;
-    }
+    if (!jRid) { return; }
+    uint32_t rid = (uint32_t) json_integer_value(jRid);
+
+    printf("MKOCEAN: %s\n", json_dumps(req, JSON_INDENT(1)));
+
 
     const char *method = json_string_value(json_object_get(req, "method"));
-    uint32_t r = (uint32_t) json_integer_value(jRid);
-    ref_t *ref = dslink_map_get(&link->requester_streams, &r);
+    ref_t *ref = dslink_map_get(&link->requester_streams, &rid);
     if (ref && !method) {
         BrokerInvokeStream *stream = ref->data;
         if (stream->continuous_invoke) {
@@ -47,6 +49,16 @@ void broker_handle_req(RemoteDSLink *link, json_t *req) {
         }
         return;
     }
+
+
+
+    // Front permission check with possible lowest permission (PERMISSION_LIST)
+//    const char *path = json_string_value(json_object_get(req, "path"));
+//    if(path)
+//    {
+//        if(!security_barrier(link, req, path, PERMISSION_LIST, NULL))
+//            return;
+//    }
 
     if (!method) {
         return;
@@ -90,8 +102,8 @@ void broker_handle_resp(RemoteDSLink *link, json_t *resp) {
     if (!jRid) {
         return;
     }
-
     uint32_t rid = (uint32_t) json_integer_value(jRid);
+
     if (rid == 0) {
         size_t index;
         json_t *update;
@@ -193,9 +205,7 @@ void broker_handle_resp(RemoteDSLink *link, json_t *resp) {
 
 void broker_msg_handle(RemoteDSLink *link,
                        json_t *data) {
-    if (!data) {
-        return;
-    }
+    if (!data) { return; }
     json_incref(data);
 
     json_t *reqs = json_object_get(data, "requests");
@@ -229,7 +239,6 @@ void broker_msg_handle(RemoteDSLink *link,
             broker_handle_req(link, req);
         }
     }
-
 
     json_decref(data);
 

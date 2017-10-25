@@ -8,8 +8,8 @@ static
 void clear_conns(RemoteDSLink *link,
                  BrokerNode *node,
                  json_t *req, PermissionLevel maxPermission) {
-    (void)maxPermission;
     (void)node;
+    (void)maxPermission;
     Map* map = dslink_calloc(1, sizeof(Map));
 
     dslink_map_init(map, dslink_map_str_cmp,
@@ -93,7 +93,7 @@ int init_clear_conns(BrokerNode *sysNode) {
     }
 
     if (json_object_set_new_nocheck(clearConnsNode->meta, "$invokable",
-                            json_string_nocheck("write")) != 0) {
+                            json_string_nocheck("config")) != 0) {
         return 1;
     }
 

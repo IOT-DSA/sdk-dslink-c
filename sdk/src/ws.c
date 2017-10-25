@@ -1,12 +1,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <wslay/wslay.h>
-#include <wslay_event.h>
-#include <dslink/socket_private.h>
-#include <dslink/base64_url.h>
 #include <msgpack/object.h>
 
+#include "dslink/socket_private.h"
+#include "dslink/base64_url.h"
 #include "dslink/msg/request_handler.h"
 #include "dslink/msg/response_handler.h"
 #include "dslink/handshake.h"
@@ -104,50 +102,6 @@ void io_handler(uv_poll_t *poll, int status, int events) {
     }
 }
 
-int dslink_ws_send_obj(wslay_event_context_ptr ctx, json_t *obj) {
-    DSLink *link = ctx->user_data;
-    uint32_t msg = dslink_incr_msg(link);
-
-    json_t *jsonMsg = json_integer(msg);
-    json_object_set(obj, "msg", jsonMsg);
-
-    log_debug("Message(as %s) is trying sent: %s\n",
-                  (link->is_msgpack==1)?"msgpack":"json",
-                  json_dumps(obj,JSON_INDENT(0)));
-
-    // DECODE OBJ
-    char* data = NULL;
-    int len;
-    int opcode;
-
-    if(link->is_msgpack)
-    {
-        msgpack_sbuffer* buff = dslink_ws_json_to_msgpack(obj);
-        data = malloc(buff->size);
-        len = buff->size;
-        memcpy(data, buff->data, len);
-        msgpack_sbuffer_free(buff);
-        opcode = WSLAY_BINARY_FRAME;
-    }
-    else
-    {
-        data = json_dumps(obj, JSON_PRESERVE_ORDER);
-        len = strlen(data);
-        opcode = WSLAY_TEXT_FRAME;
-    }
-
-    json_object_del(obj, "msg");
-    json_delete(jsonMsg);
-
-    if (!data) {
-        return DSLINK_ALLOC_ERR;
-    }
-
-    dslink_ws_send(ctx, data, len, opcode);
-    dslink_free(data);
-
-    return 0;
-}
 
 int dslink_ws_send_ping(wslay_event_context_ptr ctx) {
     DSLink *link = ctx->user_data;
@@ -157,153 +111,21 @@ int dslink_ws_send_ping(wslay_event_context_ptr ctx) {
     log_debug("Message (ping) (as %s) is trying sent\n",
               (link->is_msgpack==1)?"msgpack":"json");
 
-    // DECODE OBJ
-    char* data = NULL;
-    int len;
-    int opcode;
-
-    if(link->is_msgpack)
-    {
-        msgpack_sbuffer* buff = dslink_ws_json_to_msgpack(obj);
-        data = malloc(buff->size);
-        len = buff->size;
-        memcpy(data, buff->data, len);
-        msgpack_sbuffer_free(buff);
-        opcode = WSLAY_BINARY_FRAME;
-    }
-    else
-    {
-        data = json_dumps(obj, JSON_PRESERVE_ORDER);
-        len = strlen(data);
-        opcode = WSLAY_TEXT_FRAME;
-    }
+    struct wslay_event_msg msg = dslink_ws_dump_json_into_msg(obj, link->is_msgpack);
 
     json_delete(obj);
 
-    if (!data) {
+    if (!msg.msg){
         return DSLINK_ALLOC_ERR;
     }
 
-    dslink_ws_send(ctx, data, len, opcode);
-    dslink_free(data);
+    dslink_ws_send(ctx, msg);
+
+    dslink_free((void*)msg.msg);
 
     return 0;
 }
 
-static
-int dslink_ws_send_internal(wslay_event_context_ptr ctx,
-                            const char *data, const int len, int opcode,
-                            uint8_t resend) {
-    (void) resend;
-    struct wslay_event_msg msg;
-    msg.msg = (const uint8_t *) data;
-    msg.msg_length = len;
-    msg.opcode = opcode;
-
-    DSLink *link = (DSLink*)ctx->user_data;
-    if(!link) {
-        return 1;
-    }
-
-#ifdef DSLINK_WS_SEND_THREADED
-    uv_sem_wait(&link->ws_queue_sem);
-#endif
-    if (wslay_event_queue_msg(ctx, &msg) != 0) {
-        return 1;
-    }
-#ifdef DSLINK_WS_SEND_THREADED
-    uv_sem_post(&link->ws_send_sem);
-#else
-    // start polling on the socket, to trigger writes (We always want to poll reads)
-    uv_poll_start(link->poll, UV_READABLE | UV_WRITABLE, io_handler);
-#endif
-
-    log_debug("Message(%s) queued to be sent: %.*s\n", (opcode==WSLAY_TEXT_FRAME)?"text":"binary",len, data);
-    return 0;
-}
-
-int dslink_ws_send(struct wslay_event_context* ctx, const char* data, const int len, const int opcode) {
-    return dslink_ws_send_internal(ctx, data, len, opcode, 0);
-}
-
-int dslink_handshake_connect_ws(Url *url,
-                                dslink_ecdh_context *key,
-                                const char *uri,
-                                const char *tempKey,
-                                const char *salt,
-                                const char *dsId,
-                                const char *token,
-                                const char *format,
-                                Socket **sock) {
-    *sock = NULL;
-    int ret = 0;
-    unsigned char auth[90];
-    if (tempKey && salt)
-    if ((ret = dslink_handshake_gen_auth_key(key, tempKey, salt,
-                            auth, sizeof(auth))) != 0) {
-        goto exit;
-    }
-
-    char req[512];
-    size_t reqLen;
-    {
-        char builtUri[256];
-        char * encodedDsId = dslink_str_escape(dsId);
-        if (tempKey && salt) {
-            snprintf(builtUri, sizeof(builtUri) - 1, "%s?auth=%s&dsId=%s&format=%s",
-                     uri, auth, encodedDsId, format);
-        } else {
-            // trusted dslink
-            snprintf(builtUri, sizeof(builtUri) - 1, "%s?dsId=%s&token=%s&format=%s",
-                     uri, encodedDsId, token, format);
-        }
-        dslink_free(encodedDsId);
-
-
-        char wsKey[32];
-        if ((ret = gen_ws_key(wsKey, sizeof(wsKey))) != 0) {
-            goto exit;
-        }
-
-        reqLen = snprintf(req, sizeof(req), DSLINK_WS_REQ,
-                          builtUri, url->host, url->port, wsKey);
-    }
-
-    if ((ret = dslink_socket_connect(sock, url->host,
-                                     url->port, url->secure)) != 0) {
-        goto exit;
-    }
-
-    dslink_socket_write(*sock, req, reqLen);
-
-    char buf[1024];
-    size_t len = 0;
-    memset(buf, 0, sizeof(buf));
-    while (len < (sizeof(buf) - 1)) {
-        // Read 1 byte at a time to ensure that we don't accidentally
-        // read web socket data
-        int read = dslink_socket_read(*sock, buf + len, 1);
-        if (read <= 0) {
-            goto exit;
-        }
-        if (buf[len++] == '\n' && strstr(buf, "\r\n\r\n")) {
-            if (!strstr(buf, "101 Switching Protocols")) {
-                ret = DSLINK_HANDSHAKE_INVALID_RESPONSE;
-            } if (strstr(buf, "401 Unauthorized")) {
-                ret = DSLINK_HANDSHAKE_UNAUTHORIZED;
-            }
-            goto exit;
-        }
-    }
-
-    // Failed to find the end of the HTTP response
-    ret = DSLINK_HANDSHAKE_INVALID_RESPONSE;
-exit:
-    if (ret != 0 && sock) {
-        dslink_socket_close(sock);
-    }
-    return ret;
-}
 
 static
 ssize_t want_read_cb(wslay_event_context_ptr ctx,
@@ -475,15 +297,123 @@ void dslink_send_ws_thread(void *arg) {
 }
 #endif
 
+static
+int dslink_ws_send_internal(wslay_event_context_ptr ctx,
+                            const struct wslay_event_msg msg,
+                            uint8_t resend) {
+    (void) resend;
+
+    DSLink *link = (DSLink*)ctx->user_data;
+    if(!link) {
+        return 1;
+    }
+
+#ifdef DSLINK_WS_SEND_THREADED
+    uv_sem_wait(&link->ws_queue_sem);
+#endif
+    if (wslay_event_queue_msg(ctx, &msg) != 0) {
+        return 1;
+    }
+#ifdef DSLINK_WS_SEND_THREADED
+    uv_sem_post(&link->ws_send_sem);
+#else
+    // start polling on the socket, to trigger writes (We always want to poll reads)
+    uv_poll_start(link->poll, UV_READABLE | UV_WRITABLE, io_handler);
+#endif
+
+    log_debug("Message(%s) queued to be sent: %.*s\n",
+              (msg.opcode==WSLAY_TEXT_FRAME)?"text":"binary", (int)msg.msg_length, (char*)msg.msg);
+    return 0;
+}
+
+int dslink_handshake_connect_ws(Url *url,
+                                dslink_ecdh_context *key,
+                                const char *uri,
+                                const char *tempKey,
+                                const char *salt,
+                                const char *dsId,
+                                const char *token,
+                                const char *format,
+                                Socket **sock) {
+    *sock = NULL;
+    int ret = 0;
+    unsigned char auth[90];
+    if (tempKey && salt)
+        if ((ret = dslink_handshake_gen_auth_key(key, tempKey, salt,
+                                                 auth, sizeof(auth))) != 0) {
+            goto exit;
+        }
+
+    char req[512];
+    size_t reqLen;
+    {
+        char builtUri[256];
+        char * encodedDsId = dslink_str_escape(dsId);
+        if (tempKey && salt) {
+            snprintf(builtUri, sizeof(builtUri) - 1, "%s?auth=%s&dsId=%s&format=%s",
+                     uri, auth, encodedDsId, format);
+        } else {
+            // trusted dslink
+            snprintf(builtUri, sizeof(builtUri) - 1, "%s?dsId=%s&token=%s&format=%s",
+                     uri, encodedDsId, token, format);
+        }
+        dslink_free(encodedDsId);
+
+
+        char wsKey[32];
+        if ((ret = gen_ws_key(wsKey, sizeof(wsKey))) != 0) {
+            goto exit;
+        }
+
+        reqLen = snprintf(req, sizeof(req), DSLINK_WS_REQ,
+                          builtUri, url->host, url->port, wsKey);
+    }
+
+    if ((ret = dslink_socket_connect(sock, url->host,
+                                     url->port, url->secure)) != 0) {
+        goto exit;
+    }
+
+    dslink_socket_write(*sock, req, reqLen);
+
+    char buf[1024];
+    size_t len = 0;
+    memset(buf, 0, sizeof(buf));
+    while (len < (sizeof(buf) - 1)) {
+        // Read 1 byte at a time to ensure that we don't accidentally
+        // read web socket data
+        int read = dslink_socket_read(*sock, buf + len, 1);
+        if (read <= 0) {
+            goto exit;
+        }
+        if (buf[len++] == '\n' && strstr(buf, "\r\n\r\n")) {
+            if (!strstr(buf, "101 Switching Protocols")) {
+                ret = DSLINK_HANDSHAKE_INVALID_RESPONSE;
+            } if (strstr(buf, "401 Unauthorized")) {
+                ret = DSLINK_HANDSHAKE_UNAUTHORIZED;
+            }
+            goto exit;
+        }
+    }
+
+    // Failed to find the end of the HTTP response
+    ret = DSLINK_HANDSHAKE_INVALID_RESPONSE;
+    exit:
+    if (ret != 0 && sock) {
+        dslink_socket_close(sock);
+    }
+    return ret;
+}
+
 void dslink_handshake_handle_ws(DSLink *link, link_callback on_requester_ready_cb) {
     struct wslay_event_callbacks callbacks = {
-        want_read_cb,
-        want_write_cb,
-        gen_mask_cb,
-        NULL,
-        NULL,
-        NULL,
-        recv_frame_cb
+            want_read_cb,
+            want_write_cb,
+            gen_mask_cb,
+            NULL,
+            NULL,
+            NULL,
+            recv_frame_cb
     };
 
     wslay_event_context_ptr ptr;
@@ -519,7 +449,7 @@ void dslink_handshake_handle_ws(DSLink *link, link_callback on_requester_ready_c
     if (on_requester_ready_cb) {
         on_requester_ready_cb(link);
     }
-    
+
     uv_run(&link->loop, UV_RUN_DEFAULT);
 
     uv_timer_stop(ping);
@@ -538,4 +468,52 @@ void dslink_handshake_handle_ws(DSLink *link, link_callback on_requester_ready_c
     link->_ws = NULL;
 }
 
+int dslink_ws_send(struct wslay_event_context* ctx, struct wslay_event_msg msg) {
+    return dslink_ws_send_internal(ctx, msg, 0);
+}
 
+int dslink_ws_send_obj(wslay_event_context_ptr ctx, json_t *obj) {
+    DSLink *link = ctx->user_data;
+
+    uint32_t msg_2 = dslink_incr_msg(link);
+    json_object_set_new_nocheck(obj, "msg", json_integer(msg_2));
+
+    log_debug("Message(as %s) is trying sent: %s\n",
+              (link->is_msgpack==1)?"msgpack":"json",
+              json_dumps(obj,JSON_INDENT(0)));
+
+    struct wslay_event_msg msg = dslink_ws_dump_json_into_msg(obj, link->is_msgpack);
+
+    json_object_del(obj, "msg");
+
+    if (!msg.msg){
+        return DSLINK_ALLOC_ERR;
+    }
+
+    dslink_ws_send(ctx, msg);
+    dslink_free((void*)msg.msg);
+
+    return 0;
+}
+
+struct wslay_event_msg dslink_ws_dump_json_into_msg(json_t *obj, int as_msgpack) {
+    struct wslay_event_msg msg;
+    msg.msg = NULL;
+    msg.msg_length = 0;
+    msg.opcode = as_msgpack?WSLAY_BINARY_FRAME:WSLAY_TEXT_FRAME;
+
+    if(as_msgpack) {
+        msgpack_sbuffer* buff = dslink_ws_json_to_msgpack(obj);
+        msg.msg = malloc(buff->size);
+        msg.msg_length = buff->size;
+
+        memcpy((void *)msg.msg, buff->data, msg.msg_length);
+        msgpack_sbuffer_free(buff);
+    }
+    else {
+        msg.msg = (uint8_t *)json_dumps(obj, JSON_PRESERVE_ORDER | JSON_COMPACT);
+        msg.msg_length = strlen((char*)msg.msg);
+    }
+
+    return msg;
+}

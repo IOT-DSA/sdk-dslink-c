@@ -56,6 +56,7 @@ int dslink_socket_connect(Socket **sock,
                           const char *address,
                           unsigned short port,
                           uint_fast8_t secure) {
+    // TODO: correct it
     if(*sock == NULL)
     {
         *sock = dslink_socket_init(secure);

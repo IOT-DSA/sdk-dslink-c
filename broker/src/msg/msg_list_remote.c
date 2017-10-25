@@ -57,17 +57,16 @@ void send_list_request(BrokerListStream *stream,
 }
 
 
-void broker_list_dslink(RemoteDSLink *reqLink,
-                        DownstreamNode *node,
-                        const char *path,
-                        uint32_t reqRid) {
+json_t* broker_list_dslink( RemoteDSLink *reqLink,
+                            DownstreamNode *node,
+                            const char *path,
+                            uint32_t reqRid) {
     ref_t *ref = dslink_map_get(&node->list_streams,
                                 (char *) path);
     if (ref) {
         BrokerListStream *stream = ref->data;
         broker_add_requester_list_stream(reqLink, stream, reqRid);
-        send_list_updates(reqLink, stream, reqRid);
-        return;
+        return get_list_updates_as_json(stream, reqRid);
     }
     if (node->link) {
         send_list_request(NULL, node, reqLink, path, reqRid);
@@ -76,8 +75,10 @@ void broker_list_dslink(RemoteDSLink *reqLink,
         BrokerListStream *stream = init_remote_list_stream(node, path, reqLink, reqRid, 0);
         // reset cache to disconnected state
         broker_stream_list_reset_remote_cache(stream, NULL);
-        send_list_updates(reqLink, stream, reqRid);
+        return get_list_updates_as_json(stream, reqRid);
     }
+
+    return NULL;
 }
 
 static
@@ -94,12 +95,24 @@ void broker_list_dslink_send_cache(BrokerListStream *stream){
     json_object_set_new_nocheck(resp, "updates", cached_updates);
 
     dslink_map_foreach(&stream->requester_links) {
+        // Shallow Copy of top
+        // because we will send multiple and deletion for permission
+        // of one will not effect other
+        json_t* coppied = json_copy(top);
+
         json_object_del(resp, "rid");
         json_t *newRid = json_integer(*((uint32_t *) entry->value->data));
         json_object_set_new_nocheck(resp, "rid", newRid);
 
         RemoteDSLink *client = entry->key->data;
-        broker_ws_send_obj(client, top, BROKER_MESSAGE_DROPPABLE);
+
+        // Check permission before sending the request!
+        PermissionLevel permissionOnPath = get_permission(stream->remote_path, client->broker->root, client);
+        filter_list_according_to_permission(coppied, permissionOnPath);
+
+        broker_ws_send_obj(client, coppied, BROKER_MESSAGE_DROPPABLE);
+
+        json_decref(coppied);
     }
 
     json_decref(top);

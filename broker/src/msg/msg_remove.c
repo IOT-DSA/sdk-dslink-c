@@ -28,23 +28,7 @@ int broker_msg_handle_remove(RemoteDSLink *link, json_t *req) {
 
     BrokerNode *node = broker_node_get(link->broker->root, nodePath, &out);
 
-    {
-        json_t *maxPermitJson = json_object_get(req, "permit");
-        PermissionLevel maxPermit = PERMISSION_CONFIG;
-        if (json_is_string(maxPermitJson)) {
-            maxPermit = permission_str_level(json_string_value(maxPermitJson));
-        }
-
-        PermissionLevel permissionOnPath = get_permission(path, link->broker->root, link);
-        if (permissionOnPath > maxPermit) {
-            permissionOnPath = maxPermit;
-        }
-
-        if (permissionOnPath < PERMISSION_WRITE) {
-            broker_utils_send_closed_resp(link, req, "permissionDenied");
-            return 0;
-        }
-    }
+    if(!security_barrier(link, req, path, PERMISSION_WRITE, NULL)) return 0;
 
     if (node && node->type == DOWNSTREAM_NODE) {
         if (set_downstream_attribute(out, (DownstreamNode*)node, name, NULL)) {

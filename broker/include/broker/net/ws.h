@@ -15,6 +15,7 @@ void broker_ws_send_init(Socket *sock, const char *accept);
 int broker_ws_send_ping(RemoteDSLink *link);
 
 int broker_ws_send_str(RemoteDSLink *link, const char *data, int opcode, int droppable);
+int broker_ws_send_msg(RemoteDSLink *link, struct wslay_event_msg msg, int droppable);
 int broker_ws_send(RemoteDSLink *link, const char *data, int len, int opcode, int droppable);
 
 int broker_ws_send_obj(RemoteDSLink *link, json_t *obj, int droppable);

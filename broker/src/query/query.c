@@ -259,7 +259,7 @@ BrokerNode *broker_query_create_action(BrokerNode *parent) {
     }
 
     if (json_object_set_new_nocheck(node->meta, "$invokable",
-                            json_string_nocheck("write")) != 0) {
+                            json_string_nocheck("config")) != 0) {
         broker_node_free(node);
         return NULL;
     }
