@@ -22,7 +22,11 @@ void update_permissions(RemoteDSLink *link,
         }
 
         json_t *Path = json_object_get(params, "Path");
-        json_t *Permissions = json_object_get(params, "Permissions");
+        json_t *PermissionsStr = json_object_get(params, "Permissions");
+
+        json_error_t err;
+        json_t *Permissions = json_loads(json_string_value(PermissionsStr), 0, &err);
+
         if (!(json_is_array(Permissions) && json_is_string(Path))) {
             broker_utils_send_closed_resp(link, req, "invalidParameter");
             return;
@@ -43,8 +47,8 @@ void update_permissions(RemoteDSLink *link,
 
 static
 void get_permissions(RemoteDSLink *link,
-                        BrokerNode *node,
-                        json_t *req, PermissionLevel maxPermission) {
+                     BrokerNode *node,
+                     json_t *req, PermissionLevel maxPermission) {
     (void)node;
     if (maxPermission < PERMISSION_READ) {
         broker_utils_send_closed_resp(link, req, "permissionDenied");
@@ -171,7 +175,7 @@ int init_permissions_actions(BrokerNode *sysNode) {
     }
 
     if (json_object_set_new_nocheck(updatePermissionsAction->meta, "$invokable",
-                            json_string_nocheck("read")) != 0) {
+                            json_string_nocheck("config")) != 0) {
         return 1;
     }
 
@@ -201,7 +205,7 @@ int init_permissions_actions(BrokerNode *sysNode) {
     }
 
     if (json_object_set_new_nocheck(getPermissionsAction->meta, "$invokable",
-                                    json_string_nocheck("read")) != 0) {
+                                    json_string_nocheck("config")) != 0) {
         return 1;
     }
 

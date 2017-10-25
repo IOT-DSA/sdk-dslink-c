@@ -19,7 +19,8 @@ struct VirtualDownstreamNode;
 
 // numbers in the PermissionLevel doesn't matter
 // it should always be serialized as string
-typedef enum {PERMISSION_NONE = 0,
+typedef enum {
+    PERMISSION_NONE = 0,
     PERMISSION_LIST = 1,
     PERMISSION_READ = 2,
     PERMISSION_WRITE = 3,
@@ -31,31 +32,33 @@ extern const char* PERMISSION_NAMES[6];
 const char *permission_level_str(PermissionLevel level);
 PermissionLevel permission_str_level(const char *str);
 
-// a list of requester permission groups
-typedef struct PermissionGroups {
-    const char **groups;
-    size_t groupLen;
-} PermissionGroups;
 
 typedef struct PermissionPair {
     char *group;
     PermissionLevel permission;
 } PermissionPair;
 
-void permission_groups_init(PermissionGroups* groups);
-void permission_groups_free(PermissionGroups* groups);
-void permission_groups_load(PermissionGroups* groups, const char *dsId, const char* str);
 
-// permission list for node or virtual node
-void permission_list_free(List* list);
-json_t *permission_list_save(List * permissionList);
-List *permission_list_load(json_t *json);
+
+void filter_list_according_to_permission(json_t *l, PermissionLevel level);
 
 
 PermissionLevel get_permission(const char* path, struct BrokerNode* rootNode, struct RemoteDSLink *reqLink);
 
 uint8_t set_permission_list(const char *path, struct BrokerNode *rootNode, struct RemoteDSLink *reqLink, json_t *json);
 json_t *get_permission_list(const char* path, struct BrokerNode* rootNode, struct RemoteDSLink *reqLink);
+
+
+// permission list for node or virtual node
+void permission_list_free(List* list);
+json_t *permission_list_get_as_json(List *permissionList);
+List *permission_list_new_from_json(json_t *json);
+
+
+int security_barrier(struct RemoteDSLink *link, json_t *req,
+                     const char *path, PermissionLevel allowed_level,
+                     PermissionLevel* permission);
+
 
 #ifdef __cplusplus
 }

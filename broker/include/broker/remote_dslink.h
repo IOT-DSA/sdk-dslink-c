@@ -16,6 +16,7 @@ extern "C" {
 
 #include "broker/net/server.h"
 #include "broker/permission/permission.h"
+#include <broker/permission/permission_group.h>
 
 //comment out to disable sending ws messages in thread
 #define BROKER_WS_SEND_THREAD_MODE

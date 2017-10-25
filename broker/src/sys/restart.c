@@ -3,7 +3,7 @@
 #include <broker/broker.h>
 
 static
-void restart_broker(RemoteDSLink *link,
+void restart_broker( RemoteDSLink *link,
                      BrokerNode *node,
                      json_t *req, PermissionLevel maxPermission) {
     (void)maxPermission;
@@ -26,7 +26,7 @@ int init_restart(BrokerNode *sysNode) {
     }
 
     if (json_object_set_new_nocheck(restartNode->meta, "$invokable",
-                            json_string_nocheck("write")) != 0) {
+                            json_string_nocheck("config")) != 0) {
         return 1;
     }
 

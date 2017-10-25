@@ -16,7 +16,6 @@ void broker_utils_send_closed_resp(RemoteDSLink *link, json_t *req, const char* 
     json_t *resp = json_object();
     json_array_append_new(resps, resp);
 
-
     json_t *rid;
     if (json_is_object(req)) {
         rid = json_object_get(req, "rid");
@@ -25,9 +24,8 @@ void broker_utils_send_closed_resp(RemoteDSLink *link, json_t *req, const char* 
         json_object_set_nocheck(resp, "rid", req);
     }
 
+    json_object_set_new_nocheck(resp, "stream", json_string_nocheck("closed"));
 
-    json_object_set_new_nocheck(resp, "stream",
-                                json_string_nocheck("closed"));
     if (errorType) {
         json_t * errorObject = json_object();
         json_object_set_new_nocheck(errorObject, "type", json_string_nocheck(errorType));

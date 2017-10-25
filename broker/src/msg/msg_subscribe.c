@@ -152,10 +152,7 @@ void handle_subscribe(RemoteDSLink *link, json_t *sub) {
         return;
     }
 
-    PermissionLevel permissionOnPath = get_permission(path, link->broker->root, link);
-    if (permissionOnPath < PERMISSION_READ) {
-        return;
-    }
+    if(!security_barrier(link, NULL, path, PERMISSION_READ, NULL)) return;
 
     RemoteDSLink *reqLink = link;
 

@@ -16,12 +16,11 @@ int broker_list_req_closed(void *stream, RemoteDSLink *reqLink);
 void broker_add_requester_list_stream(RemoteDSLink *reqLink,
                           BrokerListStream *stream, uint32_t reqRid);
 
-void send_list_updates(RemoteDSLink *reqLink,
-                       BrokerListStream *stream,
-                       uint32_t reqRid);
+json_t* get_list_updates_as_json(BrokerListStream *stream,
+                                 uint32_t reqRid);
 
 
-void broker_list_dslink(RemoteDSLink *reqLink,
+json_t* broker_list_dslink(RemoteDSLink *reqLink,
                         DownstreamNode *node,
                         const char *path,
                         uint32_t reqRid);

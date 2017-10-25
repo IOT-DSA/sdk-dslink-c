@@ -363,7 +363,8 @@ int broker_init(Broker *broker, json_t *defaultPermission) {
     if (!broker->root) {
         goto fail;
     }
-    broker->root->permissionList = permission_list_load(defaultPermission);
+    log_debug("defaultPermissions: %s\n",json_dumps(defaultPermission,JSON_PRESERVE_ORDER));
+    broker->root->permissionList = permission_list_new_from_json(defaultPermission);
 
     broker->root->path = dslink_strdup("/");
     json_object_set_new_nocheck(broker->root->meta, "$downstream",

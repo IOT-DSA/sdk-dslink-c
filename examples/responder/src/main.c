@@ -57,7 +57,8 @@ int main(int argc, char **argv) {
         init, // init_cb
         connected, //on_connected_cb
         disconnected, // on_disconnected_cb
-        NULL // on_requester_ready_cb
+        NULL, // on_requester_ready_cb
+        NULL
     };
 
     // Initializes a DSLink and handles reconnection.

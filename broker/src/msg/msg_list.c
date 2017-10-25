@@ -34,15 +34,14 @@ void list_set_top_level(json_t *obj, BrokerNode *child) {
     }
 }
 
-void send_list_updates(RemoteDSLink *reqLink,
-                       BrokerListStream *stream,
-                       uint32_t reqRid) {
+json_t* get_list_updates_as_json(BrokerListStream *stream,
+                                 uint32_t reqRid) {
     json_t *cached_updates = broker_stream_list_get_cache(stream);
+
     // TODO: send cached result only when list stream to the responder is running
     // otherwise it should wait for new list to finish to avoid sending outdated data
-    if (!cached_updates) {
-        return;
-    }
+    if (!cached_updates) { return NULL; }
+
     json_t *top = json_object();
     json_t *resps = json_array();
     json_object_set_new_nocheck(top, "responses", resps);
@@ -53,8 +52,12 @@ void send_list_updates(RemoteDSLink *reqLink,
     json_object_set_new_nocheck(resp, "stream", json_string_nocheck("open"));
     json_object_set_new_nocheck(resp, "updates", cached_updates);
 
-    broker_ws_send_obj(reqLink, top, BROKER_MESSAGE_DROPPABLE);
-    json_decref(top);
+    // sending requires to permission check so we are
+    // returning it to check permissions
+//    broker_ws_send_obj(reqLink, top, BROKER_MESSAGE_DROPPABLE);
+//    json_decref(top);
+
+    return top;
 }
 
 int broker_list_req_closed(void *s, RemoteDSLink *link) {
@@ -136,8 +139,8 @@ fail:
 }
 
 void update_list_attribute(BrokerNode *node,
-                       BrokerListStream *stream,
-                       const char *name, json_t *value) {
+                           BrokerListStream *stream,
+                           const char *name, json_t *value) {
     if (!(node && stream && name)) {
         return;
     }
@@ -240,8 +243,8 @@ void update_list_child(BrokerNode *node,
 }
 
 static
-void broker_list_self(RemoteDSLink *reqLink,
-                      BrokerNode *node, json_t *rid) {
+json_t* broker_list_self(RemoteDSLink *reqLink,
+                         BrokerNode *node, json_t *rid) {
     if (!node->list_stream) {
         node->list_stream = broker_stream_list_init(node);
         build_list_cache(node, node->list_stream);
@@ -249,7 +252,7 @@ void broker_list_self(RemoteDSLink *reqLink,
 
     uint32_t reqRid = (uint32_t) json_integer_value(rid);
     broker_add_requester_list_stream(reqLink, node->list_stream, reqRid);
-    send_list_updates(reqLink, node->list_stream, reqRid);
+    return get_list_updates_as_json(node->list_stream, reqRid);
 }
 
 
@@ -259,41 +262,36 @@ int broker_msg_handle_list(RemoteDSLink *link, json_t *req) {
     if (!(path && rid)) {
         return 1;
     }
-//    if (*path == '\0') {
-//        // empty path;
-//        broker_utils_send_closed_resp(link, rid, "invalidPath");
-//        return 0;
-//    }
+
+    PermissionLevel permissionOnPath;
+    if(!security_barrier(link, req, path, PERMISSION_LIST, &permissionOnPath)) return 0;
 
     char *out = NULL;
     BrokerNode *node = broker_node_get(link->broker->root, path, &out);
 
-    json_t *maxPermitJson = json_object_get(req, "permit");
-    PermissionLevel maxPermit = PERMISSION_CONFIG;
-    if (json_is_string(maxPermitJson)) {
-        maxPermit = permission_str_level(json_string_value(maxPermitJson));
-    }
-
-    PermissionLevel permissionOnPath = get_permission(path, link->broker->root, link);
-    if (permissionOnPath > maxPermit) {
-        permissionOnPath = maxPermit;
-    }
-
-    if (permissionOnPath < PERMISSION_LIST) {
-        broker_utils_send_closed_resp(link, req, "permissionDenied");
-        return 0;
-    }
-
     if (node) {
+        json_t* top_response = NULL;
+
         if (node->type == REGULAR_NODE) {
-            broker_list_self(link, node, rid);
+            top_response = broker_list_self(link, node, rid);
         } else if (node->type == DOWNSTREAM_NODE) {
             uint32_t reqRid = (uint32_t) json_integer_value(rid);
             if(*out == '/' && strcmp(node->name, out+1) == 0) {
                 out = "/";
             }
-            broker_list_dslink(link, (DownstreamNode *) node, out, reqRid);
+            top_response = broker_list_dslink(link, (DownstreamNode *) node, out, reqRid);
         }
+
+        if(!top_response)
+            return 0;
+
+        // Check permissions and delete some of them
+        filter_list_according_to_permission(top_response, permissionOnPath);
+
+
+        broker_ws_send_obj(link, top_response, BROKER_MESSAGE_DROPPABLE);
+        json_decref(top_response);
+
     } else if (dslink_str_starts_with(path, "/defs/")) {
         broker_utils_send_static_list_resp(link, req);
     } else /*if (dslink_str_starts_with(path, "/downstream/") || dslink_str_starts_with(path, "/upstream/"))*/{
