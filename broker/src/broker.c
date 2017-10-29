@@ -86,48 +86,56 @@ exit:
 
 static
 int handle_ws(Broker *broker, HttpRequest *req, Client *client) {
-
+    int ret = 0;
     size_t len = 0;
     char *dsId = NULL;
+    char *perm_group = NULL;
     const char *key = broker_http_header_get(req->headers,
                                              "Sec-WebSocket-Key", &len);
     if (!key) {
-        goto fail;
+        ret = 1;
+        goto exit;
     }
     char accept[64];
     if (broker_ws_generate_accept_key(key, len, accept, sizeof(accept)) != 0) {
-        goto fail;
+        ret = 1;
+        goto exit;
     }
 
     dsId = dslink_str_unescape(broker_http_param_get(&req->uri, "dsId"));
     const char *auth = broker_http_param_get(&req->uri, "auth");
     if (!(dsId && auth)) {
         if(client->is_local) {
-            const char *perm_group = dslink_str_unescape(broker_http_param_get(&req->uri, "group"));
+            perm_group = dslink_str_unescape(broker_http_param_get(&req->uri, "group"));
             const char *session = broker_http_param_get(&req->uri, "session");
             //TODO: handle format
 //            const char *format = broker_http_param_get(&req->uri, "format");
 
             if(broker_local_handle_ws(broker, client, accept, perm_group, session) != 0) {
                 printf("broker_local_handle_ws failed\n");
-                goto fail;
+                ret = 1;
+                goto exit;
             }
         } else {
-            goto fail;
+            ret = 1;
+            goto exit;
         }
     } else if (broker_handshake_handle_ws(broker, client, dsId,
                                    auth, accept) != 0) {
-        goto fail;
+        ret = 1;
+        goto exit;
     }
-
-    return 0;
-fail:
-    if (dsId) {
+exit:
+    if (perm_group)
+        dslink_free(perm_group);
+    if (dsId)
         dslink_free(dsId);
+    //if failed
+    if(ret) {
+        broker_send_bad_request(client->sock);
+        dslink_socket_close_nofree(client->sock);
     }
-    broker_send_bad_request(client->sock);
-    dslink_socket_close_nofree(client->sock);
-    return 1;
+    return ret;
 }
 
 void broker_https_on_data_callback(Client *client, void *data) {
@@ -283,7 +291,7 @@ void broker_handle_ping_thread(void *arg) {
 }
 #endif
 
-void broker_close_link(RemoteDSLink *link) {
+void _broker_close_link(RemoteDSLink *link) {
     if (!link) {
         return;
     }
@@ -313,7 +321,8 @@ void broker_close_link(RemoteDSLink *link) {
                           link->dsId->data);
         if(link_ref) {
             RemoteDSLink *rm_link = link_ref->data;
-            log_debug("DSLink %s has been removed from connected list\n", rm_link->name);
+            dslink_free(link_ref);
+            log_debug("DSLink %s has been removed from connected list, list size:%d\n", rm_link->name,(int)link->broker->remote_connected.size);
         }
     }
 
@@ -332,13 +341,34 @@ void broker_close_link(RemoteDSLink *link) {
         broker_dslink_disconnect(node);
     }
 
-    dslink_decref(link->dsId);
+    dslink_decref((link)->dsId);
+    if(link->lastReceiveTime) {
+        dslink_free(link->lastReceiveTime);
+    }
 #ifdef BROKER_WS_SEND_THREAD_MODE
     if(link->broker && (link->broker->currLink == link)) {
         link->broker->currLink = NULL;
     }
 #endif
+#ifdef BROKER_CLOSE_LINK_SEM2
+    uv_sem_destroy(&link->close_sem);
+#endif
     dslink_free(link);
+}
+
+void broker_close_link(RemoteDSLink *link) {
+
+    if (!link || link->pendingClose>1) {
+        return;
+    }
+    link->pendingClose = 2;
+
+#if defined(BROKER_CLOSE_LINK_SEM2)
+    uv_sem_wait(&link->close_sem);
+    _broker_close_link(link);
+#else
+    _broker_close_link(link);
+#endif
 }
 
 static
@@ -363,7 +393,7 @@ int broker_init(Broker *broker, json_t *defaultPermission) {
     if (!broker->root) {
         goto fail;
     }
-    log_debug("defaultPermissions: %s\n",json_dumps(defaultPermission,JSON_PRESERVE_ORDER));
+//    log_debug("defaultPermissions: %s\n",json_dumps(defaultPermission,JSON_PRESERVE_ORDER));
     broker->root->permissionList = permission_list_new_from_json(defaultPermission);
 
     broker->root->path = dslink_strdup("/");
@@ -454,6 +484,19 @@ fail:
     return 1;
 }
 
+void broker_destroy_link(RemoteDSLink *link) {
+    if (!link || link->pendingClose>1) {
+        return;
+    }
+    Client *linkClient = link->client;
+    broker_close_link(link);
+    if(linkClient) {
+        dslink_socket_free(linkClient->sock);
+        dslink_free(linkClient);
+    }
+}
+
+
 void broker_stop(Broker* broker) {
 
 #ifdef BROKER_WS_SEND_THREAD_MODE
@@ -471,24 +514,8 @@ void broker_stop(Broker* broker) {
 
         if (node->link) {
             RemoteDSLink *link = node->link;
-            link->pendingClose = 1;
-            dslink_socket_close(link->client->sock);
-            uv_close((uv_handle_t *) link->client->poll,
-                     broker_free_handle);
-            dslink_free(link->client);
-            link->client = NULL;
+            broker_destroy_link(link);
 
-            ref_t *link_ref;
-            if(link->dsId) {
-                link_ref = dslink_map_remove_get(&link->broker->remote_connected,
-                                                 link->dsId->data);
-                if(link_ref) {
-                    RemoteDSLink *rm_link = link_ref->data;
-                    log_debug("DSLink %s has been removed from connected list\n", rm_link->name);
-                }
-            }
-            broker_remote_dslink_free(link);
-            dslink_decref(link->dsId);
         }
     }
 
@@ -499,25 +526,9 @@ void broker_stop(Broker* broker) {
 
         RemoteDSLink* link = (RemoteDSLink*)entry->value->data;
 
-        //do not close upstream remote dslinks, they are close later on
+        //do not close upstream remote dslinks, they will be closed later on while nodes being destroyed
         if(!link->isUpstream) {
-            dslink_socket_close(link->client->sock);
-            uv_close((uv_handle_t *) link->client->poll,
-                     broker_free_handle);
-            dslink_free(link->client);
-            link->client = NULL;
-
-            ref_t *link_ref;
-            if (link->dsId) {
-                link_ref = dslink_map_remove_get(&link->broker->remote_connected,
-                                                 link->dsId->data);
-                if (link_ref) {
-                    RemoteDSLink *rm_link = link_ref->data;
-                    log_debug("DSLink %s has been removed from connected list\n", rm_link->name);
-                }
-            }
-            broker_remote_dslink_free(link);
-            dslink_decref(link->dsId);
+            broker_destroy_link(link);
         }
         entry = tmp;
     }
@@ -532,6 +543,8 @@ void broker_stop(Broker* broker) {
     broker->closing_ping_thread = 1;
     uv_thread_join(&broker->ping_thread_id);
 #endif
+
+    broker_free(broker);
 }
 
 int broker_start() {
@@ -566,7 +579,10 @@ int broker_start() {
 
     ret = broker_start_server(config);
 exit:
-    broker_free(&broker);
+    json_decref(config);
+//    broker_free moved to the end of broker_stop in order to run it before mainloop stopped
+//    because handles were not closed and freed properly after mainloop finished
+//    broker_free(&broker);
 #if defined(__unix__) || defined(__APPLE__)
     if (mainLoop && mainLoop->watchers) {
         uv__free(mainLoop->watchers);

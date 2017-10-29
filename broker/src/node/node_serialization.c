@@ -244,6 +244,7 @@ int broker_load_data_nodes(Broker *broker) {
 
     json_error_t err;
     json_t *top = json_load_file(path, 0, &err);
+    dslink_free((void*)path);
 
     if (top) {
         broker_load_data_node(broker->data, top);

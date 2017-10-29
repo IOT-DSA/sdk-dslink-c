@@ -70,48 +70,6 @@ int broker_ws_send_obj(RemoteDSLink *link, json_t *obj, int droppable) {
     return 0;
 }
 
-#ifdef BROKER_WS_SEND_THREAD_MODE
-void broker_send_ws_thread(void *arg) {
-    int ret;
-    Broker *broker = (Broker *) arg;
-    while (1) {
-        uv_sem_wait(&broker->ws_send_sem);
-
-        if (broker->closing_send_thread == 1) {
-            log_debug("Closing ws send thread\n");
-            break;
-        }
-
-        if(broker->currLink && (broker->currLink->pendingClose == 0)) {
-            ret = wslay_event_send(broker->currLink->ws);
-            if (ret != 0) {
-                log_debug("Send error in thread: %d\n", ret);
-            } else {
-                log_debug("Message sent: %s\n", broker->currLink->name);
-            }
-
-#ifdef BROKER_WS_SEND_HYBRID_MODE
-            if (wslay_event_want_write(broker->currLink->ws)) {
-                uv_poll_start(broker->currLink->client->poll, UV_READABLE | UV_WRITABLE, broker->currLink->client->poll_cb);
-            }
-            else {
-                uv_poll_start(broker->currLink->client->poll, UV_READABLE, broker->currLink->client->poll_cb);
-                uv_sem_post(&broker->ws_queue_sem);
-            }
-#else
-            if (wslay_event_want_write(broker->currLink->ws)) {
-                uv_sem_post(&broker->ws_send_sem);
-            } else {
-                uv_sem_post(&broker->ws_queue_sem);
-            }
-#endif
-        } else {
-            uv_sem_post(&broker->ws_queue_sem);
-        }
-
-    }
-}
-#endif
 
 int broker_ws_send(RemoteDSLink *link, const char *data, int droppable) {
     if (!link->ws || !link->client) {
@@ -145,6 +103,11 @@ int broker_ws_send(RemoteDSLink *link, const char *data, int droppable) {
 #else
     (void)droppable;
     uv_sem_wait(&link->broker->ws_queue_sem);
+    if(link->broker->closing_send_thread == 1) {
+        uv_sem_post(&link->broker->ws_queue_sem);
+        log_debug("Broker in closing state, not able to send ws\n");
+        return -1;
+    }
 #endif
 #endif
 
@@ -209,3 +172,63 @@ int broker_ws_generate_accept_key(const char *buf, size_t bufLen,
     return mbedtls_base64_encode((unsigned char *) out, outLen,
                                  &outLen, sha1, sizeof(sha1));
 }
+
+#ifdef BROKER_WS_SEND_THREAD_MODE
+void broker_send_ws_thread(void *arg) {
+    Broker *broker = (Broker *) arg;
+    while (1) {
+#if defined(BROKER_CLOSE_LINK_SEM2)
+        uv_sem_wait(&broker->ws_send_sem);
+        if (broker->closing_send_thread == 1) {
+            log_debug("Closing ws send thread\n");
+            uv_sem_post(&broker->ws_queue_sem);
+            break;
+        }
+        if(!broker->currLink || uv_sem_trywait(&broker->currLink->close_sem) != 0) {
+            uv_sem_post(&broker->ws_queue_sem);
+            continue;
+        }
+#else
+        uv_sem_wait(&broker->ws_send_sem);
+        if (broker->closing_send_thread == 1) {
+            log_debug("Closing ws send thread\n");
+            break;
+        }
+#endif
+        if(broker->currLink && (broker->currLink->pendingClose == 0) &&
+           !(wslay_event_send(broker->currLink->ws))) {
+            log_debug("Message sent: %s\n", broker->currLink->name);
+        } else {
+            log_debug("Send error in thread\n");
+            uv_sem_post(&broker->ws_queue_sem);
+#if defined(BROKER_CLOSE_LINK_SEM2)
+            goto cont;
+#else
+            continue;
+#endif
+        }
+#ifdef BROKER_WS_SEND_HYBRID_MODE
+        if (wslay_event_want_write(broker->currLink->ws)) {
+                uv_poll_start(broker->currLink->client->poll, UV_READABLE | UV_WRITABLE, broker->currLink->client->poll_cb);
+            }
+            else {
+                uv_poll_start(broker->currLink->client->poll, UV_READABLE, broker->currLink->client->poll_cb);
+                uv_sem_post(&broker->ws_queue_sem);
+            }
+#else
+        if (broker->currLink && (broker->currLink->pendingClose == 0) &&
+            wslay_event_want_write(broker->currLink->ws)) {
+            uv_sem_post(&broker->ws_send_sem);
+        } else {
+            uv_sem_post(&broker->ws_queue_sem);
+        }
+#endif
+
+#if defined(BROKER_CLOSE_LINK_SEM2)
+cont:
+        uv_sem_post(&broker->currLink->close_sem);
+#endif
+    }
+}
+#endif
+

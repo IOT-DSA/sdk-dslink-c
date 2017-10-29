@@ -59,12 +59,15 @@ void save_upstream_node(BrokerNode *node) {
 
 static
 void load_upstream_node(BrokerNode *parentNode, const char* nodeName, json_t* data) {
-    char* unescName = dslink_str_escape(nodeName);
-    BrokerNode *upstreamNode = broker_node_create(nodeName, "node");
-    dslink_free(unescName);
-    if (!upstreamNode) {
-        return;
-    }
+    (void)nodeName;
+// nodeName previously was upstream file's name. Above statements are commented out because broker node is already
+// created in add_upstream_invoke and has no meaning
+//    char* unescName = dslink_str_escape(nodeName);
+//    BrokerNode *upstreamNode = broker_node_create(nodeName, "node");
+//    dslink_free(unescName);
+//    if (!upstreamNode) {
+//        return;
+//    }
     add_upstream_invoke(NULL, parentNode, data, PERMISSION_CONFIG);
 
 }

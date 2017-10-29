@@ -259,10 +259,14 @@ int dslink_generic_ping_handler(RemoteDSLink *link) {
         gettimeofday(&current_time, NULL);
         long time_diff = current_time.tv_sec - link->lastWriteTime->tv_sec;
         if (time_diff >= 30) {
-            broker_ws_send_obj(link, json_object(), BROKER_MESSAGE_NOT_DROPPABLE);
+            json_t *pingObj = json_object();
+            broker_ws_send_obj(link, pingObj, BROKER_MESSAGE_NOT_DROPPABLE);
+            json_decref(pingObj);
         }
     } else {
-        broker_ws_send_obj(link, json_object(), BROKER_MESSAGE_NOT_DROPPABLE);
+        json_t *pingObj = json_object();
+        broker_ws_send_obj(link, pingObj, BROKER_MESSAGE_NOT_DROPPABLE);
+        json_decref(pingObj);
     }
 
     if (link->lastReceiveTime) {
@@ -453,8 +457,7 @@ int broker_local_handle_ws(Broker *broker,
     uv_timer_t *ping_timer = NULL;
 #endif
     RemoteDSLink *link = dslink_calloc(1, sizeof(RemoteDSLink));
-    json_t *resp = json_object();
-    if (!(link && resp)) {
+    if (!link) {
         goto fail;
     }
 
@@ -469,7 +472,7 @@ int broker_local_handle_ws(Broker *broker,
     char buf[512] = {0};
     snprintf(buf, sizeof(buf), "/dglux-%s",session);
     link->dsId = dslink_ref(dslink_strdup(buf+1), dslink_free);
-    link->name = dslink_strdup("dglux");
+    link->name = (char*)link->dsId->data;//dslink_strdup("dglux");
     link->path = dslink_strdup(buf);
 
 

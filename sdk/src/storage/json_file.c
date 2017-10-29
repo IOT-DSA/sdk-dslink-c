@@ -334,6 +334,8 @@ json_t *json_storage_load(StorageProvider *provider) {
     exit:
     json_decref(names);
     store->loaded = 1;
+    if(store->root)
+        json_delete(store->root);
     store->root = root;
     return root;
 }
@@ -397,17 +399,17 @@ void json_storage_recall(StorageProvider *provider, const char **rkey, storage_r
 static
 void json_storage_destroy(StorageProvider *provider) {
     JsonStore *store = provider->data;
-
     if (store->timer_setup != 0) {
-        dslink_free(store->save_timer);
         uv_timer_stop(store->save_timer);
         uv_close((uv_handle_t *) store->save_timer, nop_close_uv);
         store->timer_setup = 0;
     }
+    dslink_free(store->save_timer);
 
     json_delete(store->root);
     json_delete(store->save_queue);
     dslink_free(store);
+    dslink_free(provider);
 }
 
 static

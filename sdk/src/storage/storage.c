@@ -3,7 +3,6 @@
 
 StorageProvider *dslink_storage_init(json_t *config) {
     (void) config;
-
     json_t *jPath = json_object_get(config, "path");
     char *path;
 

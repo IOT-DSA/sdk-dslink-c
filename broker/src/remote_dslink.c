@@ -28,7 +28,9 @@ int broker_remote_dslink_init(RemoteDSLink *link) {
         return 1;
     }
     permission_groups_init(&link->permission_groups);
-
+#ifdef BROKER_CLOSE_LINK_SEM2
+    uv_sem_init(&link->close_sem,1);
+#endif
     return 0;
 }
 
@@ -93,7 +95,8 @@ void broker_remote_dslink_free(RemoteDSLink *link) {
         uv_close((uv_handle_t *) link->pingTimerHandle, broker_free_handle);
     }
 #endif
-
+    if(link->isUpstream)
+        dslink_free((void *) link->name);
     dslink_free((void *) link->path);
     dslink_free(link->lastWriteTime);
     json_decref(link->linkData);

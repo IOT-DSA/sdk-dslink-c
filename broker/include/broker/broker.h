@@ -65,6 +65,7 @@ extern uv_loop_t *mainLoop;
 
 int broker_start();
 void broker_close_link(RemoteDSLink *link);
+void broker_destroy_link(RemoteDSLink *link);
 void broker_stop(Broker* broker);
 
 void broker_on_data_callback(Client *client, void *data);

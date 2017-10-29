@@ -12,10 +12,11 @@ DownstreamNode *create_upstream_node(Broker *broker, const char *name) {
     DownstreamNode *node = NULL;
     if (!ref) {
         node = broker_init_downstream_node(broker->upstream, name);
-        char buff[1024];
-        strcpy(buff, "/upstream/");
-        strcpy(buff + sizeof("/upstream/") -1 , name);
-        node->path = dslink_strdup(buff);
+        //path is already set in the function above
+//        char buff[1024];
+//        strcpy(buff, "/upstream/");
+//        strcpy(buff + sizeof("/upstream/") -1 , name);
+//        node->path = dslink_strdup(buff);
         if (broker->upstream->list_stream) {
             update_list_child(broker->upstream,
                               broker->upstream->list_stream,
@@ -34,7 +35,7 @@ void init_upstream_node(Broker *broker, UpstreamPoll *upstreamPoll, uv_timer_cb 
 
     RemoteDSLink *link = upstreamPoll->remoteDSLink;
 
-    node->dsId = dslink_str_ref(dslink_strdup(upstreamPoll->dsId));
+    node->dsId = dslink_str_ref(upstreamPoll->dsId);
     link->dsId = node->dsId;
     link->node = node;
 
