@@ -50,6 +50,7 @@ void upstream_create_poll(const char *brokerUrl, const char *name, const char *i
 void upstream_connect_conn(UpstreamPoll *upstreamPoll);
 
 void upstream_clear_poll(UpstreamPoll *upstreamPoll);
+void upstream_destroy_poll(UpstreamPoll *upstreamPoll);
 
 void upstream_connect_ws();
 

@@ -45,6 +45,23 @@ void listener_remove_all(Dispatcher *dispatcher) {
     list_remove_all_nodes(&dispatcher->list);
 }
 
+static inline
+void listener_free_all(Dispatcher *dispatcher) {
+    dslink_list_foreach_nonext(&dispatcher->list) {
+        ListNode *entry = (ListNode *) node;
+        entry->list = NULL; //avoid list_remove_node
+        void *val = entry->value;
+        ListNodeBase *tmp = node->next;
+        if ((intptr_t) node != (intptr_t) val) {
+            dslink_free(node);
+        }
+        node = tmp;
+    }
+    dispatcher->list.head.next = &dispatcher->list.head;
+    dispatcher->list.head.prev = &dispatcher->list.head;
+    dispatcher->list.size = 0;
+}
+
 #ifdef __cplusplus
 }
 #endif

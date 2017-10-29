@@ -250,8 +250,7 @@ void broker_node_free(BrokerNode *node) {
 
         virtual_downstream_free_map(&dnode->children_permissions);
         if (dnode->upstreamPoll) {
-            upstream_clear_poll(dnode->upstreamPoll);
-            dslink_free(dnode->upstreamPoll);
+            upstream_destroy_poll(dnode->upstreamPoll);
         }
 
         dslink_map_foreach(&dnode->resp_sub_streams) {
@@ -263,12 +262,14 @@ void broker_node_free(BrokerNode *node) {
         dslink_map_free(&dnode->list_streams);
         dslink_map_free(&dnode->resp_sub_sids);
         dslink_map_free(&dnode->resp_sub_streams);
+        json_decref(dnode->groups);
     } else {
         // TODO: add a new type for these listeners
         // they shouldn't be part of base node type
-        listener_remove_all(&node->on_value_update);
-        listener_remove_all(&node->on_child_added);
-        listener_remove_all(&node->on_child_removed);
+
+        listener_free_all(&node->on_value_update);
+        listener_free_all(&node->on_child_added);
+        listener_free_all(&node->on_child_removed);
         broker_stream_free((BrokerStream*)node->list_stream);
         broker_stream_free((BrokerStream*)node->sub_stream);
         json_decref(node->value);

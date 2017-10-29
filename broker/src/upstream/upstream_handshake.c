@@ -37,9 +37,6 @@ void upstream_clear_poll(UpstreamPoll *upstreamPoll) {
             uv_close((uv_handle_t *)upstreamPoll->connCheckTimer, broker_free_handle);
             upstreamPoll->connCheckTimer = NULL;
         }
-        dslink_socket_close_nofree(&upstreamPoll->sock);
-        dslink_socket_free(&upstreamPoll->sock);
-        upstreamPoll->sock = NULL;
     } else if (upstreamPoll->status == UPSTREAM_WS) {
         uv_poll_stop(upstreamPoll->wsPoll);
         uv_close((uv_handle_t *) upstreamPoll->wsPoll, broker_free_handle);
@@ -55,13 +52,30 @@ void upstream_clear_poll(UpstreamPoll *upstreamPoll) {
 //        freeaddrinfo( upstreamPoll->conCheckAddrList );
 //        upstreamPoll->conCheckAddrList = NULL;
 //    }
-    broker_close_link(upstreamPoll->remoteDSLink);
+
+
+    dslink_socket_close(&upstreamPoll->sock);
+    if(upstreamPoll->remoteDSLink && upstreamPoll->remoteDSLink->client)
+        upstreamPoll->remoteDSLink->client->sock = NULL; // because closed and freed in the upper function
+    broker_destroy_link(upstreamPoll->remoteDSLink);
     upstream_free_dslink(upstreamPoll->clientDslink);
     upstreamPoll->clientDslink = NULL;
     upstreamPoll->remoteDSLink = NULL;
-    upstreamPoll->sock = NULL;
     upstreamPoll->ws = NULL;
     upstreamPoll->status = UPSTREAM_NONE;
+    if(upstreamPoll->dsId) {
+        dslink_free(upstreamPoll->dsId);
+        upstreamPoll->dsId = NULL;
+    }
+}
+
+void upstream_destroy_poll(UpstreamPoll *upstreamPoll) {
+    upstream_clear_poll(upstreamPoll);
+    dslink_free(upstreamPoll->brokerUrl);
+    dslink_free(upstreamPoll->name);
+    dslink_free(upstreamPoll->idPrefix);
+    dslink_free(upstreamPoll->group);
+    dslink_free(upstreamPoll);
 }
 
 void upstrem_handle_reconnect(uv_timer_t* handle) {
@@ -360,6 +374,7 @@ void upstream_check_conn (uv_timer_t* handle) {
 
     if(DSLINK_SOCK_WRITE_ERR == dslink_socket_write(upstreamPoll->sock, conndata, strlen(conndata))) {
         upstream_reconnect(upstreamPoll);
+        dslink_free(conndata);
         return;
     }
 
@@ -370,6 +385,7 @@ void upstream_check_conn (uv_timer_t* handle) {
     upstreamPoll->connPoll->data = upstreamPoll;
     uv_poll_start(upstreamPoll->connPoll, UV_READABLE, connect_conn_callback);
     dslink_free(dsId);
+    dslink_free(conndata);
 }
 
 

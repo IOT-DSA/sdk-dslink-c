@@ -242,11 +242,15 @@ int broker_start_server(json_t *config) {
     uv_signal_stop(&sigTerm);
 
     // Deinit http
-    if (httpServer.is_active)
+    if (httpServer.is_active) {
         uv_poll_stop(&httpPoll);
+        dslink_socket_close(&(httpServer.sock));
+    }
 
-    if (httpsServer.is_active)
+    if (httpsServer.is_active) {
         uv_poll_stop(&httpsPoll);
+        dslink_socket_close(&(httpsServer.sock));
+    }
 
     uv_loop_close(mainLoop);
 //#if defined(__unix__) || defined(__APPLE__)

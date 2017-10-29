@@ -29,53 +29,20 @@ void broker_ws_send_init(Socket *sock, const char *accept) {
     dslink_socket_write(sock, buf, (size_t) bLen);
 }
 int broker_ws_send_ping(RemoteDSLink *link) {
-    json_t *obj = json_object();
 
-    // DECODE OBJ
-    char* data = NULL;
-    int len;
-    int opcode;
 
     log_debug("Message (Ping)(as %s) is trying sent to %s\n",
               (link->is_msgpack==1)?"msgpack":"json",
               (char *) link->dsId->data);
 
-    if(link->is_msgpack) {
-        msgpack_sbuffer* buff = dslink_ws_json_to_msgpack(obj);
-        data = malloc(buff->size);
-        len = buff->size;
-        memcpy(data, buff->data, len);
-        msgpack_sbuffer_free(buff);
-        opcode = WSLAY_BINARY_FRAME;
-    }
-    else {
-        data = json_dumps(obj, JSON_PRESERVE_ORDER | JSON_COMPACT);
-        len = strlen(data);
-        opcode = WSLAY_TEXT_FRAME;
-    }
-
-    if (!data) {
-        return DSLINK_ALLOC_ERR;
-    }
-
-    int sentBytes = broker_ws_send(link, data, len, opcode, 0);
-
-    if(sentBytes == -1)
+    json_t *obj = json_object();
+    if(broker_ws_send_obj(link, obj, 0))
     {
         log_err("Message (Ping)(as %s) is failed sent to %s\n",
                 (link->is_msgpack==1)?"msgpack":"json",
                 (char *) link->dsId->data);
     }
-
-    if (throughput_output_needed()) {
-        int sentMessages = broker_count_json_msg(obj);
-        throughput_add_output(sentBytes, sentMessages);
-    }
-
-
-    json_delete(obj);
-
-    dslink_free(data);
+    json_decref(obj);
     return 0;
 }
 
@@ -116,6 +83,11 @@ int broker_ws_send(RemoteDSLink *link, const char *data, int len, int opcode, in
 #else
     (void)droppable;
     uv_sem_wait(&link->broker->ws_queue_sem);
+    if(link->broker->closing_send_thread == 1) {
+        uv_sem_post(&link->broker->ws_queue_sem);
+        log_debug("Broker in closing state, not able to send ws\n");
+        return -1;
+    }
 #endif
 #endif
 
@@ -181,10 +153,14 @@ int broker_ws_send_obj(RemoteDSLink *link, json_t *obj, int droppable) {
     int len;
     int opcode;
 
-    log_debug("Message(as %s) is trying sent to %s: %s\n",
-                  (link->is_msgpack==1)?"msgpack":"json",
+    LOG_LVL_CHK(LOG_LVL_DEBUG) {
+        char *tempDump = json_dumps(obj, JSON_INDENT(0));
+        log_debug("Message(as %s) is trying sent to %s: %s\n",
+                  (link->is_msgpack == 1) ? "msgpack" : "json",
                   (char *) link->dsId->data,
-                  json_dumps(obj,JSON_INDENT(0)));
+                  tempDump);
+        dslink_free(tempDump);
+    }
 
     if(link->is_msgpack) {
         msgpack_sbuffer* buff = dslink_ws_json_to_msgpack(obj);
@@ -210,10 +186,14 @@ int broker_ws_send_obj(RemoteDSLink *link, json_t *obj, int droppable) {
 
     if(sentBytes == -1)
     {
-        log_err("Message(as %s) is failed sent to %s: %s\n",
-                  (link->is_msgpack==1)?"msgpack":"json",
-                  (char *) link->dsId->data,
-                  json_dumps(obj,JSON_INDENT(0)));
+        LOG_LVL_CHK(LOG_LVL_DEBUG) {
+            char *tempDump = json_dumps(obj, JSON_INDENT(0));
+            log_err("Message(as %s) is failed sent to %s: %s\n",
+                    (link->is_msgpack == 1) ? "msgpack" : "json",
+                    (char *) link->dsId->data,
+                    tempDump);
+            dslink_free(tempDump);
+        }
     }
 
     if (throughput_output_needed()) {
@@ -269,6 +249,7 @@ void broker_send_ws_thread(void *arg) {
         uv_sem_wait(&broker->ws_send_sem);
         if (broker->closing_send_thread == 1) {
             log_debug("Closing ws send thread\n");
+            uv_sem_post(&broker->ws_queue_sem);
             break;
         }
         if(!broker->currLink || uv_sem_trywait(&broker->currLink->close_sem) != 0) {

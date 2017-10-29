@@ -146,6 +146,7 @@ void broker_on_ws_data(wslay_event_context_ptr ctx,
         msgpack_object obj = msg.data;
 
         data = dslink_ws_msgpack_to_json(&obj);
+        msgpack_unpacked_destroy(&msg);
 
         is_recv_data_msg_pack = 1;
     }
@@ -154,8 +155,9 @@ void broker_on_ws_data(wslay_event_context_ptr ctx,
     if(data != NULL && json_object_iter(data) == NULL)
     {
         log_debug("Ping received (as %s), responding back...\n", is_recv_data_msg_pack?"msgpack":"json");
+        //previously, it was responding as "{}" to the "{}", but this causes possible deadlocks, Now it is sending as normal ping message as "{"msg":1}"
         broker_ws_send_ping(link);
-        return;
+        goto exit;
     }
 
 
@@ -170,16 +172,19 @@ void broker_on_ws_data(wslay_event_context_ptr ctx,
     if (!data) {
         return;
     }
-
-    log_debug("Received data(as %s) from %s: %s\n",
-                  (is_recv_data_msg_pack==1)?"msgpack":"json",
+    LOG_LVL_CHK(LOG_LVL_DEBUG) {
+        char* tempDump = json_dumps(data, JSON_INDENT(0));
+        log_debug("Received data(as %s) from %s: %s\n",
+                  (is_recv_data_msg_pack == 1) ? "msgpack" : "json",
                   (char *) link->dsId->data,
-                  json_dumps(data, JSON_INDENT(0)));
+                  tempDump);
+        dslink_free(tempDump);
+    }
 
     broker_msg_handle(link, data);
+
+exit:
     json_decref(data);
-
-
 }
 
 const struct wslay_event_callbacks *broker_ws_callbacks() {

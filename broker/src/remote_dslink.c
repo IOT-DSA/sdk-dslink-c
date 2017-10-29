@@ -96,7 +96,8 @@ void broker_remote_dslink_free(RemoteDSLink *link) {
         uv_close((uv_handle_t *) link->pingTimerHandle, broker_free_handle);
     }
 #endif
-
+    if(link->isUpstream)
+        dslink_free((void *) link->name);
     dslink_free((void *) link->path);
     dslink_free(link->lastWriteTime);
     json_decref(link->linkData);
