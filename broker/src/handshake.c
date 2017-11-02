@@ -168,7 +168,7 @@ json_t *broker_handshake_handle_conn(Broker *broker,
         ref_t *downstreamNodeRef = dslink_map_get(broker->downstream->children, name);
         DownstreamNode *downstreamNodeNow = downstreamNodeRef ? downstreamNodeRef->data : NULL;
 
-        if (broker_enable_token) {
+        if (broker_enable_token && !nodeExists) {
             BrokerNode* tokenNode = NULL;
             if (!token) {
                 log_err("Failed to connect, you need a token.\n");
