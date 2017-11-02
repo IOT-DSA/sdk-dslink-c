@@ -102,20 +102,26 @@ int dslink_parse_opts(int argc,
     config->broker_url = dslink_url_parse(brokerUrl);
 
     if (token->count > 0) {
-        config->token = token->sval[0];
+        config->token = strdup(token->sval[0]);
     } else if (json) {
         json_t *str = dslink_json_raw_get_config(json, "token");
         if (str) {
-            config->token = json_string_value(str);
+            config->token = strdup(json_string_value(str));
         }
     }
 
+    if(config->token && strlen(config->token) < 16) {
+        log_fatal("The token has to be at least 16 characters long\n");
+        ret = 1;
+        goto exit;
+    }
+
     if (name->count > 0) {
-        config->name = name->sval[0];
+        config->name = strdup(name->sval[0]);
     } else if (json) {
         json_t *str = dslink_json_raw_get_config(json, "name");
         if (str) {
-            config->name = json_string_value(str);
+            config->name = strdup(json_string_value(str));
         }
     }
 
@@ -224,7 +230,7 @@ int dslink_init_requester(Requester *requester) {
 static
 int handle_config(DSLinkConfig *config, const char *name, int argc, char **argv) {
     memset(config, 0, sizeof(DSLinkConfig));
-    config->name = name;
+    config->name = strdup(name);
 
     int ret = 0;
     if ((ret = dslink_parse_opts(argc, argv, config)) != 0) {
@@ -276,6 +282,9 @@ void dslink_link_clear(DSLink *link) {
     if (link->dslink_json) {
         json_decref(link->dslink_json);
     }
+    dslink_free((void*)link->config.name);
+    dslink_free((void*)link->config.token);
+    dslink_free((void*)link->config.broker_url);
 }
 
 void dslink_link_free(DSLink *link) {
