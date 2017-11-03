@@ -68,6 +68,7 @@ void clear_conns(RemoteDSLink *link,
     link->broker->downstream->children = map;
 
     dslink_map_free(omap);
+    dslink_free(omap);
     broker_utils_send_closed_resp(link, req, NULL);
 
     dslink_list_foreach(&nodeToDelete) {
