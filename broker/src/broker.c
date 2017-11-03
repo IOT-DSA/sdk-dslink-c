@@ -435,8 +435,10 @@ void broker_stop(Broker* broker) {
 
         // Ensure the dsId is freed
 //        node->dsId->count = 1; //causes seg fault below
-        dslink_decref(node->dsId);
-        node->dsId = NULL;
+
+        // this is moved to broker_node_free
+//        dslink_decref(node->dsId);
+//        node->dsId = NULL;
 
         if (node->link) {
             RemoteDSLink *link = node->link;
