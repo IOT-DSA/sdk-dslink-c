@@ -81,7 +81,7 @@ void clear_managed_link(const char * name){
         const char * tokenstr = json_string_value(tokenjson);
         if (tokenstr && strcmp(tokenstr, name) == 0) {
             if (dsn->link) {
-                broker_close_link(dsn->link);
+                broker_destroy_link(dsn->link);
                 dsn->link = NULL;
             }
             dslink_list_insert(&nodeToDelete, dsn);
@@ -116,6 +116,7 @@ void clear_managed_link(const char * name){
         broker->downstream->children = map;
 
         dslink_map_free(omap);
+        dslink_free(omap);
         dslink_list_foreach(&nodeToDelete) {
             ListNode *lnode =  (ListNode *)node;
             DownstreamNode *dsn = lnode->value;
