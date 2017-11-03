@@ -43,7 +43,7 @@ json_t *set_virtual_attribute(const char* path,
             memcpy(name, path, next-path);
             next ++; // remove '/'
         } else {
-            name = (char*)path;
+            name = strdup(path);
         }
         ref_t *ref = dslink_map_get(&node->childrenNode, name);
         VirtualDownstreamNode *child;
@@ -51,12 +51,14 @@ json_t *set_virtual_attribute(const char* path,
             child = ref->data;
         } else {
             if (!key) {
+                dslink_free(name);
                 return NULL;
             }
             child = dslink_calloc(1, sizeof(VirtualDownstreamNode));
             virtual_downstream_node_init(child);
             dslink_map_set(&node->childrenNode, dslink_str_ref(name), dslink_ref(child, NULL));
         }
+        dslink_free(name);
         return set_virtual_attribute(next, child, key, value);
     }
 }
@@ -79,7 +81,7 @@ json_t *set_downstream_attribute(const char* path, DownstreamNode* node, const c
             memcpy(name, path, next-path);
             next ++; // remove '/'
         } else {
-            name = (char*)path;
+            name = strdup(path);
         }
 
         ref_t *ref = dslink_map_get(&((DownstreamNode *)node)->children_permissions, name);
@@ -88,12 +90,14 @@ json_t *set_downstream_attribute(const char* path, DownstreamNode* node, const c
             child = ref->data;
         } else {
             if (!key) {
+                dslink_free(name);
                 return NULL;
             }
             child = dslink_calloc(1, sizeof(VirtualDownstreamNode));
             virtual_downstream_node_init(child);
             dslink_map_set(&node->children_permissions, dslink_str_ref(name), dslink_ref(child, NULL));
         }
+        dslink_free(name);
         return set_virtual_attribute(next, child, key, value);
     }
 }
