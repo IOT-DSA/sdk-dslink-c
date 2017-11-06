@@ -6,6 +6,7 @@ option(DSLINK_BUILD_BROKER "Whether to build the broker" ON)
 option(DSLINK_BUILD_EXAMPLES "Whether to build the examples" ON)
 option(DSLINK_TEST "Whether to enable tests" ON)
 option(TOOLCHAIN_DYNAMIC_LINK_ENABLE "Enable Dynamic Linking for Toolchain" ON)
+option(USE_YOUR_OWN_OPENSSL_LIB "Use your own OpenSSL libraries, not the in the project" OFF)
 
 ##### Configure CMake Modules #####
 
@@ -74,32 +75,38 @@ endforeach()
 include(ExternalProject)
 
 ##### OpenSSL #####
-#in order to use from system libraries in linux
-#find_package(OpenSSL)
-#set(OPENSSL_SSL_LIBRARY "/usr/local/ssl/lib/libcrypto.so")
-#set(OPENSSL_CRYPTO_LIBRARY "/usr/local/ssl/lib/libssl.so")
-#set(OPENSSL_INCLUDE_DIR "/usr/local/ssl/include")
+if(USE_YOUR_OWN_OPENSSL_LIB)
+    #in order to use from system libraries in linux
+#    set(OPENSSL_SSL_LIBRARY "/usr/local/ssl/lib/libcrypto.so")
+#    set(OPENSSL_CRYPTO_LIBRARY "/usr/local/ssl/lib/libssl.so")
+#    set(OPENSSL_INCLUDE_DIR "/usr/local/ssl/include")
+    find_package(OpenSSL REQUIRED)
+    if (OPENSSL_FOUND)
+        message("OPENSSL FOUND")
+    else()
+        message("OPENSSL NOT FOUND")
+    endif ()
 
-execute_process(
-        COMMAND cp -r ./openssl-fips ${CMAKE_CURRENT_BINARY_DIR}/
-        WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/deps/
-)
-add_custom_command(
-        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/openssl/lib/libcrypto.so
-        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/openssl/lib/libssl.so
-        COMMAND make FIPS_DIR=${CMAKE_CURRENT_BINARY_DIR}/openssl/fips2.0 OPENSSL_DIR=${CMAKE_CURRENT_BINARY_DIR}/openssl all
-        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/openssl-fips/
-)
+else()
+    execute_process(
+            COMMAND cp -r ./openssl-fips ${CMAKE_CURRENT_BINARY_DIR}/
+            WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/deps/
+    )
+    add_custom_command(
+            OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/openssl/lib/libcrypto.so
+            OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/openssl/lib/libssl.so
+            COMMAND make FIPS_DIR=${CMAKE_CURRENT_BINARY_DIR}/openssl/fips2.0 OPENSSL_DIR=${CMAKE_CURRENT_BINARY_DIR}/openssl all
+            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/openssl-fips/
+    )
+    set(OPENSSL_SSL_LIBRARY "${CMAKE_CURRENT_BINARY_DIR}/openssl/lib/libssl.so")
+    set(OPENSSL_CRYPTO_LIBRARY "${CMAKE_CURRENT_BINARY_DIR}/openssl/lib/libcrypto.so")
+    set(OPENSSL_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/openssl/include")
+endif()
 add_custom_target(
         openssl_lib
-        DEPENDS  ${CMAKE_CURRENT_BINARY_DIR}/openssl/lib/libcrypto.so
-        DEPENDS  ${CMAKE_CURRENT_BINARY_DIR}/openssl/lib/libssl.so
+        DEPENDS  ${OPENSSL_CRYPTO_LIBRARY}
+        DEPENDS  ${OPENSSL_SSL_LIBRARY}
 )
-
-set(OPENSSL_SSL_LIBRARY "${CMAKE_CURRENT_BINARY_DIR}/openssl/lib/libssl.so")
-set(OPENSSL_CRYPTO_LIBRARY "${CMAKE_CURRENT_BINARY_DIR}/openssl/lib/libcrypto.so")
-set(OPENSSL_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/openssl/include")
-
 message("${OPENSSL_VERSION}")
 message("${OPENSSL_SSL_LIBRARY}")
 message("${OPENSSL_CRYPTO_LIBRARY}")
