@@ -302,6 +302,7 @@ int dslink_ws_send_internal(wslay_event_context_ptr ctx,
                             const struct wslay_event_msg msg,
                             uint8_t resend) {
     (void) resend;
+    int ret = 0;
 
     DSLink *link = (DSLink*)ctx->user_data;
     if(!link) {
@@ -312,18 +313,22 @@ int dslink_ws_send_internal(wslay_event_context_ptr ctx,
     uv_sem_wait(&link->ws_queue_sem);
 #endif
     if (wslay_event_queue_msg(ctx, &msg) != 0) {
-        return 1;
+        ret = 1;
     }
 #ifdef DSLINK_WS_SEND_THREADED
     uv_sem_post(&link->ws_send_sem);
 #else
     // start polling on the socket, to trigger writes (We always want to poll reads)
-    uv_poll_start(link->poll, UV_READABLE | UV_WRITABLE, io_handler);
+    if(link->poll && !uv_is_closing((uv_handle_t*)link->poll)) {
+        uv_poll_start(link->poll, UV_READABLE | UV_WRITABLE, io_handler);
+    }
 #endif
 
-    log_debug("Message(%s) queued to be sent: %.*s\n",
-              (msg.opcode==WSLAY_TEXT_FRAME)?"text":"binary", (int)msg.msg_length, (char*)msg.msg);
-    return 0;
+    if(!ret) {
+        log_debug("Message(%s) queued to be sent: %.*s\n",
+                  (msg.opcode == WSLAY_TEXT_FRAME) ? "text" : "binary", (int) msg.msg_length, (char *) msg.msg);
+    }
+    return ret;
 }
 
 int dslink_handshake_connect_ws(Url *url,

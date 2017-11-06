@@ -123,7 +123,7 @@ int broker_ws_send(RemoteDSLink *link, const char *data, int len, int opcode, in
     return (int)msg.msg_length;
 #else
     (void)droppable;
-    if (link->client->poll) {
+    if (link->client->poll && !uv_is_closing((uv_handle_t*)link->client->poll)) {
 #ifdef BROKER_WS_DIRECT_SEND
         int ret = wslay_event_send(link->ws);
         if (ret != 0) {
