@@ -9,7 +9,7 @@ extern "C" {
 #endif
 
     struct ExtensionConfig {
-        char* brokerUrl;
+        const char* brokerUrl;
         uv_loop_t* loop;
     };
 

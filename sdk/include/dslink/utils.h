@@ -25,6 +25,10 @@ size_t dslink_create_ts(char *buf, size_t bufLen);
 
 int dslink_sleep(long ms);
 
+const char* dslink_checkIpv4Address(const char* address);
+const char* dslink_checkIpv6Address(const char* address);
+int dslink_isipv6address(const char* host);
+
 #ifdef __cplusplus
 }
 #endif
