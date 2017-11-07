@@ -471,15 +471,8 @@ void broker_stop(Broker* broker) {
             dslink_free(extension);
         }
     }
-    dslink_free(broker->extensionConfig.brokerUrl);
+    dslink_free((void*)broker->extensionConfig.brokerUrl);
     dslink_list_free_all_nodes(&broker->extensions);
-}
-
-static int isipv6address(const char* host)
-{
-    int i = 0;
-    for(; host[i]; host[i]==':' ? i++ : *host++);
-    return i>0;
 }
 
 int broker_init_extensions(Broker* broker, json_t* config) {
@@ -571,26 +564,14 @@ int broker_init_extensions(Broker* broker, json_t* config) {
                 return -1;
             }
 
-            int len = strlen(httpsHost)+strlen(httpsPort)+16+1;
-            broker->extensionConfig.brokerUrl = dslink_malloc(len);
-            if(isipv6address(httpsHost)) {
-                snprintf(broker->extensionConfig.brokerUrl, len, "https://[%s]:%s/conn", httpsHost, httpsPort);
-            } else {
-                snprintf(broker->extensionConfig.brokerUrl, len, "https://%s:%s/conn", httpsHost, httpsPort);
-            }
+            broker->extensionConfig.brokerUrl = setHostFrom("https", httpsHost, httpsPort);
         } else {
             if(!httpEnabled) {
                 log_err("Cannot load extensions. At least http has to be enabled.");
                 return -1;
             }
 
-            int len = strlen(httpHost)+strlen(httpPort)+15+1;
-            broker->extensionConfig.brokerUrl = dslink_malloc(len);
-            if(isipv6address(httpHost)) {
-                snprintf(broker->extensionConfig.brokerUrl, len, "http://[%s]:%s/conn", httpHost, httpPort);
-            } else {
-                snprintf(broker->extensionConfig.brokerUrl, len, "http://%s:%s/conn", httpHost, httpPort);
-            }
+            broker->extensionConfig.brokerUrl = setHostFrom("http", httpHost, httpPort);
         }
 
         broker->extensionConfig.loop = mainLoop;

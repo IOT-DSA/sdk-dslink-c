@@ -19,6 +19,7 @@ set(SDK_TEST_SET
 
 set(BROKER_TEST_SET
     "node_test"
+    "utils_test"
 )
 
 function(add_memcheck_test name)

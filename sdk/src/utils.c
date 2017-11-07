@@ -242,3 +242,39 @@ int dslink_sleep(long ms) {
 
     return nanosleep(&req, NULL);
 }
+
+const char* dslink_checkIpv4Address(const char* address)
+{
+    const char* host = address;
+    if(strcmp("0.0.0.0", address) == 0) {
+        static char* localhost = "127.0.0.1";
+        host = localhost;
+    }
+
+    return host;
+}
+
+const char* dslink_checkIpv6Address(const char* address)
+{
+    const char* host = address;
+    static char* localhost = "::1";
+
+    if(strcmp("::/128", address) == 0 || strcmp("::/0", address) == 0) {
+        host = localhost;
+    } else {
+        size_t span = strspn(address, "0:");
+        if(address[span] == '\0') {
+            host = localhost;
+        }
+    }
+
+    return host;
+}
+
+int dslink_isipv6address(const char* host)
+{
+    int i = 0;
+    for(; host[i]; host[i]==':' ? i++ : *host++);
+    return i>0;
+}
+

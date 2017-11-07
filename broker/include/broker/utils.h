@@ -15,6 +15,8 @@ void broker_utils_send_static_list_resp(RemoteDSLink *link, json_t *req);
 
 void broker_utils_send_disconnected_list_resp(RemoteDSLink *link, json_t *req);
 
+const char* setHostFrom(const char* protocol,const char* address, const char* port);
+
 #ifdef __cplusplus
 }
 #endif

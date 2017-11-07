@@ -2,6 +2,8 @@
 #include "broker/net/ws.h"
 #include "broker/utils.h"
 
+#include <string.h>
+
 void broker_free_handle(uv_handle_t *handle) {
     dslink_free(handle);
 }
@@ -108,3 +110,24 @@ void broker_utils_send_disconnected_list_resp(RemoteDSLink *link, json_t *req) {
     broker_ws_send_obj(link, top);
     json_decref(top);
 }
+
+const char* setHostFrom(const char* protocol,const char* address, const char* port)
+{
+    char* host = NULL;
+
+    if(dslink_isipv6address(address)) {
+        const char* temp = dslink_checkIpv6Address(address);
+        int len = strlen(temp)+strlen(port)+16+1;
+        host = dslink_malloc(len);
+        snprintf(host, len, "%s://[%s]:%s/conn", protocol, temp, port);
+    } else {
+        const char* temp = dslink_checkIpv4Address(address);
+        int len = strlen(temp)+strlen(port)+16+1;
+        host = dslink_malloc(len);
+        snprintf(host, len, "%s://%s:%s/conn", protocol, temp, port);
+    }
+
+    return host;
+}
+
+
