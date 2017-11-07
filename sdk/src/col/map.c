@@ -254,6 +254,8 @@ int dslink_map_set(Map *map, ref_t *key, ref_t *value) {
 }
 
 ref_t *dslink_map_remove_get(Map *map, void *key) {
+    if(!map || !key)
+        return NULL;
     return dslink_map_removel_get(map, key, map->key_len_calc(key));
 }
 
@@ -292,6 +294,8 @@ ref_t *dslink_map_removel_get(Map *map, void *key, size_t len) {
 }
 
 void dslink_map_remove(Map *map, void *key) {
+    if(!map || !key)
+        return;
     dslink_map_removel(map, key, map->key_len_calc(key));
 }
 
@@ -306,6 +310,8 @@ void dslink_map_removel(Map *map, void *key, size_t len) {
 }
 
 int dslink_map_contains(Map *map, void *key) {
+    if(!map || !key)
+        return 0;
     return dslink_map_containsl(map, key, map->key_len_calc(key));
 }
 
