@@ -12,6 +12,11 @@ option(TOOLCHAIN_DYNAMIC_LINK_ENABLE "Enable Dynamic Linking for Toolchain" ON)
 execute_process(COMMAND ${CMAKE_SOURCE_DIR}/getos.sh --full OUTPUT_VARIABLE OSVERSION)
 STRING(REGEX REPLACE "(\r?\n)+$" "" OSVERSION "${OSVERSION}")
 
+SET(VERSION_MAJOR "1")
+SET(VERSION_MINOR "2")
+SET(VERSION_PATCH "0")
+SET(VERSION "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}")
+
 ##### Configure CMake Modules #####
 
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/tools/cmake)
@@ -198,7 +203,7 @@ set(BROKER_SRC
     "${BROKER_SRC_DIR}/node/virtual_downstream.c"
     "${BROKER_SRC_DIR}/msg/msg_remove.c"
     "${BROKER_SRC_DIR}/sys/throughput.c"
-    "${BROKER_SRC_DIR}/sys/inspect.c"    
+    "${BROKER_SRC_DIR}/sys/inspect.c"
 )
 
 ###### Configure Libraries #####
@@ -214,6 +219,7 @@ target_link_libraries(sdk_dslink_c-static jansson libuv ${DSLINK_PLATFORM_LIBS})
 
 add_library(sdk_dslink_c SHARED ${LIBRARY_SRC})
 target_link_libraries(sdk_dslink_c jansson libuv ${DSLINK_PLATFORM_LIBS})
+set_target_properties(sdk_dslink_c PROPERTIES VERSION ${VERSION} SOVERSION ${VERSION_MAJOR} )
 
 set(DSLINK_INSTALL_LIB_DIR lib CACHE PATH "Installation directory for libraries")
 set(DSLINK_INSTALL_BIN_DIR bin CACHE PATH "Installation directory for executables")
@@ -223,17 +229,17 @@ export(TARGETS sdk_dslink_c
         FILE "${PROJECT_BINARY_DIR}/sdk_dslink_c-targets.cmake")
 export(PACKAGE sdk_dslink_c)
 
-install(TARGETS sdk_dslink_c
+install(TARGETS sdk_dslink_c sdk_dslink_c-static
         EXPORT sdk_dslink_c-targets
         LIBRARY DESTINATION "${DSLINK_INSTALL_LIB_DIR}" COMPONENT lib
         ARCHIVE DESTINATION "${DSLINK_INSTALL_LIB_DIR}" COMPONENT lib
         RUNTIME DESTINATION "${DSLINK_INSTALL_BIN_DIR}" COMPONENT lib)
 
-install(DIRECTORY "sdk/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev FILES_MATCHING PATTERN "*.h")
-install(DIRECTORY "deps/mbedtls/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev FILES_MATCHING PATTERN "*.h")
-install(DIRECTORY "deps/wslay/lib/includes/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev FILES_MATCHING PATTERN "*.h")
-install(DIRECTORY "deps/wslay/lib/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev FILES_MATCHING PATTERN "*.h")
-install(DIRECTORY "deps/jansson/src/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY "sdk/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT lib FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY "deps/mbedtls/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT lib FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY "deps/wslay/lib/includes/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT lib FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY "deps/wslay/lib/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT lib FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY "deps/jansson/src/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT lib FILES_MATCHING PATTERN "*.h")
 
 ####### Configure Broker #######
 
@@ -241,11 +247,10 @@ if (DSLINK_BUILD_BROKER)
     MESSAGE(INFO "Configured for broker build")
     include_directories("${CMAKE_CURRENT_LIST_DIR}/broker/include")
 
-    install(DIRECTORY "broker/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev)
-
     add_library(sdk_broker_c SHARED ${BROKER_SRC})
     target_link_libraries(sdk_broker_c sdk_dslink_c)
     target_include_directories(sdk_broker_c PUBLIC "broker/include")
+    set_target_properties(sdk_broker_c PROPERTIES VERSION ${VERSION} SOVERSION ${VERSION_MAJOR} )
 
     add_library(sdk_broker_c-static STATIC ${BROKER_SRC})
     target_link_libraries(sdk_broker_c-static sdk_dslink_c-static)
@@ -253,6 +258,11 @@ if (DSLINK_BUILD_BROKER)
 
     add_executable(broker "${BROKER_SRC_DIR}/main.c")
     target_link_libraries(broker sdk_broker_c)
+
+    install(TARGETS broker sdk_broker_c
+        RUNTIME DESTINATION "${DSLINK_INSTALL_BIN_DIR}" COMPONENT lib
+        LIBRARY DESTINATION "${DSLINK_INSTALL_LIB_DIR}" COMPONENT lib)
+    install(DIRECTORY "broker/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev-boker)
 endif()
 
 ###### Configure Tests #####
@@ -283,16 +293,16 @@ SET(CPACK_PACKAGE_RELOCATABLE "false")
 SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "C DSLink SDK")
 SET(CPACK_PACKAGE_DESCRIPTION "C DSLink SDK")
 SET(CPACK_PACKAGE_RELOCATABLE "false")
-SET(CPACK_PACKAGE_VENDOR "Cisco")
+SET(CPACK_PACKAGE_VENDOR "Cisco Kinetic EFM")
 SET(CPACK_PACKAGE_NAME "sdk-dslink-c")
-SET(CPACK_COMPONENTS_ALL "sdk-dslink-c")
-SET(CPACK_PACKAGE_VERSION "1.2.0")
-SET(CPACK_PACKAGE_VERSION_MAJOR "1")
-SET(CPACK_PACKAGE_VERSION_MINOR "2")
-SET(CPACK_PACKAGE_VERSION_PATCH "0")
+SET(CPACK_PACKAGE_VERSION "${VERSION}")
+SET(CPACK_PACKAGE_VERSION_MAJOR "${VERSION_MAJOR}")
+SET(CPACK_PACKAGE_VERSION_MINOR "${VERSION_MINOR}")
+SET(CPACK_PACKAGE_VERSION_PATCH "${VERSION_PATCH}")
 SET(CPACK_PACKAGE_INSTALL_DIRECTORY "sdk-dslink-c")
 SET(CPACK_PACKAGE_DEFAULT_LOCATION "/")
-SET(CPACK_INSTALL_CMAKE_PROJECTS "${CMAKE_BINARY_DIR};broker;ALL;/")
+SET(CPACK_COMPONENTS_ALL lib)
+SET(CPACK_INSTALL_CMAKE_PROJECTS "${CMAKE_BINARY_DIR};${CMAKE_PROJECT_NAME};lib;/")
 SET(PACKAGING_REPLACES "")
 SET(PACKAGING_CONFLICTS "")
 
@@ -311,7 +321,7 @@ if((${OSVERSION} STREQUAL "Debian8") OR
   SET(CPACK_GENERATOR "DEB")
   SET(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "amd64")
   SET(CPACK_DEBIAN_PACKAGE_SECTION "Network")
-  SET(CPACK_PACKAGE_FILE_NAME "sdk-dslink-c_${VERSION}.0_amd64")
+  SET(CPACK_PACKAGE_FILE_NAME "sdk-dslink-c_${VERSION}_amd64")
   SET(CPACK_DEBIAN_PACKAGE_REQUIRES "")
   SET(CPACK_DEBIAN_PACKAGE_SUGGESTS "")
 
@@ -321,9 +331,10 @@ elseif((${OSVERSION} STREQUAL "CentOS7") OR
   SET(CPACK_GENERATOR "RPM")
   SET(CPACK_RPM_PACKAGE_ARCHITECTURE "x86_64")
   SET(CPACK_RPM_PACKAGE_GROUP "Applications/Networking")
-  SET(CPACK_PACKAGE_FILE_NAME "sdk-dslink-c-${VERSION}.0.el7.x86_64")
+  SET(CPACK_PACKAGE_FILE_NAME "sdk-dslink-c-${VERSION}.el7.x86_64")
   SET(CPACK_RPM_PACKAGE_REQUIRES "")
   SET(CPACK_RPM_PACKAGE_SUGGESTS "")
+  SET(CPACK_RPM_COMPONENT_INSTALL ON)
 
 else()
     message(WARNING "OS unknown for packaging")
