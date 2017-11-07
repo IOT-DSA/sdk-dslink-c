@@ -475,7 +475,7 @@ void broker_stop(Broker* broker) {
     dslink_list_free_all_nodes(&broker->extensions);
 }
 
-static const char* setHostFrom(const char* address, const char* port)
+static const char* setHostFrom(const char* protocol,const char* address, const char* port)
 {
     char* host = NULL;
 
@@ -483,12 +483,12 @@ static const char* setHostFrom(const char* address, const char* port)
         const char* temp = dslink_checkIpv6Address(address);
         int len = strlen(temp)+strlen(port)+16+1;
         host = dslink_malloc(len);
-        snprintf(host, len, "https://[%s]:%s/conn", temp, port);
+        snprintf(host, len, "%s://[%s]:%s/conn", protocol, temp, port);
     } else {
         const char* temp = dslink_checkIpv4Address(address);
         int len = strlen(temp)+strlen(port)+16+1;
         host = dslink_malloc(len);
-        snprintf(host, len, "https://%s:%s/conn", temp, port);
+        snprintf(host, len, "%s://%s:%s/conn", protocol, temp, port);
     }
 
     return host;
@@ -584,14 +584,14 @@ int broker_init_extensions(Broker* broker, json_t* config) {
                 return -1;
             }
 
-            broker->extensionConfig.brokerUrl = setHostFrom(httpsHost, httpsPort);
+            broker->extensionConfig.brokerUrl = setHostFrom("https", httpsHost, httpsPort);
         } else {
             if(!httpEnabled) {
                 log_err("Cannot load extensions. At least http has to be enabled.");
                 return -1;
             }
 
-            broker->extensionConfig.brokerUrl = setHostFrom(httpHost, httpPort);
+            broker->extensionConfig.brokerUrl = setHostFrom("http", httpHost, httpPort);
         }
 
         broker->extensionConfig.loop = mainLoop;
