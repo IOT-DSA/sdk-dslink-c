@@ -430,6 +430,12 @@ int dslink_parse_handshake_response(const char *resp, json_t **handshake) {
         goto exit;
     }
 
+    index = strstr(resp, "301 Moved Permanently");
+    if(index) {
+        ret = DSLINK_HANDSHAKE_MOVED_PERMANENTLY;
+        goto exit;
+    }
+
     index = strchr(resp, '{');
     if (!index) {
         ret = DSLINK_HANDSHAKE_INVALID_RESPONSE;
