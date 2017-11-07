@@ -49,7 +49,7 @@ SubRequester *broker_create_sub_requester(DownstreamNode * node, const char *pat
 void broker_free_sub_requester(SubRequester *req);
 void broker_clear_messsage_ids(SubRequester *req);
 
-int sendQueuedMessages(SubRequester *subReq);
+uint32_t sendQueuedMessages(SubRequester *subReq);
 
 void clear_qos_queue(SubRequester *subReq, uint8_t serialize);
 
