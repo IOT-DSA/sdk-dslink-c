@@ -252,7 +252,7 @@ int sendQueuedMessages(SubRequester *subReq) {
                 break;
             }
             if(m->msg_id > 0) {
-                log_err("Has been send already: %d\n", m->msg_id);
+                log_debug("Has been send already: %d\n", m->msg_id);
                 break;
             }
             result &= sendMessage(subReq, m->message, &m->msg_id);
