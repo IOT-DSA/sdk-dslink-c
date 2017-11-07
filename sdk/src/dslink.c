@@ -45,6 +45,14 @@ void dslink_print_help() {
     printf("See --help for usage\n");
 }
 
+static void freeAndAssign(const char** target, const char* source)
+{
+    if(*target) {
+      free((void*)*target);
+    }
+    *target = strdup(source);
+}
+
 static
 int dslink_parse_opts(int argc,
                       char **argv,
@@ -102,11 +110,11 @@ int dslink_parse_opts(int argc,
     config->broker_url = dslink_url_parse(brokerUrl);
 
     if (token->count > 0) {
-        config->token = strdup(token->sval[0]);
+        freeAndAssign(&config->token, token->sval[0]);
     } else if (json) {
         json_t *str = dslink_json_raw_get_config(json, "token");
         if (str) {
-            config->token = strdup(json_string_value(str));
+            freeAndAssign(&config->token, json_string_value(str));
         }
     }
 
@@ -117,11 +125,11 @@ int dslink_parse_opts(int argc,
     }
 
     if (name->count > 0) {
-        config->name = strdup(name->sval[0]);
+        freeAndAssign(&config->name, name->sval[0]);
     } else if (json) {
         json_t *str = dslink_json_raw_get_config(json, "name");
         if (str) {
-            config->name = strdup(json_string_value(str));
+            freeAndAssign(&config->name, json_string_value(str));
         }
     }
 
