@@ -7,6 +7,16 @@ option(DSLINK_BUILD_EXAMPLES "Whether to build the examples" OFF)
 option(DSLINK_TEST "Whether to enable tests" OFF)
 option(TOOLCHAIN_DYNAMIC_LINK_ENABLE "Enable Dynamic Linking for Toolchain" ON)
 
+# ---------------------------------------------------------------------------------------------------
+# get our OS Version String (used for directorynames)
+execute_process(COMMAND ${CMAKE_SOURCE_DIR}/getos.sh --full OUTPUT_VARIABLE OSVERSION)
+STRING(REGEX REPLACE "(\r?\n)+$" "" OSVERSION "${OSVERSION}")
+
+SET(VERSION_MAJOR "1")
+SET(VERSION_MINOR "2")
+SET(VERSION_PATCH "0")
+SET(VERSION "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}")
+
 ##### Configure CMake Modules #####
 
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/tools/cmake)
@@ -193,7 +203,7 @@ set(BROKER_SRC
     "${BROKER_SRC_DIR}/node/virtual_downstream.c"
     "${BROKER_SRC_DIR}/msg/msg_remove.c"
     "${BROKER_SRC_DIR}/sys/throughput.c"
-    "${BROKER_SRC_DIR}/sys/inspect.c"    
+    "${BROKER_SRC_DIR}/sys/inspect.c"
 )
 
 ###### Configure Libraries #####
@@ -209,6 +219,7 @@ target_link_libraries(sdk_dslink_c-static jansson libuv ${DSLINK_PLATFORM_LIBS})
 
 add_library(sdk_dslink_c SHARED ${LIBRARY_SRC})
 target_link_libraries(sdk_dslink_c jansson libuv ${DSLINK_PLATFORM_LIBS})
+set_target_properties(sdk_dslink_c PROPERTIES VERSION ${VERSION} SOVERSION ${VERSION_MAJOR} )
 
 set(DSLINK_INSTALL_LIB_DIR lib CACHE PATH "Installation directory for libraries")
 set(DSLINK_INSTALL_BIN_DIR bin CACHE PATH "Installation directory for executables")
@@ -218,7 +229,7 @@ export(TARGETS sdk_dslink_c
         FILE "${PROJECT_BINARY_DIR}/sdk_dslink_c-targets.cmake")
 export(PACKAGE sdk_dslink_c)
 
-install(TARGETS sdk_dslink_c
+install(TARGETS sdk_dslink_c sdk_dslink_c-static
         EXPORT sdk_dslink_c-targets
         LIBRARY DESTINATION "${DSLINK_INSTALL_LIB_DIR}" COMPONENT lib
         ARCHIVE DESTINATION "${DSLINK_INSTALL_LIB_DIR}" COMPONENT lib
@@ -236,11 +247,10 @@ if (DSLINK_BUILD_BROKER)
     MESSAGE(INFO "Configured for broker build")
     include_directories("${CMAKE_CURRENT_LIST_DIR}/broker/include")
 
-    install(DIRECTORY "broker/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev)
-
     add_library(sdk_broker_c SHARED ${BROKER_SRC})
     target_link_libraries(sdk_broker_c sdk_dslink_c)
     target_include_directories(sdk_broker_c PUBLIC "broker/include")
+    set_target_properties(sdk_broker_c PROPERTIES VERSION ${VERSION} SOVERSION ${VERSION_MAJOR} )
 
     add_library(sdk_broker_c-static STATIC ${BROKER_SRC})
     target_link_libraries(sdk_broker_c-static sdk_dslink_c-static)
@@ -248,6 +258,12 @@ if (DSLINK_BUILD_BROKER)
 
     add_executable(broker "${BROKER_SRC_DIR}/main.c")
     target_link_libraries(broker sdk_broker_c)
+
+    install(TARGETS broker
+        RUNTIME DESTINATION "${DSLINK_INSTALL_BIN_DIR}" COMPONENT bin)
+    install(TARGETS sdk_broker_c
+        LIBRARY DESTINATION "${DSLINK_INSTALL_LIB_DIR}" COMPONENT lib)
+    install(DIRECTORY "broker/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev-boker)
 endif()
 
 ###### Configure Tests #####
@@ -267,3 +283,63 @@ if (DSLINK_BUILD_EXAMPLES)
         target_link_libraries(${example} sdk_dslink_c-static)
     endforeach()
 endif()
+
+# ---------------------------------------------------------------------------------------------------
+# package definition
+SET(CPACK_CMAKE_GENERATOR "Unix Makefiles")
+SET(CPACK_PACKAGE_CONTACT "https://mycase.cloudapps.cisco.com/case")
+SET(CPACK_PACKAGE_URL "http://www.cisco.com")
+SET(CPACK_PACKAGE_LICENSE "Apache License, Version 2.0")
+SET(CPACK_PACKAGE_RELOCATABLE "false")
+SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "C DSLink SDK")
+SET(CPACK_PACKAGE_DESCRIPTION "C DSLink SDK")
+SET(CPACK_PACKAGE_RELOCATABLE "false")
+SET(CPACK_PACKAGE_VENDOR "Cisco Kinetic EFM")
+SET(CPACK_PACKAGE_NAME "sdk-dslink-c")
+SET(CPACK_PACKAGE_VERSION "${VERSION}")
+SET(CPACK_PACKAGE_VERSION_MAJOR "${VERSION_MAJOR}")
+SET(CPACK_PACKAGE_VERSION_MINOR "${VERSION_MINOR}")
+SET(CPACK_PACKAGE_VERSION_PATCH "${VERSION_PATCH}")
+SET(CPACK_PACKAGE_INSTALL_DIRECTORY "sdk-dslink-c")
+SET(CPACK_PACKAGE_DEFAULT_LOCATION "/")
+SET(CPACK_COMPONENTS_ALL bin lib dev)
+SET(CPACK_INSTALL_CMAKE_PROJECTS "${CMAKE_BINARY_DIR};${CMAKE_PROJECT_NAME};ALL;/")
+SET(PACKAGING_REPLACES "")
+SET(PACKAGING_CONFLICTS "")
+
+# some general seetings for the packaging process
+SET(CPACK_MONOLITHIC_INSTALL "OFF")
+SET(CPACK_COMPONENTS_ALL_SET_BY_USER "TRUE")
+SET(CPACK_COMPONENTS_GROUPING "IGNORE")
+SET(CPACK_COMPONENT_UNSPECIFIED_HIDDEN "TRUE")
+SET(CPACK_COMPONENT_UNSPECIFIED_REQUIRED "TRUE")
+SET(CPACK_SET_DESTDIR "OFF")
+
+if((${OSVERSION} STREQUAL "Debian8") OR
+   (${OSVERSION} STREQUAL "Ubuntu16.04"))
+
+  # Debian/Ubuntu
+  SET(CPACK_GENERATOR "DEB")
+  SET(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "amd64")
+  SET(CPACK_DEBIAN_PACKAGE_SECTION "Network")
+  SET(CPACK_PACKAGE_FILE_NAME "sdk-dslink-c_${VERSION}_amd64")
+  SET(CPACK_DEBIAN_PACKAGE_REQUIRES "")
+  SET(CPACK_DEBIAN_PACKAGE_SUGGESTS "")
+
+elseif((${OSVERSION} STREQUAL "CentOS7") OR
+       (${OSVERSION} STREQUAL "RHEL7"))
+
+  SET(CPACK_GENERATOR "RPM")
+  SET(CPACK_RPM_PACKAGE_ARCHITECTURE "x86_64")
+  SET(CPACK_RPM_PACKAGE_GROUP "Applications/Networking")
+  SET(CPACK_PACKAGE_FILE_NAME "sdk-dslink-c-${VERSION}.el7.x86_64")
+  SET(CPACK_RPM_PACKAGE_REQUIRES "")
+  SET(CPACK_RPM_PACKAGE_SUGGESTS "")
+  SET(CPACK_RPM_COMPONENT_INSTALL ON)
+
+else()
+    message(WARNING "OS unknown for packaging")
+endif()
+
+INCLUDE(CPack)
+
