@@ -7,6 +7,11 @@ option(DSLINK_BUILD_EXAMPLES "Whether to build the examples" OFF)
 option(DSLINK_TEST "Whether to enable tests" OFF)
 option(TOOLCHAIN_DYNAMIC_LINK_ENABLE "Enable Dynamic Linking for Toolchain" ON)
 
+# ---------------------------------------------------------------------------------------------------
+# get our OS Version String (used for directorynames)
+execute_process(COMMAND ${CMAKE_SOURCE_DIR}/getos.sh --full OUTPUT_VARIABLE OSVERSION)
+STRING(REGEX REPLACE "(\r?\n)+$" "" OSVERSION "${OSVERSION}")
+
 ##### Configure CMake Modules #####
 
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/tools/cmake)
@@ -267,3 +272,62 @@ if (DSLINK_BUILD_EXAMPLES)
         target_link_libraries(${example} sdk_dslink_c-static)
     endforeach()
 endif()
+
+# ---------------------------------------------------------------------------------------------------
+# package definition
+SET(CPACK_CMAKE_GENERATOR "Unix Makefiles")
+SET(CPACK_PACKAGE_CONTACT "https://mycase.cloudapps.cisco.com/case")
+SET(CPACK_PACKAGE_URL "http://www.cisco.com")
+SET(CPACK_PACKAGE_LICENSE "Apache License, Version 2.0")
+SET(CPACK_PACKAGE_RELOCATABLE "false")
+SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "C DSLink SDK")
+SET(CPACK_PACKAGE_DESCRIPTION "C DSLink SDK")
+SET(CPACK_PACKAGE_RELOCATABLE "false")
+SET(CPACK_PACKAGE_VENDOR "Cisco")
+SET(CPACK_PACKAGE_NAME "sdk-dslink-c")
+SET(CPACK_COMPONENTS_ALL "sdk-dslink-c")
+SET(CPACK_PACKAGE_VERSION "1.2.0")
+SET(CPACK_PACKAGE_VERSION_MAJOR "1")
+SET(CPACK_PACKAGE_VERSION_MINOR "2")
+SET(CPACK_PACKAGE_VERSION_PATCH "0")
+SET(CPACK_PACKAGE_INSTALL_DIRECTORY "sdk-dslink-c")
+SET(CPACK_PACKAGE_DEFAULT_LOCATION "/")
+SET(CPACK_INSTALL_CMAKE_PROJECTS "${CMAKE_BINARY_DIR};broker;ALL;/")
+SET(PACKAGING_REPLACES "")
+SET(PACKAGING_CONFLICTS "")
+
+# some general seetings for the packaging process
+SET(CPACK_MONOLITHIC_INSTALL "OFF")
+SET(CPACK_COMPONENTS_ALL_SET_BY_USER "TRUE")
+SET(CPACK_COMPONENTS_GROUPING "IGNORE")
+SET(CPACK_COMPONENT_UNSPECIFIED_HIDDEN "TRUE")
+SET(CPACK_COMPONENT_UNSPECIFIED_REQUIRED "TRUE")
+SET(CPACK_SET_DESTDIR "OFF")
+
+if((${OSVERSION} STREQUAL "Debian8") OR
+   (${OSVERSION} STREQUAL "Ubuntu16.04"))
+
+  # Debian/Ubuntu
+  SET(CPACK_GENERATOR "DEB")
+  SET(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "amd64")
+  SET(CPACK_DEBIAN_PACKAGE_SECTION "Network")
+  SET(CPACK_PACKAGE_FILE_NAME "sdk-dslink-c_${VERSION}.0_amd64")
+  SET(CPACK_DEBIAN_PACKAGE_REQUIRES "")
+  SET(CPACK_DEBIAN_PACKAGE_SUGGESTS "")
+
+elseif((${OSVERSION} STREQUAL "CentOS7") OR
+       (${OSVERSION} STREQUAL "RHEL7"))
+
+  SET(CPACK_GENERATOR "RPM")
+  SET(CPACK_RPM_PACKAGE_ARCHITECTURE "x86_64")
+  SET(CPACK_RPM_PACKAGE_GROUP "Applications/Networking")
+  SET(CPACK_PACKAGE_FILE_NAME "sdk-dslink-c-${VERSION}.0.el7.x86_64")
+  SET(CPACK_RPM_PACKAGE_REQUIRES "")
+  SET(CPACK_RPM_PACKAGE_SUGGESTS "")
+
+else()
+    message(WARNING "OS unknown for packaging")
+endif()
+
+INCLUDE(CPack)
+
