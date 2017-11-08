@@ -595,6 +595,7 @@ int broker_start() {
     // onyl allow an uv threadpool of max one thread
     putenv("UV_THREADPOOL_SIZE=1");
 
+    log_info("IOT-DSA c-sdk version: %s\n", IOT_DSA_C_SDK_VERSION);
     log_info("IOT-DSA c-sdk git commit: %s\n", IOT_DSA_C_SDK_GIT_COMMIT_HASH);
 
     int ret = 0;

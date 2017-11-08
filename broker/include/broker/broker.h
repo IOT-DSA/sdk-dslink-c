@@ -5,6 +5,10 @@
 extern "C" {
 #endif
 
+#ifndef IOT_DSA_C_SDK_VERSION
+#define IOT_DSA_C_SDK_VERSION "unknown"
+#endif
+
 #include <wslay/wslay.h>
 
 #include <dslink/storage/storage.h>
