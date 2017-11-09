@@ -208,9 +208,11 @@ void broker_msg_handle(RemoteDSLink *link,
     if (!data) { return; }
     json_incref(data);
 
-    json_t *ack = json_object_get(data, "ack");
-    if(ack && json_is_integer(ack)) {
-        log_debug("Received ack for msg %d\n", (uint32_t)json_integer_value(ack));
+    LOG_LVL_CHK(LOG_LVL_DEBUG) {
+        json_t *ack = json_object_get(data, "ack");
+        if (ack && json_is_integer(ack)) {
+            log_debug("Received ack for msg %d\n", (uint32_t) json_integer_value(ack));
+        }
     }
 
     json_t *reqs = json_object_get(data, "requests");
