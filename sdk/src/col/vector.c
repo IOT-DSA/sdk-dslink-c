@@ -123,7 +123,7 @@ int vector_erase_range(Vector* vec, uint32_t lower, uint32_t upper)
         return 0;
     }
 
-    //TODO: fix here
+    //TODO: (ali-qos) fix here
     if(upper < vec->size-1) {
         memmove( element_ptr( vec, lower), element_ptr( vec, upper+1), (vec->size-(upper-lower))*vec->element_size);
     }

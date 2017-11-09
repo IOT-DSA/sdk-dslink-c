@@ -36,7 +36,7 @@ int broker_ws_send_ping(RemoteDSLink *link) {
               (char *) link->dsId->data);
 
     json_t *obj = json_object();
-    if(broker_ws_send_obj(link, obj, 0))
+    if(broker_ws_send_obj(link, obj, 0) < 0)
     {
         log_err("Message (Ping)(as %s) is failed sent to %s\n",
                 (link->is_msgpack==1)?"msgpack":"json",
@@ -201,7 +201,7 @@ int broker_ws_send_obj(RemoteDSLink *link, json_t *obj, int droppable) {
         throughput_add_output(sentBytes, sentMessages);
     }
     dslink_free(data);
-    return 0;
+    return link->msgId;
 }
 
 

@@ -41,6 +41,7 @@ SubRequester *broker_create_sub_requester(RemoteDSLink * link, const char *path,
     req->reqLink = link;
     req->reqSid = reqSid;
     req->qos = qos;
+    req->pendingAcks = NULL;
     return req;
 }
 
@@ -90,6 +91,10 @@ void broker_free_sub_requester(SubRequester *req) {
     if (req->qosQueue) {
         clear_qos_queue(req, 1);
         json_decref(req->qosQueue);
+    }
+    if(req->pendingAcks) {
+        vector_free(req->pendingAcks);
+        dslink_free(req->pendingAcks);
     }
     dslink_free(req->path);
     dslink_free(req->qosKey1);
@@ -145,7 +150,15 @@ void broker_update_sub_req(SubRequester *subReq, json_t *varray, int send) {
             json_t *updates = json_array();
             json_object_set_new_nocheck(newResp, "updates", updates);
             json_array_append(updates, varray);
-            broker_ws_send_obj(subReq->reqLink, top, BROKER_MESSAGE_DROPPABLE);
+            int msgid = broker_ws_send_obj(subReq->reqLink, top, BROKER_MESSAGE_DROPPABLE);
+            if(subReq->qos > 0) {
+                if(!subReq->pendingAcks) {
+                    subReq->pendingAcks = (Vector*)dslink_malloc(sizeof(Vector));
+                    //TODO: (ali-qos) why it is 64
+                    vector_init(subReq->pendingAcks, 64, sizeof(int));
+                }
+                vector_append(subReq->pendingAcks, &msgid);
+            }
             json_decref(top);
         } else {
             if(!subReq->reqLink->updates)
