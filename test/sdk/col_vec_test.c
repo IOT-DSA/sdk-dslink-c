@@ -137,7 +137,7 @@ void col_vec_iterate_test(void **state) {
 
 int cmp_int(const void* lhs, const void* rhs)
 {
-    if((int)lhs == (int)rhs) {
+    if((intptr_t)lhs == (intptr_t)rhs) {
         return 0;
     }
     return -1;
@@ -150,15 +150,14 @@ void col_vec_find_test(void **state) {
     Vector vec;
     vector_init(&vec, 10);
 
-    vector_append(&vec, 4711);
-    vector_append(&vec, 815);
-    vector_append(&vec, 42);
-    vector_append(&vec, 66);
+    vector_append(&vec, (void*)4711);
+    vector_append(&vec, (void*)815);
+    vector_append(&vec, (void*)42);
+    vector_append(&vec, (void*)66);
 
-    int n = 42;
-    int idx = vector_find(&vec, n, cmp_int);
+    int idx = vector_find(&vec, (void*)42, cmp_int);
     assert_int_equal(idx, 2);
-    assert_int_equal((int)vector_get(&vec, idx), 42);
+    assert_int_equal((intptr_t)vector_get(&vec, idx), 42);
 }
 
 
