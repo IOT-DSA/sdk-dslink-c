@@ -213,15 +213,22 @@ json_t *broker_handshake_handle_conn(Broker *broker,
         link->is_msgpack = 0;
         json_t* formats_from_link = json_object_get(handshake, "formats");
 
-        if(formats_from_link != NULL)
+        if(formats_from_link != NULL && json_array_size(formats_from_link) > 0)
         {
+            // According to docs, link orders its communication type with most prefered ones comes first
             int arr_size = json_array_size(formats_from_link);
-
             for(int i = 0; i < arr_size; i++)
             {
-                int ret = strcmp("msgpack", json_string_value(json_array_get(formats_from_link, i)));
-                if(ret == 0)
-                    link->is_msgpack = 1;
+                const char* preference = json_string_value(json_array_get(formats_from_link, i));
+
+                if(!preference) continue;
+
+                if(strcmp("json", preference) == 0) {
+                    link->is_msgpack = 0; break;
+                }
+                else if(strcmp("msgpack", preference) == 0) {
+                    link->is_msgpack = 1; break;
+                }
             }
         }
 
