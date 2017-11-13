@@ -65,7 +65,8 @@ const char *broker_http_header_get(const char *headers,
     headers = loc + strlen(name);
     loc = strstr(headers, "\r\n");
     if (!loc) {
-        return NULL;
+        if(strlen(headers) == 0) return NULL;
+        loc = headers+strlen(headers);
     }
 
     if (*headers == ':') {
@@ -90,37 +91,35 @@ const char *broker_http_param_get(const HttpUri *uri, const char *name) {
 }
 
 int broker_http_parse_req(HttpRequest *req, char *data) {
+    // POST or GET
     char *loc = strstr(data, " ");
-    if (!loc) {
-        return 1;
-    }
+    if (!loc) return -1;
     *loc = '\0';
     req->method = data;
     data = ++loc;
 
+    // URI
     loc = strstr(data, " ");
-    if (!loc) {
-        return 1;
-    }
+    if (!loc) return -1;
     *loc = '\0';
     broker_http_parse_uri(&req->uri, data);
     data = ++loc;
 
+    // HTTP1.1
     loc = strstr(data, "\r\n");
-    if (!loc) {
-        return 1;
-    }
+    if (!loc) return -1;
     data = loc + 2;
 
+    // ALL HEADERS
     loc = strstr(data, "\r\n\r\n");
-    if (!loc) {
-        return 1;
-    }
+    if (!loc) return -1;
     *loc = '\0';
     req->headers = data;
+
+    // BODY????
     req->body = loc + 4;
 
-    return 0;
+    return 1;
 }
 
 void broker_send_bad_request(Socket *sock) {

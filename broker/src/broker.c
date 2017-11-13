@@ -23,8 +23,8 @@
                     "Connection: close\r\n" \
                     "Access-Control-Allow-Origin: *\r\n" \
                     "Content-Type:application/json; charset=utf-8\r\n" \
-                    "Content-Length: %d\r\n" \
-                    "\r\n%s\r\n"
+                    "Content-Length: %d\r\n\r\n" \
+                    "%s\r\n"
 
 #ifndef IOT_DSA_C_SDK_GIT_COMMIT_HASH
 #define IOT_DSA_C_SDK_GIT_COMMIT_HASH "unknown"
@@ -41,8 +41,11 @@ void handle_conn(Broker *broker, HttpRequest *req, Socket *sock) {
         const char *start = strchr(req->body, '{');
         const char *end = strrchr(req->body, '}');
         if (!(start && end)) {
+            log_warn("While handling connection body looks like empty (it has to have json), so ignoring the request...")
+            broker_send_bad_request(sock);
             goto exit;
         }
+
         body = json_loadb(start, end - start + 1, 0, &err);
         if (!body) {
             broker_send_internal_error(sock);
@@ -72,7 +75,7 @@ void handle_conn(Broker *broker, HttpRequest *req, Socket *sock) {
 
     char buf[1024];
     int len = snprintf(buf, sizeof(buf) - 1,
-                       CONN_RESP, (int) strlen(data), data);
+                       CONN_RESP, (int) strlen(data) + 2, data); // +2 for /r/n
     buf[len] = '\0';
     dslink_free(data);
     dslink_socket_write(sock, buf, (size_t) len);
@@ -135,9 +138,133 @@ exit:
     }
     return ret;
 }
+
+// Function to read from socket and process http
+// returns 1 on success
+// returns 0 if not finalized to socket empty
+// returns -1 on error
+int http_socket_read(Client *client, HttpRequest *req)
+{
+    if (client->sock->fd == -1) return -1;
+
+    char temp_buffer[2048];
+    temp_buffer[0] = (char)0;
+    temp_buffer[1] = (char)0;
+    temp_buffer[2] = (char)0;
+    temp_buffer[3] = (char)0;
+
+    int read = dslink_socket_read(client->sock, temp_buffer, sizeof(temp_buffer)-1);
+    if(read <= 0) return -1;
+    if(read == 0) return 0;
+
+    if(client->http_buffer_so_far != 0)
+    {
+        // It should not be fresh http request
+        // Check if it is freshing start
+        if(dslink_str_starts_with(temp_buffer, "POST")==1)
+            client->http_buffer_so_far = 0;
+        else if(dslink_str_starts_with(temp_buffer, "GET")==1)
+            client->http_buffer_so_far = 0;
+    }
+
+    // Add to the buffer
+    char* buf = client->http_buffer;
+    memcpy(buf+client->http_buffer_so_far, temp_buffer, read);
+    client->http_buffer_so_far += read;
+    buf[client->http_buffer_so_far] = (char)0;
+
+    //Backup buffer
+    memcpy(temp_buffer, buf, client->http_buffer_so_far + 1);
+
+    // Parse HTTP
+    int parse_error = broker_http_parse_req(req, buf);
+
+    if(parse_error != 1) return -1;
+    // Process Body
+    int body_size = strlen(req->body);
+
+    const char *result = NULL;
+    size_t len = 0;
+
+    result = broker_http_header_get(req->headers, "transfer-encoding", &len);
+    if(result && dslink_str_starts_with(result, "chunked") == 1)
+    {
+        // chunked must end with "0\r\n\r\n" so it has at least char in body
+        if(body_size < 5) goto not_finished;
+
+        // means not finalized if not ends with 0\r\n\r\n
+        const char* ptr_to_end = req->body + body_size - 5;
+        if(dslink_str_starts_with(ptr_to_end, "0\r\n\r\n") != 1) goto not_finished;
+
+        // It is finalized so! we should filter the markers
+        const char* progress_so_far = (req->body - req->method) + &temp_buffer[0];
+        const char* end_ptr = progress_so_far + strlen(progress_so_far);
+
+        char* curr_ptr = (char*)req->body;
+
+        // Structure:
+        // HEXADECIMAL\r\nDATA\r\n
+        // Implemented algorithm in https://en.wikipedia.org/wiki/Chunked_transfer_encoding
+        while(true)
+        {
+            const char* hex_end_loc = strstr(progress_so_far, "\r\n");
+            if(hex_end_loc > end_ptr) goto decode_error;
+
+            char* hex_end = NULL;
+            int num_bytes_in_data = (int)strtol(progress_so_far, &hex_end, 16);
+
+            // Check if it is last chunk has zero byte
+            if(num_bytes_in_data == 0) break;
+
+            // Jumping from HEX\r\n to DATA\r\n
+            progress_so_far = hex_end_loc + 2;
+
+            // Check if it has error in byte count
+            if(progress_so_far + num_bytes_in_data > end_ptr) goto decode_error;
+
+            // Copying to our body
+            memcpy(curr_ptr, progress_so_far, num_bytes_in_data);
+
+            // Jumping from the data
+            curr_ptr += num_bytes_in_data;
+            progress_so_far += num_bytes_in_data + 2; // +2 for extra \r\n
+        }
+
+        // str close for the body
+        curr_ptr[0] = (char) 0;
+
+        return 1;
+    }
+
+    len = 0;
+    result = broker_http_header_get(req->headers, "content-length", &len);
+    if(result)
+    {
+        // Expect body len with transfer-encoding
+        char num_buf[256];
+        memcpy(num_buf, result, len);
+        int num = atoi(num_buf);
+
+        // If content len is not equal with body size?
+        if(body_size < num) goto not_finished;
+        if(body_size > num) goto decode_error;
+    }
+
+    return 1;
+
+    not_finished:
+    //Backup buffer
+    memcpy(buf, temp_buffer, client->http_buffer_so_far + 1);
+    return 0;
+
+    decode_error:
+    return -9;
+}
+
 void broker_on_data_callback(Client *client, void *data) {
     Broker *broker = data;
     RemoteDSLink *link = client->sock_data;
+
     if (link) {
         int ret;
         link->ws->read_enabled = 1;
@@ -151,34 +278,21 @@ void broker_on_data_callback(Client *client, void *data) {
         return;
     }
 
-    if (client->sock->fd == -1) {
+
+    HttpRequest req;
+    // Check http request
+    int result = http_socket_read(client, &req);
+    if( result ==  0) return;    // It is not finalized yet
+    if( result == -1) goto exit; // Illegal response
+    if( result == -9)
+    {
+        broker_send_bad_request(client->sock);
         goto exit;
     }
 
-    HttpRequest req;
-    char buf[1024];
-    char bodyBuf[1024];
-    {
-        int read = dslink_socket_read(client->sock, buf, sizeof(buf) - 1);
-        if(read < 0) {
-            goto exit;
-        }
-        buf[read] = '\0';
-        int err = broker_http_parse_req(&req, buf);
-        if (err) {
-            goto exit;
-        }
-
-
-	//only java dslinks sends the body as a separate SSL record
-        if(client->sock->secure) {
-            read = dslink_socket_read(client->sock, bodyBuf, sizeof(bodyBuf) - 1);
-            if(read > 0) {
-                bodyBuf[read] = '\0';
-                req.body = bodyBuf;
-            }
-        }
-    }
+    // So it is 1 so we can continue
+    // Reset the count for the next request
+    client->http_buffer_so_far = 0;
 
     if (strcmp(req.uri.resource, "/conn") == 0) {
         if (strcmp(req.method, "POST") != 0) {

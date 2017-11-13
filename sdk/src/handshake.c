@@ -293,7 +293,7 @@ char *dslink_handshake_generate_req(DSLink *link, char **dsId) {
         if (link->link_data) {
             json_object_set(obj, "linkData", link->link_data);
         }
-        body = json_dumps(obj, JSON_INDENT(2));
+        body = json_dumps(obj, JSON_INDENT(0));
         if (!body) {
             goto fail;
         }
@@ -330,7 +330,7 @@ char *dslink_handshake_generate_req(DSLink *link, char **dsId) {
         reqLen = snprintf(req, reqSize - 1, DSLINK_POST_REQ, uri,
                           link->config.broker_url->host,
                           link->config.broker_url->port,
-                          (int) strlen(body), body);
+                          (int) strlen(body) + 2, body); // body len +2 for /r/n
         req[reqLen] = '\0';
     }
 

@@ -31,6 +31,10 @@ typedef struct Client {
     uv_poll_t *poll;
     uv_poll_cb poll_cb;
     int is_local;
+
+    // HTTP buffer
+    char http_buffer[2048];
+    int http_buffer_so_far;
 }Client;
 
 

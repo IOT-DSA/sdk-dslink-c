@@ -10,6 +10,9 @@ extern "C" {
 
 typedef struct Socket Socket;
 
+void dslink_print_ssl_error();
+
+
 /**
  * \brief          Allocates the memory needed for a Socket. This is useful
  *                 to provide Socket API access for the server. Connecting

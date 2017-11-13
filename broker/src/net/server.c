@@ -134,6 +134,7 @@ void broker_server_new_client(uv_poll_t *poll,
     client->is_local = dslink_check_socket_local(client_sock);
     client->server = server;
     client->sock = client_sock;
+    client->http_buffer_so_far = 0;
 
     uv_poll_t *clientPoll = dslink_malloc(sizeof(uv_poll_t));
     if (!clientPoll) {

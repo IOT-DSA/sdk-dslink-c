@@ -20,8 +20,7 @@
     "Upgrade: websocket\r\n" \
     "Connection: Upgrade\r\n" \
     "Sec-WebSocket-Key: %s\r\n" \
-    "Sec-WebSocket-Version: 13\r\n" \
-    "\r\n"
+    "Sec-WebSocket-Version: 13\r\n\r\n"
 
 static
 int gen_mask_cb(wslay_event_context_ptr ctx,

@@ -12,6 +12,21 @@
 #include "dslink/socket.h"
 #include "dslink/err.h"
 
+void dslink_print_ssl_error()
+{
+    log_err("Printing SSL error queue----->\n");
+
+    do
+    {
+        unsigned long ssl_error = ERR_get_error();
+        if(ssl_error == 0) break;
+        log_err("SSL_ERROR : %s\n",ERR_error_string( ssl_error, NULL));
+
+    }while(1);
+
+    log_err("<--------Finished Printing SSL error queue\n");
+}
+
 
 Socket *dslink_socket_init(uint_fast8_t secure) {
     Socket *s = dslink_malloc(sizeof(Socket));
@@ -32,12 +47,12 @@ Socket *dslink_socket_init(uint_fast8_t secure) {
         s->ssl_ctx = NULL;
         s->secure = 1;
 
-        //TODO: It is deprecated???? change it
-        s->ssl_ctx = SSL_CTX_new(TLSv1_method());
+        s->ssl_ctx = SSL_CTX_new(SSLv23_method());
 
         if ( !s->ssl_ctx )
         {
             log_err("Failed to create SSL Context because %s\n", ERR_reason_error_string(errno));
+            dslink_print_ssl_error();
             goto deinit;
         }
     }
@@ -93,6 +108,7 @@ int dslink_socket_connect(Socket **sock,
         if ( ret != 1 )
         {
             log_err("Failed to accept a secure connection %s\n", ERR_reason_error_string(ERR_get_error()));
+            dslink_print_ssl_error();
             return DSLINK_SOCK_SSL_SETUP_ERR;
         }
     }
@@ -139,6 +155,7 @@ int dslink_socket_accept(Socket *server_socket, Socket **client_socket) {
     if(client->fd == -1)
     {
         log_err("Failed to accept a client connection, errno %d\n", errno);
+        dslink_socket_free(&client);
         return -1;
     }
 
@@ -149,11 +166,14 @@ int dslink_socket_accept(Socket *server_socket, Socket **client_socket) {
         client->ssl_ctx = NULL;
 
         client->ssl = SSL_new(server_socket->ssl_ctx);
-        SSL_set_fd(client->ssl, client->fd);
+        int ret = SSL_set_fd(client->ssl, client->fd);
+        (void) ret;
 
-        if ( SSL_accept(client->ssl) == -1 )
+        if ( (ret = SSL_accept(client->ssl)) == -1 )
         {
-            log_err("Failed to accept a client connection as SSL, errno %d\n", errno);
+            log_err("Failed to accept a client connection as SSL, errno %d\n", SSL_get_error(client->ssl, ret));
+            dslink_print_ssl_error();
+            dslink_socket_close(&client);
             return -1;
         }
     }
@@ -172,21 +192,28 @@ int dslink_socket_accept(Socket *server_socket, Socket **client_socket) {
     return -1;
 }
 
+
 int dslink_socket_read(Socket *sock, char *buf, size_t len) {
     if(!sock) return DSLINK_SOCK_READ_ERR;
 
     int r;
 
     if (sock->secure)
+    {
         r = SSL_read(sock->ssl, (unsigned char *) buf, len);
+    }
     else
-        r = recv(sock->fd, (unsigned char *) buf, len , 0);
+    {
+        r = recv(sock->fd, (unsigned char *) buf, len, MSG_WAITALL);
+    }
 
     if (r < 0) {
         if(errno == EAGAIN)
             return DSLINK_SOCK_WOULD_BLOCK;
 
         log_err("read error with errno %d\n", errno);
+
+        if(sock->secure) dslink_print_ssl_error();
 
         return DSLINK_SOCK_READ_ERR;
     }
@@ -210,6 +237,7 @@ int dslink_socket_write(Socket *sock, char *buf, size_t len) {
         if(errno == EAGAIN) return DSLINK_SOCK_WOULD_BLOCK;
 
         log_err("write error with errno %d\n", errno);
+        if(sock->secure) dslink_print_ssl_error();
 
         return DSLINK_SOCK_WRITE_ERR;
     }
