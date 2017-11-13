@@ -89,7 +89,7 @@ void send_subscribe_request(RemoteDSLink *link,
     json_object_set_new_nocheck(p, "sid", json_integer(sid));
     json_object_set_new_nocheck(p, "qos", json_integer(qos));
 
-    broker_ws_send_obj(link, top, BROKER_MESSAGE_DROPPABLE);
+    broker_ws_send_obj(link, top);
     json_decref(top);
 }
 SubRequester *broker_create_sub_requester(RemoteDSLink * link, const char *path, uint32_t reqSid, uint8_t qos, json_t *qosQueue) {
@@ -210,7 +210,7 @@ void broker_update_sub_req_qos(SubRequester *subReq) {
         }
         json_object_set_nocheck(newResp, "updates", subReq->qosQueue);
 
-        broker_ws_send_obj(subReq->reqLink, top, BROKER_MESSAGE_DROPPABLE);
+        broker_ws_send_obj(subReq->reqLink, top);
 
         json_decref(top);
         clear_qos_queue(subReq, 1);
@@ -272,7 +272,7 @@ static int sendMessage(SubRequester *subReq, json_t *varray, uint32_t* msgId) {
     json_array_set_new(varray, 0, json_integer(subReq->reqSid));
     json_array_append(updates, varray);
 
-    int res = broker_ws_send_obj(subReq->reqLink, top, BROKER_MESSAGE_DROPPABLE);
+    int res = broker_ws_send_obj(subReq->reqLink, top);
     if(res >= 0) {
         *msgId = (uint32_t)res;
         json_decref(top);

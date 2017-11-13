@@ -168,7 +168,7 @@ int broker_handle_resp(RemoteDSLink *link, json_t *resp, json_t *responder_msg_i
 
         json_t *newRid = json_integer(is->requester_rid);
         json_object_set_new_nocheck(resp, "rid", newRid);
-        broker_ws_send_obj(is->requester, top, BROKER_MESSAGE_DROPPABLE);
+        broker_ws_send_obj(is->requester, top);
         json_decref(top);
 
         json_t *jStreamStat = json_object_get(resp, "stream");
@@ -233,7 +233,7 @@ void broker_msg_handle(RemoteDSLink *link,
         json_t *obj = json_object();
         if (obj) {
             json_object_set_nocheck(obj, "ack", msg);
-            broker_ws_send_obj(link, obj,BROKER_MESSAGE_DROPPABLE);
+            broker_ws_send_obj(link, obj);
             json_decref(obj);
         }
     }

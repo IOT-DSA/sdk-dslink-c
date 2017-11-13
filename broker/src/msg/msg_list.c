@@ -54,7 +54,7 @@ json_t* get_list_updates_as_json(BrokerListStream *stream,
 
     // sending requires to permission check so we are
     // returning it to check permissions
-//    broker_ws_send_obj(reqLink, top, BROKER_MESSAGE_DROPPABLE);
+//    broker_ws_send_obj(reqLink, top);
 //    json_decref(top);
 
     return top;
@@ -179,7 +179,7 @@ void update_list_attribute(BrokerNode *node,
         json_object_set_new_nocheck(resp, "rid", newRid);
 
         RemoteDSLink *client = entry->key->data;
-        broker_ws_send_obj(client, top, BROKER_MESSAGE_DROPPABLE);
+        broker_ws_send_obj(client, top);
     }
     json_decref(top);
 }
@@ -237,7 +237,7 @@ void update_list_child(BrokerNode *node,
         json_object_set_new_nocheck(resp, "rid", newRid);
 
         RemoteDSLink *client = entry->key->data;
-        broker_ws_send_obj(client, top, BROKER_MESSAGE_DROPPABLE);
+        broker_ws_send_obj(client, top);
     }
     json_decref(top);
 }
@@ -289,7 +289,7 @@ int broker_msg_handle_list(RemoteDSLink *link, json_t *req) {
         filter_list_according_to_permission(top_response, permissionOnPath);
 
 
-        broker_ws_send_obj(link, top_response, BROKER_MESSAGE_DROPPABLE);
+        broker_ws_send_obj(link, top_response);
         json_decref(top_response);
 
     } else if (dslink_str_starts_with(path, "/defs/")) {

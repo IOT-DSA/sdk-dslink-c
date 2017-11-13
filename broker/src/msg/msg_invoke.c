@@ -25,7 +25,7 @@ void send_invoke_request(DownstreamNode *node,
                                     json_string_nocheck(permission_level_str(maxPermission)));
     }
 
-    broker_ws_send_obj(node->link, top, BROKER_MESSAGE_DROPPABLE);
+    broker_ws_send_obj(node->link, top);
     json_decref(top);
 }
 

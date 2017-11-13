@@ -25,7 +25,6 @@ extern "C" {
 #ifdef BROKER_WS_SEND_THREAD_MODE
 #define BROKER_CLOSE_LINK_SEM2
 #endif
-//#define BROKER_DROP_MESSAGE
 //#define BROKER_WS_SEND_HYBRID_MODE // DO NOT USE!
 //#define BROKER_WS_DIRECT_SEND
 
@@ -88,7 +87,6 @@ typedef struct RemoteDSLink {
     Vector* pendingAcks;
 
     uint32_t rid;
-
 
     int is_msgpack;
 

@@ -56,7 +56,7 @@ void clear_conns(RemoteDSLink *link,
         dslink_map_foreach(&link->broker->downstream->list_stream->requester_links) {
             uint32_t *rid = entry->value->data;
             json_object_set_new_nocheck(resp, "rid", json_integer(*rid));
-            broker_ws_send_obj(entry->key->data, top, BROKER_MESSAGE_DROPPABLE);
+            broker_ws_send_obj(entry->key->data, top);
         }
     }
 

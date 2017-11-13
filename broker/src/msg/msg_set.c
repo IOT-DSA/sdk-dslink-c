@@ -105,7 +105,7 @@ int broker_msg_handle_set(RemoteDSLink *link, json_t *req) {
         json_object_set_new_nocheck(req, "path", json_string_nocheck(out));
         json_array_append(reqs, req);
 
-        broker_ws_send_obj(dsn->link, top, BROKER_MESSAGE_DROPPABLE);
+        broker_ws_send_obj(dsn->link, top);
         json_decref(top);
     } else {
         const char * name = strrchr(path, '/') + 1;

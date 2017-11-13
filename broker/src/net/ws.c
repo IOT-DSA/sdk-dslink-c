@@ -36,7 +36,7 @@ int broker_ws_send_ping(RemoteDSLink *link) {
               (char *) link->dsId->data);
 
     json_t *obj = json_object();
-    if(broker_ws_send_obj(link, obj, 0) < 0)
+    if(broker_ws_send_obj(link, obj) < 0)
     {
         log_err("Message (Ping)(as %s) is failed sent to %s\n",
                 (link->is_msgpack==1)?"msgpack":"json",
@@ -46,49 +46,23 @@ int broker_ws_send_ping(RemoteDSLink *link) {
     return 0;
 }
 
-int broker_ws_send_str(RemoteDSLink *link, const char *str, int opcode, int droppable) {
-    return broker_ws_send(link, str, strlen(str), opcode, droppable);
+int broker_ws_send_str(RemoteDSLink *link, const char *str, int opcode) {
+    return broker_ws_send(link, str, strlen(str), opcode);
 }
 
 // TODO: check it is old code from merge
-int broker_ws_send(RemoteDSLink *link, const char *data, int len, int opcode, int droppable) {
+int broker_ws_send(RemoteDSLink *link, const char *data, int len, int opcode) {
     if (!link->ws || !link->client) {
         return -1;
     }
 
 #ifdef BROKER_WS_SEND_THREAD_MODE
-#ifdef BROKER_DROP_MESSAGE
-    if(droppable) {
-        if(uv_sem_trywait(&link->broker->ws_queue_sem)) {
-
-            size_t tot_pending = 0;
-            dslink_map_foreach(&link->broker->remote_connected) {
-                RemoteDSLink* connLink = (RemoteDSLink*)entry->value->data;
-                tot_pending += connLink->ws->queued_msg_length;
-            }
-
-            if(tot_pending > 200) {
-                return -1;
-            }
-            else
-                uv_sem_wait(&link->broker->ws_queue_sem);
-
-        } else {
-
-        }
-
-    } else {
-        uv_sem_wait(&link->broker->ws_queue_sem);
-    }
-#else
-    (void)droppable;
     uv_sem_wait(&link->broker->ws_queue_sem);
     if(link->broker->closing_send_thread == 1) {
         uv_sem_post(&link->broker->ws_queue_sem);
         log_debug("Broker in closing state, not able to send ws\n");
         return -1;
     }
-#endif
 #endif
 
     struct wslay_event_msg msg;
@@ -144,7 +118,7 @@ int broker_ws_send(RemoteDSLink *link, const char *data, int len, int opcode, in
 #endif
 }
 
-int broker_ws_send_obj(RemoteDSLink *link, json_t *obj, int droppable) {
+int broker_ws_send_obj(RemoteDSLink *link, json_t *obj) {
     uint32_t id = ++link->msgId;
     //that value : 0x7FFFFFFF
     if(link->msgId == 2147483647) {
@@ -186,7 +160,7 @@ int broker_ws_send_obj(RemoteDSLink *link, json_t *obj, int droppable) {
         return DSLINK_ALLOC_ERR;
     }
 
-    int sentBytes = broker_ws_send(link, data, len, opcode, droppable);
+    int sentBytes = broker_ws_send(link, data, len, opcode);
 
     if(sentBytes == -1)
     {
