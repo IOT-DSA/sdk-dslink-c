@@ -9,7 +9,7 @@ option(TOOLCHAIN_DYNAMIC_LINK_ENABLE "Enable Dynamic Linking for Toolchain" ON)
 
 # ---------------------------------------------------------------------------------------------------
 # get our OS Version String (used for directorynames)
-execute_process(COMMAND ${CMAKE_SOURCE_DIR}/getos.sh --full OUTPUT_VARIABLE OSVERSION)
+execute_process(COMMAND ${CMAKE_CURRENT_LIST_DIR}/getos.sh --full OUTPUT_VARIABLE OSVERSION)
 STRING(REGEX REPLACE "(\r?\n)+$" "" OSVERSION "${OSVERSION}")
 
 SET(VERSION_MAJOR "1")
