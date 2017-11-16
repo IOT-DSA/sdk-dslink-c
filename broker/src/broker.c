@@ -292,15 +292,6 @@ void broker_handle_ping_thread(void *arg) {
 #endif
 
 void _broker_close_link(RemoteDSLink *link) {
-    if (!link) {
-        return;
-    }
-#ifdef BROKER_WS_SEND_THREAD_MODE
-    if(link->broker && (link->broker->currLink == link)) {
-        link->broker->currLink = NULL;
-    }
-#endif
-    link->pendingClose = 1;
 
     if (link->client) {
         if (link->client->poll) {
