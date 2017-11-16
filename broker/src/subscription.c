@@ -245,7 +245,7 @@ void cleanup_queued_message(void* message) {
 uint32_t sendQueuedMessages(SubRequester *subReq) {
     uint32_t result = 0;
 
-    if(rb_count(subReq->messageQueue)) {
+    if(subReq->reqNode->link && rb_count(subReq->messageQueue)) {
         while (subReq->messageOutputQueueCount < broker_max_ws_send_queue_size) {
             QueuedMessage* m = rb_at(subReq->messageQueue, subReq->messageOutputQueueCount);
             if(!m) {
@@ -256,16 +256,15 @@ uint32_t sendQueuedMessages(SubRequester *subReq) {
                 break;
             }
 
-	    sendMessage(subReq, m->message, &m->msg_id);
-	    ++result;
+          sendMessage(subReq, m->message, &m->msg_id);
+          ++result;
         }
     }
 
     return result;
 }
 
-static int sendMessage(SubRequester *subReq, json_t *varray, uint32_t* msgId) 
-{
+static int sendMessage(SubRequester *subReq, json_t *varray, uint32_t* msgId) {
     json_t *top = json_object();
     json_t *resps = json_array();
     json_object_set_new_nocheck(top, "responses", resps);
@@ -287,12 +286,10 @@ static int sendMessage(SubRequester *subReq, json_t *varray, uint32_t* msgId)
 }
 
 static void addToMessageQueue(SubRequester *subReq, json_t *varray, uint32_t msgId) {
-
-     log_debug("Add message with msgId %d to MessageQueue\n", msgId);
-
+    log_debug("Add message with msgId %d to MessageQueue\n", msgId);
 
     if(!subReq->messageQueue) {
-         subReq->messageQueue = (Ringbuffer*)dslink_malloc(sizeof(Ringbuffer));
+        subReq->messageQueue = (Ringbuffer*)dslink_malloc(sizeof(Ringbuffer));
         // TODO lfuerste: maybe use a lesser value for QOS == 0?
         rb_init(subReq->messageQueue, broker_max_qos_queue_size, sizeof(QueuedMessage), cleanup_queued_message);
     }
@@ -314,10 +311,9 @@ static int removeFromMessageQueue(SubRequester *subReq, uint32_t msgId) {
             if(m->msg_id == 0 || m->msg_id > msgId) {
                 break;
             }
-	    ++result;
+            ++result;
             rb_pop(subReq->messageQueue);
-	    log_debug("Removing message with msgId %d from MessageQueue\n", m->msg_id);
-
+            log_debug("Removing message with msgId %d from MessageQueue\n", m->msg_id);
         }
     }
     return result;
@@ -332,9 +328,9 @@ int broker_update_sub_req(SubRequester *subReq, json_t *varray) {
         // Add the message to the message queue and than try to send messages from the queue to keep message order 
         // in all cases
         addToMessageQueue(subReq, varray, msgId);
-	if ( sendQueuedMessages(subReq) == 0 ) {
+        if ( sendQueuedMessages(subReq) == 0 ) {
             log_debug("Send queue full: %d\n", subReq->reqSid);
-	}
+        }
     } else {
         if (subReq->reqNode->link ) {
             result = sendMessage(subReq, varray, &msgId);
@@ -352,8 +348,7 @@ int broker_update_sub_req(SubRequester *subReq, json_t *varray) {
             serialize_qos_queue(subReq, 0);
         }
     }
-    
-    
+
     return result;
 }
 

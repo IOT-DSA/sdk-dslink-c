@@ -139,7 +139,7 @@ void on_rng_update(struct DSLink *link, uint32_t sid, json_t *val, json_t *ts)
     (void)link;
     (void)sid;
     (void)ts;
-    printf("Val => %f\n", json_real_value(val));
+    fprintf(stderr, "Val => %f\n", json_real_value(val));
 }
 
 void requester_ready(DSLink *link) {
