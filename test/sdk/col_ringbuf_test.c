@@ -167,13 +167,38 @@ void col_buf_at_test(void **state) {
     rb_free(&rb);
 }
 
+static
+void col_buf_load_test(void **state) {
+    (void) state;
+
+    Ringbuffer rb;
+    rb_init(&rb, 1024, sizeof(int), NULL);
+
+    int n = 0;
+    for(; n < 1024; ++n) {
+        rb_push(&rb, &n);
+        assert_int_equal(*(int*)rb_at(&rb, n), n);
+    }
+
+    for(; n < 2048; ++n) {
+        rb_push(&rb, &n);
+    }
+
+    n = 1024;
+    for(; n < 2048; ++n) {
+        assert_int_equal(*(int*)rb_at(&rb, n-1024), n);
+    }
+
+    rb_free(&rb);
+}
 
 int main() {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(col_buf_init_test),
         cmocka_unit_test(col_buf_append_test),
         cmocka_unit_test(col_buf_push_n_pop_test),
-        cmocka_unit_test(col_buf_at_test)
+        cmocka_unit_test(col_buf_at_test),
+        cmocka_unit_test(col_buf_load_test)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

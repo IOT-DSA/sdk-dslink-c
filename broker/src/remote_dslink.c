@@ -58,8 +58,8 @@ void broker_remote_dslink_free(RemoteDSLink *link) {
             if (subreq->qos <= 1) {
                 dslink_list_insert(&req_sub_to_remove, subreq);
             } else if (subreq->qos >= 2) {
-	        broker_clear_messsage_ids(subreq);
-	    }
+                broker_clear_messsage_ids(subreq);
+            }
         }
         dslink_list_foreach(&req_sub_to_remove) {
             // clear non-qos subscription
