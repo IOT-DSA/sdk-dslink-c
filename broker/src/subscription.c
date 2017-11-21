@@ -245,7 +245,9 @@ void cleanup_queued_message(void* message) {
 uint32_t sendQueuedMessages(SubRequester *subReq) {
     uint32_t result = 0;
 
-    if(subReq->reqNode->link && rb_count(subReq->messageQueue)) {
+    if(subReq->reqNode->link &&
+       subReq->reqSid != 0xFFFFFFFF &&
+       rb_count(subReq->messageQueue)) {
         while (subReq->messageOutputQueueCount < broker_max_ws_send_queue_size) {
             QueuedMessage* m = rb_at(subReq->messageQueue, subReq->messageOutputQueueCount);
             if(!m) {
