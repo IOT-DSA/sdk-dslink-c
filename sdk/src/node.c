@@ -32,6 +32,7 @@ DSNode *dslink_node_create(DSNode *parent,
     node->name = name;
     node->profile = profile;
     node->data = NULL;
+    node->serializable = 1;
 
     if (parent) {
         size_t pathLen = strlen(parent->path);
@@ -231,6 +232,18 @@ void dslink_node_tree_free_basic(DSLink *link, DSNode *root) {
     }
 
     dslink_free(root);
+}
+
+void dslink_node_remove(DSLink* link, DSNode* node)
+{
+  DSNode *parentNode = node->parent;
+  if ( parentNode ) {
+    ref_t *ref = dslink_map_remove_get( parentNode->children, (void *)node->name );
+    if( NULL != ref ) {
+      dslink_node_tree_free( link, (DSNode*)(ref->data) );
+      dslink_decref( ref );
+    }
+  }
 }
 
 void dslink_node_tree_free(DSLink *link, DSNode *root) {
@@ -449,6 +462,10 @@ int dslink_node_update_value_new(struct DSLink *link, DSNode *node, json_t *valu
 }
 
 json_t *dslink_node_serialize(DSLink *link, DSNode *node) {
+    if ( !node || node->serializable == 0 ) {
+      return NULL;
+    } 
+
     json_t * map = json_object();
     if (node->meta_data) {
         dslink_map_foreach(node->meta_data) {

@@ -67,6 +67,8 @@ struct DSNode {
 
     // Reference to a data object for convenience.
     ref_t *data;
+
+    uint8_t serializable;
 };
 
 DSNode *dslink_node_create(DSNode *parent,
@@ -74,6 +76,11 @@ DSNode *dslink_node_create(DSNode *parent,
 int dslink_node_add_child(struct DSLink *link, DSNode *node);
 
 DSNode *dslink_node_get_path(DSNode *root, const char *path);
+
+// Remove a node and all its children from the link.
+void dslink_node_remove(struct DSLink* link, DSNode* node);
+
+// Depricated
 void dslink_node_tree_free(struct DSLink *link, DSNode *root);
 
 int dslink_node_set_meta(struct DSLink *link, DSNode *node, const char *name, json_t *value);
