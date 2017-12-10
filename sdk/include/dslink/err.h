@@ -35,6 +35,11 @@ extern "C" {
 #define DSLINK_HANDSHAKE_INVALID_TMP_KEY     -0x4003
 #define DSLINK_HANDSHAKE_MOVED_PERMANENTLY   -0x4004
 
+#define DSLINK_NOT_A_RESPONDER_ERR           -0x5001
+#define DSLINK_NO_ROOT_NODE_ERR              -0x5002
+#define DSLINK_CANNOT_WRITE_FILE             -0x5003
+#define DSLINK_CANNOT_LOAD_FILE              -0x5004
+
 #ifdef __cplusplus
 }
 #endif
