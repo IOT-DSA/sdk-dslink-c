@@ -10,6 +10,8 @@
 #include "dslink/utils.h"
 #include "dslink/ws.h"
 
+#include <unistd.h>
+
 #define SECONDS_TO_MILLIS(count) count * 1000
 
 #define DSLINK_RESPONDER_MAP_INIT(var, type) \
@@ -691,8 +693,40 @@ int dslink_save_nodes(DSLink *link)
   // Serialize the nodes below the superRoot and write json array into file.
   json_t *nodes = dslink_nodes_recursive_serialize( link, superRoot->children );
 
-  if ( json_dump_file( nodes, s_tmp_file_name, 0) != 0 ) {
+  FILE* tmpFile = fopen( s_tmp_file_name, "w" );
+  if ( !tmpFile ) {
+    int error = errno;
+    log_err( "Cannot open file '%s', error %s\n", s_tmp_file_name, strerror(error) );
+    return DSLINK_CANNOT_WRITE_FILE;
+  }
+
+  if ( json_dumpf( nodes, tmpFile, JSON_COMPACT ) ) {
     log_err( "Cannot write link state into file %s\n", s_tmp_file_name );
+    return DSLINK_CANNOT_WRITE_FILE;
+  }
+
+  if ( fflush(tmpFile) ) {
+    int error = errno;
+    log_err( "Cannot flush file '%s', error %s\n", s_tmp_file_name, strerror(error) );
+    return DSLINK_CANNOT_WRITE_FILE;
+  }
+
+  int tmpFileFd = fileno(tmpFile);
+  if ( tmpFileFd == -1 ) {
+    int error = errno;
+    log_err( "Cannot determinate file handle for '%s', error %s\n", s_tmp_file_name, strerror(error) );
+    return DSLINK_CANNOT_WRITE_FILE;
+  }
+
+  if ( fsync(tmpFileFd) ) {
+    int error = errno;
+    log_err( "Cannot sync file '%s' to disk, error %s\n", s_tmp_file_name, strerror(error) );
+    return DSLINK_CANNOT_WRITE_FILE;
+  }
+
+  if ( fclose(tmpFile) ) {
+    int error = errno;
+    log_err( "Cannot close file '%s', error %s\n", s_tmp_file_name, strerror(error) );
     return DSLINK_CANNOT_WRITE_FILE;
   }
 
