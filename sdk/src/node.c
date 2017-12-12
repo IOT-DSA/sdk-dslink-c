@@ -92,6 +92,12 @@ int dslink_node_add_child(DSLink *link, DSNode *node) {
         }
     }
 
+    ref_t *sid = dslink_map_get(link->responder->value_path_subs,
+				(void *) node->path);
+    if (sid && node->on_subscribe) {
+      node->on_subscribe(link, node);
+    }
+
     if (!link->_ws) {
         return ret;
     }
