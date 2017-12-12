@@ -125,6 +125,15 @@ void dslink_close(DSLink *link);
 
 int dslink_handle_key(DSLink *link);
 
+// Save the current state of the link. 
+// Store node hirarchy (except the action nodes) into the file nodes.json
+void dslink_save_nodes(DSLink *link);
+
+// Load the last state of the link from the file nodes.json and put nodes below the responders root node
+// The nodes are added to the link responder root node and to the link.
+// Return 0 on sucess.
+int dslink_load_nodes(DSLink *link);
+
 #ifdef __cplusplus
 }
 #endif

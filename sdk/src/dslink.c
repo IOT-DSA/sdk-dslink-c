@@ -644,3 +644,175 @@ int dslink_init(int argc, char **argv,
 
     return ret;
 }
+
+
+// Forward declaration for recursive function required for serialization/deserialization
+
+/// @brief Serialize subtree below given node into a JSON OBJECT
+/// @param[in] link The link the nodes belong to
+/// @param[in] node The root node to start serialization with.
+/// @return The JSON Object containing the node hirarchy.
+static json_t* dslink_node_recursive_serialize(DSLink *link, DSNode* node);
+/// @brief Serialize subtrees of all nodes in the given map into a JSON ARRAY
+/// @param[in] link The link the nodes belong to
+/// @param[in] map The map with root nodes to serialize
+/// @return The JSON ARRAY containing all serialized node hirarchies
+static json_t* dslink_nodes_recursive_serialize(DSLink *link, Map* map);
+
+/// @brief Deserialize (restore) node tree from given JSON OBJECT serialization
+/// @param[in] link The link the shall nodes belong to.
+/// @param[in] nodeJson The JSON OBJECT containing the node tree serialization
+/// @param[in] parent The parent node for the newly created nodes
+static void dslink_node_recursive_deserialize(DSLink *link, json_t* nodeJson, DSNode* parent);
+/// @brief Deserialize (restore) multiple node trees from given JSON ARRAY serialization
+/// @param[in] link The link the shall nodes belong to.
+/// @param[in] jsonArray The JSON ARRAY containing the node trees serialization
+/// @param[in] parent The parent node for the newly created nodes
+static void dslink_nodes_recursive_deserialize(DSLink *link, json_t* jsonArray, DSNode* parent);
+
+
+void dslink_save_nodes(DSLink *link)
+{
+  // We only serialize responder nodes at the moment
+  if ( !link->responder ) {
+    return;
+  }
+
+  // If we have no super root we cannt serialize responder nodes.
+  DSNode *superRoot = link->responder->super_root;
+  if ( !superRoot ) {
+    return;
+  }
+  
+  // Serialize the nodes below the superRoot and write json array into file.
+  json_t *nodes = dslink_nodes_recursive_serialize( link, superRoot->children );
+
+  json_dump_file( nodes, "nodes.json", 0);
+  // Decrement the JSON reference counter to free the JSON objects.
+  json_decref(nodes);
+}
+
+int dslink_load_nodes(DSLink *link)
+{
+  if ( !link || !link->responder || !link->responder->super_root ) {
+    log_err("Cannot load nodes without responder root node\n");
+    return 1;
+  }
+
+  DSNode *rootNode = link->responder->super_root;
+
+  json_error_t err;
+
+  // Try to load the json object from the file
+  json_t *jsonArray = json_load_file("nodes.json", 0 , &err);
+  if (jsonArray) {
+    // Deserialize the nodes from the json storage
+    dslink_nodes_recursive_deserialize( link, jsonArray, rootNode );
+
+    // Decrement the JSON reference counter to free the JSON objects.
+    json_decref(jsonArray);
+
+    return 0;
+  } else {
+    log_err("Cannot load nodes due to error %s\n", err.text );
+  }
+
+  return 1;
+}
+
+static json_t* dslink_node_recursive_serialize(DSLink *link, DSNode* node)
+{
+  if ( !node || node->serializable == 0 ) {
+    return NULL;
+  } 
+
+  json_t *invokable = dslink_node_get_meta( node, "$invokable" );
+  if ( invokable ) {
+    // We don't want to store action nodes
+    return NULL;
+  }
+
+  // Serialize the node itself.
+  json_t *result = dslink_node_serialize(link, node);
+
+  // Serialize the children nodes and put the json array with the children into the 
+  // json object as member 'children'
+  json_t *children = dslink_nodes_recursive_serialize( link, node->children );
+
+  // Children array might be NULL (e.g. no children or all children are action nodes)
+  if ( children ) {
+    json_object_set_new( result, "children", children );
+  }
+  
+  return result;
+}
+
+json_t* dslink_nodes_recursive_serialize(DSLink *link, Map* map)
+{
+  json_t *result = NULL;
+
+  dslink_map_foreach(map) {
+    // Try to serialize each child node inside the map
+    DSNode *node= (DSNode *)(entry->value->data);
+    json_t *nodeJson = dslink_node_recursive_serialize( link, node );
+
+    if ( !nodeJson ) {
+      // The result of the serialization might be empty (e.g. child node is an action node)
+      continue;
+    }
+
+    if ( !result ) {
+      // Create result array, if we found the first serializable child
+      result = json_array();
+    }
+    json_array_append_new( result, nodeJson );
+  }
+
+  return result;
+}
+
+void dslink_node_recursive_deserialize(DSLink *link, json_t* nodeJson, DSNode* parent)
+{
+  // Lookup the node name first.
+  json_t *nodeName = json_object_get(nodeJson, "$name" );
+
+  // Try to create the node. May fail (e.g. the node alread exists)
+  DSNode *node = dslink_node_create( parent, json_string_value(nodeName), "node");
+  if ( node ) {
+    // We have to search and remove the children object from the json serialization, 
+    // otherwise the nodes basic deserialization will add it to the meta data.
+    json_t *childrenJson = json_object_get(nodeJson, "children");
+    if ( childrenJson ) {
+      // Need to increment the reference to the children array.
+      json_incref( childrenJson );
+      json_object_del( nodeJson, "children" );
+    }
+
+    // Deserialize the node itself
+    dslink_node_deserialize( link, node, nodeJson );
+    if ( dslink_node_add_child(link, node) != 0 ) {
+      log_err("Cannot add node '%s' to the link\n", node->path );
+      dslink_node_tree_free(link, node);
+    }
+
+    // Now we may deserialize the children collection and add them to the node.
+    if ( childrenJson ) {
+      // Deserialize children, if serialized children are found.
+      dslink_nodes_recursive_deserialize( link, childrenJson, node );
+      json_decref( childrenJson );
+    }
+  }
+}
+
+
+void dslink_nodes_recursive_deserialize(DSLink *link, json_t* jsonArray, DSNode* parent)
+{
+  size_t numNodes = json_array_size(jsonArray);
+  for ( size_t i = 0; i < numNodes; ++i ) {
+    json_t *nodeJson = json_array_get(jsonArray, i);
+    
+    dslink_node_recursive_deserialize( link, nodeJson, parent );
+  }
+}
+
+
