@@ -18,6 +18,16 @@ void col_buf_init_test(void **state) {
 }
 
 static
+void col_buf_misconfigure_test(void **state) {
+  (void) state;
+
+  Ringbuffer rb;
+  assert_int_equal(rb_init(&rb, 0, sizeof(int), NULL), -1);
+
+  rb_free(&rb);
+}
+
+static
 void col_buf_append_test(void **state) {
     (void) state;
 
@@ -195,6 +205,7 @@ void col_buf_load_test(void **state) {
 int main() {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(col_buf_init_test),
+        cmocka_unit_test(col_buf_misconfigure_test),
         cmocka_unit_test(col_buf_append_test),
         cmocka_unit_test(col_buf_push_n_pop_test),
         cmocka_unit_test(col_buf_at_test),
