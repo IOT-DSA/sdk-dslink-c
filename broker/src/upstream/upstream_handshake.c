@@ -53,6 +53,7 @@ void upstream_clear_poll(UpstreamPoll *upstreamPoll) {
     }
     if (upstreamPoll->conCheckAddrList) {
         freeaddrinfo( upstreamPoll->conCheckAddrList );
+        upstreamPoll->conCheckAddrList = NULL;
     }
     broker_close_link(upstreamPoll->remoteDSLink);
     upstream_free_dslink(upstreamPoll->clientDslink);

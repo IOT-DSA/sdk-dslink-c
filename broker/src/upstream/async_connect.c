@@ -135,6 +135,7 @@ int mbedtls_net_connect_async(UpstreamPoll *upstreamPoll, const char *host, cons
     if( ctx->fd < 0 )
     {
         freeaddrinfo( addr_list );
+        upstreamPoll->conCheckAddrList = NULL;
         return MBEDTLS_ERR_NET_SOCKET_FAILED;
     } else  {
         mbedtls_net_set_nonblock(ctx);
