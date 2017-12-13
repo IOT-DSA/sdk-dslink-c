@@ -24,6 +24,12 @@ void col_buf_misconfigure_test(void **state) {
   Ringbuffer rb;
   assert_int_equal(rb_init(&rb, 0, sizeof(int), NULL), -1);
 
+  assert_int_equal(rb_count(&rb), -1);
+  int n = 815;
+  assert_int_equal(rb_push(&rb, &n), -1);
+  assert_int_equal(rb_front(&rb), NULL);
+  assert_int_equal(rb_at(&rb, 0), NULL);
+  assert_int_equal(rb_pop(&rb), -1);
   rb_free(&rb);
 }
 
