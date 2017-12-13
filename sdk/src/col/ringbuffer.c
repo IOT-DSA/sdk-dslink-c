@@ -8,14 +8,12 @@
 
 int rb_init(Ringbuffer* rb, uint32_t size, size_t element_size, rb_cleanup_fn_type cleanup_fn)
 {
-    if(!rb) {
-        return -1;
-    }
-    rb->data = dslink_malloc(size*element_size);
-    if(!rb->data) {
+    if(!rb || size == 0 || element_size == 0) {
+        rb->size = 0;
         return -1;
     }
 
+    rb->data = dslink_malloc(size*element_size);
     rb->element_size = element_size;
     rb->size = size;
     rb->current = 0;
@@ -27,7 +25,7 @@ int rb_init(Ringbuffer* rb, uint32_t size, size_t element_size, rb_cleanup_fn_ty
 
 int rb_count(const Ringbuffer* rb)
 {
-    if(!rb) {
+    if(!rb || rb->size == 0) {
         return -1;
     }
 
@@ -36,7 +34,7 @@ int rb_count(const Ringbuffer* rb)
 
 int rb_push(Ringbuffer* rb, void* data)
 {
-    if(!rb) {
+    if(!rb || rb->size == 0) {
         return -1;
     }
 
@@ -65,7 +63,7 @@ int rb_push(Ringbuffer* rb, void* data)
 
 void* rb_front(const Ringbuffer* rb)
 {
-    if(!rb || rb->count == 0) {
+    if(!rb || rb->size == 0 || rb->count == 0) {
         return NULL;
     }
 
@@ -81,7 +79,7 @@ void* rb_front(const Ringbuffer* rb)
 
 void* rb_at(const Ringbuffer* rb, uint32_t idx)
 {
-    if(!rb || rb->count == 0 || rb->count <= idx) {
+    if(!rb || rb->size == 0 || rb->count == 0 || rb->count <= idx) {
         return NULL;
     }
 
@@ -103,7 +101,7 @@ void* rb_at(const Ringbuffer* rb, uint32_t idx)
 
 int rb_pop(Ringbuffer* rb)
 {
-    if(!rb) {
+    if(!rb || rb->size == 0) {
         return -1;
     }
 
@@ -127,7 +125,7 @@ int rb_pop(Ringbuffer* rb)
 
 int rb_free(Ringbuffer* rb)
 {
-    if(!rb) {
+    if(!rb || rb->size == 0) {
         return -1;
     }
 
