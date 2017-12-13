@@ -27,8 +27,8 @@ void col_buf_misconfigure_test(void **state) {
   assert_int_equal(rb_count(&rb), -1);
   int n = 815;
   assert_int_equal(rb_push(&rb, &n), -1);
-  assert_int_equal(rb_front(&rb), NULL);
-  assert_int_equal(rb_at(&rb, 0), NULL);
+  assert_null(rb_front(&rb));
+  assert_null(rb_at(&rb, 0));
   assert_int_equal(rb_pop(&rb), -1);
   rb_free(&rb);
 }
