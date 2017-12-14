@@ -53,9 +53,9 @@ int rb_push(Ringbuffer* rb, void* data)
     if(rb->current == rb->size) {
         rb->current = 0;
     }
-    ++rb->count;
-    if(rb->count > rb->size) {
-        rb->count = rb->size;
+
+    if(rb->count < rb->size) {
+        ++rb->count;
     }
 
     return res;
