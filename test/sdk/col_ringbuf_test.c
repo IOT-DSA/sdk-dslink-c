@@ -65,6 +65,14 @@ void col_buf_append_test(void **state) {
     assert_int_equal(res, 1);
     assert_int_equal(*(int*)rb_front(&rb), 666);
 
+    rb_pop(&rb);
+    rb_pop(&rb);
+    assert_int_equal(*(int*)rb_front(&rb), 4711);
+    n = 23;
+    res = rb_push(&rb, &n);
+    assert_int_equal(res, 0);
+    assert_int_equal(*(int*)rb_front(&rb), 4711);
+
     rb_free(&rb);
 }
 
