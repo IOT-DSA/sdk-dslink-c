@@ -22,6 +22,7 @@
 #define CONN_RESP "HTTP/1.1 200 OK\r\n" \
                     "Connection: close\r\n" \
                     "Access-Control-Allow-Origin: *\r\n" \
+                    "Cache-Control: no-cache\r\n" \
                     "Content-Type:application/json; charset=utf-8\r\n" \
                     "Content-Length: %d\r\n" \
                     "\r\n%s\r\n"

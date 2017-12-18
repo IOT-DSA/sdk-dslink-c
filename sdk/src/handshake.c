@@ -14,6 +14,7 @@
     "POST %s HTTP/1.1\r\n" \
     "Host: %s:%d\r\n" \
     "Content-Length: %d\r\n\r\n" \
+    "Cache-Control: no-cache\r\n" \
     "%s\r\n"
 
 int dslink_handshake_get_group(mbedtls_ecp_group *grp) {

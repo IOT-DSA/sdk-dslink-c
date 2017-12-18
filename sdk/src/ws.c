@@ -25,6 +25,7 @@
     "Connection: Upgrade\r\n" \
     "Sec-WebSocket-Key: %s\r\n" \
     "Sec-WebSocket-Version: 13\r\n" \
+    "Cache-Control: no-cache\r\n" \
     "\r\n"
 
 static

@@ -23,6 +23,7 @@
 #define BROKER_WS_RESP "HTTP/1.1 101 Switching Protocols\r\n" \
                             "Upgrade: websocket\r\n" \
                             "Connection: Upgrade\r\n" \
+                            "Cache-Control: no-cache\r\n" \
                             "Sec-WebSocket-Accept: %s\r\n\r\n"
 
 void broker_ws_send_init(Socket *sock, const char *accept) {
