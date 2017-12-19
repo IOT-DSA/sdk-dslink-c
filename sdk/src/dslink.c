@@ -670,54 +670,75 @@ static void dslink_node_recursive_deserialize(DSLink *link, json_t* nodeJson, DS
 /// @param[in] parent The parent node for the newly created nodes
 static void dslink_nodes_recursive_deserialize(DSLink *link, json_t* jsonArray, DSNode* parent);
 
+static const char* s_file_name = "nodes.json";
+static const char* s_tmp_file_name = "nodes.json.new";
 
-void dslink_save_nodes(DSLink *link)
+int dslink_save_nodes(DSLink *link)
 {
   // We only serialize responder nodes at the moment
   if ( !link->responder ) {
-    return;
+    log_err("Cannot save link nodes: Link is not a responder.\n");
+    return DSLINK_NOT_A_RESPONDER_ERR;
   }
 
   // If we have no super root we cannt serialize responder nodes.
   DSNode *superRoot = link->responder->super_root;
   if ( !superRoot ) {
-    return;
+    log_err("Cannot save link nodes: Link has no root node\n");
+    return DSLINK_NO_ROOT_NODE_ERR;
   }
-  
+
   // Serialize the nodes below the superRoot and write json array into file.
   json_t *nodes = dslink_nodes_recursive_serialize( link, superRoot->children );
 
-  json_dump_file( nodes, "nodes.json", 0);
+  if ( json_dump_file( nodes, s_tmp_file_name, 0) != 0 ) {
+    log_err( "Cannot write link state into file %s\n", s_tmp_file_name );
+    return DSLINK_CANNOT_WRITE_FILE;
+  }
+
+  if ( rename( s_tmp_file_name, s_file_name ) != 0 ) {
+    int error = errno;
+    log_err( "Cannot rename file '%s' to '%s', error %s\n", s_tmp_file_name, s_file_name, strerror(error) );
+    return DSLINK_CANNOT_WRITE_FILE;    
+  }
+
   // Decrement the JSON reference counter to free the JSON objects.
   json_decref(nodes);
+
+  return 0;
 }
 
 int dslink_load_nodes(DSLink *link)
 {
   if ( !link || !link->responder || !link->responder->super_root ) {
-    log_err("Cannot load nodes without responder root node\n");
-    return 1;
+    log_err("Cannot load link nodes: Link is no a responder\n");
+    return DSLINK_NOT_A_RESPONDER_ERR;
   }
 
   DSNode *rootNode = link->responder->super_root;
+  if ( !rootNode ) {
+    log_err("Cannot save link nodes: Link has no root node\n");
+    return DSLINK_NO_ROOT_NODE_ERR;
+  }
+
 
   json_error_t err;
 
   // Try to load the json object from the file
   json_t *jsonArray = json_load_file("nodes.json", 0 , &err);
-  if (jsonArray) {
-    // Deserialize the nodes from the json storage
-    dslink_nodes_recursive_deserialize( link, jsonArray, rootNode );
-
-    // Decrement the JSON reference counter to free the JSON objects.
-    json_decref(jsonArray);
-
-    return 0;
-  } else {
-    log_err("Cannot load nodes due to error %s\n", err.text );
+  if ( !jsonArray ) {
+    log_err( "Cannot load link state from file '%s', error %s at (%d,%d)\n", 
+	     s_file_name, err.text, err.line, err.column );
+    return DSLINK_CANNOT_LOAD_FILE;
   }
 
-  return 1;
+  // Deserialize the nodes from the json storage
+  dslink_nodes_recursive_deserialize( link, jsonArray, rootNode );
+  
+  // Decrement the JSON reference counter to free the JSON objects.
+  json_decref(jsonArray);
+  
+  return 0;
 }
 
 static json_t* dslink_node_recursive_serialize(DSLink *link, DSNode* node)
