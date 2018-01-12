@@ -292,13 +292,13 @@ void dslink_link_clear(DSLink *link) {
     if (link->dslink_json) {
         json_decref(link->dslink_json);
     }
-    dslink_free((void*)link->config.name);
-    dslink_free((void*)link->config.token);
-    dslink_free((void*)link->config.broker_url);
 }
 
 void dslink_link_free(DSLink *link) {
     dslink_link_clear(link);
+    dslink_free((void*)link->config.name);
+    dslink_free((void*)link->config.token);
+    dslink_free((void*)link->config.broker_url);
     dslink_free(link);
 }
 
