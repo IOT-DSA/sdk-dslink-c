@@ -44,6 +44,7 @@ struct DSLink {
 
     struct wslay_event_context *_ws; // Event context for WSLay
     Socket *_socket; // Socket for the _ws connection
+    struct timeval lastReceiveTime;
 
     Requester *requester;
     Responder *responder; // Responder, only initialized for responder DSLinks
