@@ -82,7 +82,9 @@ void io_handler(uv_poll_t *poll, int status, int events) {
 
     if (events & UV_READABLE) {
         int stat = wslay_event_recv(link->_ws);
-        if(stat != 0) {
+        if(stat != 0 ||
+           link->_ws->read_enabled == 0 ||
+           link->_ws->write_enabled == 0) {
             log_debug("Stopping dslink loop...\n");
             uv_stop(&link->loop);
             return;
@@ -97,7 +99,9 @@ void io_handler(uv_poll_t *poll, int status, int events) {
             log_debug("Enabling READ/WRITE poll on link\n");
             uv_poll_start(poll, UV_READABLE | UV_WRITABLE, io_handler);
             int stat = wslay_event_send(link->_ws);
-            if(stat != 0) {
+            if(stat != 0 ||
+               link->_ws->read_enabled == 0 ||
+               link->_ws->write_enabled == 0) {
                 log_debug("Stopping dslink loop...\n");
                 uv_stop(&link->loop);
                 return;

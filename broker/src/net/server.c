@@ -83,7 +83,9 @@ void broker_server_client_ready(uv_poll_t *poll,
                     log_debug("Enabling READ/WRITE poll on client\n");
                     uv_poll_start(poll, UV_READABLE | UV_WRITABLE, broker_server_client_ready);
                     int stat = wslay_event_send(link->ws);
-                    if(stat != 0) {
+                    if(stat != 0 ||
+                       link->ws->read_enabled == 0 ||
+                       link->ws->write_enabled == 0) {
                         broker_close_link(link);
                         client = NULL;
                     }
@@ -133,7 +135,9 @@ void broker_ssl_server_client_ready(uv_poll_t *poll,
                 log_debug("Enabling READ/WRITE poll on client\n");
                 uv_poll_start(poll, UV_READABLE | UV_WRITABLE, broker_ssl_server_client_ready);
                 int stat = wslay_event_send(link->ws);
-                if(stat != 0) {
+                if(stat != 0 ||
+                   link->ws->read_enabled == 0 ||
+                   link->ws->write_enabled == 0) {
                     broker_close_link(link);
                     client = NULL;
                 }
