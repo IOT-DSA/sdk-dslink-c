@@ -3,8 +3,10 @@ project(sdk_dslink_c C)
 
 option(USE_CCACHE "Enable CCache Support" ON)
 option(DSLINK_BUILD_BROKER "Whether to build the broker" ON)
+option(DSLINK_BUILD_STATIC "Whether to build the static library" ON)
 option(DSLINK_BUILD_EXAMPLES "Whether to build the examples" OFF)
 option(DSLINK_TEST "Whether to enable tests" OFF)
+option(DSLINK_PACKAGE_INCLUDES "Whether to add the includes to the resulting package" ON)
 option(TOOLCHAIN_DYNAMIC_LINK_ENABLE "Enable Dynamic Linking for Toolchain" ON)
 
 # ---------------------------------------------------------------------------------------------------
@@ -216,8 +218,13 @@ if(NOT APPLE AND UNIX)
     set(DSLINK_PLATFORM_LIBS dl)
 endif()
 
-add_library(sdk_dslink_c-static STATIC ${LIBRARY_SRC})
-target_link_libraries(sdk_dslink_c-static jansson libuv ${DSLINK_PLATFORM_LIBS})
+if (DSLINK_BUILD_STATIC OR DSLINK_BUILD_EXAMPLES)
+    add_library(sdk_dslink_c-static STATIC ${LIBRARY_SRC})
+    target_link_libraries(sdk_dslink_c-static jansson libuv ${DSLINK_PLATFORM_LIBS})
+    set(DSLINK_INSTALL_TARGETS sdk_dslink_c sdk_dslink_c-static)
+else()
+    set(DSLINK_INSTALL_TARGETS sdk_dslink_c)
+endif()
 
 add_library(sdk_dslink_c SHARED ${LIBRARY_SRC})
 target_link_libraries(sdk_dslink_c jansson libuv ${DSLINK_PLATFORM_LIBS})
@@ -225,23 +232,27 @@ set_target_properties(sdk_dslink_c PROPERTIES VERSION ${VERSION} SOVERSION ${VER
 
 set(DSLINK_INSTALL_LIB_DIR lib CACHE PATH "Installation directory for libraries")
 set(DSLINK_INSTALL_BIN_DIR bin CACHE PATH "Installation directory for executables")
-set(DSLINK_INSTALL_INCLUDE_DIR include CACHE PATH "Installation directory for header files")
+if (DSLINK_PACKAGE_INCLUDES)
+    set(DSLINK_INSTALL_INCLUDE_DIR include CACHE PATH "Installation directory for header files")
+endif()
 
 export(TARGETS sdk_dslink_c
         FILE "${PROJECT_BINARY_DIR}/sdk_dslink_c-targets.cmake")
 export(PACKAGE sdk_dslink_c)
 
-install(TARGETS sdk_dslink_c sdk_dslink_c-static
+install(TARGETS ${DSLINK_INSTALL_TARGETS}
         EXPORT sdk_dslink_c-targets
         LIBRARY DESTINATION "${DSLINK_INSTALL_LIB_DIR}" COMPONENT lib
         ARCHIVE DESTINATION "${DSLINK_INSTALL_LIB_DIR}" COMPONENT lib
         RUNTIME DESTINATION "${DSLINK_INSTALL_BIN_DIR}" COMPONENT lib)
 
-install(DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/sdk/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev FILES_MATCHING PATTERN "*.h")
-install(DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/deps/mbedtls/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev FILES_MATCHING PATTERN "*.h")
-install(DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/deps/wslay/lib/includes/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev FILES_MATCHING PATTERN "*.h")
-install(DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/deps/wslay/lib/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev FILES_MATCHING PATTERN "*.h")
-install(DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/deps/jansson/src/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev FILES_MATCHING PATTERN "*.h")
+if (DSLINK_PACKAGE_INCLUDES)
+    install(DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/sdk/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev FILES_MATCHING PATTERN "*.h")
+    install(DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/deps/mbedtls/include/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev FILES_MATCHING PATTERN "*.h")
+    install(DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/deps/wslay/lib/includes/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev FILES_MATCHING PATTERN "*.h")
+    install(DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/deps/wslay/lib/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev FILES_MATCHING PATTERN "*.h")
+    install(DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/deps/jansson/src/" DESTINATION "${DSLINK_INSTALL_INCLUDE_DIR}" COMPONENT dev FILES_MATCHING PATTERN "*.h")
+endif()
 
 ####### Configure Broker #######
 
