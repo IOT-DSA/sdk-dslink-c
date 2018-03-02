@@ -1,13 +1,20 @@
+
 #include <string.h>
 #include <assert.h>
+
 #include <mbedtls/ecdh.h>
 #include <mbedtls/base64.h>
 #include "mbedtls/aes.h"
+
+#include "dslink/node.h"
 #include "dslink/mem/mem.h"
 #include "dslink/ws.h"
 #include "dslink/msg/list_response.h"
 #include "dslink/msg/sub_response.h"
 #include "dslink/utils.h"
+#include "dslink/col/vector.h"
+
+#include <pthread.h>
 
 
 DSNode *dslink_node_create(DSNode *parent,
@@ -571,57 +578,99 @@ void dslink_node_deserialize(DSLink *link, DSNode *node, json_t *data) {
     }
 }
 
+static pthread_mutex_t get_data_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t set_data_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t run_data_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+int lock_get_data()
+{
+    return pthread_mutex_lock( &get_data_mutex );
+}
+
+int unlock_get_data()
+{
+    return pthread_mutex_unlock( &get_data_mutex );
+}
+
+int lock_set_data()
+{
+    return pthread_mutex_lock( &set_data_mutex );
+}
+
+int unlock_set_data()
+{
+    return pthread_mutex_unlock( &set_data_mutex );
+}
+
+int lock_run_data()
+{
+    return pthread_mutex_lock( &run_data_mutex );
+}
+
+int unlock_run_data()
+{
+    return pthread_mutex_unlock( &run_data_mutex );
+}
+
+
 // Thread-safe API
-int dslink_node_update_value_safe(struct DSLink *link, char* path, json_t *value,  void (*callback)(int, void*), void * callback_data) {
-
-    DSLinkAsyncSetData *async_data = dslink_malloc(sizeof(DSLinkAsyncSetData));
-
-    if (!async_data) {
-        return DSLINK_ALLOC_ERR;
-    }
-    async_data->node_path = path;
-    async_data->set_value = value;
-    async_data->callback = callback;
-    async_data->callback_data = callback_data;
-
+int dslink_node_update_value_safe(struct DSLink *link, char* path, json_t *value,  void (*callback)(int, void*), void * callback_data)
+{
     if(link) {
-        link->async_set.data = (void*)async_data;
+        DSLinkAsyncSetData async_data;
+        async_data.node_path = path;
+        async_data.set_value = value;
+        async_data.callback = callback;
+        async_data.callback_data = callback_data;
+
+        lock_set_data();
+        Vector* queue = (Vector*)link->async_set.data;
+        if(queue) {
+            vector_append(queue, &async_data);
+        }
+        unlock_set_data();
+
         uv_async_send(&link->async_set);
     }
 
-
     return 0;
 }
-int dslink_node_get_value_safe(struct DSLink *link, char* path,  void (*callback)(json_t *, void*), void * callback_data) {
 
-    DSLinkAsyncGetData *async_data = dslink_malloc(sizeof(DSLinkAsyncGetData));
-
-    if (!async_data) {
-        return DSLINK_ALLOC_ERR;
-    }
-    async_data->node_path = path;
-    async_data->callback = callback;
-    async_data->callback_data = callback_data;
-
+int dslink_node_get_value_safe(struct DSLink *link, char* path,  void (*callback)(json_t *, void*), void * callback_data)
+{
     if(link) {
-        link->async_get.data = (void*)async_data;
+        DSLinkAsyncGetData async_data;
+        async_data.node_path = path;
+        async_data.callback = callback;
+        async_data.callback_data = callback_data;
+
+        lock_get_data();
+        Vector* queue = (Vector*)link->async_get.data;
+        if(queue) {
+            vector_append(queue, &async_data);
+        }
+        unlock_get_data();
+
         uv_async_send(&link->async_get);
     }
 
     return 0;
 }
-int dslink_run_safe(struct DSLink *link, void (*callback)(struct DSLink *link, void*), void * callback_data) {
 
-    DSLinkAsyncRunData *async_data = dslink_malloc(sizeof(DSLinkAsyncRunData));
-
-    if (!async_data) {
-        return DSLINK_ALLOC_ERR;
-    }
-    async_data->callback = callback;
-    async_data->callback_data = callback_data;
-
+int dslink_run_safe(struct DSLink *link, void (*callback)(struct DSLink *link, void*), void * callback_data)
+{
     if(link) {
-        link->async_run.data = (void*)async_data;
+        DSLinkAsyncRunData async_data;
+        async_data.callback = callback;
+        async_data.callback_data = callback_data;
+
+        lock_run_data();
+        Vector* queue = (Vector*)link->async_run.data;
+        if(queue) {
+            vector_append(queue, &async_data);
+        }
+        unlock_run_data();
+
         uv_async_send(&link->async_run);
     }
 
