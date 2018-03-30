@@ -13,6 +13,25 @@
 
 #include <unistd.h>
 
+//thread-safe API async data structures
+typedef struct {
+    char *node_path;
+    json_t *set_value;
+    async_set_callback callback;
+    void *callback_data;
+} DSLinkAsyncSetData;
+
+typedef struct {
+    char *node_path;
+    async_get_callback callback;
+    void *callback_data;
+} DSLinkAsyncGetData;
+
+typedef struct  {
+    async_run_callback callback;
+    void *callback_data;
+} DSLinkAsyncRunData;
+
 #define SECONDS_TO_MILLIS(count) count * 1000
 
 #define DSLINK_RESPONDER_MAP_INIT(var, type) \
@@ -894,4 +913,102 @@ void dslink_nodes_recursive_deserialize(DSLink *link, json_t* jsonArray, DSNode*
   }
 }
 
+
+// Thread-safe API
+int dslink_node_update_value_safe(struct DSLink *link, char* path, json_t *value,  void (*callback)(int, void*), void * callback_data)
+{
+    if(link) {
+        DSLinkAsyncSetData async_data;
+        async_data.node_path = path;
+        async_data.set_value = value;
+        async_data.callback = callback;
+        async_data.callback_data = callback_data;
+
+        lock_set_data();
+        Vector* queue = (Vector*)link->async_set.data;
+        if(queue) {
+            vector_append(queue, &async_data);
+        }
+        unlock_set_data();
+
+        uv_async_send(&link->async_set);
+    }
+
+    return 0;
+}
+
+int dslink_node_get_value_safe(struct DSLink *link, char* path,  void (*callback)(json_t *, void*), void * callback_data)
+{
+    if(link) {
+        DSLinkAsyncGetData async_data;
+        async_data.node_path = path;
+        async_data.callback = callback;
+        async_data.callback_data = callback_data;
+
+        lock_get_data();
+        Vector* queue = (Vector*)link->async_get.data;
+        if(queue) {
+            vector_append(queue, &async_data);
+        }
+        unlock_get_data();
+
+        uv_async_send(&link->async_get);
+    }
+
+    return 0;
+}
+
+int dslink_run_safe(struct DSLink *link, void (*callback)(struct DSLink *link, void*), void * callback_data)
+{
+    if(link) {
+        DSLinkAsyncRunData async_data;
+        async_data.callback = callback;
+        async_data.callback_data = callback_data;
+
+        lock_run_data();
+        Vector* queue = (Vector*)link->async_run.data;
+        if(queue) {
+            vector_append(queue, &async_data);
+        }
+        unlock_run_data();
+
+        uv_async_send(&link->async_run);
+    }
+
+    return 0;
+}
+
+static pthread_mutex_t get_data_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t set_data_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t task_data_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+int lock_get_data()
+{
+    return pthread_mutex_lock( &get_data_mutex );
+}
+
+int unlock_get_data()
+{
+    return pthread_mutex_unlock( &get_data_mutex );
+}
+
+int lock_set_data()
+{
+    return pthread_mutex_lock( &set_data_mutex );
+}
+
+int unlock_set_data()
+{
+    return pthread_mutex_unlock( &set_data_mutex );
+}
+
+int lock_task_data()
+{
+    return pthread_mutex_lock( &task_data_mutex );
+}
+
+int unlock_task_data()
+{
+    return pthread_mutex_unlock( &task_data_mutex );
+}
 

@@ -17,11 +17,6 @@ typedef struct DSLinkConfig DSLinkConfig;
 typedef struct DSLink DSLink;
 typedef struct Responder Responder;
 typedef struct Requester Requester;
-//thread-safe API async data struct definitions
-typedef struct DSLinkAsyncSetData DSLinkAsyncSetData;
-typedef struct DSLinkAsyncGetData DSLinkAsyncGetData;
-typedef struct DSLinkAsyncRunData DSLinkAsyncRunData;
-
 
 typedef void (*link_callback)(DSLink *link);
 //thread-safe API callback definitions
@@ -97,23 +92,6 @@ struct DSLinkCallbacks {
     link_callback on_requester_ready_cb;
 };
 
-//thread-safe API async data structures
-struct DSLinkAsyncSetData {
-    char *node_path;
-    json_t *set_value;
-    async_set_callback callback;
-    void *callback_data;
-};
-struct DSLinkAsyncGetData {
-    char *node_path;
-    async_get_callback callback;
-    void *callback_data;
-};
-struct DSLinkAsyncRunData {
-    async_run_callback callback;
-    void *callback_data;
-};
-
 int dslink_init(int argc, char **argv,
                 const char *name, uint8_t isRequester,
                 uint8_t isResponder, DSLinkCallbacks *cbs);
@@ -135,6 +113,29 @@ int dslink_save_nodes(DSLink *link);
 // The nodes are added to the link responder root node and to the link.
 // Return 0 on sucess or errror code defined in err.h on failure.
 int dslink_load_nodes(DSLink *link);
+
+// Thread-safe API
+/*
+ * @param path           path to the node
+ * @param callback       a callback when the update is done, will be called from dslink's thread, parameters pass back in the callback will be (error, callback_data)
+ * @param callback_data  a data that will be passed back to callback
+ */
+int dslink_node_update_value_safe(struct DSLink *link, char* path, json_t *value,  async_set_callback callback, void * callback_data);
+
+/*
+ * @param path           path to the node
+ * @param callback       a callback when the update is done, will be called from dslink's thread, parameters pass back in the callback will be (value, callback_data)
+ * @param callback_data  a data that will be passed back to callback
+ */
+int dslink_node_get_value_safe(struct DSLink *link, char* path, async_get_callback callback, void * callback_data);
+
+/*
+ * a thread safe api to run any other dslink api
+ *
+ * @param callback       a callback when the update is done, will be called from dslink's thread, parameters pass back in the callback will be (link, callback_data)
+ * @param callback_data  a data that will be passed back to callback
+ */
+int dslink_run_safe(struct DSLink *link, async_run_callback callback, void * callback_data);
 
 #ifdef __cplusplus
 }
