@@ -700,7 +700,7 @@ int dslink_save_nodes(DSLink *link)
     return DSLINK_CANNOT_WRITE_FILE;
   }
 
-  if ( json_dumpf( nodes, tmpFile, JSON_COMPACT ) ) {
+  if ( nodes && json_dumpf( nodes, tmpFile, JSON_COMPACT ) ) {
     log_err( "Cannot write link state into file %s\n", s_tmp_file_name );
     return DSLINK_CANNOT_WRITE_FILE;
   }
