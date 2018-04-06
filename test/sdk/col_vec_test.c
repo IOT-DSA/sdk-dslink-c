@@ -59,6 +59,42 @@ void col_vec_append_test(void **state) {
 }
 
 static
+void col_vec_swap_test(void **state) {
+  (void)state;
+
+  Vector vec;
+  vector_init(&vec, 10, sizeof(int));
+
+  assert_int_equal( vector_swap(NULL, NULL), -1 );
+  assert_int_equal( vector_swap(&vec, NULL), -1 );
+  assert_int_equal( vector_swap(NULL, &vec), -1 );
+
+  Vector vecFail;
+  vector_init(&vecFail, 10, 2*sizeof(int));
+  assert_int_equal( vector_swap(&vec, &vecFail), -1 );
+
+  Vector vec2;
+  vector_init(&vec2, 20, sizeof(int));
+  assert_int_equal( vector_swap(&vec, &vec2), 0 );
+  assert_int_equal(vec.capacity, 20);
+  assert_int_equal(vec.size, 0);
+  assert_int_equal(vec2.capacity, 10);
+  assert_int_equal(vec2.size, 0);  
+
+  int n = 4711;
+  vector_append(&vec, &n);
+  assert_int_equal( vector_swap(&vec, &vec2), 0 );
+  assert_int_equal(vec.capacity, 10);
+  assert_int_equal(vec.size, 0);
+  assert_int_equal(vec2.capacity, 20);
+  assert_int_equal(vec2.size, 1);  
+  assert_int_equal(*(int*)vector_get(&vec2, 0), n );
+
+  vector_free(&vec);
+  vector_free(&vec2);
+}
+
+static
 void col_vec_resize_test(void **state) {
     (void) state;
 
@@ -583,6 +619,7 @@ int main() {
         cmocka_unit_test(col_vec_init_test),
         cmocka_unit_test(col_vec_free_test),
         cmocka_unit_test(col_vec_append_test),
+        cmocka_unit_test(col_vec_swap_test),
         cmocka_unit_test(col_vec_resize_test),
         cmocka_unit_test(col_vec_set_get_test),
         cmocka_unit_test(col_vec_erase_test),

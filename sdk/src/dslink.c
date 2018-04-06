@@ -619,38 +619,35 @@ static void run_wrapper(DSLink* link, void* data)
     async_data->callback(link,async_data->callback_data);
   }
 }
-static void dslink_process_task_queue(DSLink *link,  Vector* queue)
-{
-  dslink_vector_foreach(queue) {
-    DSLinkAsyncWrapper* async_wrapper = data;
-    if(async_wrapper->wrapperFunction) {
-      async_wrapper->wrapperFunction(link, async_wrapper->data);
-    }
-    dslink_free(async_wrapper->data);
-  }
-  dslink_vector_foreach_end();
-  vector_erase_range(queue, 0, vector_count(queue));
-}
 
 static void dslink_process_async_tasks(uv_async_t *async_handle)
 {
+    static Vector* processing_queue = NULL; 
+    if ( !processing_queue ) {
+      processing_queue = (Vector*)dslink_malloc(sizeof(Vector));
+      vector_init(processing_queue, 10, sizeof(DSLinkAsyncWrapper));
+    }
+
     lock_tasks_data();
     DSLink *link = (DSLink*)(async_handle->loop->data);
     Vector* queue = (Vector*)link->async_tasks.data;
-    if(!link || !queue) {
+    if(!link || !queue || !vector_count(queue)) {
+        unlock_tasks_data();
         return;
     }
     
-    if ( vector_count(queue) <= 10 ) {
-      dslink_process_task_queue( link, queue);
-      unlock_tasks_data();
-    } else {
-      // In case the queue is to large, we detach the queue from the async loop to release the lock.
-      link->async_tasks.data = NULL;
-      unlock_tasks_data();
-      dslink_process_task_queue( link, queue);
-      dslink_free(queue);
-    }      
+    vector_swap( queue, processing_queue );
+    unlock_tasks_data();
+    
+    dslink_vector_foreach(processing_queue) {
+      DSLinkAsyncWrapper* async_wrapper = data;
+      if(async_wrapper->wrapperFunction) {
+        async_wrapper->wrapperFunction(link, async_wrapper->data);
+      }
+      dslink_free(async_wrapper->data);
+    }
+    dslink_vector_foreach_end();
+    vector_erase_range(processing_queue, 0, vector_count(processing_queue));
 }
 
 static int add_async_task(DSLink* link, AsyncTaskWrapperFunction wrapperFunction, void* data)
@@ -1003,13 +1000,17 @@ int dslink_run_safe(struct DSLink *link, void (*callback)(struct DSLink *link, v
 
 static pthread_mutex_t tasks_data_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+#include <sys/types.h>
+
 int lock_tasks_data()
 {
+  log_debug("Lock mutex from thread %ld\n", pthread_self() );
   return pthread_mutex_lock( &tasks_data_mutex );
 }
 
 int unlock_tasks_data()
 {
-    return pthread_mutex_unlock( &tasks_data_mutex );
+  log_debug("Unlock mutex from thread %ld\n", pthread_self() );
+  return pthread_mutex_unlock( &tasks_data_mutex );
 }
 

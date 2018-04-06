@@ -74,6 +74,21 @@ long vector_append(Vector* vec, void* data)
     return vec->size-1;
 }
 
+int vector_swap(Vector* vec, Vector* vec2)
+{
+  if(!vec || !vec2) {
+    return -1;
+  }
+  if (vec->element_size != vec2->element_size) {
+    return -1;
+  }
+  Vector dummy;
+  memcpy( &dummy, vec, sizeof(Vector) );
+  memcpy( vec, vec2, sizeof(Vector) );
+  memcpy( vec2, &dummy, sizeof(Vector) );
+  return 0;
+}
+
 int vector_set(Vector* vec, uint32_t index, void* data)
 {
     if(!vec || index >= vec->size) {
