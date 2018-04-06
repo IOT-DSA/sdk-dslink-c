@@ -557,12 +557,13 @@ int unlock_tasks_data();
 //thread-safe API async handle callbacks
 static void get_node_value_wrapper(DSLink* link, void* data)
 {
+  DSLinkAsyncGetData* asyncGetData = (DSLinkAsyncGetData*)data;
+
   if ( !link || !link->responder || !link->responder->super_root ) {
     log_warn("No link or not a responder in dslink_node_get_value_safe\n");
     goto exit;
   }
 
-  DSLinkAsyncGetData* asyncGetData = (DSLinkAsyncGetData*)data;
   DSNode *node = dslink_node_get_path(link->responder->super_root, asyncGetData->node_path);
   if ( !node ) {
     log_warn("Node %s node found dslink_node_get_value_safe\n", asyncGetData->node_path);
