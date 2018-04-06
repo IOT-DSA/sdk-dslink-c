@@ -619,25 +619,38 @@ static void run_wrapper(DSLink* link, void* data)
     async_data->callback(link,async_data->callback_data);
   }
 }
+static void dslink_process_task_queue(DSLink *link,  Vector* queue)
+{
+  dslink_vector_foreach(queue) {
+    DSLinkAsyncWrapper* async_wrapper = data;
+    if(async_wrapper->wrapperFunction) {
+      async_wrapper->wrapperFunction(link, async_wrapper->data);
+    }
+    dslink_free(async_wrapper->data);
+  }
+  dslink_vector_foreach_end();
+  vector_erase_range(queue, 0, vector_count(queue));
+}
 
 static void dslink_process_async_tasks(uv_async_t *async_handle)
 {
     lock_tasks_data();
     DSLink *link = (DSLink*)(async_handle->loop->data);
-    Vector* queue = async_handle->data;
+    Vector* queue = (Vector*)link->async_tasks.data;
     if(!link || !queue) {
         return;
     }
-    dslink_vector_foreach(queue) {
-        DSLinkAsyncWrapper* async_wrapper = data;
-        if(async_wrapper->wrapperFunction) {
-            async_wrapper->wrapperFunction(link, async_wrapper->data);
-        }
-        dslink_free(async_wrapper->data);
-    }
-    dslink_vector_foreach_end();
-    vector_erase_range(queue, 0, vector_count(queue));
-    unlock_tasks_data();
+    
+    if ( vector_count(queue) <= 10 ) {
+      dslink_process_task_queue( link, queue);
+      unlock_tasks_data();
+    } else {
+      // In case the queue is to large, we detach the queue from the async loop to release the lock.
+      link->async_tasks.data = NULL;
+      unlock_tasks_data();
+      dslink_process_task_queue( link, queue);
+      dslink_free(queue);
+    }      
 }
 
 static int add_async_task(DSLink* link, AsyncTaskWrapperFunction wrapperFunction, void* data)
@@ -652,11 +665,16 @@ static int add_async_task(DSLink* link, AsyncTaskWrapperFunction wrapperFunction
   
   lock_tasks_data();
   Vector* queue = (Vector*)link->async_tasks.data;
-  if(queue) {
-    if ( vector_append(queue, &async_wrapper) < 0 ) {
-      dslink_free(data);
-      return DSLINK_ALLOC_ERR;
-    }
+  if ( !queue  ) {
+    queue = dslink_malloc(sizeof(Vector));
+    vector_init(queue, 10, sizeof(DSLinkAsyncWrapper));
+    link->async_tasks.data = queue;
+  }
+  
+  if ( vector_append(queue, &async_wrapper) < 0 ) {
+    dslink_free(data);
+    unlock_tasks_data();
+    return DSLINK_ALLOC_ERR;
   }
   unlock_tasks_data();
     
@@ -676,10 +694,7 @@ int dslink_init(int argc, char **argv,
     if(uv_async_init(&link->loop, &link->async_tasks, dslink_process_async_tasks)) {
         log_warn("Async handle init error\n");
     }
-
-    Vector* task_data_queue = dslink_malloc(sizeof(Vector));
-    vector_init(task_data_queue, 10, sizeof(DSLinkAsyncWrapper));
-    link->async_tasks.data = task_data_queue;
+    link->async_tasks.data = NULL;
 
     link->is_responder = isResponder;
     link->is_requester = isRequester;
