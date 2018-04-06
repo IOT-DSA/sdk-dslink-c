@@ -32,6 +32,13 @@ typedef struct  {
     void *callback_data;
 } DSLinkAsyncRunData;
 
+typedef void (*AsyncTaskWrapperFunction)(DSLink*, void*);
+
+typedef struct {
+  AsyncTaskWrapperFunction wrapperFunction;
+  void *data;
+} DSLinkAsyncWrapper;
+
 #define SECONDS_TO_MILLIS(count) count * 1000
 
 #define DSLINK_RESPONDER_MAP_INIT(var, type) \
@@ -543,93 +550,119 @@ int dslink_init_do(DSLink *link, DSLinkCallbacks *cbs) {
     return ret;
 }
 
-int lock_get_data();
-int unlock_get_data();
-int lock_set_data();
-int unlock_set_data();
-int lock_run_data();
-int unlock_run_data();
+int lock_tasks_data();
+int unlock_tasks_data();
 
 
 //thread-safe API async handle callbacks
-void dslink_async_get_node_value(uv_async_t *async_handle)
+static void get_node_value_wrapper(DSLink* link, void* data)
 {
-    lock_get_data();
+  if ( !link || !link->responder || !link->responder->super_root ) {
+    log_warn("No link or not a responder in dslink_node_get_value_safe\n");
+    goto exit;
+  }
+
+  DSLinkAsyncGetData* asyncGetData = (DSLinkAsyncGetData*)data;
+  DSNode *node = dslink_node_get_path(link->responder->super_root, asyncGetData->node_path);
+  if ( !node ) {
+    log_warn("Node %s node found dslink_node_get_value_safe\n", asyncGetData->node_path);
+  }
+
+  if ( asyncGetData->callback ) {
+    asyncGetData->callback(json_copy(node->value),asyncGetData->callback_data);
+  }
+
+exit:
+  // free the task nested data structure
+  dslink_free(asyncGetData->node_path);
+}
+
+static void set_node_value_wrapper(DSLink* link, void* data)
+{
+  DSLinkAsyncSetData *asyncSetData = (DSLinkAsyncSetData*)data;
+
+  async_set_callback result_callback = asyncSetData->callback;
+
+  if ( !link || !link->responder || !link->responder->super_root ) {
+    if ( result_callback ) {
+      result_callback( DSLINK_NO_ROOT_NODE_ERR, asyncSetData->callback_data );
+    }
+    goto exit;
+  }
+
+  DSNode *node = dslink_node_get_path(link->responder->super_root, asyncSetData->node_path);
+  if ( !node ) {
+    if ( result_callback ) {
+      result_callback( EINVAL, asyncSetData->callback_data);
+    }
+    goto exit;
+  }
+  
+  int result = dslink_node_update_value_new( link, node, asyncSetData->set_value  );
+  if ( result_callback ) {
+    result_callback( result, asyncSetData->callback_data );
+  }
+
+exit:
+  // free the task nested data structure
+  dslink_free(asyncSetData->node_path);
+}
+
+static void run_wrapper(DSLink* link, void* data)
+{
+  if ( !link ) {
+    return;
+  }
+
+  DSLinkAsyncRunData* async_data = ( DSLinkAsyncRunData*)data;
+  if(async_data->callback) {
+    async_data->callback(link,async_data->callback_data);
+  }
+}
+
+static void dslink_process_async_tasks(uv_async_t *async_handle)
+{
+    lock_tasks_data();
     DSLink *link = (DSLink*)(async_handle->loop->data);
     Vector* queue = async_handle->data;
     if(!link || !queue) {
         return;
     }
     dslink_vector_foreach(queue) {
-        DSLinkAsyncGetData* async_data = data;
-        DSNode *node = dslink_node_get_path(link->responder->super_root,async_data->node_path);
-        if(node) {
-            if(async_data->callback) {
-                async_data->callback(json_copy(node->value),async_data->callback_data);
-            }
-
-        } else {
-            log_info("Node not found in the path\n");
+        DSLinkAsyncWrapper* async_wrapper = data;
+        if(async_wrapper->wrapperFunction) {
+            async_wrapper->wrapperFunction(link, async_wrapper->data);
         }
-        //free async_data which is allocated in API func
-        dslink_free(async_data->node_path);
+        dslink_free(async_wrapper->data);
     }
     dslink_vector_foreach_end();
     vector_erase_range(queue, 0, vector_count(queue));
-    unlock_get_data();
+    unlock_tasks_data();
 }
 
-void dslink_async_set_node_value(uv_async_t *async_handle)
-{
-    lock_set_data();
-    DSLink *link = (DSLink*)(async_handle->loop->data);
-    Vector* queue = async_handle->data;
-    if(!link || !queue) {
-        return;
+static int add_async_task(DSLink* link, AsyncTaskWrapperFunction wrapperFunction, void* data)
+{ 
+  if ( !link ) {
+    return EINVAL;
+  }
+
+  DSLinkAsyncWrapper async_wrapper;
+  async_wrapper.wrapperFunction = wrapperFunction;
+  async_wrapper.data = data;
+  
+  lock_tasks_data();
+  Vector* queue = (Vector*)link->async_tasks.data;
+  if(queue) {
+    if ( vector_append(queue, &async_wrapper) < 0 ) {
+      dslink_free(data);
+      return DSLINK_ALLOC_ERR;
     }
-    dslink_vector_foreach(queue) {
-        DSLinkAsyncSetData* async_data = data;
-        DSNode *node = dslink_node_get_path(link->responder->super_root,async_data->node_path);
-        int ret = 0;
-        if(node) {
-            //json value's ref count must be 1 and should not be used in the other thread anymore
-            if(dslink_node_update_value(link,node,async_data->set_value) != 0) {
-                ret = -1;
-            }
-        } else {
-            log_info("Node not found in the path\n");
-            ret = -1;
-        }
-        if(async_data->callback) {
-            async_data->callback(ret, async_data->callback_data);
-        }
-        //free async_data which is allocated in API func
-        dslink_free(async_data->node_path);
-        json_decref(async_data->set_value);
-    }
-    dslink_vector_foreach_end();
-    vector_erase_range(queue, 0, vector_count(queue));
-    unlock_set_data();
+  }
+  unlock_tasks_data();
+    
+  return uv_async_send(&link->async_tasks);;
 }
 
-void dslink_async_run(uv_async_t *async_handle)
-{
-    lock_run_data();
-    DSLink *link = (DSLink*)(async_handle->loop->data);
-    Vector* queue = async_handle->data;
-    if(!link || !queue) {
-        return;
-    }
-    dslink_vector_foreach(queue) {
-        DSLinkAsyncRunData* async_data = data;
-        if(async_data->callback) {
-            async_data->callback(link,async_data->callback_data);
-        }
-    }
-    dslink_vector_foreach_end();
-    vector_erase_range(queue, 0, vector_count(queue));
-    unlock_run_data();
-}
 
 int dslink_init(int argc, char **argv,
                 const char *name, uint8_t isRequester,
@@ -640,25 +673,13 @@ int dslink_init(int argc, char **argv,
     link->loop.data = link;
 
     //thread-safe API async handle set
-    if(uv_async_init(&link->loop, &link->async_get, dslink_async_get_node_value)) {
-        log_warn("Async handle init error\n");
-    }
-    if(uv_async_init(&link->loop, &link->async_set, dslink_async_set_node_value)) {
-        log_warn("Async handle init error\n");
-    }
-    if(uv_async_init(&link->loop, &link->async_run, dslink_async_run)) {
+    if(uv_async_init(&link->loop, &link->async_tasks, dslink_process_async_tasks)) {
         log_warn("Async handle init error\n");
     }
 
-    Vector* get_data_queue = dslink_malloc(sizeof(Vector));
-    vector_init(get_data_queue, 10, sizeof(DSLinkAsyncGetData));
-    link->async_get.data = get_data_queue;
-    Vector* set_data_queue = dslink_malloc(sizeof(Vector));
-    vector_init(set_data_queue, 10, sizeof(DSLinkAsyncSetData));
-    link->async_set.data = set_data_queue;
-    Vector* run_data_queue = dslink_malloc(sizeof(Vector));
-    vector_init(run_data_queue, 10, sizeof(DSLinkAsyncRunData));
-    link->async_run.data = run_data_queue;
+    Vector* task_data_queue = dslink_malloc(sizeof(Vector));
+    vector_init(task_data_queue, 10, sizeof(DSLinkAsyncWrapper));
+    link->async_tasks.data = task_data_queue;
 
     link->is_responder = isResponder;
     link->is_requester = isRequester;
@@ -680,9 +701,7 @@ int dslink_init(int argc, char **argv,
         log_info("Attempting to reconnect...\n");
     }
 
-    uv_close((uv_handle_t*)&link->async_set,NULL);
-    uv_close((uv_handle_t*)&link->async_get,NULL);
-    uv_close((uv_handle_t*)&link->async_run,NULL);
+    uv_close((uv_handle_t*)&link->async_tasks,NULL);
 
     uv_loop_close(&link->loop);
     dslink_link_free(link);
@@ -917,98 +936,65 @@ void dslink_nodes_recursive_deserialize(DSLink *link, json_t* jsonArray, DSNode*
 // Thread-safe API
 int dslink_node_update_value_safe(struct DSLink *link, char* path, json_t *value,  void (*callback)(int, void*), void * callback_data)
 {
-    if(link) {
-        DSLinkAsyncSetData async_data;
-        async_data.node_path = path;
-        async_data.set_value = value;
-        async_data.callback = callback;
-        async_data.callback_data = callback_data;
+  if (!link) {
+    return EINVAL;
+  }
 
-        lock_set_data();
-        Vector* queue = (Vector*)link->async_set.data;
-        if(queue) {
-            vector_append(queue, &async_data);
-        }
-        unlock_set_data();
-
-        uv_async_send(&link->async_set);
-    }
-
-    return 0;
+  DSLinkAsyncSetData *async_data = dslink_malloc(sizeof(DSLinkAsyncSetData));
+  async_data->node_path = path;
+  async_data->set_value = value;
+  async_data->callback = callback;
+  async_data->callback_data = callback_data;
+  
+  int result = add_async_task( link, &set_node_value_wrapper, async_data );
+  if ( result ) {
+    dslink_free(path);
+  }
+  
+  return result;
 }
 
 int dslink_node_get_value_safe(struct DSLink *link, char* path,  void (*callback)(json_t *, void*), void * callback_data)
 {
-    if(link) {
-        DSLinkAsyncGetData async_data;
-        async_data.node_path = path;
-        async_data.callback = callback;
-        async_data.callback_data = callback_data;
+  if (!link) {
+    return EINVAL;
+  }
 
-        lock_get_data();
-        Vector* queue = (Vector*)link->async_get.data;
-        if(queue) {
-            vector_append(queue, &async_data);
-        }
-        unlock_get_data();
+  DSLinkAsyncGetData *async_data = (DSLinkAsyncGetData*)dslink_malloc(sizeof(DSLinkAsyncGetData));
+  async_data->node_path = path;
+  async_data->callback = callback;
+  async_data->callback_data = callback_data;
+  
+  int result = add_async_task( link, &get_node_value_wrapper, async_data );
+  if ( result ) {
+    dslink_free(path);
+  }
 
-        uv_async_send(&link->async_get);
-    }
-
-    return 0;
+  return result;
 }
 
 int dslink_run_safe(struct DSLink *link, void (*callback)(struct DSLink *link, void*), void * callback_data)
 {
-    if(link) {
-        DSLinkAsyncRunData async_data;
-        async_data.callback = callback;
-        async_data.callback_data = callback_data;
+  if ( !link ) {
+    return EINVAL;
+  }
 
-        lock_run_data();
-        Vector* queue = (Vector*)link->async_run.data;
-        if(queue) {
-            vector_append(queue, &async_data);
-        }
-        unlock_run_data();
-
-        uv_async_send(&link->async_run);
-    }
-
-    return 0;
+  DSLinkAsyncRunData* async_data = dslink_malloc(sizeof(DSLinkAsyncRunData));;
+  async_data->callback = callback;
+  async_data->callback_data = callback_data;
+  
+  return add_async_task( link, &run_wrapper, async_data );
 }
 
-static pthread_mutex_t get_data_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_mutex_t set_data_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_mutex_t task_data_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t tasks_data_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-int lock_get_data()
+int lock_tasks_data()
 {
-    return pthread_mutex_lock( &get_data_mutex );
+  return pthread_mutex_lock( &tasks_data_mutex );
 }
 
-int unlock_get_data()
+int unlock_tasks_data()
 {
-    return pthread_mutex_unlock( &get_data_mutex );
-}
-
-int lock_set_data()
-{
-    return pthread_mutex_lock( &set_data_mutex );
-}
-
-int unlock_set_data()
-{
-    return pthread_mutex_unlock( &set_data_mutex );
-}
-
-int lock_task_data()
-{
-    return pthread_mutex_lock( &task_data_mutex );
-}
-
-int unlock_task_data()
-{
-    return pthread_mutex_unlock( &task_data_mutex );
+    return pthread_mutex_unlock( &tasks_data_mutex );
 }
 

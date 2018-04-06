@@ -45,9 +45,7 @@ struct DSLink {
     Responder *responder; // Responder, only initialized for responder DSLinks
     mbedtls_ecdh_context key; // ECDH key
     uv_loop_t loop; // Primary event loop
-    uv_async_t async_get; // async get value
-    uv_async_t async_set; // async set value
-    uv_async_t async_run; // async run
+    uv_async_t async_tasks; // async run
     uv_poll_t*  poll;
     DSLinkConfig config; // Configuration
     uint32_t *msg;
