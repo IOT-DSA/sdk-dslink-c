@@ -120,7 +120,7 @@ void thread_safe_api_test2(void *arg) {
 
 }
 
-void nodval_async_get_callback_test1(json_t *retVal, void* cbData) {
+void nodeval_async_get_callback_test1(json_t *retVal, void* cbData) {
 
 #ifdef PRINT_MODE
     if(!cbData) {
@@ -151,9 +151,7 @@ void nodval_async_get_callback_test1(json_t *retVal, void* cbData) {
 }
 
 void thread_safe_api_test1(void *arg) {
-
-    dslink_node_get_value_safe((DSLink*)arg,strdup("test_node"),nodval_async_get_callback_test1,arg);
-
+    dslink_node_get_value_safe((DSLink*)arg,strdup("test_node"),nodeval_async_get_callback_test1,arg);
 }
 
 int run_thread_safe_api_tests(DSLink *link) {

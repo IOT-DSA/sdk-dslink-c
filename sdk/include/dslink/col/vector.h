@@ -41,6 +41,12 @@ for (void* data = (vector)->data; n < (vector)->size; ++n, data = (char*)(vector
     /// @return The index (>= 0) upon success, -1 otherwise
     long vector_append(Vector* vec, void* data);
 
+    /// Swaps the content of two vectors, element size has to be equal
+    /// @param vec The vector
+    /// @param vec2 The other vector
+    /// @return 0 on sucess, -1 otherwise
+    int vector_swap(Vector* vec, Vector* vec2);
+
     /// Sets a new value for the element at index. If the index is not in range, an error will be returned and the
     /// vector remains unchanged.
     /// @param vec The vector
