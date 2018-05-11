@@ -228,7 +228,7 @@ endif()
 
 add_library(sdk_dslink_c SHARED ${LIBRARY_SRC})
 target_link_libraries(sdk_dslink_c jansson libuv ${DSLINK_PLATFORM_LIBS})
-set_target_properties(sdk_dslink_c PROPERTIES VERSION ${VERSION} SOVERSION ${VERSION_MAJOR} )
+set_target_properties(sdk_dslink_c PROPERTIES VERSION ${VERSION} SOVERSION ${VERSION} )
 
 set(DSLINK_INSTALL_LIB_DIR lib CACHE PATH "Installation directory for libraries")
 set(DSLINK_INSTALL_BIN_DIR bin CACHE PATH "Installation directory for executables")
