@@ -7,6 +7,8 @@
 #include "broker/broker.h"
 #include "broker/msg/msg_set.h"
 
+#define LOG_TAG "msg_set"
+#include <dslink/log.h>
 
 static
 int broker_msg_check_set_arrtribtues(RemoteDSLink *link, json_t *req, const char *path) {
@@ -109,15 +111,19 @@ int broker_msg_handle_set(RemoteDSLink *link, json_t *req) {
         }
 
         DownstreamNode *dsn = (DownstreamNode *) node;
-        json_t *top = json_object();
-        json_t *reqs = json_array();
-        json_object_set_new_nocheck(top, "requests", reqs);
-        json_object_set_new_nocheck(req, "rid", json_integer(reqRid));
-        json_object_set_new_nocheck(req, "path", json_string_nocheck(out));
-        json_array_append(reqs, req);
+        if ( dsn->link ) {
+          json_t *top = json_object();
+          json_t *reqs = json_array();
+          json_object_set_new_nocheck(top, "requests", reqs);
+          json_object_set_new_nocheck(req, "rid", json_integer(reqRid));
+          json_object_set_new_nocheck(req, "path", json_string_nocheck(out));
+          json_array_append(reqs, req);
 
-        broker_ws_send_obj(dsn->link, top);
-        json_decref(top);
+          broker_ws_send_obj(dsn->link, top);
+          json_decref(top);
+        } else {
+          log_debug("Cannot set value on node %s, as link is not connected\n", dsn->path );
+        }
     } else {
         const char * name = strrchr(path, '/') + 1;
         if (*name == '$') {
