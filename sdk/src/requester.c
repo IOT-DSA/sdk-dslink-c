@@ -69,7 +69,11 @@ ref_t* dslink_requester_list(DSLink* link, const char* path, request_handler_cb 
     return dslink_requester_send_request(link, json, cb);
 }
 
-ref_t* dslink_requester_subscribe(DSLink* link, const char* path, value_sub_cb cb, int qos) {
+ref_t* dslink_requester_subscribe(DSLink* link, const char* path, value_sub_cb cbs, int qos) {
+  return dslink_requester_subscribe2( link, path, cbs, qos, dslink_requester_ignore_response);
+}
+
+ref_t* dslink_requester_subscribe2(DSLink* link, const char* path, value_sub_cb cbs, int qos, request_handler_cb cb) {
     uint32_t sid = dslink_requester_incr_sid(link->requester);
 
     json_t *json = json_object();
@@ -83,13 +87,13 @@ ref_t* dslink_requester_subscribe(DSLink* link, const char* path, value_sub_cb c
     json_array_append_new(paths, obj);
     json_object_set_new(json, "paths", paths);
 
-    ref_t *ref = dslink_requester_send_request(link, json, dslink_requester_ignore_response);
+    ref_t *ref = dslink_requester_send_request(link, json, cb);
     RequestHolder *holder = ref->data;
     holder->sid = sid;
     holder->req = json;
 
     SubscribeCallbackHolder *subhold = dslink_malloc(sizeof(SubscribeCallbackHolder));
-    subhold->cb = cb;
+    subhold->cb = cbs;
     ref_t *cbref = dslink_ref(subhold, dslink_free);
 
     dslink_map_set(
