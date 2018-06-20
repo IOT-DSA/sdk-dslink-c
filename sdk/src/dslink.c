@@ -623,12 +623,6 @@ static void run_wrapper(DSLink* link, void* data)
 
 static void dslink_process_async_tasks(uv_async_t *async_handle)
 {
-    static Vector* processing_queue = NULL; 
-    if ( !processing_queue ) {
-      processing_queue = (Vector*)dslink_malloc(sizeof(Vector));
-      vector_init(processing_queue, 10, sizeof(DSLinkAsyncWrapper));
-    }
-
     lock_tasks_data();
     DSLink *link = (DSLink*)(async_handle->loop->data);
     Vector* queue = (Vector*)link->async_tasks.data;
@@ -637,7 +631,10 @@ static void dslink_process_async_tasks(uv_async_t *async_handle)
         return;
     }
     
+    Vector* processing_queue = (Vector*)dslink_malloc(sizeof(Vector));
+    vector_init(processing_queue, 10, sizeof(DSLinkAsyncWrapper));
     vector_swap( queue, processing_queue );
+
     unlock_tasks_data();
     
     dslink_vector_foreach(processing_queue) {
@@ -649,6 +646,7 @@ static void dslink_process_async_tasks(uv_async_t *async_handle)
     }
     dslink_vector_foreach_end();
     vector_erase_range(processing_queue, 0, vector_count(processing_queue));
+    vector_free(processing_queue);
 }
 
 static int add_async_task(DSLink* link, AsyncTaskWrapperFunction wrapperFunction, void* data)
@@ -1005,13 +1003,19 @@ static pthread_mutex_t tasks_data_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 int lock_tasks_data()
 {
-  log_debug("Lock mutex from thread %ld\n", pthread_self() );
-  return pthread_mutex_lock( &tasks_data_mutex );
+  int result = pthread_mutex_lock( &tasks_data_mutex );
+  if ( result ) {
+    log_err("Error in locking async mutex\n");
+  }
+  return result;
 }
 
 int unlock_tasks_data()
 {
-  log_debug("Unlock mutex from thread %ld\n", pthread_self() );
-  return pthread_mutex_unlock( &tasks_data_mutex );
+  int result = pthread_mutex_unlock( &tasks_data_mutex );
+  if ( result ) {
+    log_err("Error in unlocking async mutex\n");
+  }
+  return result;
 }
 
