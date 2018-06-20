@@ -61,7 +61,7 @@ int broker_update_sub_stream_value(BrokerSubStream *stream, json_t *value, json_
 
 void broker_update_stream_qos(BrokerSubStream *stream);
 void broker_update_sub_qos(SubRequester *req, uint8_t qos);
-void serialize_qos_queue(SubRequester *subReq, uint8_t delete);
+void serialize_qos_queue(SubRequester *subReq, uint8_t deleteFlag);
 
 int check_subscription_ack(RemoteDSLink *link, uint32_t ack);
 
