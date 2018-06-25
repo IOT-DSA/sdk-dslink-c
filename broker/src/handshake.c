@@ -107,6 +107,7 @@ json_t *broker_handshake_handle_conn(Broker *broker,
     json_object_set_new_nocheck(resp, "wsUri", json_string_nocheck("/ws"));
     json_object_set_new_nocheck(resp, "tempKey", json_string_nocheck(tempKey));
     json_object_set_new_nocheck(resp, "salt", json_string_nocheck(link->auth->salt));
+    json_object_set_new_nocheck(resp, "version", json_string_nocheck("1.0.4"));
     if (json_boolean_value(json_object_get(handshake, "isResponder"))) {
         link->isResponder = 1;
     }
