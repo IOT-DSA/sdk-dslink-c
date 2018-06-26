@@ -6,7 +6,7 @@
 #endif
 
 #ifndef BROKER_DSA_VERSION
-#define BROKER_DSA_VERSION "1.1.2"
+#define BROKER_DSA_VERSION "1.0.4"
 #endif
 
 #endif //BROKER_GLOBAL_H
