@@ -102,29 +102,41 @@ void upstream_io_handler(uv_poll_t *poll, int status, int events) {
     (void) events;
     UpstreamPoll *upstreamPoll = poll->data;
     if(!upstreamPoll || !upstreamPoll->ws) {
+        log_info("upstream_io_handler: No %s, return", upstreamPoll ? "upstreamPoll->ws" : "upstreamPoll" );
         return;
     }
+    log_debug("upstream_io_handler: with status %d and events %d\n", status, events );
+
     if (status < 0) {
-        log_err("Failed to handle upstream connection: %s\n", uv_strerror(status));
+        log_err("Failed to handle upstream connection %s: %s\n",
+                (upstreamPoll->remoteDSLink && upstreamPoll->remoteDSLink->name ? upstreamPoll->remoteDSLink->name : "unknown"),
+                uv_strerror(status));
         reconnect_if_error_occured(status, upstreamPoll);
         return;
     }
 
     if (events & UV_READABLE) {
         int stat = wslay_event_recv(upstreamPoll->ws);
+        log_debug("upstream_io_handler: read status %d\n", stat );
         reconnect_if_error_occured(stat, upstreamPoll);
     }
 
     if (events & UV_WRITABLE) {
         if(!wslay_event_want_write(upstreamPoll->ws)) {
             log_debug("Stopping WRITE poll on upstream node\n");
-            uv_poll_start(poll, UV_READABLE, upstream_io_handler);
+            uv_poll_start(poll, UV_READABLE | UV_DISCONNECT, upstream_io_handler);
         } else {
             log_debug("Enabling READ/WRITE poll on upstream node\n");
-            uv_poll_start(poll, UV_READABLE | UV_WRITABLE, upstream_io_handler);
+            uv_poll_start(poll, UV_READABLE | UV_WRITABLE | UV_DISCONNECT, upstream_io_handler);
             int stat = wslay_event_send(upstreamPoll->ws);
+            log_debug("upstream_io_handler: write status %d\n", stat );
             reconnect_if_error_occured(stat, upstreamPoll);
         }
+    }
+
+    if (events & UV_DISCONNECT) {
+        log_debug("upstream_io_handler:Disconnected\n" );
+        reconnect_if_error_occured(status, upstreamPoll);       
     }
 }
 
@@ -181,7 +193,7 @@ void upstream_handshake_handle_ws(UpstreamPoll *upstreamPoll) {
     upstreamPoll->wsPoll->data = upstreamPoll;
 
     client->poll_cb = upstream_io_handler;
-    uv_poll_start(upstreamPoll->wsPoll, UV_READABLE, upstream_io_handler);
+    uv_poll_start(upstreamPoll->wsPoll, UV_READABLE | UV_DISCONNECT, upstream_io_handler);
 
     init_upstream_node(mainLoop->data, upstreamPoll);
 }
@@ -329,7 +341,7 @@ void upstream_check_conn (uv_timer_t* handle) {
 
     upstreamPoll->dsId = dslink_strdup(dsId);
     upstreamPoll->connPoll->data = upstreamPoll;
-    uv_poll_start(upstreamPoll->connPoll, UV_READABLE, connect_conn_callback);
+    uv_poll_start(upstreamPoll->connPoll, UV_READABLE | UV_DISCONNECT, connect_conn_callback);
     dslink_free(dsId);
 }
 
