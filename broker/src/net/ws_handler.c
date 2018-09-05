@@ -133,8 +133,13 @@ void broker_on_ws_data(wslay_event_context_ptr ctx,
         if (!data) {
             return;
         }
-        log_debug("Received data from %s: %.*s\n", (char *) link->dsId->data,
-                  (int) arg->msg_length, arg->msg);
+        if (link->isUpstream) {
+          log_debug("Received data from upstream %s: %.*s\n", (char *) link->name,
+                    (int) arg->msg_length, arg->msg);
+        } else {
+          log_debug("Received data from %s: %.*s\n", (char *) link->dsId->data,
+                    (int) arg->msg_length, arg->msg);
+        }
 
         broker_msg_handle(link, data);
         json_decref(data);

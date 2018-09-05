@@ -269,7 +269,9 @@ void broker_close_link(RemoteDSLink *link) {
         }
         dslink_socket_close_nofree(link->client->sock);
     }
-    if (link->dsId) {
+    if (link->isUpstream) {
+      log_info("Upstream %s has disconnected\n", link->name );      
+    } else if (link->dsId) {
         log_info("DSLink `%s` has disconnected\n", (char *) link->dsId->data);
     } else {
         log_info("DSLink `%s` has disconnected\n", (char *) link->name);

@@ -257,6 +257,7 @@ void dslink_handle_ping(uv_timer_t* handle) {
         gettimeofday(&current_time, NULL);
         long time_diff = current_time.tv_sec - link->lastWriteTime->tv_sec;
         if (time_diff >= 60) {
+            log_debug("dslink_handle_ping send heartbeat to %s\n", link->name );
             broker_ws_send_obj(link, json_object());
         }
     } else {
@@ -268,6 +269,7 @@ void dslink_handle_ping(uv_timer_t* handle) {
         gettimeofday(&current_time, NULL);
         long time_diff = current_time.tv_sec - link->lastReceiveTime->tv_sec;
         if (time_diff >= 90) {
+            log_debug("dslink_handle_ping: Disconnecting %s due to missing receive\n", link->name );
             broker_close_link(link);
         }
     }
