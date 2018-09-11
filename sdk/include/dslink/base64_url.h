@@ -6,6 +6,7 @@ extern "C" {
 #endif
 
 #include <stddef.h>
+#include "dslink/err.h"
 
 /**
  * Encodes a string into base64 format without padding
