@@ -79,7 +79,7 @@ ADD_C_FLAGS("-std=gnu99")
 ADD_C_FLAGS("-Wno-tautological-compare")
 
 if (NOT NO_WARNINGS)
-	#    ADD_C_FLAGS("-Wall -Wextra -Werror")
+    ADD_C_FLAGS("-Wall -Wextra -Werror")
     ADD_C_FLAGS("-Wno-overlength-strings")
     ADD_C_FLAGS("-pedantic")
 endif()
