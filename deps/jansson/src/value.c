@@ -965,7 +965,7 @@ static json_t *binary_create(const char *value, size_t len, int own)
                 return NULL;
         } else {
             //if prefix does not exist, it should be added and the payload should be coded base64
-            v = jsonp_malloc(len * 2 + JSON_BINARY_PREFIX_LEN);
+            v = jsonp_malloc(len * 2 + 4 + JSON_BINARY_PREFIX_LEN);
 
             if(!v)
                 return NULL;
@@ -975,7 +975,7 @@ static json_t *binary_create(const char *value, size_t len, int own)
             //base64 encode and write to memory
             if(json_base64_url_encode(
                     (unsigned char*)(v+JSON_BINARY_PREFIX_LEN),
-                    (len*2)-JSON_BINARY_PREFIX_LEN,
+                    (len* 2 + 4)-JSON_BINARY_PREFIX_LEN,
                     &olen,
                     (unsigned char*)value,len)) {
                 jsonp_free(v);

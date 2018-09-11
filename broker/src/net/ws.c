@@ -16,6 +16,7 @@
 
 #include <msgpack.h>
 #include <dslink/ws.h>
+#include <dslink/utils.h>
 
 #define BROKER_WS_RESP "HTTP/1.1 101 Switching Protocols\r\n" \
                             "Upgrade: websocket\r\n" \
