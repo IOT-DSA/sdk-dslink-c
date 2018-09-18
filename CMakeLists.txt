@@ -27,6 +27,22 @@ macro(ADD_C_FLAGS flags)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${flags}")
 endmacro()
 
+macro(ADD_SHARED_LD_FLAGS flags)
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${flags}")
+endmacro()
+
+macro(ADD_MODULE_LD_FLAGS flags)
+    set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} ${flags}")
+endmacro()
+
+macro(ADD_STATIC_LD_FLAGS flags)
+    set(CMAKE_STATIC_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS} ${flags}")
+endmacro()
+
+macro(ADD_EXE_LD_FLAGS flags)
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${flags}")
+endmacro()
+
 ##### Git Version Info ####
 set(IOT_DSA_C_SDK_GIT_DIR "${CMAKE_CURRENT_LIST_DIR}/.git")
 if (EXISTS "${IOT_DSA_C_SDK_GIT_DIR}" AND IS_DIRECTORY "${IOT_DSA_C_SDK_GIT_DIR}" AND NOT "${IOT_DSA_C_SDK_GIT_COMMIT_HASH}")
@@ -64,7 +80,14 @@ endif()
 ADD_C_FLAGS("-fPIC")
 IF(CMAKE_BUILD_TYPE STREQUAL "Release")
     MESSAGE(INFO, "Applying secure compiler and linker flags")
-    ADD_C_FLAGS("-pie -fPIE -D_FORTIFY_SOURCE=2")
+    IF(NOT ${CMAKE_CXX_COMPILER_ID} MATCHES "Clang")
+        ADD_C_FLAGS("-pie -fPIE -D_FORTIFY_SOURCE=2")
+    ELSEIF (${CMAKE_CXX_COMPILER_ID} MATCHES "Clang")
+        # For Clang, -pie must be set as a linker flag, not as a compiler flag.
+        ADD_C_FLAGS("-fPIE -D_FORTIFY_SOURCE=2")
+        ADD_SHARED_LD_FLAGS("-pie")
+        ADD_EXE_LD_FLAGS("-pie")
+    ENDIF()
 ENDIF()
 
 foreach(dep "mbed" "wslay" "argtable3" "jansson" "libuv")
