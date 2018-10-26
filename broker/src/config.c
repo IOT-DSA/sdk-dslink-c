@@ -87,7 +87,7 @@ json_t *broker_config_gen() {
         log_fatal("Failed to save broker configuration\n");
         goto del_broker;
     } else {
-        log_info("Created abrokernd saved the default broker configuration\n");
+        log_info("Created broker and saved the default broker configuration\n");
     }
 
     goto exit;

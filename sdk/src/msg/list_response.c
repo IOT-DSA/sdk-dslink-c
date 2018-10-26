@@ -1,4 +1,5 @@
 #include <string.h>
+#include <wslay/wslay.h>
 #include "dslink/mem/mem.h"
 #include "dslink/utils.h"
 #include "dslink/msg/list_response.h"
@@ -177,15 +178,14 @@ int dslink_response_list(DSLink *link, json_t *req, DSNode *node) {
     }
 
     {
-        char *data = json_dumps(top, JSON_PRESERVE_ORDER);
-        if (!data) {
+        // Check, we are not sure what we are doing here?
+        if(dslink_ws_send_obj(link->_ws, top) != 0)
+        {
             json_delete(top);
             dslink_map_remove(link->responder->list_subs,
                               (char *) node->path);
             return 1;
         }
-        dslink_ws_send(link->_ws, data);
-        dslink_free(data);
     }
 
     json_delete(top);

@@ -965,14 +965,19 @@ static json_t *binary_create(const char *value, size_t len, int own)
                 return NULL;
         } else {
             //if prefix does not exist, it should be added and the payload should be coded base64
-            v = jsonp_malloc(len * 2);
+            v = jsonp_malloc(len * 2 + 4 + JSON_BINARY_PREFIX_LEN);
+
             if(!v)
                 return NULL;
             v[0] = JSON_BINARY_PREFIX_1;
             strncpy(v+1,JSON_BINARY_PREFIX_REMAINING,JSON_BINARY_PREFIX_REMAINING_LEN);
 
             //base64 encode and write to memory
-            if(json_base64_url_encode((unsigned char*)(v+JSON_BINARY_PREFIX_LEN),(len*2)-JSON_BINARY_PREFIX_LEN,&olen,(unsigned char*)value,len)) {
+            if(json_base64_url_encode(
+                    (unsigned char*)(v+JSON_BINARY_PREFIX_LEN),
+                    (len* 2 + 4)-JSON_BINARY_PREFIX_LEN,
+                    &olen,
+                    (unsigned char*)value,len)) {
                 jsonp_free(v);
                 return NULL;
             }
@@ -1006,7 +1011,7 @@ json_t *json_binary_nocheck(const char *value)
 
 json_t *json_binaryn_nocheck(const char *value, size_t len)
 {
-    return binary_create(value, len,0);
+    return binary_create(value, len, 0);
 }
 
 /* this is private; "steal" is not a public API concept */
@@ -1043,7 +1048,7 @@ size_t json_binary_value(const json_t *json, char *dec_bin)
     size_t olen;
     char *bin_copy = (char*)jsonp_malloc(strlen(raw_bin) + 4);
     strcpy(bin_copy,raw_bin);
-    int padding = 4-(strlen(raw_bin) % 4);
+    int padding = 4 - (strlen(raw_bin) % 4);
     if(padding < 4) {
         for (i = 0; i < padding; i++) {
             bin_copy[strlen(raw_bin) + i] = '=';
