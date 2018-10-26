@@ -255,7 +255,10 @@ int dslink_handle_key(DSLink *link) {
 
 void dslink_close(DSLink *link) {
     link->closing = 1;
-    wslay_event_queue_close(link->_ws, WSLAY_CODE_NORMAL_CLOSURE, NULL, 0);
+    int r = wslay_event_queue_close(link->_ws, WSLAY_CODE_NORMAL_CLOSURE, NULL, 0);
+    if (r != WSLAY_ERR_NO_MORE_MSG && r != WSLAY_ERR_INVALID_ARGUMENT) {
+      wslay_event_send(link->_ws);
+    }
     uv_stop(&link->loop);
 }
 
