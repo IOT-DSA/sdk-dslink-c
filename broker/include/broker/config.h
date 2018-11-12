@@ -11,6 +11,7 @@ json_t *broker_config_get();
 
 extern uint8_t broker_enable_token;
 extern size_t broker_max_qos_queue_size;
+extern size_t broker_max_qos_queue_file_size;
 extern size_t broker_max_ws_send_queue_size;
 
 int broker_config_load(json_t *json);

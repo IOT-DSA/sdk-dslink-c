@@ -341,7 +341,7 @@ int broker_update_sub_req(SubRequester *subReq, json_t *varray) {
             if (!subReq->qosQueue) {
                 subReq->qosQueue = json_array();
             }
-            if (json_array_size(subReq->qosQueue) >= broker_max_qos_queue_size) {
+            if (check_queue_size_limit(subReq->qosQueue)) {
                 // destroy qos queue when exceed max queue size
                 clear_qos_queue(subReq, 1);
                 return result;
@@ -432,4 +432,27 @@ void broker_update_sub_qos(SubRequester *req, uint8_t qos) {
             serialize_qos_queue(req, 0);
         }
     }
+}
+
+int check_queue_size_limit(json_t *qosQueue) {
+    /*
+       return 1 if size limit is exceeded, otherwise return 0
+
+       limit is set via maxQueue and/or maxQueueFileSize in broker.json
+       . limit is exceeded when either maxQueue/maxQueueFileSize is exceeded
+
+       Note that when maxQueueFileSize is set to 0, no limit on size of qos queue file
+    */
+
+    int rc = 0;
+
+    rc |= (json_array_size(qosQueue) >= broker_max_qos_queue_size);
+
+    if (broker_max_qos_queue_file_size) {
+        char* dump = json_dumps(qosQueue , JSON_ENCODE_ANY);
+        rc |= (strlen(dump)+5 >= broker_max_qos_queue_file_size);
+        dslink_free(dump);
+    }
+
+    return rc;
 }

@@ -64,6 +64,7 @@ json_t *broker_config_gen() {
     json_object_set_new_nocheck(broker_config, "log_level", json_string_nocheck("info"));
     json_object_set_new_nocheck(broker_config, "allowAllLinks", json_true());
     json_object_set_new_nocheck(broker_config, "maxQueue", json_integer(1024));
+    json_object_set_new_nocheck(broker_config, "maxQueueFileSize", json_integer(0));
     json_object_set_new_nocheck(broker_config, "maxSendQueue", json_integer(8));
     json_object_set_new_nocheck(broker_config, "defaultPermission", json_null());
 
@@ -126,6 +127,7 @@ json_t *broker_config_get() {
 
 uint8_t broker_enable_token = 1;
 size_t broker_max_qos_queue_size = 1024;
+size_t broker_max_qos_queue_file_size = 0;
 size_t broker_max_ws_send_queue_size = 8;
 char *broker_storage_path = ".";
 
@@ -191,6 +193,17 @@ int broker_config_load(json_t* json) {
 	  broker_max_qos_queue_size = broker_max_ws_send_queue_size;
         }
 
+      }
+    }
+
+    {
+      // load maxQueueFileSize
+      json_t* maxQueueFileSize = json_object_get(json, "maxQueueFileSize");
+      if (json_is_integer(maxQueueFileSize)) {
+        broker_max_qos_queue_file_size = (size_t)json_integer_value(maxQueueFileSize);
+        if (broker_max_qos_queue_file_size > 0xFFFFFFFF) {
+	  broker_max_qos_queue_file_size = 0xFFFFFFFF;
+        }
       }
     }
 
