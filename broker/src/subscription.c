@@ -342,6 +342,14 @@ int broker_update_sub_req(SubRequester *subReq, json_t *varray) {
                 subReq->qosQueue = json_array();
             }
             if (check_queue_size_limit(subReq->qosQueue)) {
+                // report messages are dropped
+                log_warn("Messages are dropped from the qos queue\n");
+                if (subReq->path != NULL) {
+                    log_warn("path: %s\n", subReq->path);
+                }
+                if (subReq->reqSid != 0xFFFFFFFF) {
+                    log_warn("request id: %d\n", subReq->reqSid);
+                }
                 // destroy qos queue when exceed max queue size
                 clear_qos_queue(subReq, 1);
                 return result;
