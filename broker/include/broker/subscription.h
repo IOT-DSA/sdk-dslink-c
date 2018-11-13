@@ -65,6 +65,8 @@ void serialize_qos_queue(SubRequester *subReq, uint8_t deleteFlag);
 
 int check_subscription_ack(RemoteDSLink *link, uint32_t ack);
 
+int check_queue_size_limit(json_t* qosQueue);
+
 #ifdef __cplusplus
 }
 #endif
