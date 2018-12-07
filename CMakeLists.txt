@@ -90,7 +90,6 @@ include("${CMAKE_CURRENT_LIST_DIR}/deps/CMakeLists.txt")
 include("${CMAKE_CURRENT_LIST_DIR}/deps/CMakeLists_jansson.txt")
 include("${CMAKE_CURRENT_LIST_DIR}/deps/CMakeLists_wslay.txt")
 include("${CMAKE_CURRENT_LIST_DIR}/deps/CMakeLists_argtable3.txt")
-include("${CMAKE_CURRENT_LIST_DIR}/deps/msgpack-c/CMakeLists.txt")
 
 include(ExternalProject)
 
@@ -106,8 +105,10 @@ if (NOT NO_WARNINGS)
     ADD_C_FLAGS("-Wno-clobbered")
     ADD_C_FLAGS("-Wno-misleading-indentation")
     ADD_C_FLAGS("-Wno-format-truncation")
-    ADD_C_FLAGS("-pedantic")
+#AK:TODO    ADD_C_FLAGS("-pedantic")
 endif()
+
+include("${CMAKE_CURRENT_LIST_DIR}/deps/msgpack-c-build/CMakeLists.txt")
 
 if (${CMAKE_C_COMPILER_ID} STREQUAL "Clang")
     ADD_C_FLAGS("-Qunused-arguments")
@@ -233,7 +234,7 @@ else()
 endif()
 
 add_library(sdk_dslink_c SHARED ${LIBRARY_SRC})
-target_link_libraries(sdk_dslink_c msgpackc jansson libuv ${DSLINK_PLATFORM_LIBS})
+target_link_libraries(sdk_dslink_c jansson libuv ${DSLINK_PLATFORM_LIBS})
 set_target_properties(sdk_dslink_c PROPERTIES VERSION ${VERSION} SOVERSION ${VERSION} )
 
 set(DSLINK_INSTALL_LIB_DIR lib CACHE PATH "Installation directory for libraries")

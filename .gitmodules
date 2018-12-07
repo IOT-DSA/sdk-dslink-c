@@ -13,3 +13,6 @@
 [submodule "deps/argtable3"]
 	path = deps/argtable3
 	url = https://github.com/argtable/argtable3.git
+[submodule "deps/msgpack-c"]
+	path = deps/msgpack-c
+	url = https://github.com/msgpack/msgpack-c.git

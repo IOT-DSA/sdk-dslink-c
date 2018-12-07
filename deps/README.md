@@ -34,3 +34,10 @@ Libuv:
   - Version: 1.9.1
   - Source: https://github.com/libuv/libuv
   - License: MIT
+
+msgpack-c:
+
+  - Commit: daa78b4
+  - Version: 3.1.1
+  - Source: https://github.com/msgpack-c
+  - License: Boost Sofware 1.0
