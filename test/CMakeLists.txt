@@ -14,6 +14,7 @@ set(SDK_TEST_SET
     "col_vec_test"
     "col_ringbuf_test"
     "utils_test"
+    "utils_msgpack_test"
     "thread_safe_api_test"
 )
 

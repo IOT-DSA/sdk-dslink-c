@@ -9,6 +9,9 @@
 
 #include "broker/msg/msg_handler.h"
 #include "broker/net/ws.h"
+#include <msgpack.h>
+#include <dslink/ws.h>
+#include <dslink/utils.h>
 
 ssize_t broker_want_read_cb(wslay_event_context_ptr ctx,
                      uint8_t *buf, size_t len,
@@ -112,40 +115,69 @@ void broker_on_ws_data(wslay_event_context_ptr ctx,
     }
     gettimeofday(link->lastReceiveTime, NULL);
 
-    if (arg->opcode == WSLAY_TEXT_FRAME) {
-        if (arg->msg_length == 2
-            && arg->msg[0] == '{'
-            && arg->msg[1] == '}') {
-            broker_ws_send(link, "{}");
-            return;
-        }
-
-        json_error_t err;
-        json_t *data = json_loadb((char *) arg->msg,
-                                  arg->msg_length, 0, &err);
-        if (throughput_input_needed()) {
-            int receiveMessages = 0;
-            if (data) {
-                receiveMessages = broker_count_json_msg(data);
-            }
-            throughput_add_input(arg->msg_length, receiveMessages);
-        }
-        if (!data) {
-            return;
-        }
-        if (link->isUpstream) {
-          log_debug("Received data from upstream %s: %.*s\n", (char *) link->name,
-                    (int) arg->msg_length, arg->msg);
-        } else {
-          log_debug("Received data from %s: %.*s\n", (char *) link->dsId->data,
-                    (int) arg->msg_length, arg->msg);
-        }
-
-        broker_msg_handle(link, data);
-        json_decref(data);
-    } else if (arg->opcode == WSLAY_CONNECTION_CLOSE) {
+    if (arg->opcode == WSLAY_CONNECTION_CLOSE) {
         link->pendingClose = 1;
+        return;
     }
+
+    json_t *data = NULL;
+    int is_recv_data_msg_pack = 0;
+
+    if (arg->opcode == WSLAY_TEXT_FRAME) {
+        json_error_t err;
+        data = json_loadb((char *) arg->msg,
+                          arg->msg_length, 0, &err);
+    }
+    else if(arg->opcode == WSLAY_BINARY_FRAME)
+    {
+        msgpack_unpacked msg;
+        msgpack_unpacked_init(&msg);
+        msgpack_unpack_next(&msg, (char *) arg->msg, arg->msg_length, NULL);
+
+        /* prints the deserialized object. */
+        msgpack_object obj = msg.data;
+
+        data = dslink_ws_msgpack_to_json(&obj);
+        is_recv_data_msg_pack = 1;
+    }
+
+    // Check whether it is ping or not
+    if(data != NULL && json_object_iter(data) == NULL)
+    {
+        log_debug("Ping received (as %s), responding back...\n", is_recv_data_msg_pack?"msgpack":"json");
+        broker_ws_send_ping(link);
+        return;
+    }
+
+
+
+    if (throughput_input_needed()) {
+        int receiveMessages = 0;
+        if (data) {
+            receiveMessages = broker_count_json_msg(data);
+        }
+        throughput_add_input(arg->msg_length, receiveMessages);
+    }
+    if (!data) {
+        return;
+    }
+
+    if (link->isUpstream) {
+      log_debug("Received data (as %s) from upstream %s: %.*s\n",
+                (is_recv_data_msg_pack==1)?"msgpack":"json",
+                (char *) link->name,
+                (int) arg->msg_length, json_dumps(data, JSON_INDENT(0)));
+    } else {
+      log_debug("Received data (as %s) from %s: %.*s\n",
+                (is_recv_data_msg_pack==1)?"msgpack":"json",
+                (char *) link->dsId->data,
+                (int) arg->msg_length, json_dumps(data, JSON_INDENT(0)));
+    }
+
+    broker_msg_handle(link, data);
+    json_decref(data);
+
+    return;
 }
 
 const struct wslay_event_callbacks *broker_ws_callbacks() {

@@ -448,6 +448,14 @@ int dslink_init_do(DSLink *link, DSLinkCallbacks *cbs) {
     const char *tKey = json_string_value(json_object_get(handshake, "tempKey"));
     const char *salt = json_string_value(json_object_get(handshake, "salt"));
 
+    const char *format = json_string_value(json_object_get(handshake, "format"));
+    link->is_msgpack = 0;
+    if(format != NULL && strcmp(format, "msgpack") == 0)
+        link->is_msgpack = 1;
+
+    const char* format_str = link->is_msgpack?"msgpack":"json";
+    log_info("Format was decided as %s by server\n", format_str);
+
     if (!(uri && ((tKey && salt) || link->config.token))) {
         log_fatal("Handshake didn't return the "
                       "necessary parameters to complete\n");
@@ -456,9 +464,13 @@ int dslink_init_do(DSLink *link, DSLinkCallbacks *cbs) {
     }
 
     if ((ret = dslink_handshake_connect_ws(link->config.broker_url, &link->key, uri,
-                                           tKey, salt, dsId, link->config.token, &sock)) != 0) {
-        log_fatal("Failed to connect to the broker: %d\n", ret);
+                                           tKey, salt, dsId, link->config.token, format_str, &sock)) != 0) {
+
+        log_fatal("Failed to connect to the broker: %s:%d with error code %d\n",
+                  link->config.broker_url->host,
+                  link->config.broker_url->port, ret);
         ret = 2;
+        // ret = DSLINK_COULDNT_CONNECT;
         goto exit;
     } else {
         log_info("Successfully connected to the broker\n");

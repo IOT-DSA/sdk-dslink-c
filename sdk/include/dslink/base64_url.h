@@ -6,6 +6,7 @@ extern "C" {
 #endif
 
 #include <stddef.h>
+#include "dslink/err.h"
 
 /**
  * Encodes a string into base64 format without padding
@@ -24,6 +25,24 @@ int dslink_base64_url_decode(unsigned char *dst,
                              size_t *oLen,
                              const unsigned char *src,
                              size_t sLen);
+
+/**
+ * Encodes a string into base64 format without padding
+ */
+int dslink_base64_encode(unsigned char *dst,
+                         size_t dLen,
+                         size_t *olen,
+                         const unsigned char *src,
+                         size_t sLen);
+
+/**
+ * Decodes a base64 string
+ */
+int dslink_base64_decode(unsigned char *dst,
+                         size_t dLen,
+                         size_t *oLen,
+                         const unsigned char *src,
+                         size_t sLen);
 
 #ifdef __cplusplus
 }
