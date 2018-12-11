@@ -40,6 +40,9 @@ extern "C" {
 #define DSLINK_CANNOT_WRITE_FILE             -0x5003
 #define DSLINK_CANNOT_LOAD_FILE              -0x5004
 
+#define DSLINK_BASE64_BUFFER_TOO_SMALL_ERR   -0x6001
+#define DSLINK_BASE64_INVALID_CHARACTER_ERR  -0x6002
+
 #ifdef __cplusplus
 }
 #endif

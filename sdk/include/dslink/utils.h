@@ -6,6 +6,8 @@ extern "C" {
 #endif
 
 #include <stdlib.h>
+#include <jansson.h>
+#include <msgpack.h>
 
 #define DSLINK_CHECKED_EXEC(func, val) \
     if (val) func(val)
@@ -24,6 +26,11 @@ char *dslink_str_unescape(const char *data);
 size_t dslink_create_ts(char *buf, size_t bufLen);
 
 int dslink_sleep(long ms);
+
+int sync_json_to_msg_pack(json_t *json_obj, msgpack_packer* pk);
+
+msgpack_sbuffer* dslink_ws_json_to_msgpack(json_t *json_obj);
+json_t* dslink_ws_msgpack_to_json(msgpack_object* obj);
 
 const char* dslink_checkIpv4Address(const char* address);
 const char* dslink_checkIpv6Address(const char* address);

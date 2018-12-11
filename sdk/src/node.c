@@ -6,6 +6,9 @@
 #include <mbedtls/base64.h>
 #include "mbedtls/aes.h"
 
+#define LOG_TAG "node"
+#include <dslink/log.h>
+
 #include "dslink/node.h"
 #include "dslink/mem/mem.h"
 #include "dslink/ws.h"

@@ -459,7 +459,6 @@ ENDIF ()
 # AK:TODO remove_flag_from_target(msgpackc-static -pedantic)
 # remove_flag_from_file(msgpackc-static unpack.c -pedantic)
 
-#[[
 # Doxygen
 FIND_PACKAGE (Doxygen)
 IF (DOXYGEN_FOUND)
@@ -525,7 +524,7 @@ IF (NOT CMAKE_VERSION VERSION_LESS 3.0)
     )
 ENDIF ()
 
-CONFIGURE_PACKAGE_CONFIG_FILE (msgpack-config.cmake.in
+CONFIGURE_PACKAGE_CONFIG_FILE (${CMAKE_CURRENT_SOURCE_DIR}/msgpack-config.cmake.in
     msgpack-config.cmake
     INSTALL_DESTINATION "${CMAKE_INSTALL_CMAKEDIR}"
 )
@@ -543,5 +542,5 @@ INSTALL (
         "${CMAKE_CURRENT_BINARY_DIR}/msgpack-config-version.cmake"
     DESTINATION
         "${CMAKE_INSTALL_CMAKEDIR}"
-)]]
+)
 
