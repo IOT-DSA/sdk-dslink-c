@@ -45,6 +45,9 @@ int dslink_request_handle(DSLink *link, json_t *req) {
             }
             stream->type = INVOCATION_STREAM;
             stream->path = dslink_strdup(node->path);
+            stream->on_close = NULL;
+            stream->unused = 0;
+            stream->data = NULL;
 
             ref_t *stream_ref = dslink_ref(stream, free_stream);
 
